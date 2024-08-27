@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable;
 
@@ -20,6 +20,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'fa_type_id',
+        'two_factor_code',
+        'two_factor_expires_at',
     ];
 
     /**
@@ -31,6 +34,11 @@ class User extends Authenticatable
         'first_login',
         'password',
         'remember_token',
+    ];
+
+    protected $dates = [
+        'email_verified_at',
+        'two_factor_expires_at',
     ];
 
     /**

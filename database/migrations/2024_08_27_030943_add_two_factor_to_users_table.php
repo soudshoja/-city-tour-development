@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->boolean('first_login')->default(true);
+            $table->integer('fa_type_id')->nullable();
+            $table->string('two_factor_code')->nullable();
+            $table->timestamp('two_factor_expires_at')->nullable();
         });
     }
 
@@ -22,7 +24,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('first_login');
+            $table->dropColumn(['fa_type_id', 'two_factor_code', 'two_factor_expires_at']);
         });
     }
 };

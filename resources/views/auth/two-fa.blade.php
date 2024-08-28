@@ -1,38 +1,31 @@
 <x-guest-layout>
-<div class="card">
-    <div class="card-header">2-factors authentication</div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card card-default">
+                <h4 class="card-heading text-center mt-4 text-gray-900 dark:text-gray-100">
+                    Set Up Authenticator
+                </h4>
 
-    <div class="card-body">
-        <p>
-          2-factors authentication is currently
-          <span class='badge bg-warning'>disabled</span>. To enable:
-        </p>
-
-        <ol class="list-left-align">
-            <li>Open your OTP app and <b>scan the following QR-code</b>
-                <p class="text-center">
-                {!! $qr_code !!}
-                </p>
-            </li>
-
-            <li>Generate a One Time Password (OTP) and enter the value below.
-
-                <form action="{{ route('twofa-enable') }}" method="POST"
-                      class="form-inline text-center">
-                    @csrf
-                    <input name="otp" class="form-control mr-1{{ $errors->has('otp') ? ' is-invalid' : '' }}"
-                           type="number" min="0" max="999999" step="1"
-                           required autocomplete="off">
-                    <button type="submit" class="form-control btn-sm btn-primary">Submit</button>
-                    @if ($errors->has('otp'))
-                    <span class="invalid-feedback text-left">
-                        <strong>{{ $errors->first('otp') }}</strong>
-                    </span>
-                    @endif
-                </form>
-            </li>
-        </ol>
-
+                <div class="card-body text-center">
+                    <p class="p-6 text-gray-900 dark:text-gray-100">
+                        Set up your two factor authentication by scanning the barcode below. Alternatively, you can use the code: <br>
+                        <strong>
+                            {{$secret}}
+                        </strong>
+                    </p>
+                    <div class="d-flex justify-content-center m-3">
+                        {!! $qr_code !!}
+                    </div>
+                    <p class="p-6 text-gray-900 dark:text-gray-100">
+                        You must set up your Google Authenticator app before continuing. You will be unable to login otherwise.
+                    </p>
+                    <div>
+                        <x-primary-a href="{{route('welcome')}}">Complete Registration</x-primary-a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 </x-guest-layout>

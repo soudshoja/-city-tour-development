@@ -66,6 +66,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('two-fa', [TwoFAController::class, 'twofa'])->name('twofa');
 
-    Route::post('two-fa-enable', [TwoFAController::class, 'twofaEnable'])->name('twofa-enable');
+    // Route::post('two-fa-enable', [TwoFAController::class, 'twofaEnable'])->name('twofa-enable');
 });
 

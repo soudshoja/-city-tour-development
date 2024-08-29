@@ -3,20 +3,16 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
-                    Register
+                    Verify Two Factor Authentication
                 </div>
                 <hr class="border-b border-gray-100">
                 @if($errors->any())
-                    <div class="col-md-12">
-                        <div class="alert alert-danger">
-                            <strong>
-                                {{$errors->first()}}
-                            </strong>
-                        </div>
-                    </div>
+                   <div class="px-6">
+                    <x-input-error :messages="$errors->first()" class="mt-2" />
+                   </div>
                 @endif
                 <div class="p-6">
-                    <form class="form-horizontal" method="POST" action="{{ route('test') }}">
+                    <form class="form-horizontal" method="POST" action="{{ route('verify2fa') }}">
                         {{ csrf_field() }}
 
                         <div class="form-group">

@@ -1,3 +1,164 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+    max-height: 100vh;
+    overflow-y: hidden;
+}
+
+
+@layer utilities {
+  .text-dark {
+    color: #333333; /* Replace with your desired dark color */
+  }
+}
+
+
+[x-cloak] {
+    display: none !important;
+}
+
+
+[x-cloak] + div {
+    padding: 0;
+}
+
+
+.hidden-on-load {
+    visibility: hidden;
+}
+
+.visible-on-load {
+    visibility: visible;
+}
+
+/* City Style */
+.blackCity{
+    color: black;
+}
+.YellowCity{
+    color: #F1C40F;
+}
+.bgCityColor{
+color:#1f1f1f;
+}
+
+/*  buttons */
+
+.btn-gradient {
+    background-image: linear-gradient(to right, var(--tw-gradient-stops));
+    --tw-gradient-from: #ef1262 var(--tw-gradient-from-position);
+    --tw-gradient-to: #ef126200 var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+    --tw-gradient-to: #4361ee var(--tw-gradient-to-position);
+    --tw-text-opacity: 1;
+    color: rgb(255 255 255 / var(--tw-text-opacity));
+}
+.btn-gradient:hover {
+    --tw-gradient-from: #4361ee var(--tw-gradient-from-position);
+    --tw-gradient-to: #4361ee00 var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+    --tw-gradient-to: #ef1262 var(--tw-gradient-to-position)
+}
+
+/* header */
+
+.icon, .profile-icon {
+    background-color: #f5f7f9; /* Light gray background */
+    border-radius: 50%;
+    padding: 10px; /* Adjust padding for desired icon size */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.icon-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+
+.icon img, .profile-icon img {
+    width: 24px; /* Adjust icon size */
+    height: 24px; /* Adjust icon size */
+}
+
+.profile-icon {
+    border: none; /* No border for profile icon */
+    width: 40px; /* Adjust size for profile image */
+    height: 40px;
+    overflow: hidden;
+}
+
+.profile-icon img {
+    width: 100%;
+    height: auto;
+    border-radius: 50%; /* Make profile image circular */
+}
+
+
+
+/* Mood setting */
+/* Default (Light Mode) Styles */
+
+
+/* Override the hover state for active sub-menu items */
+.sidebar ul.sub-menu li a.active:hover, 
+.sidebar ul.sub-menu li button.active:hover {
+    background-color: #1f1f1f !important; /* Set the hover background color */
+    color: #ffffff !important; /* Set the hover text color */
+}
+
+
+
+.dark .dark\:bg-black {
+    --tw-bg-opacity: 1;
+    background-color: #1f1f1f !important;
+}
+
+body {
+    background-color: white;
+    color: #1f1f1f;
+}
+
+/* Dark Mode Styles */
+html.dark body {
+    background-color: #1f1f1f;
+    color: white;
+}
+
+/* Additional elements, such as header, footer, and others, should be styled for dark mode as well */
+html.dark header,
+html.dark footer,
+html.dark .content {
+    background-color: #1f1f1f;
+    color: white;
+}
+
+/* Ensure your icon visibility logic is correct */
+.hidden {
+    display: none;
+}
+
+
+/* Light Mode Header Styles */
+header {
+    background-color: white;
+    color: #1f1f1f;
+}
+
+/* Dark Mode Header Styles */
+html.dark header {
+    background-color: #1f1f1f; /* Dark background */
+    color: white; /* Light text color */
+}
+
+
+/* sidebar */
+
+.sidebar ul.sub-menu li a:before, .sidebar ul.sub-menu li button:before{
+    margin-right: 5px;
+}
+

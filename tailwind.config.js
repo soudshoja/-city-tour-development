@@ -14,8 +14,19 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'white-light': '#f5f5f5', // Custom color for bg-white-light
+                'dark': '#1f1f1f', // Set the dark color to #1f1f1f
+            },
+            backgroundColor: {
+                'dark': '#1f1f1f', // Replace the existing dark background color
+            },
+            textColor: {
+                'dark': '#1f1f1f', // Replace the existing dark text color
+            },
         },
     },
 
+    darkMode: 'class', // Enable dark mode using class
     plugins: [forms],
 };

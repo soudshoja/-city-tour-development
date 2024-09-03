@@ -2865,7 +2865,7 @@ body.dark {
 }
 
 :is(.dark .horizontal-menu ul.sub-menu a:hover) {
-    background-color: #1f1f1f;
+    background-color: #000;
 }
 
 .horizontal-menu ul.sub-menu a.active {
@@ -2876,7 +2876,7 @@ body.dark {
 }
 
 :is(.dark .horizontal-menu ul.sub-menu a.active) {
-    background-color: #1f1f1f;
+    background-color: #000;
 }
 
 .horizontal-menu>li.nav-item:hover>ul.sub-menu,
@@ -3413,7 +3413,7 @@ body.dark {
 
 :is(.dark .badge-outline-primary:hover) {
     --tw-bg-opacity: 1;
-    background-color: rgb(67 97 238/var(--tw-bg-opacity));
+    background-color: #000;
     --tw-text-opacity: 1;
     color: rgb(224 230 237/var(--tw-text-opacity))
 }

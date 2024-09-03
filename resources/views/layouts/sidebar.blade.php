@@ -1,7 +1,7 @@
 <nav x-cloak :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
     class="sidebar fixed bottom-0 top-0 z-50 h-full min-h-screen w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] transition-all duration-300">
 
-    <div class="h-full bg-white dark:bg-[#1f1f1f]">
+    <div class="h-full bg-white dark:bg-[#000]">
 
         <div class="flex items-center justify-between px-4 py-3 mb-5">
             <a href="index.html" class="main-logo flex shrink-0 items-center">

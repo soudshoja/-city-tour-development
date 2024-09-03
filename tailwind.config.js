@@ -15,18 +15,18 @@ export default {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                'white-light': '#f5f5f5', // Custom color for bg-white-light
-                'dark': '#1f1f1f', // Set the dark color to #1f1f1f
+                'white-light': '#f5f5f5', 
+                'dark': '#000', 
             },
             backgroundColor: {
-                'dark': '#1f1f1f', // Replace the existing dark background color
+                'dark': '#000', 
             },
             textColor: {
-                'dark': '#1f1f1f', // Replace the existing dark text color
+                'dark': '#000', 
             },
         },
     },
 
-    darkMode: 'class', // Enable dark mode using class
+    darkMode: 'class', 
     plugins: [forms],
 };

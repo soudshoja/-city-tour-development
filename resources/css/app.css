@@ -41,9 +41,12 @@ body {
     color: #F1C40F;
 }
 .bgCityColor{
-color:#1f1f1f;
+color:#000;
 }
 
+.darkSecBgColor{
+    background-color: rgb(14 23 38 / var(--tw-bg-opacity));
+}
 /*  buttons */
 
 .btn-gradient {
@@ -71,6 +74,9 @@ color:#1f1f1f;
     display: flex;
     justify-content: center;
     align-items: center;
+}
+.icon:dark{
+    background-color: rgb(14 23 38 / var(--tw-bg-opacity));
 }
 
 .icon-container {
@@ -107,7 +113,7 @@ color:#1f1f1f;
 /* Override the hover state for active sub-menu items */
 .sidebar ul.sub-menu li a.active:hover, 
 .sidebar ul.sub-menu li button.active:hover {
-    background-color: #1f1f1f !important; /* Set the hover background color */
+    background-color: #000 !important; /* Set the hover background color */
     color: #ffffff !important; /* Set the hover text color */
 }
 
@@ -115,17 +121,18 @@ color:#1f1f1f;
 
 .dark .dark\:bg-black {
     --tw-bg-opacity: 1;
-    background-color: #1f1f1f !important;
+    background-color: #000 !important;
+    box-shadow: #ffffff;
 }
 
 body {
     background-color: white;
-    color: #1f1f1f;
+    color: #000;
 }
 
 /* Dark Mode Styles */
 html.dark body {
-    background-color: #1f1f1f;
+    background-color: #000;
     color: white;
 }
 
@@ -133,7 +140,7 @@ html.dark body {
 html.dark header,
 html.dark footer,
 html.dark .content {
-    background-color: #1f1f1f;
+    background-color: #000;
     color: white;
 }
 
@@ -146,12 +153,12 @@ html.dark .content {
 /* Light Mode Header Styles */
 header {
     background-color: white;
-    color: #1f1f1f;
+    color: #000;
 }
 
 /* Dark Mode Header Styles */
 html.dark header {
-    background-color: #1f1f1f; /* Dark background */
+    background-color: #000; /* Dark background */
     color: white; /* Light text color */
 }
 

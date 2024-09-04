@@ -7,9 +7,20 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\View\View;
 
 class PasswordController extends Controller
 {
+    public function index(): View
+    {
+        $email = session()->get('email');
+
+        // Remove the email from the session to prevent multiple uses
+        session()->forget('email');
+    
+        return view('auth.password', ['email' => $email]);
+    }
+    
     /**
      * Update the user's password.
      */

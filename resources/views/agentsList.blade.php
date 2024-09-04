@@ -2,130 +2,195 @@
     <!-- Main Content of the page -->
     <div class="mb-6 grid gap-6 xl:grid-cols-3">
 
-        <!-- 1ft column -->
-        <div class="h-full xl:col-span-1 border border-gray-200 rounded-lg">
+        <!-- 1st column -->
+         <div class="panel h-full mb-5 p-2 xl:col-span-1">
 
-            <div class="mb-5 p-2">
-                <h5 class="text-lg font-semibold dark:text-white-light">See & Do More</h5>
-                <h3 class="text-base font-medium dark:text-white-light mt-2">
-                    Total users: <span class="text-lg text-[#f8538d]">4230964</span>
-                </h3>
-               
-                <div x-ref="totalVisit" class="overflow-hidden w-full">
-    <div id="apexchartsaoiaeoag" class="w-full apexcharts-canvas apexchartsaoiaeoag apexcharts-theme-light"
-        style="width: 100%; height: 58px;">
-        <svg id="SvgjsSvg1511" width="100%" height="58" xmlns="http://www.w3.org/2000/svg" version="1.1"
-            xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev" class="apexcharts-svg"
-            xmlns:data="ApexChartsNS" transform="translate(0, 0)" style="background: transparent; width: 100%;">
-            <g id="SvgjsG1513" class="apexcharts-inner apexcharts-graphical"
-                transform="translate(0, 5)">
-                <defs id="SvgjsDefs1512">
-                    <clipPath id="gridRectMaskaoiaeoag">
-                        <rect id="SvgjsRect1518" width="100%" height="50" x="0" y="-1" rx="0" ry="0"
-                            opacity="1" stroke-width="0" stroke="none" stroke-dasharray="0" fill="#fff">
-                        </rect>
-                    </clipPath>
-                    <!-- Other clip paths and filters remain the same -->
-                </defs>
-                <!-- Line and grid adjustments to ensure full width -->
-                <line id="SvgjsLine1517" x1="0" y1="0" x2="100%" y2="48" stroke="#b6b6b6"
-                    stroke-dasharray="3" stroke-linecap="butt" class="apexcharts-xcrosshairs" x="0"
-                    y="0" width="100%" height="48" fill="#b1b9c4" filter="none" fill-opacity="0.9"
-                    stroke-width="1"></line>
-                <g id="SvgjsG1534" class="apexcharts-xaxis" transform="translate(0, 0)">
-                    <g id="SvgjsG1535" class="apexcharts-xaxis-texts-g" transform="translate(0, -4)">
-                    </g>
-                </g>
-                <g id="SvgjsG1547" class="apexcharts-grid">
-                    <g id="SvgjsG1548" class="apexcharts-gridlines-horizontal" style="display: none;">
-                        <line id="SvgjsLine1550" x1="0" y1="0" x2="100%" y2="0" stroke="#e0e0e0"
-                            stroke-dasharray="0" stroke-linecap="butt" class="apexcharts-gridline">
-                        </line>
-                        <!-- Repeat this pattern for other gridlines -->
-                    </g>
-                    <line id="SvgjsLine1559" x1="0" y1="48" x2="100%" y2="48" stroke="transparent"
-                        stroke-dasharray="0" stroke-linecap="butt"></line>
-                </g>
-                <g id="SvgjsG1520" class="apexcharts-line-series apexcharts-plot-series">
-                    <g id="SvgjsG1521" class="apexcharts-series" seriesName="seriesx1"
-                        data:longestSeries="true" rel="1" data:realIndex="0">
-                        <path id="SvgjsPath1524"
-                            d="M 0 33.6C 7.6611111111111105 33.6 14.227777777777778 41.82857142857143 21.88888888888889 41.82857142857143C 29.55 41.82857142857143 36.11666666666667 23.314285714285713 43.77777777777778 23.314285714285713C 51.43888888888889 23.314285714285713 58.00555555555556 39.77142857142857 65.66666666666667 39.77142857142857C 73.32777777777778 39.77142857142857 79.89444444444445 17.828571428571426 87.55555555555556 17.828571428571426C 95.21666666666667 17.828571428571426 101.78333333333333 30.857142857142858 109.44444444444444 30.857142857142858C 117.10555555555555 30.857142857142858 123.67222222222223 7.542857142857137 131.33333333333334 7.542857142857137C 138.99444444444444 7.542857142857137 145.56111111111113 19.885714285714283 153.22222222222223 19.885714285714283C 160.88333333333333 19.885714285714283 167.45000000000002 2.74285714285714 175.11111111111111 2.74285714285714C 182.7722222222222 2.74285714285714 189.3388888888889 30.857142857142858 197 30.857142857142858"
-                            fill="none" fill-opacity="1" stroke="rgba(0,150,136,0.85)"
-                            stroke-opacity="1" stroke-linecap="butt" stroke-width="2"
-                            stroke-dasharray="0" class="apexcharts-line" index="0"
-                            clip-path="url(#gridRectMaskaoiaeoag)" filter="url(#SvgjsFilter1525)"
-                            pathTo="M 0 33.6C 7.6611111111111105 33.6 14.227777777777778 41.82857142857143 21.88888888888889 41.82857142857143C 29.55 41.82857142857143 36.11666666666667 23.314285714285713 43.77777777777778 23.314285714285713C 51.43888888888889 23.314285714285713 58.00555555555556 39.77142857142857 65.66666666666667 39.77142857142857C 73.32777777777778 39.77142857142857 79.89444444444445 17.828571428571426 87.55555555555556 17.828571428571426C 95.21666666666667 17.828571428571426 101.78333333333333 30.857142857142858 109.44444444444444 30.857142857142858C 117.10555555555555 30.857142857142858 123.67222222222223 7.542857142857137 131.33333333333334 7.542857142857137C 138.99444444444444 7.542857142857137 145.56111111111113 19.885714285714283 153.22222222222223 19.885714285714283C 160.88333333333333 19.885714285714283 167.45000000000002 2.74285714285714 175.11111111111111 2.74285714285714C 182.7722222222222 2.74285714285714 189.3388888888889 30.857142857142858 197 30.857142857142858"
-                            pathFrom="M -1 48L -1 48L 21.88888888888889 48L 43.77777777777778 48L 65.66666666666667 48L 87.55555555555556 48L 109.44444444444444 48L 131.33333333333334 48L 153.22222222222223 48L 175.11111111111111 48L 197 48">
-                        </path>
-                        <g id="SvgjsG1522" class="apexcharts-series-markers-wrap" data:realIndex="0">
-                            <g class="apexcharts-series-markers">
-                                <circle id="SvgjsCircle1565" r="0" cx="0" cy="0"
-                                    class="apexcharts-marker wype4wn6a no-pointer-events"
-                                    stroke="#ffffff" fill="#009688" fill-opacity="1" stroke-width="2"
-                                    stroke-opacity="0.9" default-marker-size="0">
-                                </circle>
-                            </g>
-                        </g>
-                    </g>
-                    <g id="SvgjsG1523" class="apexcharts-datalabels" data:realIndex="0"></g>
-                </g>
-                <line id="SvgjsLine1560" x1="0" y1="0" x2="100%" y2="0" stroke="#b6b6b6"
-                    stroke-dasharray="0" stroke-width="1" stroke-linecap="butt"
-                    class="apexcharts-ycrosshairs"></line>
-                <line id="SvgjsLine1561" x1="0" y1="0" x2="100%" y2="0" stroke-dasharray="0"
-                    stroke-width="0" stroke-linecap="butt" class="apexcharts-ycrosshairs-hidden">
-                </line>
-                <g id="SvgjsG1562" class="apexcharts-yaxis-annotations"></g>
-                <g id="SvgjsG1563" class="apexcharts-xaxis-annotations"></g>
-                <g id="SvgjsG1564" class="apexcharts-point-annotations"></g>
-            </g>
-            <rect id="SvgjsRect1516" width="0" height="0" x="0" y="0" rx="0" ry="0" opacity="1"
-                stroke-width="0" stroke="none" stroke-dasharray="0" fill="#fefefe"></rect>
-            <g id="SvgjsG1546" class="apexcharts-yaxis" rel="0" transform="translate(-18, 0)"></g>
-            <g id="SvgjsG1514" class="apexcharts-annotations"></g>
-        </svg>
-        <div class="apexcharts-legend" style="max-height: 29px;"></div>
-        <div class="apexcharts-tooltip apexcharts-theme-light">
-            <div class="apexcharts-tooltip-series-group" style="order: 1;"><span
-                    class="apexcharts-tooltip-marker"
-                    style="background-color: rgb(0, 150, 136);"></span>
-                <div class="apexcharts-tooltip-text"
-                    style="font-family: Nunito, sans-serif; font-size: 12px;">
-                    <div class="apexcharts-tooltip-y-group"><span
-                            class="apexcharts-tooltip-text-y-label"></span><span
-                            class="apexcharts-tooltip-text-y-value"></span></div>
-                    <div class="apexcharts-tooltip-goals-group"><span
-                            class="apexcharts-tooltip-text-goals-label"></span><span
-                            class="apexcharts-tooltip-text-goals-value"></span></div>
-                    <div class="apexcharts-tooltip-z-group"><span
-                            class="apexcharts-tooltip-text-z-label"></span><span
-                            class="apexcharts-tooltip-text-z-value"></span></div>
-                </div>
+                    <div
+                        class="-mx-5 mb-5 flex items-start justify-between border-b border-[#e0e6ed] p-5 pt-0 dark:border-[#1b2e4b] dark:text-white-light">
+                        <h5 class="text-lg font-semibold">Activity Log</h5>
+                        <div x-data="dropdown" @click.outside="open = false" class="dropdown">
+                            <a href="javascript:;" @click="toggle">
+                                <svg class="h-5 w-5 text-black/70 hover:!text-primary dark:text-white/70"
+                                    viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="5" cy="12" r="2" stroke="currentColor" stroke-width="1.5"></circle>
+                                    <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor"
+                                        stroke-width="1.5"></circle>
+                                    <circle cx="19" cy="12" r="2" stroke="currentColor" stroke-width="1.5"></circle>
+                                </svg>
+                            </a>
+                            <ul x-show="open" x-transition="" x-transition.duration.300ms=""
+                                class="ltr:right-0 rtl:left-0" style="display: none;">
+                                <li><a href="javascript:;" @click="toggle">View All</a></li>
+                                <li><a href="javascript:;" @click="toggle">Mark as Read</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="perfect-scrollbar relative -mr-3 h-[360px] pr-3 ps">
+                        <div class="space-y-7">
+                            <div class="flex">
+                                <div
+                                    class="relative z-10 shrink-0 before:absolute before:left-4 before:top-10 before:h-[calc(100%-24px)] before:w-[2px] before:bg-white-dark/30 ltr:mr-2 rtl:ml-2">
+                                    <div
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-white shadow shadow-secondary">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="1.5" fill="none" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold dark:text-white-light">
+                                        New project created : <a href="javascript:;" class="text-success">[VRISTO Admin
+                                            Template]</a>
+                                    </h5>
+                                    <p class="text-xs text-white-dark">27 Feb, 2020</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div
+                                    class="relative z-10 shrink-0 before:absolute before:left-4 before:top-10 before:h-[calc(100%-24px)] before:w-[2px] before:bg-white-dark/30 ltr:mr-2 rtl:ml-2">
+                                    <div
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-success text-white shadow-success">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path opacity="0.5"
+                                                d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"
+                                                stroke="currentColor" stroke-width="1.5"></path>
+                                            <path
+                                                d="M6 8L8.1589 9.79908C9.99553 11.3296 10.9139 12.0949 12 12.0949C13.0861 12.0949 14.0045 11.3296 15.8411 9.79908L18 8"
+                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold dark:text-white-light">
+                                        Mail sent to <a href="javascript:;" class="text-white-dark">HR</a> and
+                                        <a href="javascript:;" class="text-white-dark">Admin</a>
+                                    </h5>
+                                    <p class="text-xs text-white-dark">28 Feb, 2020</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div
+                                    class="relative z-10 shrink-0 before:absolute before:left-4 before:top-10 before:h-[calc(100%-24px)] before:w-[2px] before:bg-white-dark/30 ltr:mr-2 rtl:ml-2">
+                                    <div
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path opacity="0.5" d="M4 12.9L7.14286 16.5L15 7.5" stroke="currentColor"
+                                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            </path>
+                                            <path d="M20.0002 7.5625L11.4286 16.5625L11.0002 16" stroke="currentColor"
+                                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold dark:text-white-light">Server Logs Updated</h5>
+                                    <p class="text-xs text-white-dark">27 Feb, 2020</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div
+                                    class="relative z-10 shrink-0 before:absolute before:left-4 before:top-10 before:h-[calc(100%-24px)] before:w-[2px] before:bg-white-dark/30 ltr:mr-2 rtl:ml-2">
+                                    <div
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-danger text-white">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path opacity="0.5" d="M4 12.9L7.14286 16.5L15 7.5" stroke="currentColor"
+                                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            </path>
+                                            <path d="M20.0002 7.5625L11.4286 16.5625L11.0002 16" stroke="currentColor"
+                                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold dark:text-white-light">
+                                        Task Completed : <a href="javascript:;" class="text-success">[Backup Files
+                                            EOD]</a>
+                                    </h5>
+                                    <p class="text-xs text-white-dark">01 Mar, 2020</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div
+                                    class="relative z-10 shrink-0 before:absolute before:left-4 before:top-10 before:h-[calc(100%-24px)] before:w-[2px] before:bg-white-dark/30 ltr:mr-2 rtl:ml-2">
+                                    <div
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-warning text-white">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path
+                                                d="M15.3929 4.05365L14.8912 4.61112L15.3929 4.05365ZM19.3517 7.61654L18.85 8.17402L19.3517 7.61654ZM21.654 10.1541L20.9689 10.4592V10.4592L21.654 10.1541ZM3.17157 20.8284L3.7019 20.2981H3.7019L3.17157 20.8284ZM20.8284 20.8284L20.2981 20.2981L20.2981 20.2981L20.8284 20.8284ZM14 21.25H10V22.75H14V21.25ZM2.75 14V10H1.25V14H2.75ZM21.25 13.5629V14H22.75V13.5629H21.25ZM14.8912 4.61112L18.85 8.17402L19.8534 7.05907L15.8947 3.49618L14.8912 4.61112ZM22.75 13.5629C22.75 11.8745 22.7651 10.8055 22.3391 9.84897L20.9689 10.4592C21.2349 11.0565 21.25 11.742 21.25 13.5629H22.75ZM18.85 8.17402C20.2034 9.3921 20.7029 9.86199 20.9689 10.4592L22.3391 9.84897C21.9131 8.89241 21.1084 8.18853 19.8534 7.05907L18.85 8.17402ZM10.0298 2.75C11.6116 2.75 12.2085 2.76158 12.7405 2.96573L13.2779 1.5653C12.4261 1.23842 11.498 1.25 10.0298 1.25V2.75ZM15.8947 3.49618C14.8087 2.51878 14.1297 1.89214 13.2779 1.5653L12.7405 2.96573C13.2727 3.16993 13.7215 3.55836 14.8912 4.61112L15.8947 3.49618ZM10 21.25C8.09318 21.25 6.73851 21.2484 5.71085 21.1102C4.70476 20.975 4.12511 20.7213 3.7019 20.2981L2.64124 21.3588C3.38961 22.1071 4.33855 22.4392 5.51098 22.5969C6.66182 22.7516 8.13558 22.75 10 22.75V21.25ZM1.25 14C1.25 15.8644 1.24841 17.3382 1.40313 18.489C1.56076 19.6614 1.89288 20.6104 2.64124 21.3588L3.7019 20.2981C3.27869 19.8749 3.02502 19.2952 2.88976 18.2892C2.75159 17.2615 2.75 15.9068 2.75 14H1.25ZM14 22.75C15.8644 22.75 17.3382 22.7516 18.489 22.5969C19.6614 22.4392 20.6104 22.1071 21.3588 21.3588L20.2981 20.2981C19.8749 20.7213 19.2952 20.975 18.2892 21.1102C17.2615 21.2484 15.9068 21.25 14 21.25V22.75ZM21.25 14C21.25 15.9068 21.2484 17.2615 21.1102 18.2892C20.975 19.2952 20.7213 19.8749 20.2981 20.2981L21.3588 21.3588C22.1071 20.6104 22.4392 19.6614 22.5969 18.489C22.7516 17.3382 22.75 15.8644 22.75 14H21.25ZM2.75 10C2.75 8.09318 2.75159 6.73851 2.88976 5.71085C3.02502 4.70476 3.27869 4.12511 3.7019 3.7019L2.64124 2.64124C1.89288 3.38961 1.56076 4.33855 1.40313 5.51098C1.24841 6.66182 1.25 8.13558 1.25 10H2.75ZM10.0298 1.25C8.15538 1.25 6.67442 1.24842 5.51887 1.40307C4.34232 1.56054 3.39019 1.8923 2.64124 2.64124L3.7019 3.7019C4.12453 3.27928 4.70596 3.02525 5.71785 2.88982C6.75075 2.75158 8.11311 2.75 10.0298 2.75V1.25Z"
+                                                fill="currentColor"></path>
+                                            <path opacity="0.5"
+                                                d="M13 2.5V5C13 7.35702 13 8.53553 13.7322 9.26777C14.4645 10 15.643 10 18 10H22"
+                                                stroke="currentColor" stroke-width="1.5"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold dark:text-white-light">
+                                        Documents Submitted from <a href="javascript:;">Sara</a>
+                                    </h5>
+                                    <p class="text-xs text-white-dark">10 Mar, 2020</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div class="shrink-0 ltr:mr-2 rtl:ml-2">
+                                    <div
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-dark text-white">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="h-4 w-4">
+                                            <path opacity="0.5"
+                                                d="M2 17C2 15.1144 2 14.1716 2.58579 13.5858C3.17157 13 4.11438 13 6 13H18C19.8856 13 20.8284 13 21.4142 13.5858C22 14.1716 22 15.1144 22 17C22 18.8856 22 19.8284 21.4142 20.4142C20.8284 21 19.8856 21 18 21H6C4.11438 21 3.17157 21 2.58579 20.4142C2 19.8284 2 18.8856 2 17Z"
+                                                stroke="currentColor" stroke-width="1.5"></path>
+                                            <path opacity="0.5"
+                                                d="M2 6C2 4.11438 2 3.17157 2.58579 2.58579C3.17157 2 4.11438 2 6 2H18C19.8856 2 20.8284 2 21.4142 2.58579C22 3.17157 22 4.11438 22 6C22 7.88562 22 8.82843 21.4142 9.41421C20.8284 10 19.8856 10 18 10H6C4.11438 10 3.17157 10 2.58579 9.41421C2 8.82843 2 7.88562 2 6Z"
+                                                stroke="currentColor" stroke-width="1.5"></path>
+                                            <path d="M11 6H18" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                            <path d="M6 6H8" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                            <path d="M11 17H18" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                            <path d="M6 17H8" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold dark:text-white-light">Server rebooted successfully</h5>
+                                    <p class="text-xs text-white-dark">06 Apr, 2020</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ps__rail-x" style="left: 0px; bottom: 0px;">
+                            <div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;"></div>
+                        </div>
+                        <div class="ps__rail-y" style="top: 0px; right: 0px;">
+                            <div class="ps__thumb-y" tabindex="0" style="top: 0px; height: 0px;"></div>
+                        </div>
+                    </div>
+              
+
+            <!-- Add more here -->
+        </div>
+
+        <!------------------------------------------------------------------------------->
+        <!--  2nd columns -->
+        <div class="panel h-full xl:col-span-2">
+            <div class="mb-5 flex items-center dark:text-white-light">
+                <h5 class="text-lg font-semibold">Agents List</h5>
+            </div>
+            <div
+                class="apexcharts-yaxistooltip apexcharts-yaxistooltip-0 apexcharts-yaxistooltip-left apexcharts-theme-light">
+                <div class="apexcharts-yaxistooltip-text"></div>
             </div>
         </div>
-        <div
-            class="apexcharts-yaxistooltip apexcharts-yaxistooltip-0 apexcharts-yaxistooltip-left apexcharts-theme-light">
-            <div class="apexcharts-yaxistooltip-text"></div>
-        </div>
-    </div>
-</div>
 
-
-        </div>
-
-        <!-- Add more here -->
-    </div>
-
-    <!--  2nd columns -->
-    <div class="panel h-full xl:col-span-2">
-        <div class="mb-5 flex items-center dark:text-white-light">
-            <h5 class="text-lg font-semibold">Agents List</h5>
-        </div>
-        <div
-            class="apexcharts-yaxistooltip apexcharts-yaxistooltip-0 apexcharts-yaxistooltip-left apexcharts-theme-light">
-            <div class="apexcharts-yaxistooltip-text"></div>
-        </div>
-    </div>
-   
 </x-app-layout>

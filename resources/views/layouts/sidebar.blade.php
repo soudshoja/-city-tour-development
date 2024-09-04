@@ -55,8 +55,8 @@
                 <ul x-show="activeDropdown === 'dashboard'" x-collapse="" class="sub-menu text-gray-500"
                     style="height: auto;">
                     <li>
-                        <a href="#" class="active">Agents List</a>
-                    </li>
+    <a href="{{ route('agents.index') }}" class="{{ request()->is('agents') ? 'active' : '' }}">Agents List</a>
+</li>
                     <li>
                         <a href="#">Analytics</a>
                     </li>

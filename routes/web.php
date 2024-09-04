@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController; // Add this line if you create a SearchController
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AgentController;
 
 // Home route
 Route::get('/', function () {
@@ -23,6 +24,9 @@ Route::middleware('auth')->group(function () {
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 });
+
+// Agents list
+Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
 
 // Include routes for authentication
 require __DIR__.'/auth.php';

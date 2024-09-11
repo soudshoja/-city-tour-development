@@ -71,7 +71,7 @@
                         class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
                     <label for="remember_me" class="pt-2 ml-2 text-sm text-white">{{ __('Keep me logged in') }}</label>
                 </div>
-
+             <p>Test</p>
                 <!-- Sign In Button -->
                 <div class="mb-4 w-3/4 max-w-sm">
                     <button type="submit"

@@ -23,3 +23,4 @@ jobs:
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
         dry-run: false
+        verbose: true

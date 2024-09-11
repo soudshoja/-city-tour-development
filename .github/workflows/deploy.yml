@@ -16,7 +16,7 @@ jobs:
     - name: Deploy to FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4  # Use the available version
       with:
-        local-dir: ./public/  # Path to your build output
+        local-dir: ./  # Path to your build output
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}

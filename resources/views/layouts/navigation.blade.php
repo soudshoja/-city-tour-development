@@ -103,7 +103,7 @@
                                             <a class="text-sm text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
                                                 href="{{ route('profile.edit') }}">
                                                 <h4 class="text-base font-semibold text-dark dark:text-white">
-                                                    {{ Auth::user()->name }}
+                        
                                                     <span
                                                         class="rounded bg-success-light px-1 text-xs text-success ml-2">Pro</span>
                                                 </h4>

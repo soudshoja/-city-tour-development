@@ -18,6 +18,13 @@ jobs:
       with:
         node-version: '20'  # Use the Node.js version required by your project
 
+    - uses: php-actions/composer@v6
+      with:
+        php_version: "8.3"
+        php_extensions: gd zip
+        command: install
+        args: --no-scripts
+        
     - name: Install dependencies
       run: npm install
       

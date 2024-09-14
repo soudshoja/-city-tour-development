@@ -1,0 +1,43 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - dev  # or your default branch name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node @v3
+      with:
+        node-version: '20'  # Use the Node.js version required by your project
+
+    - uses: php-actions/composer@v6
+      with:
+        php_version: "8.3"
+        php_extensions: gd zip
+        command: install
+        args: --no-scripts
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Build assets
+      run: npm run build
+
+    - name: Deploy to cPanel via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        local-dir: ./public  # Path to your build output
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        port: ${{ secrets.FTP_PORT }}
+        protocol: 'ftp'  # or 'sftp' if you're using SFTP
+        dry-run: false

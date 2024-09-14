@@ -5,6 +5,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController; // Add this line if you create a SearchController
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AgentController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\TaskController;
 
 // Home route
 Route::get('/', function () {
@@ -39,13 +41,38 @@ Route::middleware('auth')->group(function () {
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 });
 
+Route::get('enable2fa',[TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 // Agents list
 Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
-
+Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
+// Route to handle form submission and store the new agent
+Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
+Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
+Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
+// Route::post('/agentsupload', [AgentController::class, 'upload'])->name('agents.upload');
 // Include routes for authentication
+Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
+Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
+Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
 
-Route::get('enable2fa',[TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
+Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
+Route::get('/companiesnew', [CompanyController::class, 'new'])->name('companiesnew.new');
+// Route to handle form submission and store the new agent
+Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');
+Route::get('/companiesupload', [CompanyController::class, 'upload'])->name('companiesupload.upload');
+Route::post('/companiesupload', [CompanyController::class, 'import'])->name('companiesupload.import');
+// Route::post('/agentsupload', [AgentController::class, 'upload'])->name('agents.upload');
+// Include routes for authentication
+Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('companiesshow.show');
+Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
+Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
+
+
+Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index');
+Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
+Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
 // Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 //     Route::get('login/otp', [OTPController::class, 'show'])->name('login.otp');
 //     Route::post('login/otp', [OTPController::class, 'check']);

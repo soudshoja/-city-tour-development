@@ -14,8 +14,10 @@ class CreateAgentsTable extends Migration
             $table->id();
             $table->string('name'); // Ensure this column exists
             $table->string('email')->unique();
+            $table->string('company_id')->nullable();
+            $table->string('type')->nullable();
+            $table->integer('user_id')->nullable();
             $table->string('phone_number')->nullable();
-            $table->text('description')->nullable();
             $table->timestamps();
         });
     }

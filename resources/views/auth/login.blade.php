@@ -3,8 +3,8 @@
         <!-- Left Side - Login Form -->
         <div class="w-full lg:w-1/2 p-8 bg-[#4152B3] text-white flex flex-col justify-center items-center mx-auto">
          
-            <h2 class="text-2xl font-semibold mb-4 text-left w-3/4 max-w-sm">Let's you sign in ...</h2>
-            <p class="text-sm mb-8 text-left w-3/4 max-w-sm">It's great to have you back!</p>
+            <h2 class="text-2xl font-semibold mb-4 text-left w-3/4 max-w-sm">Let's you sign in it ...</h2>
+            <p class="text-sm mb-8 text-left w-3/4 max-w-sm">It's great to have you back!!</p>
 
             <form method="POST" action="{{ route('login') }}" class="w-full flex flex-col items-center">
                 @csrf
@@ -71,7 +71,7 @@
                         class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
                     <label for="remember_me" class="pt-2 ml-2 text-sm text-white">{{ __('Keep me logged in') }}</label>
                 </div>
-
+             <p>Test</p>
                 <!-- Sign In Button -->
                 <div class="mb-4 w-3/4 max-w-sm">
                     <button type="submit"

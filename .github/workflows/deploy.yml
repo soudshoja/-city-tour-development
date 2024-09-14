@@ -1,9 +1,9 @@
-name: Deploy to cPanel via FTP
+name: Deploy to cPanel
 
 on:
   push:
     branches:
-      - main  # or the branch you want to deploy from
+      - main  # or your default branch name
 
 jobs:
   deploy:
@@ -13,8 +13,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Deploy to FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4  # Use the available version
+    - name: Set up Node.js
+      uses: actions/setup-node @v3
+      with:
+        node-version: '20'  # Use the Node.js version required by your project
+
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Build assets
+      run: npm run build
+
+    - name: Deploy to cPanel via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         local-dir: ./  # Path to your build output
         server: ${{ secrets.FTP_SERVER }}
@@ -23,4 +34,3 @@ jobs:
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
         dry-run: false
-        verbose: true

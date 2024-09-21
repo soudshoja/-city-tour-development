@@ -32,15 +32,12 @@
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'dashboard'}"
                     @click="activeDropdown === 'dashboard' ? activeDropdown = null : activeDropdown = 'dashboard'">
                     <div class="flex items-center">
-                        <svg class="shrink-0 group-hover:!text-primary" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path opacity="0.5"
-                                d="M2 12.2039C2 9.91549 2 8.77128 2.5192 7.82274C3.0384 6.87421 3.98695 6.28551 5.88403 5.10813L7.88403 3.86687C9.88939 2.62229 10.8921 2 12 2C13.1079 2 14.1106 2.62229 16.116 3.86687L18.116 5.10812C20.0131 6.28551 20.9616 6.87421 21.4808 7.82274C22 8.77128 22 9.91549 22 12.2039V13.725C22 17.6258 22 19.5763 20.8284 20.7881C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.7881C2 19.5763 2 17.6258 2 13.725V12.2039Z"
-                                fill="currentColor"></path>
-                            <path
-                                d="M9 17.25C8.58579 17.25 8.25 17.5858 8.25 18C8.25 18.4142 8.58579 18.75 9 18.75H15C15.4142 18.75 15.75 18.4142 15.75 18C15.75 17.5858 15.4142 17.25 15 17.25H9Z"
-                                fill="currentColor"></path>
-                        </svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="8" height="8" fill="#1C274C" />
+                        <rect x="13" y="3" width="8" height="4" fill="#1C274C" />
+                        <rect x="13" y="9" width="8" height="8" fill="#1C274C" />
+                        <rect x="3" y="13" width="8" height="4" fill="#1C274C" />
+                    </svg>
 
                         <span class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Dashboard</span>
                     </div>
@@ -54,43 +51,76 @@
 
                 <!-- Dashboard dropdown -->
                 <ul x-show="activeDropdown === 'dashboard'" x-collapse="" class="sub-menu text-gray-500" style="height: auto;">
-                      <!-- Agents Parent Item -->
-                      <li>
-                        <a href="#" @click.prevent="activeSubmenu = activeSubmenu === 'companies' ? null : 'companies'"
-                            class="cursor-pointer">
-                            Companies
-                            <!-- Dropdown Indicator -->
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                                stroke="currentColor" class="w-4 h-4 inline">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </a>
-                        <!-- Sub-Items for Agents -->
-                        <ul x-show="activeSubmenu === 'companies'" x-collapse="" class="sub-menu pl-4">
-                            <li>
-                                <a href="{{ route('companies.index') }}" class="{{ request()->is('companies') ? 'active' : '' }}">Companies List</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('companiesnew.new') }}" class="{{ request()->is('companiesnew') ? 'active' : '' }}">Companies New</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('companiesupload.upload') }}" class="{{ request()->is('companiesupload') ? 'active' : '' }}">Companies Upload</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <!-- Agents Parent Item -->
                     <li>
-                        <a href="#" @click.prevent="activeSubmenu = activeSubmenu === 'agents' ? null : 'agents'"
-                            class="cursor-pointer">
-                            Agents
-                            <!-- Dropdown Indicator -->
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                                stroke="currentColor" class="w-4 h-4 inline">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </a>
-                        <!-- Sub-Items for Agents -->
-                        <ul x-show="activeSubmenu === 'agents'" x-collapse="" class="sub-menu pl-4">
+                        <a href="{{ route('dashboard') }}">Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="#">Logout</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="menu nav-item">
+                <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'companies'}"
+                    @click="activeDropdown === 'companies' ? activeDropdown = null : activeDropdown = 'companies'">
+                    <div class="flex items-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="7" width="5" height="13" rx="1" fill="#1C274C" />
+                        <rect x="10" y="3" width="6" height="17" rx="1" fill="#1C274C" />
+                        <rect x="18" y="10" width="3" height="10" rx="1" fill="#1C274C" />
+                        <rect x="4" y="8" width="3" height="2" fill="#FFFFFF" />
+                        <rect x="11" y="5" width="3" height="2" fill="#FFFFFF" />
+                        <rect x="11" y="9" width="3" height="2" fill="#FFFFFF" />
+                        <rect x="11" y="13" width="3" height="2" fill="#FFFFFF" />
+                        <rect x="19" y="11" width="1" height="2" fill="#FFFFFF" />
+                    </svg>
+                     <span
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Companies</span>
+                    </div>
+                    <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'companies'}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </button>
+                <ul x-show="activeDropdown === 'companies'" x-collapse="" class="sub-menu text-gray-500">
+
+                    <li>
+                        <a href="{{ route('companiesnew.new') }}"
+                            class="{{ request()->is('companiesnew') ? 'active' : '' }}">Add Company</a>
+                    </li>
+                    <li>
+
+                        <a href="{{ route('companies.index') }}"
+                            class="{{ request()->is('companies.index') ? 'active' : '' }}">Companies List</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="menu nav-item">
+                <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'agents'}"
+                    @click="activeDropdown === 'agents' ? activeDropdown = null : activeDropdown = 'agents'">
+                    <div class="flex items-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="8" r="4" fill="#1C274C" />
+                        <path d="M18 14C18 15.1046 17.1046 16 16 16H8C6.89543 16 6 15.1046 6 14V13C6 11.8954 6.89543 11 8 11H16C17.1046 11 18 11.8954 18 13V14Z" fill="#1C274C" />
+                        <path opacity="0.5" d="M20 12.5C20 13.8807 18.8807 15 17.5 15C16.1193 15 15 13.8807 15 12.5C15 11.1193 16.1193 10 17.5 10C18.8807 10 20 11.1193 20 12.5Z" fill="#1C274C" />
+                        <path opacity="0.5" d="M9 12.5C9 13.8807 7.88071 15 6.5 15C5.11929 15 4 13.8807 4 12.5C4 11.1193 5.11929 10 6.5 10C7.88071 10 9 11.1193 9 12.5Z" fill="#1C274C" />
+                        <path d="M18 16.5C18 18.433 15.3137 20 12 20C8.68629 20 6 18.433 6 16.5C6 15.1193 7.11929 14 8.5 14H15.5C16.8807 14 18 15.1193 18 16.5Z" fill="#1C274C" />
+                    </svg>
+                  <span
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Agents</span>
+                    </div>
+                    <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'agents'}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </button>
+                <ul x-show="activeDropdown === 'agents'" x-collapse="" class="sub-menu text-gray-500">
+
                             <li>
                                 <a href="{{ route('agents.index') }}" class="{{ request()->is('agents') ? 'active' : '' }}">Agents List</a>
                             </li>
@@ -100,39 +130,41 @@
                             <li>
                                 <a href="{{ route('agentsupload.upload') }}" class="{{ request()->is('agentsupload') ? 'active' : '' }}">Agents Upload</a>
                             </li>
-                        </ul>
-                    </li>
-                   <!-- Agents Parent Item -->
-                   <li>
-                        <a href="#" @click.prevent="activeSubmenu = activeSubmenu === 'tasks' ? null : 'tasks'"
-                            class="cursor-pointer">
-                            Task
-                            <!-- Dropdown Indicator -->
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                                stroke="currentColor" class="w-4 h-4 inline">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </a>
-                        <!-- Sub-Items for Agents -->
-                        <ul x-show="activeSubmenu === 'tasks'" x-collapse="" class="sub-menu pl-4">
+                </ul>
+            </li>
+
+            <li class="menu nav-item">
+                <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'tasks'}"
+                    @click="activeDropdown === 'tasks' ? activeDropdown = null : activeDropdown = 'tasks'">
+                    <div class="flex items-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="#1C274C" />
+                        <path d="M7 7H13V9H7V7Z" fill="#F9D923" />
+                        <path d="M7 11H17V13H7V11Z" fill="#F9D923" />
+                        <path d="M7 15H17V17H7V15Z" fill="#F9D923" />
+                        <path d="M17.707 8.293L15.707 10.293L14.707 9.293L13.293 10.707L15.707 13.121L18.121 10.707L17.707 8.293Z" fill="#F9D923" />
+                    </svg>
+                    <span
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Tasks</span>
+                    </div>
+                    <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'tasks'}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </button>
+                <ul x-show="activeDropdown === 'tasks'" x-collapse="" class="sub-menu text-gray-500">
                             <li>
                                 <a href="{{ route('tasks.index') }}" class="{{ request()->is('tasks') ? 'active' : '' }}">Task List</a>
                             </li>
                             <li>
                                 <a href="{{ route('tasksupload.upload') }}" class="{{ request()->is('tasksupload') ? 'active' : '' }}">Tasks Upload</a>
                             </li>
-                        </ul>
-                    </li>
-
-                    <li>
-                        <a href="#">Finance</a>
-                    </li>
-                    <li>
-                        <a href="#">Crypto</a>
-                    </li>
                 </ul>
             </li>
-        </ul>
 
+        </ul>
+   
     </div>
 </nav>

@@ -13,14 +13,14 @@ class TaskController extends Controller
     {
         $tasks = Task::all();
 
-        return view('tasksList', compact('tasks'));
+        return view('tasks.tasksList', compact('tasks'));
     }
 
     public function upload()
     {
         $tasks = Task::all();
 
-        return view('tasksUpload', compact('tasks'));
+        return view('tasks.tasksUpload', compact('tasks'));
     }
 
     public function import(Request $request)

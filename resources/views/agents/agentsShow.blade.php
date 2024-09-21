@@ -39,17 +39,17 @@
                     <thead>
                         <tr>
                             <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Task Name</th>
-                            <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Due Date</th>
+                            <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Status</th>
                             <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($pendingTasks as $task)
                             <tr>
-                                <td class="py-4 px-6 border-b">{{ $task->name }}</td>
-                                <td class="py-4 px-6 border-b">{{ $task->due_date }}</td>
+                                <td class="py-4 px-6 border-b">{{ $task->description }}</td>
+                                <td class="py-4 px-6 border-b">{{ $task->status }}</td>
                                 <td class="py-4 px-6 border-b">
-                                    <a href="{{ route('tasks.show', $task->id) }}" class="bg-green-500 text-white py-1 px-4 rounded-lg shadow hover:bg-green-600 transition duration-200">View Task</a>
+
                                 </td>
                             </tr>
                         @endforeach

@@ -17,20 +17,20 @@ class CompanyController extends Controller
     {
         $companies = Company::all();
 
-        return view('companiesList', compact('companies'));
+        return view('companies.companiesList', compact('companies'));
     }
 
     public function new()
     {
         $companies = Company::all();
 
-        return view('companiesNew', compact('companies'));
+        return view('companies.companiesNew', compact('companies'));
     }
 
     public function show($id)
     {
         $Company = Company::find($id);
-        return view('companiesShow', compact('Company'));
+        return view('companies.companiesShow', compact('Company'));
 
     }
 
@@ -39,7 +39,7 @@ class CompanyController extends Controller
     $Company = Company::find($id);
     $companies = Company::all();
     
-    return view('companiesEdit', compact('Company', 'companies'));
+    return view('companies.companiesEdit', compact('Company', 'companies'));
 }
 
 
@@ -83,7 +83,7 @@ public function store(Request $request)
     {
         $companies = Company::all();
 
-        return view('companiesUpload', compact('companies'));
+        return view('companies.companiesUpload', compact('companies'));
     }
 
     public function import(Request $request)

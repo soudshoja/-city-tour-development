@@ -45,7 +45,7 @@
             <h2><strong>Associated Tasks</strong></h2>
         </div>
         <button type="button" class="btn btn-primary ml-2" onclick="createInvoice()">Create Invoice</button>
-        <a href="{{ route('tasks.create', $item->id) }}" class="btn btn-success ml-2">Add Task</a>
+        <a href="{{ route('agent.tasks.create', $item->id) }}" class="btn btn-success ml-2">Add Task</a>
     </div>
     @if (!empty($tasks))
         <div class="list-group w-full">

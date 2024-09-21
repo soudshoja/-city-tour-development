@@ -1,6 +1,6 @@
 <x-app-layout>
+    @if(Auth()->user()->role == 'admin')
     <div class="grid grid-cols-3 gap-2">
-
         <div class="w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center"
             style="background-image: url('{{ asset('images/cardbg2.svg') }}'); background-size: cover; background-repeat: no-repeat;">
             <div class="text-xl">Current Balance</div>
@@ -117,6 +117,11 @@
         <div class="output-console"></div>
     </div>
 
+    @elseif(Auth()->user()->role == 'agent')
+        <div class="">
+            @include('items.index')
+        </div>
+    @endif
 
 
 </x-app-layout>

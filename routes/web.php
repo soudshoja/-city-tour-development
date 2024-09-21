@@ -6,6 +6,8 @@ use App\Http\Controllers\SearchController; // Add this line if you create a Sear
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AgentController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ItemController;
 use App\Http\Controllers\TaskController;
 
 // Home route
@@ -13,9 +15,11 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
-Route::middleware(['auth', 'verified','check2fa', '2fa'])->group(function () {
-    Route::get('dashboard', function () {
-        return view('dashboard');
+Route::middleware(['auth'])->group(function () {
+    Route::get('dashboard', function (ItemController $itemController) {
+        $items = $itemController->index();
+
+        return view('dashboard', $items);
     })->name('dashboard');
 
     Route::post('verify2fa', function(){
@@ -82,6 +86,28 @@ Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksuploa
 Route::get('pin', function(){
     return view('auth.pin');
 })->name('pin');
+
+// ITEMS
+Route::get('/items', [ItemController::class, 'index'])->name('items.index');
+Route::post('/items', [ItemController::class, 'store'])->name('items.store');
+Route::get('/items/{id}', [ItemController::class, 'show'])->name('items.show');
+
+
+// TASKS
+Route::group([
+    'prefix' => 'agent',
+    'as' => 'agent.',
+], function(){
+    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::get('/tasks/{id}', [TaskController::class, 'showCreate'])->name('tasks.create');
+    Route::post('/tasks', [TaskController::class, 'create'])->name('tasks.store');
+});
+
+// INVOICE
+Route::get('/invoice', [InvoiceController::class, 'index'])->name('invoice.index');
+Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 
 require __DIR__.'/auth.php';
 

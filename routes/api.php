@@ -7,9 +7,9 @@ use App\Http\Controllers\MobileController;
 
 // Agents list
 Route::get('/agents', [MobileController::class, 'agent']);
-Route::get('/agents/{id}', [AgentsController::class, 'show'])->name('agentsshow.show');
-Route::get('/agents/{id}/edit', [AgentsController::class, 'edit'])->name('agents.edit');
-Route::put('/agents/{id}', [AgentsController::class, 'update'])->name('agents.update');
+// Route::get('/agents/{id}', [AgentsController::class, 'show'])->name('agentsshow.show');
+// Route::get('/agents/{id}/edit', [AgentsController::class, 'edit'])->name('agents.edit');
+// Route::put('/agents/{id}', [AgentsController::class, 'update'])->name('agents.update');
 
 
 Route::get('/companies', [MobileController::class, 'company']);

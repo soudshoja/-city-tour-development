@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Agent;
+use App\Models\Client;
 use App\Models\User;
 use App\Models\Task;
 use App\Models\Company;
@@ -12,28 +13,50 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
 use Illuminate\Support\Facades\Hash;
 
-class AgentController extends Controller
+class MobileController extends Controller
 {
-    public function index()
-    {
-        $agents = Agent::all();
 
-        return view('agents.agentsList', compact('agents'));
+    public function agent()
+    {
+        return response()->json(Agent::all(), 200);
     }
+
+    public function company()
+    {
+        return response()->json(Company::all(), 200);
+    }
+
+    public function task()
+    {
+        return response()->json(Task::all(), 200);
+    }
+
+    public function client()
+    {
+        return response()->json(Client::all(), 200);
+    }
+
+
+    public function store(Request $request)
+    {
+        $user = User::create($request->all());
+        return response()->json($user, 201);
+    }
+
 
     public function new()
     {
         $agents = Agent::all();
 
-        return view('agents.agentsNew', compact('agents'));
+        return view('agentsNew', compact('agents'));
     }
 
     public function show($id)
     {
         $agent = Agent::find($id);
         // return view('agentsShow', compact('agent'));
-        $pendingTasks = Task::where('agent_email', $agent->email)->where('status', 'pending')->get();
-        return view('agents.agentsShow', compact('agent', 'pendingTasks'));
+        $pendingTasks = Task::where('agent_id', $agent->id)->where('status', 'pending')->get();
+        return view('agentsShow', compact('agent', 'pendingTasks'));
 
     }
 
@@ -42,7 +65,7 @@ class AgentController extends Controller
     $agent = Agent::find($id);
     $companies = Company::all();
     
-    return view('agents.agentsEdit', compact('agent', 'companies'));
+    return view('agentsEdit', compact('agent', 'companies'));
 }
 
 
@@ -78,34 +101,11 @@ $agent->save();
 }
 
 
-public function store(Request $request)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email',
-        'phone_number' => 'required|string',
-        'company_id' => 'required',
-        'type' => 'required'
-    ]);
-
-    // Create new agent
-    $agent = Agent::create([
-        'name' => $request->name,
-        'email' => $request->email,
-        'phone_number' => $request->phone_number,
-        'company_id' => $request->company_id,
-        'type' => $request->type,
-    ]);
-
-    return redirect()->route('agents.index')->with('success', 'Agent registered successfully');
-}
-
-
     public function upload()
     {
         $agents = Agent::all();
 
-        return view('agents.agentsUpload', compact('agents'));
+        return view('agentsUpload', compact('agents'));
     }
 
     public function import(Request $request)
@@ -118,7 +118,6 @@ public function store(Request $request)
 
         return redirect()->back()->with('success', 'Agents imported successfully.');
     }
-
 
 }
 

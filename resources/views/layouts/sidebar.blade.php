@@ -52,7 +52,7 @@
                 <!-- Dashboard dropdown -->
                 <ul x-show="activeDropdown === 'dashboard'" x-collapse="" class="sub-menu text-gray-500" style="height: auto;">
                     <li>
-                        <a href="{{ route('dashboard') }}">Dashboard</a>
+                        <a href="{{ route('dashboard') }}">Revenue</a>
                     </li>
                     <li>
                         <a href="#">Logout</a>

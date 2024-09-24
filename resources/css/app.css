@@ -57,18 +57,6 @@ body {
     background-color: rgb(14 23 38 / var(--tw-bg-opacity));
 }
 
-.bgCard {
-    background: linear-gradient(
-        to right,
-        #e467c7 0%,
-        #d33ab0 25%,
-        #a250d6 50%,
-        #7d48dc 75%,
-        #6141d1 90%,
-        #111827 100%
-    );
-}
-
 /*  buttons */
 
 .btn-gradient {

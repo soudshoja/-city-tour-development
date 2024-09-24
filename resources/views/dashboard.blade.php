@@ -1,4 +1,10 @@
 <x-app-layout>
+    <style>
+    .bgCard {
+        background: url("{{ asset('images/bgCardCity.png') }}") no-repeat center center;
+        background-size: cover;
+    }
+    </style>
     <div class="grid grid-cols-3 gap-2">
 
         <div
@@ -27,7 +33,7 @@
 
 
                 </div>
-                <div class="text-sm">Agent</div>
+                <div class="text-sm">Agents</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>
@@ -46,7 +52,7 @@
                             stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="text-sm">Cleint</div>
+                <div class="text-sm">Client</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>
@@ -84,7 +90,7 @@
                             stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="text-sm">Company</div>
+                <div class="text-sm">Companies</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>

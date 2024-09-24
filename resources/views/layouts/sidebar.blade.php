@@ -32,14 +32,18 @@
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'dashboard'}"
                     @click="activeDropdown === 'dashboard' ? activeDropdown = null : activeDropdown = 'dashboard'">
                     <div class="flex items-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="3" width="8" height="8" fill="#1C274C" />
-                        <rect x="13" y="3" width="8" height="4" fill="#1C274C" />
-                        <rect x="13" y="9" width="8" height="8" fill="#1C274C" />
-                        <rect x="3" y="13" width="8" height="4" fill="#1C274C" />
-                    </svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            class="shrink-0">
+                            <path opacity="0.5"
+                                d="M2 12.2039C2 9.91549 2 8.77128 2.5192 7.82274C3.0384 6.87421 3.98695 6.28551 5.88403 5.10813L7.88403 3.86687C9.88939 2.62229 10.8921 2 12 2C13.1079 2 14.1106 2.62229 16.116 3.86687L18.116 5.10812C20.0131 6.28551 20.9616 6.87421 21.4808 7.82274C22 8.77128 22 9.91549 22 12.2039V13.725C22 17.6258 22 19.5763 20.8284 20.7881C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.7881C2 19.5763 2 17.6258 2 13.725V12.2039Z"
+                                fill="currentColor"></path>
+                            <path
+                                d="M9 17.25C8.58579 17.25 8.25 17.5858 8.25 18C8.25 18.4142 8.58579 18.75 9 18.75H15C15.4142 18.75 15.75 18.4142 15.75 18C15.75 17.5858 15.4142 17.25 15 17.25H9Z"
+                                fill="currentColor"></path>
+                        </svg>
 
-                        <span class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Dashboard</span>
+                        <span
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Dashboard</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'dashboard'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -50,12 +54,13 @@
                 </button>
 
                 <!-- Dashboard dropdown -->
-                <ul x-show="activeDropdown === 'dashboard'" x-collapse="" class="sub-menu text-gray-500" style="height: auto;">
+                <ul x-show="activeDropdown === 'dashboard'" x-collapse="" class="sub-menu text-gray-500"
+                    style="height: auto;">
                     <li>
                         <a href="{{ route('dashboard') }}">Revenue</a>
                     </li>
                     <li>
-                        <a href="#">Logout</a>
+                        <a href="#">Repoer</a>
                     </li>
                 </ul>
             </li>
@@ -64,17 +69,27 @@
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'companies'}"
                     @click="activeDropdown === 'companies' ? activeDropdown = null : activeDropdown = 'companies'">
                     <div class="flex items-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="7" width="5" height="13" rx="1" fill="#1C274C" />
-                        <rect x="10" y="3" width="6" height="17" rx="1" fill="#1C274C" />
-                        <rect x="18" y="10" width="3" height="10" rx="1" fill="#1C274C" />
-                        <rect x="4" y="8" width="3" height="2" fill="#FFFFFF" />
-                        <rect x="11" y="5" width="3" height="2" fill="#FFFFFF" />
-                        <rect x="11" y="9" width="3" height="2" fill="#FFFFFF" />
-                        <rect x="11" y="13" width="3" height="2" fill="#FFFFFF" />
-                        <rect x="19" y="11" width="1" height="2" fill="#FFFFFF" />
-                    </svg>
-                     <span
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M12 1.25C9.37665 1.25 7.25 3.37665 7.25 6C7.25 8.62335 9.37665 10.75 12 10.75C14.6234 10.75 16.75 8.62335 16.75 6C16.75 3.37665 14.6234 1.25 12 1.25ZM8.75 6C8.75 4.20507 10.2051 2.75 12 2.75C13.7949 2.75 15.25 4.20507 15.25 6C15.25 7.79493 13.7949 9.25 12 9.25C10.2051 9.25 8.75 7.79493 8.75 6Z"
+                                fill="#1C274C" />
+                            <path
+                                d="M18 3.25C17.5858 3.25 17.25 3.58579 17.25 4C17.25 4.41421 17.5858 4.75 18 4.75C19.3765 4.75 20.25 5.65573 20.25 6.5C20.25 7.34427 19.3765 8.25 18 8.25C17.5858 8.25 17.25 8.58579 17.25 9C17.25 9.41421 17.5858 9.75 18 9.75C19.9372 9.75 21.75 8.41715 21.75 6.5C21.75 4.58285 19.9372 3.25 18 3.25Z"
+                                fill="#1C274C" />
+                            <path
+                                d="M6.75 4C6.75 3.58579 6.41421 3.25 6 3.25C4.06278 3.25 2.25 4.58285 2.25 6.5C2.25 8.41715 4.06278 9.75 6 9.75C6.41421 9.75 6.75 9.41421 6.75 9C6.75 8.58579 6.41421 8.25 6 8.25C4.62351 8.25 3.75 7.34427 3.75 6.5C3.75 5.65573 4.62351 4.75 6 4.75C6.41421 4.75 6.75 4.41421 6.75 4Z"
+                                fill="#1C274C" />
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M12 12.25C10.2157 12.25 8.56645 12.7308 7.34133 13.5475C6.12146 14.3608 5.25 15.5666 5.25 17C5.25 18.4334 6.12146 19.6392 7.34133 20.4525C8.56645 21.2692 10.2157 21.75 12 21.75C13.7843 21.75 15.4335 21.2692 16.6587 20.4525C17.8785 19.6392 18.75 18.4334 18.75 17C18.75 15.5666 17.8785 14.3608 16.6587 13.5475C15.4335 12.7308 13.7843 12.25 12 12.25ZM6.75 17C6.75 16.2242 7.22169 15.4301 8.17338 14.7956C9.11984 14.1646 10.4706 13.75 12 13.75C13.5294 13.75 14.8802 14.1646 15.8266 14.7956C16.7783 15.4301 17.25 16.2242 17.25 17C17.25 17.7758 16.7783 18.5699 15.8266 19.2044C14.8802 19.8354 13.5294 20.25 12 20.25C10.4706 20.25 9.11984 19.8354 8.17338 19.2044C7.22169 18.5699 6.75 17.7758 6.75 17Z"
+                                fill="#1C274C" />
+                            <path
+                                d="M19.2674 13.8393C19.3561 13.4347 19.7561 13.1787 20.1607 13.2674C21.1225 13.4783 21.9893 13.8593 22.6328 14.3859C23.2758 14.912 23.75 15.6352 23.75 16.5C23.75 17.3648 23.2758 18.088 22.6328 18.6141C21.9893 19.1407 21.1225 19.5217 20.1607 19.7326C19.7561 19.8213 19.3561 19.5653 19.2674 19.1607C19.1787 18.7561 19.4347 18.3561 19.8393 18.2674C20.6317 18.0936 21.2649 17.7952 21.6829 17.4532C22.1014 17.1108 22.25 16.7763 22.25 16.5C22.25 16.2237 22.1014 15.8892 21.6829 15.5468C21.2649 15.2048 20.6317 14.9064 19.8393 14.7326C19.4347 14.6439 19.1787 14.2439 19.2674 13.8393Z"
+                                fill="#1C274C" />
+                            <path
+                                d="M3.83935 13.2674C4.24395 13.1787 4.64387 13.4347 4.73259 13.8393C4.82132 14.2439 4.56525 14.6439 4.16065 14.7326C3.36829 14.9064 2.73505 15.2048 2.31712 15.5468C1.89863 15.8892 1.75 16.2237 1.75 16.5C1.75 16.7763 1.89863 17.1108 2.31712 17.4532C2.73505 17.7952 3.36829 18.0936 4.16065 18.2674C4.56525 18.3561 4.82132 18.7561 4.73259 19.1607C4.64387 19.5653 4.24395 19.8213 3.83935 19.7326C2.87746 19.5217 2.0107 19.1407 1.36719 18.6141C0.724248 18.088 0.25 17.3648 0.25 16.5C0.25 15.6352 0.724248 14.912 1.36719 14.3859C2.0107 13.8593 2.87746 13.4783 3.83935 13.2674Z"
+                                fill="#1C274C" />
+                        </svg>
+                        <span
                             class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Companies</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'companies'}">
@@ -102,14 +117,21 @@
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'agents'}"
                     @click="activeDropdown === 'agents' ? activeDropdown = null : activeDropdown = 'agents'">
                     <div class="flex items-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="12" cy="8" r="4" fill="#1C274C" />
-                        <path d="M18 14C18 15.1046 17.1046 16 16 16H8C6.89543 16 6 15.1046 6 14V13C6 11.8954 6.89543 11 8 11H16C17.1046 11 18 11.8954 18 13V14Z" fill="#1C274C" />
-                        <path opacity="0.5" d="M20 12.5C20 13.8807 18.8807 15 17.5 15C16.1193 15 15 13.8807 15 12.5C15 11.1193 16.1193 10 17.5 10C18.8807 10 20 11.1193 20 12.5Z" fill="#1C274C" />
-                        <path opacity="0.5" d="M9 12.5C9 13.8807 7.88071 15 6.5 15C5.11929 15 4 13.8807 4 12.5C4 11.1193 5.11929 10 6.5 10C7.88071 10 9 11.1193 9 12.5Z" fill="#1C274C" />
-                        <path d="M18 16.5C18 18.433 15.3137 20 12 20C8.68629 20 6 18.433 6 16.5C6 15.1193 7.11929 14 8.5 14H15.5C16.8807 14 18 15.1193 18 16.5Z" fill="#1C274C" />
-                    </svg>
-                  <span
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M9 1.25C6.37665 1.25 4.25 3.37665 4.25 6C4.25 8.62335 6.37665 10.75 9 10.75C11.6234 10.75 13.75 8.62335 13.75 6C13.75 3.37665 11.6234 1.25 9 1.25ZM5.75 6C5.75 4.20507 7.20507 2.75 9 2.75C10.7949 2.75 12.25 4.20507 12.25 6C12.25 7.79493 10.7949 9.25 9 9.25C7.20507 9.25 5.75 7.79493 5.75 6Z"
+                                fill="#1C274C" />
+                            <path
+                                d="M15 2.25C14.5858 2.25 14.25 2.58579 14.25 3C14.25 3.41421 14.5858 3.75 15 3.75C16.2426 3.75 17.25 4.75736 17.25 6C17.25 7.24264 16.2426 8.25 15 8.25C14.5858 8.25 14.25 8.58579 14.25 9C14.25 9.41421 14.5858 9.75 15 9.75C17.0711 9.75 18.75 8.07107 18.75 6C18.75 3.92893 17.0711 2.25 15 2.25Z"
+                                fill="#1C274C" />
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M3.67815 13.5204C5.07752 12.7208 6.96067 12.25 9 12.25C11.0393 12.25 12.9225 12.7208 14.3219 13.5204C15.7 14.3079 16.75 15.5101 16.75 17C16.75 18.4899 15.7 19.6921 14.3219 20.4796C12.9225 21.2792 11.0393 21.75 9 21.75C6.96067 21.75 5.07752 21.2792 3.67815 20.4796C2.3 19.6921 1.25 18.4899 1.25 17C1.25 15.5101 2.3 14.3079 3.67815 13.5204ZM4.42236 14.8228C3.26701 15.483 2.75 16.2807 2.75 17C2.75 17.7193 3.26701 18.517 4.42236 19.1772C5.55649 19.8253 7.17334 20.25 9 20.25C10.8267 20.25 12.4435 19.8253 13.5776 19.1772C14.733 18.517 15.25 17.7193 15.25 17C15.25 16.2807 14.733 15.483 13.5776 14.8228C12.4435 14.1747 10.8267 13.75 9 13.75C7.17334 13.75 5.55649 14.1747 4.42236 14.8228Z"
+                                fill="#1C274C" />
+                            <path
+                                d="M18.1607 13.2674C17.7561 13.1787 17.3561 13.4347 17.2674 13.8393C17.1787 14.2439 17.4347 14.6439 17.8393 14.7326C18.6317 14.9064 19.2649 15.2048 19.6829 15.5468C20.1014 15.8892 20.25 16.2237 20.25 16.5C20.25 16.7507 20.1294 17.045 19.7969 17.3539C19.462 17.665 18.9475 17.9524 18.2838 18.1523C17.8871 18.2717 17.6624 18.69 17.7818 19.0867C17.9013 19.4833 18.3196 19.708 18.7162 19.5886C19.5388 19.3409 20.2743 18.9578 20.8178 18.4529C21.3637 17.9457 21.75 17.2786 21.75 16.5C21.75 15.6352 21.2758 14.912 20.6328 14.3859C19.9893 13.8593 19.1225 13.4783 18.1607 13.2674Z"
+                                fill="#1C274C" />
+                        </svg>
+                        <span
                             class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Agents</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'agents'}">
@@ -121,15 +143,18 @@
                 </button>
                 <ul x-show="activeDropdown === 'agents'" x-collapse="" class="sub-menu text-gray-500">
 
-                            <li>
-                                <a href="{{ route('agents.index') }}" class="{{ request()->is('agents') ? 'active' : '' }}">Agents List</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('agentsnew.new') }}" class="{{ request()->is('agentsnew') ? 'active' : '' }}">Agent New</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('agentsupload.upload') }}" class="{{ request()->is('agentsupload') ? 'active' : '' }}">Agents Upload</a>
-                            </li>
+                    <li>
+                        <a href="{{ route('agents.index') }}"
+                            class="{{ request()->is('agents') ? 'active' : '' }}">Agents List</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('agentsnew.new') }}"
+                            class="{{ request()->is('agentsnew') ? 'active' : '' }}">Agent New</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('agentsupload.upload') }}"
+                            class="{{ request()->is('agentsupload') ? 'active' : '' }}">Agents Upload</a>
+                    </li>
                 </ul>
             </li>
 
@@ -137,14 +162,17 @@
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'tasks'}"
                     @click="activeDropdown === 'tasks' ? activeDropdown = null : activeDropdown = 'tasks'">
                     <div class="flex items-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="#1C274C" />
-                        <path d="M7 7H13V9H7V7Z" fill="#F9D923" />
-                        <path d="M7 11H17V13H7V11Z" fill="#F9D923" />
-                        <path d="M7 15H17V17H7V15Z" fill="#F9D923" />
-                        <path d="M17.707 8.293L15.707 10.293L14.707 9.293L13.293 10.707L15.707 13.121L18.121 10.707L17.707 8.293Z" fill="#F9D923" />
-                    </svg>
-                    <span
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M3.79424 12.0291C4.33141 9.34329 4.59999 8.00036 5.48746 7.13543C5.65149 6.97557 5.82894 6.8301 6.01786 6.70061C7.04004 6 8.40956 6 11.1486 6H12.8515C15.5906 6 16.9601 6 17.9823 6.70061C18.1712 6.8301 18.3486 6.97557 18.5127 7.13543C19.4001 8.00036 19.6687 9.34329 20.2059 12.0291C20.9771 15.8851 21.3627 17.8131 20.475 19.1793C20.3143 19.4267 20.1267 19.6555 19.9157 19.8616C18.7501 21 16.7839 21 12.8515 21H11.1486C7.21622 21 5.25004 21 4.08447 19.8616C3.87342 19.6555 3.68582 19.4267 3.5251 19.1793C2.63744 17.8131 3.02304 15.8851 3.79424 12.0291Z"
+                                stroke="#1C274C" stroke-width="1.5" />
+                            <path d="M9 6V5C9 3.34315 10.3431 2 12 2C13.6569 2 15 3.34315 15 5V6" stroke="#1C274C"
+                                stroke-width="1.5" stroke-linecap="round" />
+                            <path
+                                d="M9.1709 15C9.58273 16.1652 10.694 17 12.0002 17C13.3064 17 14.4177 16.1652 14.8295 15"
+                                stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                        <span
                             class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Tasks</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'tasks'}">
@@ -155,16 +183,18 @@
                     </div>
                 </button>
                 <ul x-show="activeDropdown === 'tasks'" x-collapse="" class="sub-menu text-gray-500">
-                            <li>
-                                <a href="{{ route('tasks.index') }}" class="{{ request()->is('tasks') ? 'active' : '' }}">Task List</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('tasksupload.upload') }}" class="{{ request()->is('tasksupload') ? 'active' : '' }}">Tasks Upload</a>
-                            </li>
+                    <li>
+                        <a href="{{ route('tasks.index') }}" class="{{ request()->is('tasks') ? 'active' : '' }}">Task
+                            List</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('tasksupload.upload') }}"
+                            class="{{ request()->is('tasksupload') ? 'active' : '' }}">Tasks Upload</a>
+                    </li>
                 </ul>
             </li>
 
         </ul>
-   
+
     </div>
 </nav>

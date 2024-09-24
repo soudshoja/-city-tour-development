@@ -1,8 +1,8 @@
 <x-app-layout>
     <div class="grid grid-cols-3 gap-2">
 
-        <div class="w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center"
-            style="background-image: url('{{ asset('images/cardbg2.svg') }}'); background-size: cover; background-repeat: no-repeat;">
+        <div
+            class="bgCard w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center">
             <div class="text-xl">Current Balance</div>
             <div class="text-5xl font-extrabold mt-2">$10,250.00</div>
             <div class="text-green-500 text-lg mt-4">▲ $343.23</div>

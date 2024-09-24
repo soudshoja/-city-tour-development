@@ -116,7 +116,7 @@
             </li>
             @endcan
 
-            @can('viewAny', App\Models\Contact::class)
+            @can('viewAny', App\Models\Agent::class)
             <li class="menu nav-item">
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'agents'}"
                     @click="activeDropdown === 'agents' ? activeDropdown = null : activeDropdown = 'agents'">

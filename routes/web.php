@@ -6,6 +6,8 @@ use App\Http\Controllers\SearchController; // Add this line if you create a Sear
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AgentController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ItemController;
 use App\Http\Controllers\TaskController;
 
 // Home route
@@ -14,34 +16,35 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return view('dashboard');
+    Route::get('dashboard', function (ItemController $itemController) {
+        $items = $itemController->index();
+
+        return view('dashboard', $items);
     })->name('dashboard');
 
-    Route::post('verify2fa', function(){
+    Route::post('verify2fa', function () {
         return redirect()->route('dashboard');
     })->name('verify2fa');
-
 });
 
 // Routes requiring authentication
 Route::middleware('auth')->group(function () {
-    
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-  
-    Route::get('pin', function(){
+
+    Route::get('pin', function () {
         return view('auth.pin');
     })->name('pin');
-    
-    Route::get('set-up-authenticator',[TwoFAController::class, 'twofa'])->name('2fa');
-    
+
+    Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
+
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 });
 
-Route::get('enable2fa',[TwoFAController::class, 'twofaEnable'])->name('enable2fa');
+Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 // Agents list
 Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
 Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
@@ -54,6 +57,7 @@ Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsup
 Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
 Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
 Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
+Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
 
 
 Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
@@ -68,7 +72,6 @@ Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('compani
 Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
 Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
 
-
 Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
@@ -79,8 +82,27 @@ Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksuploa
 // });
 
 
-Route::get('pin', function(){
+Route::get('pin', function () {
     return view('auth.pin');
 })->name('pin');
 
-require __DIR__.'/auth.php';
+// ITEMS
+Route::get('/items', [ItemController::class, 'index'])->name('items.index');
+Route::post('/items', [ItemController::class, 'store'])->name('items.store');
+Route::get('/items/{id}', [ItemController::class, 'show'])->name('items.show');
+
+// TASKS
+Route::group([
+    'prefix' => 'agent',
+    'as' => 'agent.',
+], function () {
+    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+});
+
+// INVOICE
+Route::get('/invoice', [InvoiceController::class, 'index'])->name('invoice.index');
+Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
+
+require __DIR__ . '/auth.php';

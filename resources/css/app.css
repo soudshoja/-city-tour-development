@@ -33,6 +33,7 @@ body {
         display: none !important;
     }
 }
+
 .hidden-on-load {
     visibility: hidden;
 }
@@ -55,6 +56,7 @@ body {
 .darkSecBgColor {
     background-color: rgb(14 23 38 / var(--tw-bg-opacity));
 }
+
 /*  buttons */
 
 .btn-gradient {
@@ -300,4 +302,10 @@ html.dark header {
 
 .badge-warning {
     background-color: #ffc107;
+}
+/* mobile view icons */
+
+.CityTopRight {
+    top: 15.25rem;
+    right: -30px;
 }

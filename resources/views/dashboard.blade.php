@@ -1,8 +1,15 @@
 <x-app-layout>
+    <style>
+    .bgCard {
+        background: url("{{ asset('images/bgCardCity.png') }}") no-repeat center center;
+        background-size: cover;
+    }
+    </style>
     @if(Auth()->user()->role == 'admin')
     <div class="grid grid-cols-3 gap-2">
-        <div class="w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center"
-            style="background-image: url('{{ asset('images/cardbg2.svg') }}'); background-size: cover; background-repeat: no-repeat;">
+
+        <div
+            class="bgCard w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center">
             <div class="text-xl">Current Balance</div>
             <div class="text-5xl font-extrabold mt-2">$10,250.00</div>
             <div class="text-green-500 text-lg mt-4">▲ $343.23</div>
@@ -27,7 +34,7 @@
 
 
                 </div>
-                <div class="text-sm">Agent</div>
+                <div class="text-sm">Agents</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>
@@ -46,7 +53,7 @@
                             stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="text-sm">Cleint</div>
+                <div class="text-sm">Client</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>
@@ -84,7 +91,7 @@
                             stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="text-sm">Company</div>
+                <div class="text-sm">Companies</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>

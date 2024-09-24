@@ -1,9 +1,9 @@
 <x-app-layout>
     <style>
-    .bgCard {
-        background: url("{{ asset('images/bgCardCity.png') }}") no-repeat center center;
-        background-size: cover;
-    }
+        .bgCard {
+            background: url("{{ asset('images/bgCardCity.png') }}") no-repeat center center;
+            background-size: cover;
+        }
     </style>
     @if(Auth()->user()->role == 'admin')
     <div class="grid grid-cols-3 gap-2">
@@ -124,10 +124,15 @@
         <div class="output-console"></div>
     </div>
 
+    @elseif(Auth()->user()->role == 'company')
+    <div class="">
+        @include('companies.index')
+    </div>
+
     @elseif(Auth()->user()->role == 'agent')
-        <div class="">
-            @include('items.index')
-        </div>
+    <div class="">
+        @include('items.index')
+    </div>
     @endif
 
 

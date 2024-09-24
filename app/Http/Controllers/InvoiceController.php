@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Task;
+use Exception;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
@@ -64,12 +65,21 @@ class InvoiceController extends Controller
 
         // Create a new invoice
 
-        $invoice = Invoice::create([
-            'client_id' => $clientId,
-            'agent_id' => $agentId,
-            'amount' => $amount,
-        ]);
-        
+        try {
+            $invoice = Invoice::create([
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'amount' => $amount,
+                'status' => 'unpaid',
+            ]);
+
+            if (is_array($taskIds) && !empty($taskIds)) {
+                $invoice->tasks()->attach($taskIds);
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Invoice creation failed!');
+        }
+
         return redirect()->route('invoice.index')->with('status', 'Invoice created successfully!');
     }
 

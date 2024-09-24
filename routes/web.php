@@ -22,30 +22,29 @@ Route::middleware(['auth'])->group(function () {
         return view('dashboard', $items);
     })->name('dashboard');
 
-    Route::post('verify2fa', function(){
+    Route::post('verify2fa', function () {
         return redirect()->route('dashboard');
     })->name('verify2fa');
-
 });
 
 // Routes requiring authentication
 Route::middleware('auth')->group(function () {
-    
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-  
-    Route::get('pin', function(){
+
+    Route::get('pin', function () {
         return view('auth.pin');
     })->name('pin');
-    
-    Route::get('set-up-authenticator',[TwoFAController::class, 'twofa'])->name('2fa');
-    
+
+    Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
+
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 });
 
-Route::get('enable2fa',[TwoFAController::class, 'twofaEnable'])->name('enable2fa');
+Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 // Agents list
 Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
 Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
@@ -58,6 +57,7 @@ Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsup
 Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
 Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
 Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
+Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
 
 
 Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
@@ -83,7 +83,7 @@ Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksuploa
 // });
 
 
-Route::get('pin', function(){
+Route::get('pin', function () {
     return view('auth.pin');
 })->name('pin');
 
@@ -97,10 +97,8 @@ Route::get('/items/{id}', [ItemController::class, 'show'])->name('items.show');
 Route::group([
     'prefix' => 'agent',
     'as' => 'agent.',
-], function(){
+], function () {
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-    Route::get('/tasks/{id}', [TaskController::class, 'showCreate'])->name('tasks.create');
-    Route::post('/tasks', [TaskController::class, 'create'])->name('tasks.store');
 });
 
 // INVOICE
@@ -109,5 +107,4 @@ Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoi
 Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 
-require __DIR__.'/auth.php';
-
+require __DIR__ . '/auth.php';

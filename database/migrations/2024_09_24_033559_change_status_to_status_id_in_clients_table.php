@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->unsignedBigInteger('status_id')->default(1)->change();
+            $table->dropColumn('status');
+            $table->unsignedBigInteger('status_id')->after('phone');
         });
     }
 
@@ -22,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->unsignedBigInteger('status_id')->default(null)->change();
+            $table->string('status')->after('phone');
+            $table->dropColumn('status_id');
         });
     }
 };

@@ -7,12 +7,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script>
-    // Check localStorage for the dark mode setting before the page is fully loaded
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
+        // Check localStorage for the dark mode setting before the page is fully loaded
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     </script>
 
     <title>{{ config('app.name', 'Laravel') }}</title>
@@ -34,6 +34,9 @@
     <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3" defer></script>
     <script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/collapse.min.js" defer></script>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
 
 </head>
 

@@ -9,12 +9,22 @@ use App\Models\User;
 use App\Models\Task;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\companiesImport;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CompanyController extends Controller
 {
+
+    use AuthorizesRequests;
+
     public function index()
     {
+
+        if (Gate::denies('viewAny', Company::class)) {
+            abort(403);
+        }
+
         $companies = Company::all();
 
         return view('companies.companiesList', compact('companies'));
@@ -22,6 +32,7 @@ class CompanyController extends Controller
 
     public function new()
     {
+
         $companies = Company::all();
 
         return view('companies.companiesNew', compact('companies'));

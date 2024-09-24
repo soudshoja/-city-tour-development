@@ -72,7 +72,6 @@ Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('compani
 Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
 Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
 
-
 Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
@@ -91,7 +90,6 @@ Route::get('pin', function () {
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
 Route::post('/items', [ItemController::class, 'store'])->name('items.store');
 Route::get('/items/{id}', [ItemController::class, 'show'])->name('items.show');
-
 
 // TASKS
 Route::group([

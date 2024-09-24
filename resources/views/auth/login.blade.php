@@ -1,8 +1,8 @@
 <x-guest-layout>
     <div class="flex min-h-screen items-stretch bg-gray-100">
         <!-- Left Side - Login Form -->
-        <div class="w-full lg:w-1/2 p-8 bg-[#4152B3] text-white flex flex-col justify-center items-center mx-auto">
-         
+        <div class="w-full lg:w-1/2 p-8 bg-[#314260] text-white flex flex-col justify-center items-center mx-auto">
+
             <h2 class="text-2xl font-semibold mb-4 text-left w-3/4 max-w-sm">Let's you sign in it ...</h2>
             <p class="text-sm mb-8 text-left w-3/4 max-w-sm">It's great to have you back!!</p>
 
@@ -54,8 +54,9 @@
                     <span class="absolute end-4 top-1/2 -translate-y-1/2 cursor-pointer"
                         onclick="togglePasswordVisibility()">
                         <!-- Eye SVG -->
-                        <svg id="eyeIcon" class="blackCity" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye">
+                        <svg id="eyeIcon" class="blackCity" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-eye">
                             <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z">
                             </path>
                             <circle cx="12" cy="12" r="3"></circle>
@@ -71,12 +72,11 @@
                         class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
                     <label for="remember_me" class="pt-2 ml-2 text-sm text-white">{{ __('Keep me logged in') }}</label>
                 </div>
-             <p>Test</p>
                 <!-- Sign In Button -->
                 <div class="mb-4 w-3/4 max-w-sm">
                     <button type="submit"
                         class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
-                        
+
                         {{ __('Login') }}
                     </button>
                 </div>

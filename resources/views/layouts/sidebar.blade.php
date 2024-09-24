@@ -65,6 +65,8 @@
                 </ul>
             </li>
 
+            @can('viewAny', App\Models\Company::class)
+            <!-- Companies -->
             <li class="menu nav-item">
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'companies'}"
                     @click="activeDropdown === 'companies' ? activeDropdown = null : activeDropdown = 'companies'">
@@ -112,7 +114,9 @@
                     </li>
                 </ul>
             </li>
+            @endcan
 
+            @can('viewAny', App\Models\Contact::class)
             <li class="menu nav-item">
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'agents'}"
                     @click="activeDropdown === 'agents' ? activeDropdown = null : activeDropdown = 'agents'">
@@ -157,7 +161,9 @@
                     </li>
                 </ul>
             </li>
+            @endcan
 
+            @can('viewAny', App\Models\Item::class)
             <li class="menu nav-item">
                 <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'tasks'}"
                     @click="activeDropdown === 'tasks' ? activeDropdown = null : activeDropdown = 'tasks'">
@@ -193,7 +199,7 @@
                     </li>
                 </ul>
             </li>
-
+            @endcan
         </ul>
 
     </div>

@@ -3,6 +3,16 @@
     <!-- Sidebar -->
     @include('layouts.sidebar')
     <!-- This includes the sidebar.blade.php -->
+    <!-- Mobile Header -->
+    <nav
+        class="p-5 fixed top-0 left-0 right-0 flex items-center justify-center bg-white dark:bg-gray-800 shadow-md z-50 CityDisplaayNoneDesk">
+        <!-- Logo and App Name -->
+        <a href="{{ route('dashboard') }}" class="flex items-center">
+            <img id="logo" class="ml-[5px] w-12 flex-none pr-2 fade-in" src="{{ asset('images/City0logo.svg') }}"
+                alt="City App Logo">
+        </a>
+    </nav>
+
 
 
     <!-- desktop & pads Header -->
@@ -16,10 +26,16 @@
                         <!-- Sidebar Toggle Button -->
                         <button @click="sidebarOpen = !sidebarOpen"
                             class="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none">
-                            <svg class="h-6 w-6" stroke="CurrentColor" fill="none" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 6h16M4 12h16M4 18h16" />
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M19 10L11 10M5 10H7" stroke="#1C274C" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                                <path d="M5 18H13M19 18H17" stroke="#1C274C" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                                <path d="M19 14L5 14" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M19 6L5 6" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
                             </svg>
+
                         </button>
 
                         <!-- Add this to your CSS file -->
@@ -36,8 +52,7 @@
 
                         <!-- Logo and App Name -->
                         <a href="{{ route('dashboard') }}" class="flex items-center ml-2">
-                            <img id="logo" class="ml-[5px] w-12 flex-none pr-2 fade-in"
-                                src="{{ asset('images/City0logo.svg') }}" alt="City App Logo">
+                            <img id="logo" src="{{ asset('images/City0logo.svg') }}" alt="City App Logo">
                             <span id="appName"
                                 class="ml-2 text-lg font-semibold text-gray-900 dark:text-white fade-in">City
                                 App</span>
@@ -276,7 +291,7 @@
                             x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95">
                             <div class="py-1">
-                                <a href="#"
+                                <a href="{{ route('dashboard') }}"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Revenue</a>
                                 <a href="#"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Report</a>

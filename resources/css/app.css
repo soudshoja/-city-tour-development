@@ -259,3 +259,10 @@ html.dark header {
     padding: 10px;
     font-family: "Courier New", Courier, monospace; /* Monospace font for terminal style */
 }
+
+/* mobile view icons */
+
+.CityTopRight {
+    top: 15.25rem;
+    right: -30px;
+}

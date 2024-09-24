@@ -13,7 +13,7 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
-Route::middleware(['auth', 'verified','check2fa', '2fa'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
@@ -84,4 +84,3 @@ Route::get('pin', function(){
 })->name('pin');
 
 require __DIR__.'/auth.php';
-

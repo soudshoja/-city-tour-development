@@ -31,52 +31,51 @@ class CompanyController extends Controller
     {
         $Company = Company::find($id);
         return view('companies.companiesShow', compact('Company'));
-
     }
 
     public function edit($id)
-{
-    $Company = Company::find($id);
-    $companies = Company::all();
-    
-    return view('companies.companiesEdit', compact('Company', 'companies'));
-}
+    {
+        $Company = Company::find($id);
+        $companies = Company::all();
+
+        return view('companies.companiesEdit', compact('Company', 'companies'));
+    }
 
 
-public function update(Request $request, $id)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-    ]);
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
 
 
-// Create a new Company associated with the user
-$Company = new Company([
-    'code' => $request->code,
-    'name' => $request->name,
-    'nationality' => $request->nationality
-]);
-$Company->save();
+        // Create a new Company associated with the user
+        $Company = new Company([
+            'code' => $request->code,
+            'name' => $request->name,
+            'nationality' => $request->nationality
+        ]);
+        $Company->save();
 
-    return redirect()->route('companies.index')->with('success', 'Company updated successfully');
-}
+        return redirect()->route('companies.index')->with('success', 'Company updated successfully');
+    }
 
 
-public function store(Request $request)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-    ]);
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
 
-    // Create new Company
-    $Company = Company::create([
-        'name' => $request->name,
-        'code' => $request->code,
-        'nationality' => $request->nationality
-    ]);
+        // Create new Company
+        $Company = Company::create([
+            'name' => $request->name,
+            'code' => $request->code,
+            'nationality' => $request->nationality
+        ]);
 
-    return redirect()->route('companies.index')->with('success', 'Company registered successfully');
-}
+        return redirect()->route('companies.index')->with('success', 'Company registered successfully');
+    }
 
 
     public function upload()
@@ -96,6 +95,4 @@ public function store(Request $request)
 
         return redirect()->back()->with('success', 'companies imported successfully.');
     }
-
 }
-

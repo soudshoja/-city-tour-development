@@ -5,6 +5,7 @@
         background-size: cover;
     }
     </style>
+    @if(Auth()->user()->role == 'admin')
     <div class="grid grid-cols-3 gap-2">
 
         <div
@@ -123,6 +124,11 @@
         <div class="output-console"></div>
     </div>
 
+    @elseif(Auth()->user()->role == 'agent')
+        <div class="">
+            @include('items.index')
+        </div>
+    @endif
 
 
 </x-app-layout>

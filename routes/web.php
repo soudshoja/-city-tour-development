@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController; // Add this line if you create a SearchController
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AgentController;
+use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ItemController;
@@ -104,5 +105,10 @@ Route::get('/invoice', [InvoiceController::class, 'index'])->name('invoice.index
 Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
 Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
+
+// CLIENT
+Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
+Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
+Route::get('/clients/agent/{id}', [ClientController::class, 'list'])->name('clients.listByAgent');
 
 require __DIR__ . '/auth.php';

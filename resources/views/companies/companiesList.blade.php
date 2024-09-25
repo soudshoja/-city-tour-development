@@ -1,4 +1,6 @@
 <x-app-layout>
+
+
     <div x-data="exportTable">
         <ul class="flex space-x-2 rtl:space-x-reverse">
             <li>
@@ -8,58 +10,43 @@
                 <span>Companies List</span>
             </li>
         </ul>
-        <div class="panel mt-6">
+        <!-- Success Alert -->
+        @if (session('success'))
+        <div class="my-5 flex items-center rounded bg-success-light p-3.5 text-success dark:bg-success-dark-light">
+            <span class="ltr:pr-2 rtl:pl-2"><strong class="ltr:mr-1 rtl:ml-1">Success!
+                </strong>{{ session('success') }}</span>
+            <button type="button" class="hover:opacity-80 ltr:ml-auto rtl:mr-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="h-5 w-5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        @endif
 
+        <div class="panel mt-6">
+            <div class="flex mb-5">
+                <p>Click <a href="#" class="text-primary">here</a> to download the excel template</p>
+            </div>
             <div class="mb-5 flex justify-between items-center w-full">
                 <!-- Buttons on the left -->
                 <div class="flex space-x-2">
-                <button class="btn btn-primary flex items-center">
-                    Upload Excel
-                    <svg class="ml-2" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L15 5H19V19H5V5H9L12 2Z" fill="white" />
-                        <path d="M15 11H9V13H15V11Z" fill="white" />
-                        <path d="M19 1H5C3.9 1 3 1.9 3 3V21C3 22.1 3.9 23 5 23H19C20.1 23 21 22.1 21 21V3C21 1.9 20.1 1 19 1ZM19 21H5V3H19V21Z" fill="white" />
-                    </svg>
-                </button>
-                    <button class="btn btn-primary flex items-center">
-                        Export CSV
-                        <svg class="ml-2" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M18.25 15C18.25 15.4142 18.5858 15.75 19 15.75C19.4142 15.75 19.75 15.4142 19.75 15H18.25ZM11 2.75H13V1.25H11V2.75ZM13 21.25H11V22.75H13V21.25ZM5.75 16V8H4.25V16H5.75ZM11 21.25C9.56458 21.25 8.56347 21.2484 7.80812 21.1469C7.07434 21.0482 6.68577 20.8678 6.40901 20.591L5.34835 21.6517C5.95027 22.2536 6.70814 22.5125 7.60825 22.6335C8.48678 22.7516 9.60699 22.75 11 22.75V21.25ZM4.25 16C4.25 17.393 4.24841 18.5132 4.36652 19.3918C4.48754 20.2919 4.74643 21.0497 5.34835 21.6517L6.40901 20.591C6.13225 20.3142 5.9518 19.9257 5.85315 19.1919C5.75159 18.4365 5.75 17.4354 5.75 16H4.25ZM13 22.75C14.393 22.75 15.5132 22.7516 16.3918 22.6335C17.2919 22.5125 18.0497 22.2536 18.6517 21.6517L17.591 20.591C17.3142 20.8678 16.9257 21.0482 16.1919 21.1469C15.4365 21.2484 14.4354 21.25 13 21.25V22.75ZM13 2.75C14.4354 2.75 15.4365 2.75159 16.1919 2.85315C16.9257 2.9518 17.3142 3.13225 17.591 3.40901L18.6517 2.34835C18.0497 1.74643 17.2919 1.48754 16.3918 1.36652C15.5132 1.24841 14.393 1.25 13 1.25V2.75ZM19.75 8C19.75 6.60699 19.7516 5.48678 19.6335 4.60825C19.5125 3.70814 19.2536 2.95027 18.6517 2.34835L17.591 3.40901C17.8678 3.68577 18.0482 4.07434 18.1469 4.80812C18.2484 5.56347 18.25 6.56458 18.25 8H19.75ZM11 1.25C9.60699 1.25 8.48678 1.24841 7.60825 1.36652C6.70814 1.48754 5.95027 1.74643 5.34835 2.34835L6.40901 3.40901C6.68577 3.13225 7.07434 2.9518 7.80812 2.85315C8.56347 2.75159 9.56458 2.75 11 2.75V1.25ZM5.75 8C5.75 6.56458 5.75159 5.56347 5.85315 4.80812C5.9518 4.07434 6.13225 3.68577 6.40901 3.40901L5.34835 2.34835C4.74643 2.95027 4.48754 3.70814 4.36652 4.60825C4.24841 5.48678 4.25 6.60699 4.25 8H5.75ZM18.1717 18.9835C18.0801 19.8548 17.8926 20.2894 17.591 20.591L18.6517 21.6517C19.309 20.9944 19.5571 20.1512 19.6635 19.1404L18.1717 18.9835ZM18.25 8V15H19.75V8H18.25Z"
-                                fill="white" />
-                            <path
-                                d="M19 19.5C19.4645 19.5 19.6968 19.5 19.8911 19.4692C20.9608 19.2998 21.7998 18.4608 21.9692 17.3911C22 17.1968 22 16.9645 22 16.5V7.5C22 7.0355 22 6.80325 21.9692 6.60891C21.7998 5.53918 20.9608 4.70021 19.8911 4.53078C19.6968 4.5 19.4645 4.5 19 4.5"
-                                stroke="white" stroke-width="1.5" />
-                            <path
-                                d="M5 19.5C4.5355 19.5 4.30325 19.5 4.10891 19.4692C3.03918 19.2998 2.20021 18.4608 2.03078 17.3911C2 17.1968 2 16.9645 2 16.5V7.5C2 7.0355 2 6.80325 2.03078 6.60891C2.20021 5.53918 3.03918 4.70021 4.10891 4.53078C4.30325 4.5 4.5355 4.5 5 4.5"
-                                stroke="white" stroke-width="1.5" />
-                            <circle cx="14.5" cy="6.5" r="1.5" stroke="white" stroke-width="1.5" />
-                            <path
-                                d="M5 14.8159L6.29064 13.4917C6.9621 12.8028 7.9741 12.8423 8.60499 13.5821L11.7658 17.2884C12.2722 17.8822 13.0693 17.9632 13.6552 17.4804L13.875 17.2993C14.7181 16.6045 15.8588 16.685 16.6248 17.4933L19 19.5"
-                                stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                        </svg>
-                    </button>
+                    <x-primary-button>
 
-                    <button class="btn btn-primary flex items-center">
+                        Upload Excel
+                    </x-primary-button>
+                    <x-primary-button>
+
                         PRINT
-                        <svg class="ml-2" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M22 12C22 14.8284 22 16.2426 21.1213 17.1213C20.48 17.7626 19.5535 17.9359 18 17.9827M6 17.9827C4.44655 17.9359 3.51998 17.7626 2.87868 17.1213C2 16.2426 2 14.8284 2 12C2 9.17157 2 7.75736 2.87868 6.87868C3.75736 6 5.17157 6 8 6H16C18.8284 6 20.2426 6 21.1213 6.87868C21.4211 7.17848 21.6186 7.54062 21.7487 8"
-                                stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                            <path d="M9 10H6" stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                            <path d="M19 15L5 15" stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                            <path
-                                d="M17.9827 6C17.9359 4.44655 17.7626 3.51998 17.1213 2.87868C16.2426 2 14.8284 2 12 2C9.17157 2 7.75736 2 6.87868 2.87868C6.23738 3.51998 6.06413 4.44655 6.01732 6M18 15V16C18 18.8284 18 20.2426 17.1213 21.1213C16.48 21.7626 15.5535 21.9359 14 21.9827M6 15V16C6 18.8284 6 20.2426 6.87868 21.1213C7.51998 21.7626 8.44655 21.9359 10 21.9827"
-                                stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                            <circle cx="17" cy="10" r="1" fill="white" />
-                        </svg>
-                    </button>
-
-
+                    </x-primary-button>
+                    <x-primary-button>
+                        Export CSV
+                    </x-primary-button>
 
                 </div>
+
 
                 <!-- Search input on the right -->
                 <div>
@@ -68,83 +55,85 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white rounded-lg">
+
+            <div class="table-responsive">
+                <table>
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="text-left p-3 border-b border-gray-300">Name</th>
-                            <th class="text-left p-3 border-b border-gray-300">Code</th>
-                            <th class="text-left p-3 border-b border-gray-300">Nationality</th>
-                            <th class="text-left p-3 border-b border-gray-300">Actions</th>
+                            <th>Name</th>
+                            <th>Code</th>
+                            <th>Nationality</th>
+                            <th>Actions</th>
 
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($companies as $company)
-                        <tr class="hover:bg-gray-100">
-                            <td class="p-3 border-b border-gray-300">{{ $company->name }}</td>
-                            <td class="p-3 border-b border-gray-300">{{ $company->code }}</td>
-                            <td class="p-3 border-b border-gray-300">{{ $company->nationality }}</td>
-                            <td class="p-3 border-b border-gray-300"><a
-                                    href="{{ route('companiesshow.show', $company->id) }}"
-                                    class="bg-blue-500 text-white py-1 px-2 rounded">Show</a></td>
+                        <tr>
+                            <td>{{ $company->name }}</td>
+                            <td>{{ $company->code }}</td>
+                            <td>{{ $company->nationality }}</td>
+                            <td class="flex gap-2">
+                                <a href="{{ route('companiesshow.show', $company->id) }}">
+                                    <svg width="24" height="24" class="fill-current text-[#1C274C] dark:text-white"
+                                        viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path opacity="0.5" fill-rule="evenodd" clip-rule="evenodd"
+                                            d="M14.2788 2.15224C13.9085 2 13.439 2 12.5 2C11.561 2 11.0915 2 10.7212 2.15224C10.2274 2.35523 9.83509 2.74458 9.63056 3.23463C9.53719 3.45834 9.50065 3.7185 9.48635 4.09799C9.46534 4.65568 9.17716 5.17189 8.69017 5.45093C8.20318 5.72996 7.60864 5.71954 7.11149 5.45876C6.77318 5.2813 6.52789 5.18262 6.28599 5.15102C5.75609 5.08178 5.22018 5.22429 4.79616 5.5472C4.47814 5.78938 4.24339 6.1929 3.7739 6.99993C3.30441 7.80697 3.06967 8.21048 3.01735 8.60491C2.94758 9.1308 3.09118 9.66266 3.41655 10.0835C3.56506 10.2756 3.77377 10.437 4.0977 10.639C4.57391 10.936 4.88032 11.4419 4.88029 12C4.88026 12.5581 4.57386 13.0639 4.0977 13.3608C3.77372 13.5629 3.56497 13.7244 3.41645 13.9165C3.09108 14.3373 2.94749 14.8691 3.01725 15.395C3.06957 15.7894 3.30432 16.193 3.7738 17C4.24329 17.807 4.47804 18.2106 4.79606 18.4527C5.22008 18.7756 5.75599 18.9181 6.28589 18.8489C6.52778 18.8173 6.77305 18.7186 7.11133 18.5412C7.60852 18.2804 8.2031 18.27 8.69012 18.549C9.17714 18.8281 9.46533 19.3443 9.48635 19.9021C9.50065 20.2815 9.53719 20.5417 9.63056 20.7654C9.83509 21.2554 10.2274 21.6448 10.7212 21.8478C11.0915 22 11.561 22 12.5 22C13.439 22 13.9085 22 14.2788 21.8478C14.7726 21.6448 15.1649 21.2554 15.3694 20.7654C15.4628 20.5417 15.4994 20.2815 15.5137 19.902C15.5347 19.3443 15.8228 18.8281 16.3098 18.549C16.7968 18.2699 17.3914 18.2804 17.8886 18.5412C18.2269 18.7186 18.4721 18.8172 18.714 18.8488C19.2439 18.9181 19.7798 18.7756 20.2038 18.4527C20.5219 18.2105 20.7566 17.807 21.2261 16.9999C21.6956 16.1929 21.9303 15.7894 21.9827 15.395C22.0524 14.8691 21.9088 14.3372 21.5835 13.9164C21.4349 13.7243 21.2262 13.5628 20.9022 13.3608C20.4261 13.0639 20.1197 12.558 20.1197 11.9999C20.1197 11.4418 20.4261 10.9361 20.9022 10.6392C21.2263 10.4371 21.435 10.2757 21.5836 10.0835C21.9089 9.66273 22.0525 9.13087 21.9828 8.60497C21.9304 8.21055 21.6957 7.80703 21.2262 7C20.7567 6.19297 20.522 5.78945 20.2039 5.54727C19.7799 5.22436 19.244 5.08185 18.7141 5.15109C18.4722 5.18269 18.2269 5.28136 17.8887 5.4588C17.3915 5.71959 16.7969 5.73002 16.3099 5.45096C15.8229 5.17191 15.5347 4.65566 15.5136 4.09794C15.4993 3.71848 15.4628 3.45833 15.3694 3.23463C15.1649 2.74458 14.7726 2.35523 14.2788 2.15224Z"
+                                            class="fill-current" />
+                                        <path
+                                            d="M15.5227 12C15.5227 13.6569 14.1694 15 12.4999 15C10.8304 15 9.47705 13.6569 9.47705 12C9.47705 10.3431 10.8304 9 12.4999 9C14.1694 9 15.5227 10.3431 15.5227 12Z"
+                                            class="fill-current" />
+                                    </svg>
+
+
+                                </a>
+                                <a href="{{ route('companiesshow.show', $company->id) }}">
+                                    <svg width="24" height="24" class="fill-current text-[#1C274C] dark:text-white"
+                                        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path opacity="0.5"
+                                            d="M11.3456 22H12.1544C14.9371 22 16.3285 22 17.2331 21.0936C18.1378 20.1873 18.2303 18.7005 18.4154 15.727L18.6821 11.4425C18.7826 9.82908 18.8328 9.02238 18.3789 8.51119C17.9251 8 17.1587 8 15.626 8H7.87405C6.34127 8 5.57488 8 5.12105 8.51119C4.66722 9.02238 4.71744 9.82908 4.81788 11.4425L5.08459 15.727C5.2697 18.7005 5.36225 20.1873 6.26689 21.0936C7.17153 22 8.56289 22 11.3456 22Z"
+                                            class="dark:fill-white" />
+                                        <path
+                                            d="M2.75 6.16667C2.75 5.70644 3.09538 5.33335 3.52143 5.33335L6.18567 5.3329C6.71502 5.31841 7.18202 4.95482 7.36214 4.41691C7.36688 4.40277 7.37232 4.38532 7.39185 4.32203L7.50665 3.94993C7.5769 3.72179 7.6381 3.52303 7.72375 3.34536C8.06209 2.64349 8.68808 2.1561 9.41147 2.03132C9.59457 1.99973 9.78848 1.99987 10.0111 2.00002H13.4891C13.7117 1.99987 13.9056 1.99973 14.0887 2.03132C14.8121 2.1561 15.4381 2.64349 15.7764 3.34536C15.8621 3.52303 15.9233 3.72179 15.9935 3.94993L16.1083 4.32203C16.1279 4.38532 16.1333 4.40277 16.138 4.41691C16.3182 4.95482 16.8778 5.31886 17.4071 5.33335H19.9786C20.4046 5.33335 20.75 5.70644 20.75 6.16667C20.75 6.62691 20.4046 7 19.9786 7H3.52143C3.09538 7 2.75 6.62691 2.75 6.16667Z"
+                                            class="dark:fill-white" />
+                                    </svg>
+
+
+
+                                </a>
+                            </td>
                             @endforeach
                         </tr>
                         <!-- Repeat for other rows -->
                     </tbody>
                 </table>
             </div>
-            <div class="flex justify-between items-center pt-3 bg-white border-t border-gray-300">
 
+            <div class="flex justify-between items-center pt-3">
                 <div class="flex items-center space-x-2">
-                    <!-- Left: Showing entries text -->
-                    <div class="text-sm text-gray-600">
-                        Showing 1 to 10 of 25 entries
+                    <!-- Showing entries text dynamically -->
+                    <div class="text-sm text-gray-600 dark:text-[#f3f4f6]">
+                        Showing {{ $companies->firstItem() }} to {{ $companies->lastItem() }} of
+                        {{ $companies->total() }} entries
                     </div>
 
-                    <select class="dataTable-selector custom-select">
-                        <option value="10" selected>10</option>
-                        <option value="20">20</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
+                    <!-- Dynamic entries per page dropdown -->
+                    <form method="GET" action="{{ route('companies.index') }}">
+                        <select name="per_page" onchange="this.form.submit()" class="dataTable-selector custom-select">
+                            <option value="10" {{ request()->get('per_page') == 10 ? 'selected' : '' }}>10</option>
+                            <option value="20" {{ request()->get('per_page') == 20 ? 'selected' : '' }}>20</option>
+                            <option value="50" {{ request()->get('per_page') == 50 ? 'selected' : '' }}>50</option>
+                            <option value="100" {{ request()->get('per_page') == 100 ? 'selected' : '' }}>100</option>
+                        </select>
+                    </form>
                 </div>
 
                 <div class="flex items-center space-x-3">
-
-                    <!-- Pagination controls -->
-                    <nav class="dataTable-pagination">
-                        <ul class="dataTable-pagination-list">
-                            <li class="pager"><a href="#" data-page="1"><svg width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" xmlns="http://www.w3.org/2000/svg"
-                                        class="w-4.5 h-4.5 rtl:rotate-180">
-                                        <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                        <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor"
-                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    </svg></a></li>
-                            <li class="active"><a href="#" data-page="1">1</a></li>
-                            <li class=""><a href="#" data-page="2">2</a></li>
-                            <li class=""><a href="#" data-page="3">3</a></li>
-                            <li class="pager"><a href="#" data-page="2"><svg width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" xmlns="http://www.w3.org/2000/svg"
-                                        class="w-4.5 h-4.5 rtl:rotate-180">
-                                        <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                    </svg></a></li>
-                            <li class="pager"><a href="#" data-page="3"><svg width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" xmlns="http://www.w3.org/2000/svg"
-                                        class="w-4.5 h-4.5 rtl:rotate-180">
-                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor"
-                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    </svg></a></li>
-                        </ul>
-                    </nav>
-
+                    <!-- Pagination links generated by Laravel -->
+                    {{ $companies->appends(request()->input())->links() }}
                 </div>
             </div>
+
 
         </div>
     </div>

@@ -43,7 +43,7 @@
                         </svg>
 
                         <span
-                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Dashboard</span>
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Dashboard</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'dashboard'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -90,7 +90,7 @@
                                 fill="#1C274C" />
                         </svg>
                         <span
-                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Companies</span>
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Companies</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'companies'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -132,7 +132,7 @@
                                 fill="#1C274C" />
                         </svg>
                         <span
-                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Agents</span>
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Agents</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'agents'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -173,7 +173,7 @@
                                 stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
                         </svg>
                         <span
-                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Tasks</span>
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Tasks</span>
                     </div>
                     <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'tasks'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

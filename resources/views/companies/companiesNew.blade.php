@@ -5,7 +5,7 @@
         <div class="flex flex-col w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 space-y-6">
 
             <!-- Title -->
-            <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Here are some tips to
+            <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 ">Here are some tips to
                 add a new company to
                 City App...</h2>
 
@@ -18,7 +18,7 @@
             </p>
 
             <!-- Breadcrumb Section -->
-            <div class="flex w-full space-x-4">
+            <div class="flex w-full space-x-4 text-sm">
                 <!-- First Breadcrumb -->
                 <div
                     class="flex items-center bg-[#e3e7fc] dark:bg-gray-700 text-black dark:text-white py-2 px-4 rounded-lg">
@@ -51,7 +51,7 @@
                                     stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
                         </span>
-                        <span class="ml-2 font-semibold">Ask the company IT team to use the code you have entered to
+                        <span class="ml-2 font-semibold">Ask the company IT team to use the Email you have entered to
                             access the system</span>
                     </div>
                 </div>
@@ -105,6 +105,16 @@
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Company Name" />
                         </div>
+                        <!-- Email Address -->
+                        <div class="mb-4">
+                            <label for="email" :value="__('Email')"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                            <input id="email" type="email" name="email" :value="old('email')" required
+                                autocomplete="email"
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                placeholder="Company Email" />
+                        </div>
+
 
                         <!-- Code Field -->
                         <div class="mb-4">

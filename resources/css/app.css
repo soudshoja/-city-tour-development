@@ -268,3 +268,97 @@ html.dark header {
     top: 15.25rem;
     right: -30px;
 }
+
+/* table  */
+
+.table-responsive {
+    overflow: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse !important;
+}
+
+table tfoot tr,
+table thead tr {
+    text-align: left;
+    border-bottom-width: 0;
+    --tw-bg-opacity: 1 !important;
+    background-color: rgb(246 248 250 / var(--tw-bg-opacity)) !important;
+}
+.dataTable-selector {
+    width: auto;
+    background-color: #fff;
+    color: #0e1726;
+    border-color: #e0e6ed;
+    border-radius: 6px;
+    padding: 5px 25px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    border-width: 1px;
+    outline: none !important;
+}
+.dark .dataTable-selector {
+    width: auto;
+    background-color: #0e1726;
+    color: #fff;
+    border-color: #494f56;
+    border-radius: 6px;
+    padding: 5px 25px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    border-width: 1px;
+    outline: none !important;
+}
+
+.dataTable-dropdown,
+.dataTable-search .dataTable-input {
+    width: auto;
+    background-color: #fff;
+    color: #0e1726;
+    border-color: #e0e6ed;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    border-width: 1px;
+    outline: none !important;
+}
+.dataTable-dropdown .dataTable-selector:focus,
+.dataTable-search .dataTable-input:focus {
+    border-color: #4361ee;
+}
+
+.dataTable-search .dataTable-input {
+    box-shadow: none !important;
+}
+
+.dataTable-dropdown .dataTable-selector {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+}
+
+.dataTable-dropdown .dataTable-selector:where([dir="ltr"], [dir="ltr"] *) {
+    padding-left: 0.5rem;
+    padding-right: 1rem;
+}
+
+.dataTable-dropdown .dataTable-selector:where([dir="rtl"], [dir="rtl"] *) {
+    padding-right: 0.5rem;
+    padding-left: 1rem;
+}
+
+.dark .dataTable-dropdown .dataTable-selector,
+.dark .dataTable-search .dataTable-input {
+    background-color: #121e32;
+    color: #888ea8;
+    border-color: #17263c;
+}
+
+.dataTable-dropdown label {
+    margin-bottom: 0;
+}

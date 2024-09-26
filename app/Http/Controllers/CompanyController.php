@@ -9,11 +9,17 @@ use App\Models\User;
 use App\Models\Task;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\companiesImport;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CompanyController extends Controller
 {
     public function index(Request $request)
+
+    use AuthorizesRequests;
+
+    public function index()
     {
         // Handle dynamic per_page value from the request, default to 10
         $perPage = $request->get('per_page', 10);
@@ -21,12 +27,19 @@ class CompanyController extends Controller
         // Fetch paginated data with the dynamic per page value
         $companies = Company::paginate($perPage);
 
+        if (Gate::denies('viewAny', Company::class)) {
+            abort(403);
+        }
+
+        $companies = Company::all();
+
         // Return view with the paginated data
         return view('companies.companiesList', compact('companies'));
     }
 
     public function new()
     {
+
         $companies = Company::all();
 
         return view('companies.companiesNew', compact('companies'));
@@ -45,6 +58,13 @@ class CompanyController extends Controller
         
         return view('companies.companiesEdit', compact('Company', 'companies'));
     }
+    {
+        $Company = Company::find($id);
+        $companies = Company::all();
+
+        return view('companies.companiesEdit', compact('Company', 'companies'));
+    }
+
 
     public function update(Request $request, $id)
     {
@@ -60,8 +80,19 @@ class CompanyController extends Controller
             'nationality' => $request->nationality
         ]);
 
+        // Create a new Company associated with the user
+        $Company = new Company([
+            'code' => $request->code,
+            'name' => $request->name,
+            'nationality' => $request->nationality
+        ]);
+        $Company->save();
+
         return redirect()->route('companies.index')->with('success', 'Company updated successfully');
     }
+        return redirect()->route('companies.index')->with('success', 'Company updated successfully');
+    }
+
 
     public function store(Request $request)
     {
@@ -78,6 +109,11 @@ class CompanyController extends Controller
             'email' => $request->email,
             'password' => Hash::make('citytour123'),
         ]);
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
 
         // Create new company
         $Company = Company::create([
@@ -86,10 +122,19 @@ class CompanyController extends Controller
             'code' => $request->code,
             'nationality' => $request->nationality
         ]);
+        // Create new Company
+        $Company = Company::create([
+            'name' => $request->name,
+            'code' => $request->code,
+            'nationality' => $request->nationality
+        ]);
 
         // Redirect with success message
         return redirect()->route('companies.index')->with('success', 'Company registered successfully');
     }
+        return redirect()->route('companies.index')->with('success', 'Company registered successfully');
+    }
+
 
     public function upload()
     {

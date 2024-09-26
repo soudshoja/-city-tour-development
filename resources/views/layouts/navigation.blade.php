@@ -43,14 +43,14 @@
 
                         <!-- Add this to your CSS file -->
                         <style>
-                        .fade-in {
-                            opacity: 0;
-                            transition: opacity 0.3s ease-in;
-                        }
+                            .fade-in {
+                                opacity: 0;
+                                transition: opacity 0.3s ease-in;
+                            }
 
-                        .fade-in-loaded {
-                            opacity: 1;
-                        }
+                            .fade-in-loaded {
+                                opacity: 1;
+                            }
                         </style>
 
                         <!-- Logo and App Name -->
@@ -63,10 +63,10 @@
 
                         <!-- Add this to your script (can be at the bottom of your page) -->
                         <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            document.getElementById('logo').classList.add('fade-in-loaded');
-                            document.getElementById('appName').classList.add('fade-in-loaded');
-                        });
+                            document.addEventListener('DOMContentLoaded', function() {
+                                document.getElementById('logo').classList.add('fade-in-loaded');
+                                document.getElementById('appName').classList.add('fade-in-loaded');
+                            });
                         </script>
 
 
@@ -310,6 +310,7 @@
                         </div>
                     </div>
 
+                    @can('viewAny', App\Models\Company::class)
                     <!-- Companies -->
                     <div x-data="{ open: false }" x-cloak class="relative">
                         <a @mouseenter="open = true" @mouseleave="open = false"
@@ -366,8 +367,9 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
 
-
+                    @can('viewAny', App\Models\Agent::class)
                     <!-- Agents -->
                     <div x-data="{ open: false }" x-cloak class="relative">
                         <a @mouseenter="open = true" @mouseleave="open = false"
@@ -419,7 +421,9 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
 
+                    @can('viewAny', App\Models\Item::class)
                     <!-- Tasks -->
                     <div x-data="{ open: false }" x-cloak class="relative">
                         <a @mouseenter="open = true" @mouseleave="open = false"
@@ -468,7 +472,7 @@
                             </div>
                         </div>
                     </div>
-
+                    @endcan
                 </div>
             </div>
         </nav>

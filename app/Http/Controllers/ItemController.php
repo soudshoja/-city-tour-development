@@ -14,7 +14,7 @@ class ItemController extends Controller
     {
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
 
-        if(!$agentId) {
+        if (!$agentId) {
             return response()->json([
                 'message' => 'Agent not found'
             ], 404);
@@ -23,7 +23,7 @@ class ItemController extends Controller
 
         $items = Item::where('agent_id', $agentId)->get();
 
-        if($items->isEmpty()) {
+        if ($items->isEmpty()) {
             return response()->json([
                 'message' => 'You have no pending tasks'
             ], 200);
@@ -50,25 +50,25 @@ class ItemController extends Controller
             $message = $data['message'] ?? 'An error occurred';
 
             if ($status === 200) {
-            $status = 'info';
+                $status = 'info';
             } elseif ($status === 404) {
-            $status = 'warning';
+                $status = 'warning';
             } else {
-            $status = 'error';
+                $status = 'error';
             }
         }
 
         return compact('items', 'message', 'status');
     }
 
-      public function show(TaskController $taskController, $id)
+    public function show(TaskController $taskController, $id)
     {
 
         $item = Item::findOrFail($id);
 
         $tasks = $taskController->getTaskbyItemId($item->first()->id);
-        
-        if($tasks->status() === 200) {
+
+        if ($tasks->status() === 200) {
             $tasks = $tasks->getData(true)['tasks'];
         } else {
             $tasks = [];
@@ -76,5 +76,4 @@ class ItemController extends Controller
 
         return view('items.show', compact('item', 'tasks'));
     }
-    
 }

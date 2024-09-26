@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->unsignedBigInteger('status_id')->default(1)->change();
+        Schema::create('roles', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique();
+            $table->timestamps();
         });
     }
 
@@ -21,8 +23,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->unsignedBigInteger('status_id')->default(null)->change();
+        Schema::dropIfExists('roles', function (Blueprint $table) {
+            $table->dropColumn('name');
         });
     }
 };

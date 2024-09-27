@@ -1,23 +1,22 @@
 <x-app-layout>
     <style>
-        .bgCard {
-            background: url("{{ asset('images/bgCardCity.png') }}") no-repeat center center;
-            background-size: cover;
-        }
+    .bgCard {
+        background: url("{{ asset('images/bgCardCity.png') }}") no-repeat center center;
+        background-size: cover;
+    }
     </style>
     @if(Auth()->user()->role == 'admin')
-    <div class="grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
 
         <div
             class="bgCard w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center">
             <div class="text-xl">Current Balance</div>
             <div class="text-5xl font-extrabold mt-2">$10,250.00</div>
             <div class="text-green-500 text-lg mt-4">▲ $343.23</div>
-
-
         </div>
-        <div class="col-span-2 flex gap-3">
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center" style="width: 20%;">
+
+        <div class="col-span-1 md:col-span-2 flex flex-wrap gap-3">
+            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
                 <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
                     <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
@@ -31,14 +30,13 @@
                         <path opacity="0.5" d="M14 44C10.4915 43.2306 8 41.2821 8 39C8 36.7179 10.4915 34.7694 14 34"
                             stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
                     </svg>
-
-
                 </div>
                 <div class="text-sm">Agents</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center" style="width: 20%;">
+
+            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
                 <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
                     <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
@@ -53,11 +51,12 @@
                             stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="text-sm">Client</div>
+                <div class="text-sm">Clients</div>
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
             </div>
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center" style="width: 20%;">
+
+            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
                 <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
                     <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
@@ -76,7 +75,8 @@
                 <div class="text-3xl font-extrabold mt-2">163.00</div>
                 <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg </div>
             </div>
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center" style="width: 20%;">
+
+            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
                 <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
                     <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
@@ -97,6 +97,7 @@
             </div>
         </div>
     </div>
+
 
     <div class="mt-5 bg-gray-900 rounded-lg p-4">
         <div class="flex justify-between items-center mb-2">

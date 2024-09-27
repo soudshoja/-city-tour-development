@@ -1,24 +1,24 @@
 <x-app-layout>
 
     <!-- First Section: Tips and Breadcrumbs -->
-    <div class="flex justify-center items-center mt-10">
-        <div class="flex flex-col w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 space-y-6">
+    <div class="flex justify-center items-center mt-5 px-4 md:px-0">
+        <div
+            class="flex flex-col w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 md:p-8 space-y-4 md:space-y-6">
 
             <!-- Title -->
-            <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 ">Here are some tips to
-                add a new company to
-                City App...</h2>
+            <h2 class="text-xl sm:text-lg font-semibold text-gray-700 dark:text-gray-200">
+                Here are some tips to add a new company to City App...
+            </h2>
 
             <!-- Description -->
-            <p class="text-gray-600 dark:text-gray-400">
+            <p class="text-sm md:text-base text-gray-600 dark:text-gray-400">
                 This is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's
                 standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it
-                to make
-                a type specimen book.
+                to make a type specimen book.
             </p>
 
             <!-- Breadcrumb Section -->
-            <div class="flex w-full space-x-4 text-sm">
+            <div class="flex flex-col md:flex-row w-full space-y-4 md:space-y-0 md:space-x-4 text-sm">
                 <!-- First Breadcrumb -->
                 <div
                     class="flex items-center bg-[#e3e7fc] dark:bg-gray-700 text-black dark:text-white py-2 px-4 rounded-lg">
@@ -79,20 +79,21 @@
     </div>
 
     <!-- Second Section: Form and Image -->
-    <div class="flex justify-center items-center mt-10">
+    <div class="flex justify-center items-center mt-10 px-4 md:px-0 mb-5">
         <div
             class="flex flex-col lg:flex-row justify-between items-stretch w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
             <!-- Image Section -->
-            <div class="w-full lg:w-2/5 h-96 lg:h-auto">
+            <div class="hidden md:block w-full lg:w-2/5 h-72 md:h-96 lg:h-auto">
                 <img src="{{ asset('images/TravelAgencyImage.png') }}" alt="Company Registration"
                     class="w-full h-full object-cover" />
             </div>
 
+
             <!-- Form Section -->
-            <div class="w-full lg:w-3/5 p-8 flex items-center justify-center">
+            <div class="w-full lg:w-3/5 p-4 md:p-8 flex items-center justify-center">
                 <div class="w-full">
-                    <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Register New
-                        Company</h2>
+                    <h2 class="text-2xl md:text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">
+                        Register New Company</h2>
 
                     <form method="POST" action="{{ route('companies.store') }}">
                         @csrf
@@ -105,6 +106,7 @@
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Company Name" />
                         </div>
+
                         <!-- Email Address -->
                         <div class="mb-4">
                             <label for="email" :value="__('Email')"
@@ -114,7 +116,6 @@
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Company Email" />
                         </div>
-
 
                         <!-- Code Field -->
                         <div class="mb-4">
@@ -149,5 +150,6 @@
             </div>
         </div>
     </div>
+
 
 </x-app-layout>

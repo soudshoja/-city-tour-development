@@ -34,6 +34,14 @@ body {
     }
 }
 
+/* Custom CSS class for mobile margin */
+@media (max-width: 768px) {
+    .mobile-m-5 {
+        margin-top: 5rem;
+        margin-bottom: 5rem;
+    }
+}
+
 .hidden-on-load {
     visibility: hidden;
 }

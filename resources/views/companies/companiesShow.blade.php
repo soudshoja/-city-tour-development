@@ -4,14 +4,14 @@
             class="flex flex-col lg:flex-row justify-between items-stretch w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
             <!-- Image Section -->
             <div class="w-full lg:w-2/5 h-96 lg:h-auto">
-                <img src="{{ asset('images/TravelAgencyImage.png') }}" alt="Company Registration"
+                <img src="{{ asset('images/TravelAgencyImage.png') }}" alt="company Registration"
                     class="w-full h-full object-cover" />
             </div>
 
             <!-- Form Section -->
             <div class="w-full lg:w-3/5 p-8 flex items-center justify-center">
                 <div class="w-full">
-                    <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Edit Company
+                    <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Edit company
                         Profile</h2>
 
                     <form method="POST" action="{{ route('companies.store') }}">
@@ -23,7 +23,7 @@
                                 class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
                             <input id="name" name="name" type="text" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                placeholder="{{ $Company->name }}" />
+                                placeholder="{{ $company->name }}" />
                         </div>
 
                         <!-- Code Field -->
@@ -32,7 +32,7 @@
                                 class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Code</label>
                             <input id="code" name="code" type="text" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                placeholder="Company Code" />
+                                placeholder="company Code" />
                         </div>
 
                         <!-- Nationality Field -->
@@ -51,7 +51,7 @@
                         <div class="flex items-center justify-center">
                             <button type="submit"
                                 class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
-                                Register Company
+                                update company
                             </button>
                         </div>
                     </form>

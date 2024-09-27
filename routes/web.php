@@ -72,6 +72,7 @@ Route::post('/companiesupload', [CompanyController::class, 'import'])->name('com
 Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('companiesshow.show');
 Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
 Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
+Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
 
 Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');

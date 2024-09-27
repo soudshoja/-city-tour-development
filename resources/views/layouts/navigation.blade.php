@@ -1,8 +1,6 @@
 <div x-data="{ sidebarOpen: false, darkMode: localStorage.getItem('darkMode') === 'true' }"
     :class="{ 'dark': darkMode }" class="flex h-screen">
-    <!-- Sidebar -->
-    @include('layouts.sidebar')
-    <!-- This includes the sidebar.blade.php -->
+
     <!-- Mobile Header -->
     <nav
         class="p-5 fixed top-0 left-0 right-0 flex items-center justify-center bg-white dark:bg-gray-800 shadow-md z-50 CityDisplaayNoneDesk">
@@ -12,8 +10,11 @@
                 alt="City App Logo">
         </a>
     </nav>
-
-
+    <!-- Mobile menu-->
+    <!-- Mobile menu ends-->
+    <!-- Sidebar -->
+    @include('layouts.sidebar')
+    <!-- This includes the sidebar.blade.php -->
 
     <!-- desktop & pads Header -->
     <div :class="sidebarOpen ? 'ml-[260px]' : 'ml-0'" class="flex-1 transition-all duration-300 ease-in-out">
@@ -43,14 +44,14 @@
 
                         <!-- Add this to your CSS file -->
                         <style>
-                            .fade-in {
-                                opacity: 0;
-                                transition: opacity 0.3s ease-in;
-                            }
+                        .fade-in {
+                            opacity: 0;
+                            transition: opacity 0.3s ease-in;
+                        }
 
-                            .fade-in-loaded {
-                                opacity: 1;
-                            }
+                        .fade-in-loaded {
+                            opacity: 1;
+                        }
                         </style>
 
                         <!-- Logo and App Name -->
@@ -63,10 +64,10 @@
 
                         <!-- Add this to your script (can be at the bottom of your page) -->
                         <script>
-                            document.addEventListener('DOMContentLoaded', function() {
-                                document.getElementById('logo').classList.add('fade-in-loaded');
-                                document.getElementById('appName').classList.add('fade-in-loaded');
-                            });
+                        document.addEventListener('DOMContentLoaded', function() {
+                            document.getElementById('logo').classList.add('fade-in-loaded');
+                            document.getElementById('appName').classList.add('fade-in-loaded');
+                        });
                         </script>
 
 
@@ -186,7 +187,6 @@
                                                 d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18"
                                                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
                                         </svg>
-
                                     </button>
                                 </x-slot>
 
@@ -194,20 +194,21 @@
                                     <!-- Profile Info Section -->
                                     <div class="flex items-center px-4 py-4">
                                         <div class="flex-none">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg">
-                                                <circle cx="12" cy="6" r="4" stroke="#0d324d" stroke-width="1.5">
+                                            <svg class="mr-3 w-5 h-5 text-gray-500 dark:text-gray-400"
+                                                viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                                class="stroke-current text-gray-800 dark:text-gray-200">
+                                                <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5">
                                                 </circle>
                                                 <path
                                                     d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18"
-                                                    stroke="#0d324d" stroke-width="1.5" stroke-linecap="round">
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                                                 </path>
                                             </svg>
                                         </div>
-                                        <div class="ml-4 truncate">
+                                        <div class="ml-3 truncate">
                                             <a class="text-sm text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
                                                 href="{{ route('profile.edit') }}">
-                                                <h4 class="text-base font-semibold text-dark dark:text-white">
+                                                <h4 class="text-sm font-semibold text-dark dark:text-white">
                                                     {{ Auth::user()->name }}
                                                     <span
                                                         class="rounded bg-success-light px-1 text-xs text-success ml-2">Pro</span>
@@ -215,49 +216,78 @@
                                             </a>
                                         </div>
                                     </div>
+
                                     <div class="border-t border-gray-200 dark:border-gray-600"></div>
 
-                                    <!-- Profile Link -->
-                                    <x-dropdown-link :href="route('profile.edit')"
-                                        class="flex items-center py-2 dark:hover:text-white">
-                                        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400 mr-3" fill="CurrentColor"
-                                            viewBox="0 0 24 24">
-                                            <path
-                                                d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                                        </svg>
-                                        {{ __('Profile') }}
-                                    </x-dropdown-link>
+                                    <!-- Add New Admin Link -->
+                                    <div class="flex items-center px-4 py-2">
+                                        <div class="flex-none">
+                                            <svg class="mr-3 w-5 h-5 text-gray-500 dark:text-gray-400"
+                                                viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                                class="stroke-current text-gray-800 dark:text-gray-200">
+                                                <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5">
+                                                </circle>
+                                                <path
+                                                    d="M20.4141 18.5H18.9999M18.9999 18.5H17.5857M18.9999 18.5L18.9999 17.0858M18.9999 18.5L18.9999 19.9142"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                                </path>
+                                                <path
+                                                    d="M12 13C14.6083 13 16.8834 13.8152 18.0877 15.024M15.5841 20.4366C14.5358 20.7944 13.3099 21 12 21C8.13401 21 5 19.2091 5 17C5 15.6407 6.18652 14.4398 8 13.717"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3 truncate">
+                                            <a class="text-sm text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
+                                                href="{{ route('profile.edit') }}">
+                                                <h4 class="text-sm font-semibold text-dark dark:text-white">
+                                                    Add New Admin
+                                                </h4>
+                                            </a>
+                                        </div>
+                                    </div>
 
-                                    <div class="border-t border-gray-200 dark:border-gray-600 mt-2"></div>
-
-                                    <x-dropdown-link :href="route('profile.edit')"
-                                        class="flex items-center py-2 dark:hover:text-white">
-                                        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400 mr-3" fill="CurrentColor"
-                                            viewBox="0 0 24 24">
-                                            <path
-                                                d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                                        </svg>
-                                        Add New Admin
-                                    </x-dropdown-link>
 
                                     <div class="border-t border-gray-200 dark:border-gray-600 mt-2"></div>
 
                                     <!-- Logout Link -->
+
                                     <form method="POST" action="{{ route('logout') }}">
                                         @csrf
                                         <x-dropdown-link :href="route('logout')"
                                             onclick="event.preventDefault(); this.closest('form').submit();"
-                                            class="flex items-center py-3 text-danger dark:hover:text-white">
-                                            <svg class="w-5 h-5 text-danger mr-3" fill="CurrentColor"
-                                                viewBox="0 0 24 24">
-                                                <path d="M16 13v-2H7V8l-5 4 5 4v-3h9zm5-9H7V2h14v2z" />
-                                            </svg>
-                                            {{ __('Log Out') }}
+                                            class="flex items-center py-2 dark:hover:text-white">
+                                            <div class="flex items-center px-4">
+                                                <div class="flex-none">
+                                                    <svg class="mr-3 w-5 h-5 text-gray-500 dark:text-gray-400"
+                                                        viewBox="0 0 24 24" fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        class="stroke-current text-gray-800 dark:text-gray-200">
+                                                        <circle cx="12" cy="6" r="4" stroke="currentColor"
+                                                            stroke-width="1.5"></circle>
+                                                        <path
+                                                            d="M20.4141 18.5H18.9999M18.9999 18.5H17.5857M18.9999 18.5L18.9999 17.0858M18.9999 18.5L18.9999 19.9142"
+                                                            stroke="currentColor" stroke-width="1.5"
+                                                            stroke-linecap="round"></path>
+                                                        <path
+                                                            d="M12 13C14.6083 13 16.8834 13.8152 18.0877 15.024M15.5841 20.4366C14.5358 20.7944 13.3099 21 12 21C8.13401 21 5 19.2091 5 17C5 15.6407 6.18652 14.4398 8 13.717"
+                                                            stroke="currentColor" stroke-width="1.5"
+                                                            stroke-linecap="round"></path>
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-3 truncate">
+                                                    <h4 class="text-sm font-semibold text-red-500">
+                                                        {{ __('Log Out') }}
+                                                    </h4>
+                                                </div>
+                                            </div>
                                         </x-dropdown-link>
                                     </form>
+
                                 </x-slot>
                             </x-dropdown>
                         </div>
+
                     </div>
 
                 </div>
@@ -477,16 +507,16 @@
             </div>
         </nav>
 
-        <!-- Mobile menu-->
-
-        <!-- Mobile menu ends-->
 
 
         <!-- Page Content -->
-        <main class="p-4">
+        <main class="p-4 mobile-m-5 ">
             <!-- Your main content goes here -->
             {{ $slot }}
         </main>
+
+
+
         <!-- Footer -->
         @include('layouts.footer')
 

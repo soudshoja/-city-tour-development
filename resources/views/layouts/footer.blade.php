@@ -6,12 +6,13 @@
 <!-- desktok footer section end-->
 <!-- Mobile footer section -->
 <div class="CityDisplaayNoneDesk">
-    <!-- Mobile icons -->
-    <div class="absolute CityTopRight p-4 flex flex-col space-y-2">
+    <!-- Mobile Icons -->
+    <div class="fixed top-40 end-0 flex flex-col space-y-2 z-50">
+
         <!-- Dark Mode Toggle Button -->
         <button x-cloak
             @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode); document.documentElement.classList.toggle('dark', darkMode);"
-            class="mt-5 border-l-2 border-gray-300 dark:border-gray-600 pr-4 pr-2 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none relative flex items-center justify-between w-14 h-10 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors duration-300 ease-in-out sm:w-12 sm:h-6"
+            class="border-l-2 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none relative flex items-center justify-between w-14 h-10 bg-gray-200 dark:bg-gray-700 rounded-l-full transition-colors duration-300 ease-in-out sm:w-12 sm:h-6"
             :class="{ 'animate-pulse': darkMode }">
 
             <div class="w-8 h-8 bg-white dark:bg-gray-200 rounded-full flex items-center justify-center">
@@ -34,9 +35,10 @@
             </div>
         </button>
 
-        <!-- Another Button (e.g., Sidebar Toggle Button) -->
+
+        <!-- Sidebar Toggle Button -->
         <button x-cloak @click="sidebarOpen = !sidebarOpen"
-            class="border-l-2 border-gray-300 dark:border-gray-600 pr-4 pr-2 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none relative flex items-center justify-between w-14 h-10 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors duration-300 ease-in-out sm:w-12 sm:h-6">
+            class="border-l-2 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none relative flex items-center justify-between w-14 h-10 bg-gray-200 dark:bg-gray-700 rounded-l-full transition-colors duration-300 ease-in-out sm:w-12 sm:h-6 mt-2">
 
             <div class="w-8 h-8 bg-white dark:bg-gray-200 rounded-full flex items-center justify-center">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -45,10 +47,12 @@
                     <path d="M19 14L5 14" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
                     <path d="M19 6L5 6" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
                 </svg>
-
             </div>
         </button>
+
+
     </div>
+
 
 
     <div class="mt-auto p-6 pt-0 text-center dark:text-white-dark ltr:sm:text-left rtl:sm:text-right">

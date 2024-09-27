@@ -45,7 +45,23 @@
         font-size: 4rem;
         font-weight: 600;
         margin-bottom: 2rem;
+        opacity: 0;
+        animation: fadeIn 2s ease-in forwards;
+
     }
+
+    @keyframes fadeIn {
+        0% {
+            opacity: 0;
+            /* Initial state: fully transparent */
+        }
+
+        100% {
+            opacity: 1;
+            /* Final state: fully visible */
+        }
+    }
+
 
     .btn {
         background-color: rgba(255, 255, 255, 0.2);
@@ -55,6 +71,8 @@
         text-decoration: none;
         font-weight: 600;
         transition: background-color 0.3s;
+        opacity: 0;
+        animation: fadeIn 2s ease-in forwards;
     }
 
     .btn:hover {

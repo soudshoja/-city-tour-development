@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('items', function (Blueprint $table) {
-            $table->string('item_id')->nullable();
             $table->string('item_code')->nullable();
             $table->timestamp('time_signed')->nullable();
             $table->string('client_email')->nullable();
@@ -44,7 +43,6 @@ return new class extends Migration
             $table->dropForeign(['client_id']);
             $table->dropForeign(['agent_id']);
             $table->dropColumn([
-                'item_id',
                 'item_code',
                 'time_signed',
                 'client_email',

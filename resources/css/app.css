@@ -104,6 +104,25 @@ body {
     --tw-shadow: var(--tw-shadow-colored);
 }
 
+.CustomButton {
+    padding: 6px 12px; /* Default padding */
+    font-size: 14px; /* Default font size */
+}
+
+@media (max-width: 768px) {
+    .CustomButton {
+        padding: 4px 10px; /* Reduce padding for smaller devices */
+        font-size: 12px; /* Smaller font size */
+    }
+}
+
+@media (max-width: 480px) {
+    .CustomButton {
+        padding: 10px 8px; /* Even smaller padding for mobile */
+        font-size: 10px; /* Even smaller font size */
+    }
+}
+
 /* header */
 
 .icon,
@@ -410,4 +429,10 @@ table thead tr {
 
 .dataTable-dropdown label {
     margin-bottom: 0;
+}
+
+@media (max-width: 767px) {
+    .CityMobileTable {
+        min-width: 160%;
+    }
 }

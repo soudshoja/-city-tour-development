@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="flex min-h-screen items-stretch bg-gray-100">
         <!-- Left Side - Login Form -->
-        <div class="w-full lg:w-1/2 p-8 bg-[#314260] text-white flex flex-col justify-center items-center mx-auto">
+        <div class="w-full lg:w-1/2 p-8 bg-[#21324c] text-white flex flex-col justify-center items-center mx-auto">
 
             <h2 class="text-2xl font-semibold mb-4 text-left w-3/4 max-w-sm">Let's you sign in it ...</h2>
             <p class="text-sm mb-8 text-left w-3/4 max-w-sm">It's great to have you back!!</p>

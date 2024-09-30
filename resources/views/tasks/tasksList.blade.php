@@ -18,7 +18,27 @@
 
             <!-- Buttons on the left -->
             <div class="flex space-x-2">
-                <x-primary-button>Upload Excel</x-primary-button>
+                <form id="uploadForm" method="POST" action="{{ route('tasksupload.import') }}"
+                    enctype="multipart/form-data" style="display: none;">
+                    @csrf
+                    <input required name="excel_file" type="file" id="excelFileInput" />
+                </form>
+
+                <x-primary-button id="uploadButton">
+                    Upload Tasks
+                </x-primary-button>
+
+                <script>
+                document.getElementById('uploadButton').addEventListener('click', function() {
+                    // Trigger the file input click to allow file selection
+                    document.getElementById('excelFileInput').click();
+                });
+
+                document.getElementById('excelFileInput').addEventListener('change', function() {
+                    // Automatically submit the form once a file is selected
+                    document.getElementById('uploadForm').submit();
+                });
+                </script>
                 <x-primary-button>PRINT</x-primary-button>
                 <x-primary-button>Export CSV</x-primary-button>
             </div>

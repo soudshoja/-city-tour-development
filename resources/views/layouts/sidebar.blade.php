@@ -196,10 +196,7 @@
                         <a href="{{ route('tasks.index') }}" class="{{ request()->is('tasks') ? 'active' : '' }}">Task
                             List</a>
                     </li>
-                    <li>
-                        <a href="{{ route('tasksupload.upload') }}"
-                            class="{{ request()->is('tasksupload') ? 'active' : '' }}">Tasks Upload</a>
-                    </li>
+
                 </ul>
             </li>
             @endcan

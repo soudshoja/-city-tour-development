@@ -550,7 +550,7 @@
                             x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95">
                             <div class="py-1">
-                                <a href="#"
+                                <a href="{{ route('clients.list') }}"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
                                     Clients List
                                 </a>

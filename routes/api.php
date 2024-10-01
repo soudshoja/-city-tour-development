@@ -6,7 +6,6 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\Auth\TwoFAController;
 
-Route::middleware(['api.cors'])->group(function () {
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
         // Agents
@@ -32,7 +31,6 @@ Route::middleware(['api.cors'])->group(function () {
         Route::get('pin', function(){
             return view('auth.pin');
         })->name('pin');
-});
 
 require __DIR__.'/auth.php';
 

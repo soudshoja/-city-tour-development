@@ -107,9 +107,28 @@ Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoi
 Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 
-// CLIENT
-Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
+// Create a client form
+Route::get('/clients/create', [ClientController::class, 'create'])->name('clients.create');
+
+// Store a new client
+Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
+
+// List clients
 Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
-Route::get('/clients/agent/{id}', [ClientController::class, 'list'])->name('clients.listByAgent');
+
+// Show client details (dynamic route)
+Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
+
+// Edit client (dynamic route)
+Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
+
+// Update client (dynamic route)
+Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
+
+
+
+
+
+
 
 require __DIR__ . '/auth.php';

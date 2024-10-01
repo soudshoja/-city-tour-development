@@ -1,11 +1,8 @@
+<x-app-layout>
 
     <div class="bg-white rounded-lg shadow-md p-5">
-        <div class="flex justify-between items-center w-full">
-            <div class="bg-gray-200 p-2.5 rounded flex-grow">
-                <h1><strong>Pending Task</strong></h1>
-            </div>
-            <a href="" class="btn btn-success ml-2">Add Item</a>
-        </div>
+    <div class="grid grid-cols-2 gap-2">
+
      
         @if (session('success') || session('error'))
             <div id="flash-message" class="alert 
@@ -31,21 +28,77 @@
             </div>
         @endif
 
-        @if (!empty($items))
-            <div class="items mt-3">
-                @foreach($items as $item)
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Item Ref: {{ $item['item_ref'] }}</h5>
-                            <p class="card-text"><strong>Description:</strong> {{ $item['description'] }}</p>
-                            <p class="card-text"><strong>Item Type:</strong> {{ $item['item_type'] }}</p>
-                            <p class="card-text"><strong>Total Price:</strong> {{ $item['total_price'] }}</p>
-                            <a href="{{ route('items.show', $item['id']) }}" class="btn btn-primary">View Details</a>
-                        </div>
-                    </div>
-                @endforeach
+        <div class="grid grid-cols-2 gap-2 mb-2">
+        <div id="taskChart"></div>
+        </div>
+        <div class="grid grid-cols-1 gap-2 mb-2">
+        <div id="taskChart2"></div>
+        </div>
+        </div>
+        <div class="grid grid-cols-4 gap-2 mb-2">
+            <div class="bg-blue-500 text-white p-2 rounded-lg shadow">
+                <h3 class="text-sm font-semibold">Pending Tasks</h3>
+                <p class="text-2xl font-bold">{{ $pendingTasksCount }}</p>
             </div>
-        @endif
+            <div class="bg-green-500 text-white p-2 rounded-lg shadow">
+                <h3 class="text-sm font-semibold">Completed Tasks</h3>
+                <p class="text-2xl font-bold">{{ $completedTasksCount }}</p>
+            </div>
+            <div class="bg-gray-500 text-white p-2 rounded-lg shadow">
+                <h3 class="text-sm font-semibold">Total Tasks</h3>
+                <p class="text-2xl font-bold">{{ $totalTasksCount }}</p>
+            </div>
+            <div class="bg-red-500 text-white p-2 rounded-lg shadow">
+                <h3 class="text-sm font-semibold">Total Clients</h3>
+                <p class="text-2xl font-bold">{{ $totalClientsCount }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+        <table>
+           <thead>
+                <tr>
+                    <th>Task Details</th>
+                    <th>Task Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            <!-- Display items here -->
+            @foreach ($items as $item)
+                <tr>
+                    <td>{{ $item['task_description'] }}</td>
+                    <td>{{ $item['task_status'] }}</td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+        <table>
+            <thead>
+                <tr>
+                    <th>Invoice Number</th>
+                    <th>Invoice Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($transactions as $transaction)
+                    <tr>
+                        <td>{{ $transaction['invoice_number'] }}</td>
+                        <td>{{ $transaction['status'] }}</td>
+                        <td>
+                            <!-- View Invoice Button -->
+                            <a href="{{ route('invoice.show', ['invoiceNumber' => $transaction['invoice_number']]) }}">
+                                <button type="button" class="btn btn-primary">
+                                    View Invoice
+                                </button>
+                            </a>
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        </div>
                 @if ($message === 'Agent not found')
         <!-- Inline form to create agent profile -->
         <div class="mt-4">
@@ -72,3 +125,52 @@
         </div>
     @endif
 </div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var options = {
+            chart: {
+                type: 'bar',
+                height: 350
+            },
+            series: [{
+                name: 'Tasks',
+                data: [{{ $pendingTasksCount }}, {{ $completedTasksCount }}]
+            }],
+            xaxis: {
+                categories: ['Pending', 'Completed']
+            },
+            colors: ['#FF4560', '#00E396'], // Customize colors as needed
+            title: {
+                text: 'Pending vs Completed Tasks',
+                align: 'center'
+            }
+        };
+
+        var options2 = {
+            chart: {
+                type: 'pie',
+                height: 350
+            },
+            series: [{{ $unpaidInvoiceCount }}, {{ $paidInvoiceCount }}],
+            labels: ['UnPaid', 'Paid'], // Pie chart labels
+            colors: ['#FF4560', '#00E396'], // Customize colors as needed
+            title: {
+                text: 'Paid vs Unpaid Invoices',
+                align: 'center'
+            }
+        };
+
+
+        
+        var chart = new ApexCharts(document.querySelector("#taskChart"), options);
+        chart.render();
+
+        var chart2 = new ApexCharts(document.querySelector("#taskChart2"), options2);
+        chart2.render();
+    });
+</script>
+
+</x-app-layout>

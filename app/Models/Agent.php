@@ -13,4 +13,9 @@ class Agent extends Model
     use HasFactory;
 
     protected $fillable = ['name', 'email', 'user_id', 'type', 'company_id', 'phone_number', 'description'];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    } 
 }

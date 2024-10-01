@@ -560,6 +560,7 @@
                         </div>
                     </div>
                     @endcan
+                    <a href="{{ route('invoice.create') }}" class="btn btn-success ml-2">Create Invoice</a>
                 </div>
             </div>
         </nav>

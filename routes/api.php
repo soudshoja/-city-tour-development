@@ -4,24 +4,30 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\Auth\TwoFAController;
 
-// Agents list
+
+Route::post('/login2', [MobileController::class, 'login2']);
+Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
+// Agents
 Route::get('/agents', [MobileController::class, 'agent']);
-// Route::get('/agents/{id}', [AgentsController::class, 'show'])->name('agentsshow.show');
-// Route::get('/agents/{id}/edit', [AgentsController::class, 'edit'])->name('agents.edit');
-// Route::put('/agents/{id}', [AgentsController::class, 'update'])->name('agents.update');
+Route::get('/agents/{userId}', [MobileController::class, 'getAgentByUserId']);
 
 
 Route::get('/companies', [MobileController::class, 'company']);
 Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('companiesshow.show');
-Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
-Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
 
-
-Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index');
+Route::get('/tasks/{agentId}', [MobileController::class, 'getTasksByAgentId']);
 Route::get('/tasks', [MobileController::class, 'task']);
 
-Route::get('/clients', [MobileController::class, 'client']);
+
+Route::post('/invoice', [MobileController::class, 'store']);
+Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
+Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
+
+
+Route::get('/clients', [MobileController::class, 'client']);  
+Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);
 
 Route::get('pin', function(){
     return view('auth.pin');

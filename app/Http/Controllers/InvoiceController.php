@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Agent;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\Transaction;
+use App\Models\Company;
+use App\Models\InvoiceDetails;
 use App\Models\Task;
 use Exception;
 use Illuminate\Http\Request;
+use App\Models\InvoiceSequence;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
@@ -23,22 +30,12 @@ class InvoiceController extends Controller
         return view('invoice.index', compact('invoices'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create(Request $request)
+    public function create()
     {
-        // Retrieve and decode the task IDs from the query parameters
-        $taskIds = json_decode($request->query('task_ids'), true);
-
-        // Fetch the tasks based on the task IDs
-        $tasks = Task::whereIn('id', $taskIds)->get();
-
-        //Fetch list of client
-        $clients = Client::all();
-
-        // Pass the client to the view
-        return view('invoice.create', compact('tasks', 'clients'));
+        $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
+        $clients = Client::where('agent_id', $agentId)->get();
+        $tasks = Task::where('status', 'pending')->get();
+        return view('invoice.create', compact('clients', 'tasks'));
     }
 
     /**
@@ -46,49 +43,99 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
-        $taskIds = json_decode($request->input('task_ids'), true);
-        $amount = $request->input('amount');
-        $clientId = $request->input('client_id');
-        $agentId = auth()->user()->agent->id;
-
-        // Check if a new client is being created
-        if ($clientId === 'new') {
-            $client = Client::create([
-                'name' => $request->input('new_client_name'),
-                'email' => $request->input('new_client_email'),
-                'phone' => $request->input('new_client_phone'),
-                'agent_id' => $agentId,
-                'status_id' => 1, // Set default status_id
-            ]);
-            $clientId = $client->id;
-        }
+        $tasks = $request->input('tasks');
+        $amount = $request->input('total');
+        $clientId = $request->input('clientId');
+        $currency = $request->input('currency');
+        $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
 
         // Create a new invoice
 
         try {
+
+            $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+
+            if (!$invoiceSequence) {
+                // If no sequence exists yet, create one
+                $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+            }
+    
+            // Generate the new invoice number
+            $currentSequence = $invoiceSequence->current_sequence;
+            $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+            
+            // Increment the sequence number
+            $invoiceSequence->current_sequence++;
+            $invoiceSequence->save();
+
             $invoice = Invoice::create([
+                'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
                 'agent_id' => $agentId,
                 'amount' => $amount,
+                'currency' => $currency,
                 'status' => 'unpaid',
             ]);
 
-            if (is_array($taskIds) && !empty($taskIds)) {
-                $invoice->tasks()->attach($taskIds);
+            if (is_array($tasks) && !empty($tasks)) {
+                foreach ($tasks as $task) {
+                    try {
+                        // Try to create each invoice detail
+                        InvoiceDetails::create([
+                            'invoice_id' => $invoice->id,
+                            'invoice_number' => $invoiceNumber,
+                            'task_id' => $task['taskId'],
+                            'task_description' => $task['taskName'],
+                            'task_remark' => $task['remark'],
+                            'task_price' => $task['price'],
+                        ]);
+                    } catch (Exception $e) {
+                        // Log the error if something goes wrong with a specific task
+                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                        return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $task['taskName']], 500);
+                    }
+                }
             }
-        } catch (Exception $e) {
-            return redirect()->back()->with('error', 'Invoice creation failed!');
-        }
 
-        return redirect()->route('invoice.index')->with('status', 'Invoice created successfully!');
+            return response()->json([
+                'status' => 'success',
+                'redirect_url' => route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])
+            ]);
+        } catch (Exception $e) {
+            // Handle exceptions
+            return response()->json(['error' => 'Invoice creation failed!'], 500);
+        }
     }
 
+
+    private function generateInvoiceNumber($sequence)
+    {
+        $year = now()->year;
+        return sprintf('INV-%s-%05d', $year, $sequence);
+    }
+    
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+
+      
+    public function show(string $invoiceNumber)
     {
-        //
+        // Retrieve the invoice based on the invoice number
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+
+        // Check if the invoice exists
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+
+        // Fetch the invoice details as a list
+        $invoiceDetails = InvoiceDetails::where('invoice_number', $invoiceNumber)->get();
+        // Retrieve the transaction related to the invoice
+        $transaction = Transaction::where('invoice_id', $invoice->id)->first();
+
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'transaction'));
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Http\Controllers\AgentController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\TaskController;
 
@@ -17,11 +18,7 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function (ItemController $itemController) {
-        $items = $itemController->index();
-
-        return view('dashboard', $items);
-    })->name('dashboard');
+    Route::get('dashboard', [ItemController::class, 'index'])->name('dashboard');
 
     Route::post('verify2fa', function () {
         return redirect()->route('dashboard');
@@ -106,6 +103,11 @@ Route::get('/invoice', [InvoiceController::class, 'index'])->name('invoice.index
 Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
 Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
+Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
+
+
+// PAYMENT
+Route::post('/payment/process/{invoiceNumber}', [PaymentController::class, 'processPayment'])->name('payment.process');
 
 // Create a client form
 Route::get('/clients/create', [ClientController::class, 'create'])->name('clients.create');

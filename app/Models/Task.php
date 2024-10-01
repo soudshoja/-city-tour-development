@@ -10,14 +10,27 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = [
-        'item_id',
         'description',
-        'reference',
         'status',
+        'contract_id',
+        'ext_id',
+        'agent_email',
+        'client_email',
+        'task_type',
+        'item_id',
+        'agent_id',
+        'client_id',
+        'client_name',
+        'client_phone'
     ];
 
     public function invoices()
     {
         return $this->belongsToMany(Invoice::class);
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(Item::class);
     }
 }

@@ -7,6 +7,17 @@ body {
     overflow-y: hidden;
 }
 
+/* Custom class for centering text on mobile and left-aligned on larger screens */
+.text-center-mobile-left-desktop {
+    text-align: center; /* Center on mobile by default */
+}
+
+@media (min-width: 768px) {
+    .text-center-mobile-left-desktop {
+        text-align: left; /* Left-align on screens wider than 768px (md breakpoint) */
+    }
+}
+
 @layer utilities {
     .text-dark {
         color: #333333; /* Replace with your desired dark color */

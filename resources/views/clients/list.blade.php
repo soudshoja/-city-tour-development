@@ -82,9 +82,9 @@
                                     class="relative mt-1 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-md z-10 max-h-40 overflow-y-auto">
                                     <ul class="py-1">
 
-                                        <li><a href="javascript:void(0);"
-                                                class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                @click="suspendCompany({{ $client->id }})">View Client</a></li>
+                                        <li><a href="{{ route('clients.show', $client->id) }}"
+                                                class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">View
+                                                Client</a></li>
 
                                     </ul>
                                 </div>

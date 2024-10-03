@@ -560,7 +560,9 @@
                         </div>
                     </div>
                     @endcan
+                    @if(Auth()->user()->role === 'agent')
                     <a href="{{ route('invoice.create') }}" class="btn btn-success ml-2">Create Invoice</a>
+                    @endif
                 </div>
             </div>
         </nav>

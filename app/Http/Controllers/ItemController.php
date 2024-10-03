@@ -68,13 +68,11 @@ class ItemController extends Controller
     
         $data = $response->getData(true);
         $status = $response->status();
-        $items = $data['items']; 
 
         $response2 = $this->getTransactionByAgentId();
     
         $data2 = $response2->getData(true);
         $status2 = $response2->status();
-        $transactions = $data2['transactions']; 
 
         // Check if items are available and ensure they are not empty
         if (isset($data['items']) && !empty($data['items'])) {

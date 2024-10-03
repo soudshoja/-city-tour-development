@@ -121,17 +121,19 @@
                                 placeholder="Phone Number" />
                         </div>
 
+                        @if(Auth()->user()->role === 'admin')
                         <!-- agent -->
                         <div class="mb-4">
-                            <label for="agent_id" class="block text-gray-700 text-sm font-bold mb-2">agent</label>
-                            <select id="agent_id" name="agent_id" required
-                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                <option value="1">agent A</option>
-                                <option value="2">agent B</option>
-                                <option value="3">agent C</option>
-                            </select>
+                            <label for="agent_id" class="block text-gray-700 text-sm font-bold mb-2">Company</label>
+                            <select id="company_id" name="company_id" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <option value="" disabled selected>Select a company</option>
+                            @foreach($companies as $company)
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
+                            @endforeach
+                        </select>
                         </div>
-
+                        @endif
                         <!-- Type -->
                         <div class="mb-4">
                             <label for="type" class="block text-gray-700 text-sm font-bold mb-2">Type</label>
@@ -142,7 +144,7 @@
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
-
+                     
                         <!-- Submit Button -->
                         <div class="flex items-center justify-center">
                             <button type="submit"

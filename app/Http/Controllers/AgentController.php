@@ -18,7 +18,7 @@ class AgentController extends Controller
 {
     public function index()
     {
-        $agents = Agent::all();
+        $agents = Agent::with('company')->get();
 
         return view('agents.agentsList', compact('agents'));
     }
@@ -26,13 +26,15 @@ class AgentController extends Controller
     public function new()
     {
         $agents = Agent::all();
+        $companies = Company::all();
 
-        return view('agents.agentsNew', compact('agents'));
+        return view('agents.agentsNew', compact('agents', 'companies'));
     }
 
     public function show($id)
     {
-        $agent = Agent::find($id);
+        $agent = Agent::with('company')->find($id);
+
         // return view('agentsShow', compact('agent'));
         $pendingTasks = Task::where('agent_email', $agent->email)->where('status', 'pending')->get();
         return view('agents.agentsShow', compact('agent', 'pendingTasks'));
@@ -48,7 +50,7 @@ class AgentController extends Controller
 
 
     public function update(Request $request, $id)
-    {
+    {   
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
@@ -81,6 +83,9 @@ class AgentController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+        $role = $user->role;
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
@@ -89,14 +94,36 @@ class AgentController extends Controller
             'type' => 'required'
         ]);
 
+        // Create a new user
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make('citytour123'),
+            'role' => 'agent'
+        ]);
+
+
+        if($role == 'admin'){
         // Create new agent
         $agent = Agent::create([
+            'user_id' => $user->id,
             'name' => $request->name,
             'email' => $request->email,
             'phone_number' => $request->phone_number,
             'company_id' => $request->company_id,
             'type' => $request->type,
         ]);
+        } else{
+            $agent = Agent::create([
+                'user_id' => $user->id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone_number' => $request->phone_number,
+                'company_id' => '',
+                'type' => $request->type,
+            ]);
+        }
+
 
         return redirect()->route('agents.index')->with('success', 'Agent registered successfully');
     }
@@ -145,4 +172,36 @@ class AgentController extends Controller
             return redirect()->back()->with('error', 'Failed to create agent profile: ' . $e->getMessage());
         }
     }
+
+    public function exportCsv()
+    {
+        // Fetch all agents data
+        $agents = Agent::with('company')->get();
+
+        // Create a CSV file in memory
+        $csvFileName = 'agents.csv';
+        $handle = fopen('php://output', 'w');
+
+        // Set headers for the response
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $csvFileName . '"');
+
+        // Add CSV header
+        fputcsv($handle, ['Agent Name', 'Agent Type', 'Email', 'Phone Number', 'Company']);
+
+        // Add company data to CSV
+        foreach ($agents as $agent) {
+            fputcsv($handle, [
+                $agent->name,
+                $agent->type,
+                $agent->email,
+                $agent->phone_number,
+                $agent->company->name
+            ]);
+        }
+
+        fclose($handle);
+        exit();
+    }
+
 }

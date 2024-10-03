@@ -138,6 +138,24 @@
                             </select>
                         </div>
 
+                        <!-- Code Field -->
+                        <div class="mb-4">
+                            <label for="phone"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Contact</label>
+                            <input id="phone" name="phone" type="text" required
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                placeholder="Company Contact" />
+                        </div>
+
+                          <!-- Code Field -->
+                         <div class="mb-4">
+                            <label for="address"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                            <input id="address" name="address" type="text" required
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                placeholder="Company Address" />
+                        </div>
+
                         <!-- Submit Button -->
                         <div class="flex items-center justify-center">
                             <button type="submit"

@@ -19,7 +19,7 @@
                 <!-- Email -->
                 <div class="mb-6">
                     <label for="email" class="block text-gray-700 font-semibold mb-2">Code</label>
-                    <input type="text" name="code" id="code" value="{{ $company->code }}" required
+                    <input type="text" name="code" id="code" value="{{ $company->code }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                 </div>
 
@@ -35,6 +35,21 @@
                         </option>
                     </select>
                 </div>
+
+                 <!-- Phone -->
+                <div class="mb-6">
+                    <label for="phone" class="block text-gray-700 font-semibold mb-2">Contact</label>
+                    <input type="text" name="phone" id="phone" value="{{ $company->phone }}" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                </div>
+
+                 <!-- Address -->
+                 <div class="mb-6">
+                    <label for="address" class="block text-gray-700 font-semibold mb-2">Address</label>
+                    <input type="text" name="address" id="address" value="{{ $company->address }}"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                </div>
+
 
                 <!-- Submit Button -->
                 <div class="text-right">

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AgentController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemController;
@@ -18,7 +19,21 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', [ItemController::class, 'index'])->name('dashboard');
+    // Route::get('dashboard', [ItemController::class, 'index'])->name('dashboard');
+
+    Route::get('dashboard', function () {
+        $user = auth()->user(); // Get the authenticated user
+        
+        if ($user->role == 'agent') {
+            return app(ItemController::class)->index(); 
+        } elseif ($user->role == 'admin') {
+            return app(DashboardController::class)->index(); 
+        } elseif ($user->role == 'company') {
+            return app(CompanyController::class)->dashboard(); 
+        }
+
+        return redirect()->route('dashboard'); // If role doesn't match, redirect to a fallback route
+    })->name('dashboard');
 
     Route::post('verify2fa', function () {
         return redirect()->route('dashboard');
@@ -108,29 +123,61 @@ Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name
 
 // PAYMENT
 Route::post('/payment/process/{invoiceNumber}', [PaymentController::class, 'processPayment'])->name('payment.process');
-
-// Create a client form
 Route::get('/clients/create', [ClientController::class, 'create'])->name('clients.create');
-
-// Store a new client
 Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-
-// List clients
 Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
-
-// Show client details (dynamic route)
 Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
-
-// Edit client (dynamic route)
 Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
-
-// Update client (dynamic route)
 Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
+Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
+Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
 
 
 
+Route::get('/download-company', function () {
+    $filePath = public_path('templates/company.xlsx'); // Path to your Excel template
 
+    if (file_exists($filePath)) {
+        return Response::download($filePath); // Initiates the file download
+    } else {
+        return abort(404); // Returns a 404 error if the file doesn't exist
+    }
+})->name('download.company');
 
+Route::get('export-companies', [CompanyController::class, 'exportCsv'])->name('companies.exportCsv');
+
+Route::get('/download-agent', function () {
+    $filePath = public_path('templates/agents.xlsx'); // Path to your Excel template
+
+    if (file_exists($filePath)) {
+        return Response::download($filePath); // Initiates the file download
+    } else {
+        return abort(404); // Returns a 404 error if the file doesn't exist
+    }
+})->name('download.agent');
+Route::get('export-agents', [AgentController::class, 'exportCsv'])->name('agents.exportCsv');
+
+Route::get('/download-task', function () {
+    $filePath = public_path('templates/tasks.xlsx'); // Path to your Excel template
+
+    if (file_exists($filePath)) {
+        return Response::download($filePath); // Initiates the file download
+    } else {
+        return abort(404); // Returns a 404 error if the file doesn't exist
+    }
+})->name('download.tasks');
+Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv');
+
+Route::get('/download-client', function () {
+    $filePath = public_path('templates/clients.xlsx'); // Path to your Excel template
+
+    if (file_exists($filePath)) {
+        return Response::download($filePath); // Initiates the file download
+    } else {
+        return abort(404); // Returns a 404 error if the file doesn't exist
+    }
+})->name('download.client');
+Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 
 
 require __DIR__ . '/auth.php';

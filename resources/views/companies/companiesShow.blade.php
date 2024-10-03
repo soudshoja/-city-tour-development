@@ -34,7 +34,7 @@
                 <label for="nationality"
                     class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nationality</label>
                 <select id="nationality" name="nationality" required
-                    class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:shadow-outline">
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                     <option value="Malaysia" {{ $company->nationality == 'Malaysia' ? 'selected' : '' }}>Malaysia
                     </option>
                     <option value="Kuwait" {{ $company->nationality == 'Kuwait' ? 'selected' : '' }}>Kuwait</option>
@@ -42,7 +42,20 @@
                     </option>
                 </select>
             </div>
+            
+          <!-- Phone -->
+               <div class="mb-6">
+                    <label for="phone" class="block text-gray-700 font-semibold mb-2">Contact</label>
+                    <input type="text" name="phone" id="phone" value="{{ $company->phone }}" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
 
+                <!-- Address -->
+                <div class="mb-6">
+                <label for="address" class="block text-gray-700 font-semibold mb-2">Address</label>
+                <input type="text" name="address" id="address" value="{{ $company->address }}"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
             <!-- Submit Button -->
             <div class="flex items-center justify-center">
                 <button type="submit"

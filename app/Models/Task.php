@@ -33,4 +33,14 @@ class Task extends Model
     {
         return $this->belongsTo(Item::class);
     }
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
 }

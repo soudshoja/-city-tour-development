@@ -49,16 +49,34 @@
                 <div class="mb-4">
                     <label for="address"
                         class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                    <input id="address" name="address" type="text" required
+                    <input id="address" name="address" type="text"
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                         placeholder="Client Address" />
+                </div>
+
+                <!-- Address Field -->
+                <div class="mb-4">
+                    <label for="passport_no"
+                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
+                    <input id="passport_no" name="passport_no" type="text" required
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        placeholder="Passport Number" />
+                </div>
+
+               <!-- Email Field -->
+                 <div class="mb-4">
+                    <label for="agent_email"
+                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
+                    <input id="agent_email" name="agent_email" type="email" required
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        placeholder="Agent Email" />
                 </div>
 
                 <!-- Status Field -->
                 <div class="mb-4">
                     <label for="status"
                         class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Status</label>
-                    <select id="status" name="status" required
+                    <select id="status" name="status"
                         class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:shadow-outline">
                         <option value="1">Active</option>
                         <option value="2">Inactive</option>

@@ -52,4 +52,37 @@ class TaskController extends Controller
             'tasks' => $tasks
         ], 200);
     }
+
+    public function exportCsv()
+    {
+        // Fetch all agents data
+        $tasks = Task::with('agent')->get();
+
+        // Create a CSV file in memory
+        $csvFileName = 'tasks.csv';
+        $handle = fopen('php://output', 'w');
+
+        // Set headers for the response
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $csvFileName . '"');
+
+        // Add CSV header
+        fputcsv($handle, ['Agent Name', 'Agent Email', 'Task', 'Type', 'Status']);
+
+        // Add company data to CSV
+        foreach ($tasks as $task) {
+            fputcsv($handle, [
+                $task->agent->name,
+                $task->agent->email,
+                $task->description,
+                $task->task_type,
+                $task->status
+            ]);
+        }
+
+        fclose($handle);
+        exit();
+    }
+
+
 }

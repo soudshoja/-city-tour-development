@@ -18,6 +18,10 @@
                     <p class="text-gray-800">{{ $agent->phone_number }}</p>
                 </div>
                 <div>
+                    <h2 class="text-lg font-semibold text-gray-600">Company</h2>
+                    <p class="text-gray-800">{{ $agent->company->name }}</p>
+                </div>
+                <div>
                     <h2 class="text-lg font-semibold text-gray-600">Type</h2>
                     <p class="text-gray-800 capitalize">{{ $agent->type }}</p>
                 </div>
@@ -39,7 +43,9 @@
                     <thead>
                         <tr>
                             <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Task Name</th>
+                            <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Task Date</th>
                             <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Status</th>
+                            <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Client</th>
                             <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Actions</th>
                         </tr>
                     </thead>
@@ -47,7 +53,9 @@
                         @foreach($pendingTasks as $task)
                             <tr>
                                 <td class="py-4 px-6 border-b">{{ $task->description }}</td>
+                                <td class="py-4 px-6 border-b">{{ $task->created_at }}</td>
                                 <td class="py-4 px-6 border-b">{{ $task->status }}</td>
+                                <td class="py-4 px-6 border-b">{{ $task->client->name }}</td>
                                 <td class="py-4 px-6 border-b">
 
                                 </td>

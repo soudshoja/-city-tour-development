@@ -132,8 +132,6 @@
         </form>
     @else
         <span class="text-green-600 font-bold">PAID</span>
-        <p>{{ $transaction->created_at->setTimezone('Asia/Kuala_Lumpur')->format('d/m/Y h:i A') }}</p>
-
     @endif
 </div>
 

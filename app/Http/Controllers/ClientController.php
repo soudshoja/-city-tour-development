@@ -37,10 +37,9 @@ class ClientController extends Controller
             $clients = Client::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
         } elseif ($user->role == 'agent') {
             // Company can only see tasks for their agents
-            $companyAgents = Agent::where('company_id', $user->company->id)->pluck('id'); // Get agent IDs for this company
     
             // Fetch tasks where agent_id is in the list of company agent IDs
-            $clients = Client::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
+            $clients = Client::whereIn('agent_id', $user->agent->id)->with('agent.company')->get();
         }
 
 

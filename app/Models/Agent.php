@@ -33,4 +33,9 @@ class Agent extends Model
     {
         return $this->hasMany(Client::class);
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

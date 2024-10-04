@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Task;
+use App\Models\Item;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
 use App\Models\Agent;
@@ -17,19 +18,22 @@ class TaskController extends Controller
     {
 
         $user = Auth::user();
-
         if ($user->role == 'admin') {
-            // Admin can see all tasks across all agents
-            $tasks = Task::with('agent.company')->get();
+            // Admin can see all trips and tasks
+            $trips = Item::with('tasks.agent.company', 'tasks.client')->get(); // Assuming Trip is related to Task
         } elseif ($user->role == 'company') {
-            // Company can only see tasks for their agents
-            $companyAgents = Agent::where('company_id', $user->company->id)->pluck('id'); // Get agent IDs for this company
-    
-            // Fetch tasks where agent_id is in the list of company agent IDs
-            $tasks = Task::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
+            // Company can only see trips with tasks under their agents
+            $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+            $trips = Item::with(['tasks' => function($query) use ($agents) {
+                        $query->whereIn('agent_id', $agents);
+                    }, 'tasks.agent.company', 'tasks.client'])->get();
+        } elseif ($user->role == 'agent') {
+            // Agent can see only their tasks
+            $trips = Item::with(['tasks' => function($query) use ($user) {
+                        $query->where('agent_id', $user->agent->id);
+                    }, 'tasks.agent.company', 'tasks.client'])->get();
         }
-
-        return view('tasks.tasksList', compact('tasks'));
+        return view('tasks.tasksList', compact('trips'));
     }
 
     public function upload()

@@ -32,77 +32,59 @@
         </div>
     </div>
 
-    <div class="mt-5 panel">
+    <div id="printableArea" class="mt-5 panel">
         <div class="overflow-x-auto">
-            <table class="CityMobileTable table-fixed">
-                <thead>
-                    <tr>
-                       <th>Agent Name</th>
-                        <th>Agent Email</th>
-                        <th>Task</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+         <div class="space-y-4">
+                @foreach ($trips as $trip)
+                    <div class="border rounded-lg overflow-hidden">
+                        <button class="w-full text-left px-4 py-2 bg-gray-200 font-semibold" 
+                                onclick="toggleTrip('trip-{{ $trip->id }}')">
+                            {{ $trip->trip_name }} ({{ $trip->tasks->count() }} Tasks)
+                        </button>
 
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($tasks as $task)
-                    <tr>
-                        <td>{{ $task->agent->name }}</td>
-                        <td>{{ $task->agent_email }}</td>
-                        <td>{{ $task->description }}</td>
-                        <td>{{ $task->task_type }}</td>
-                        <td class="py-3 px-4">
-                            @if($task->status == 'completed')
-                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">Completed</span>
-                            @elseif($task->status == 'pending')
-                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">Pending</span>
-                            @elseif($task->status == 'inprogress')
-                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">In Progress</span>
-                            @else
-                            <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-sm">Overdue</span>
-                            @endif
-                        </td>
-                        <td class="py-3 px-4">
-                            <a href="#" class="text-indigo-600 hover:text-indigo-900">Edit</a>
-                            <a href="#" class="ml-4 text-red-600 hover:text-red-900">Delete</a>
-                        </td>
-                    </tr>
-                    @endforeach
-
-                </tbody>
-            </table>
+                        <!-- Trip's Tasks (hidden by default) -->
+                        <div id="trip-{{ $trip->id }}" class="hidden p-4">
+                            <table class="min-w-full table-auto border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th class="border px-4 py-2">Task Name</th>
+                                        <th class="border px-4 py-2">Agent Name</th>
+                                        <th class="border px-4 py-2">Company Name</th>
+                                        <th class="border px-4 py-2">Client Name</th>
+                                        <th class="border px-4 py-2">Status</th>
+                                        <th class="border px-4 py-2">Task Date</th>
+                                        <th class="border px-4 py-2">Delay (Days)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($trip->tasks as $task)
+                                    @php
+                                        // Calculate the delay in rounded days
+                                        $delay = round(\Carbon\Carbon::parse($task->created_at)->diffInDays(now()));
+                                    @endphp
+                                        <tr>
+                                            <td class="border px-4 py-2">{{ $task->description }}</td>
+                                            <td class="border px-4 py-2">{{ $task->agent->name }}</td>
+                                            <td class="border px-4 py-2">{{ $task->agent->company->name ?? 'No company' }}</td>
+                                            <td class="border px-4 py-2">{{ $task->client->name ?? 'No client' }}</td>
+                                            <td class="border px-4 py-2">{{ $task->status }}</td>
+                                            <td class="border px-4 py-2">{{ $task->created_at->format('Y-m-d') }}</td>
+                                            <td class="border px-4 py-2 
+                                                @if ($delay > 3) text-red-600 font-semibold @endif">
+                                                {{ $delay }} days
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
 
     </div>
-    <div id="printableArea" class="hidden">
-    <!-- Place your content here that you want to print -->
-    <h1 class="text-2xl font-bold">Agent Details</h1>
-    <table class="min-w-full mt-4">
-        <!-- Table Headers -->
-        <thead>
-            <tr>
-            <th  class="py-2 px-4 border">Agent Name</th>
-            <th  class="py-2 px-4 border">Agent Email</th>
-            <th  class="py-2 px-4 border">Task Description</th>
-            <th  class="py-2 px-4 border">Status</th>
-            <th  class="py-2 px-4 border">Task Type</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($tasks as $task)
-                <tr>
-                <td  class="py-2 px-4 border">{{ $task->agent->name  }}</td>
-                <td  class="py-2 px-4 border">{{ $task->agent->email }}</td>
-                <td  class="py-2 px-4 border">{{ $task->description  }}</td>
-                <td  class="py-2 px-4 border">{{ $task->status }}</td>
-                <td  class="py-2 px-4 border">{{ $task->task_type }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
+
 
     <script>
     // Upload Excel functionality
@@ -211,4 +193,14 @@ function printPage() {
 }
 
 </script>
+ <script>
+        function toggleTrip(id) {
+            var element = document.getElementById(id);
+            if (element.classList.contains('hidden')) {
+                element.classList.remove('hidden');
+            } else {
+                element.classList.add('hidden');
+            }
+        }
+    </script>
 </x-app-layout>

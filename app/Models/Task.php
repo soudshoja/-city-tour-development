@@ -31,16 +31,16 @@ class Task extends Model
 
     public function item()
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(Item::class,'item_id');
     }
 
     public function agent()
     {
-        return $this->belongsTo(Agent::class);
+        return $this->belongsTo(Agent::class, 'agent_id');
     }
 
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'client_id');
     }
 }

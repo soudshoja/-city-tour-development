@@ -1,176 +1,189 @@
 <x-app-layout>
 
-    <div class="bg-white rounded-lg shadow-md p-5">
-    <div class="grid grid-cols-2 gap-2">
+    <div class="container mx-auto p-5">
+        <h1 class="text-3xl font-bold mb-5">{{$company->name}}</h1>
+        <h4 class="text-3xl font-bold mb-5">{{$agent->name}}</h4>
 
-     
-        @if (session('success') || session('error'))
-            <div id="flash-message" class="alert 
-                @if (session('success')) alert-success 
-                @elseif (session('error')) alert-danger 
-                @endif
-                fixed-top-right">
-                {{ session('success') ?? session('error') }}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold mb-3">Tasks Overview</h2>
+                <div id="tasksChart" class="h-48"></div>
             </div>
-        @endif
-        @if ($message)
-            @php
-                $messageClasses = [
-                    'success' => 'bg-green-100 border-l-4 border-green-400 text-green-700',
-                    'error' => 'bg-red-100 border-l-4 border-red-400 text-red-700',
-                    'warning' => 'bg-yellow-100 border-l-4 border-yellow-400 text-yellow-700',
-                    'info' => 'bg-blue-100 border-l-4 border-blue-400 text-blue-700'
-                ];
-                $messageClass = $messageClasses[$status] ?? 'bg-gray-100 border-l-4 border-gray-400 text-gray-700';
-            @endphp
-            <div class="{{ $messageClass }} p-2 rounded-lg inline-block my-2">
-                {{ $message }}
-            </div>
-        @endif
 
-        <div class="grid grid-cols-2 gap-2 mb-2">
-        <div id="taskChart"></div>
-        </div>
-        <div class="grid grid-cols-1 gap-2 mb-2">
-        <div id="taskChart2"></div>
-        </div>
-        </div>
-        <div class="grid grid-cols-4 gap-2 mb-2">
-            <div class="bg-blue-500 text-white p-2 rounded-lg shadow">
-                <h3 class="text-sm font-semibold">Pending Tasks</h3>
-                <p class="text-2xl font-bold">{{ $pendingTasksCount }}</p>
-            </div>
-            <div class="bg-green-500 text-white p-2 rounded-lg shadow">
-                <h3 class="text-sm font-semibold">Completed Tasks</h3>
-                <p class="text-2xl font-bold">{{ $completedTasksCount }}</p>
-            </div>
-            <div class="bg-gray-500 text-white p-2 rounded-lg shadow">
-                <h3 class="text-sm font-semibold">Total Tasks</h3>
-                <p class="text-2xl font-bold">{{ $totalTasksCount }}</p>
-            </div>
-            <div class="bg-red-500 text-white p-2 rounded-lg shadow">
-                <h3 class="text-sm font-semibold">Total Clients</h3>
-                <p class="text-2xl font-bold">{{ $totalClientsCount }}</p>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold mb-3">Invoices Overview</h2>
+                <div id="invoicesChart" class="h-48"></div>
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 mb-2">
-        <table>
-           <thead>
-                <tr>
-                    <th>Task Details</th>
-                    <th>Task Status</th>
-                </tr>
-            </thead>
-            <tbody>
-            <!-- Display items here -->
-            @foreach ($items as $item)
-                <tr>
-                    <td>{{ $item['task_description'] }}</td>
-                    <td>{{ $item['task_status'] }}</td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
-        <table>
-            <thead>
-                <tr>
-                    <th>Invoice Number</th>
-                    <th>Invoice Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($transactions as $transaction)
-                    <tr>
-                        <td>{{ $transaction['invoice_number'] }}</td>
-                        <td>{{ $transaction['status'] }}</td>
-                        <td>
-                            <!-- View Invoice Button -->
-                            <a href="{{ route('invoice.show', ['invoiceNumber' => $transaction['invoice_number']]) }}">
-                                <button type="button" class="btn btn-primary">
-                                    View Invoice
-                                </button>
-                            </a>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Invoice Amount</h2>
+                 <p id="totalInvoiceAmount" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Trips</h2>
+                <p id="totalTrips" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Clients</h2>
+                <p id="totalClients" class="text-2xl">0</p>
+            </div>
         </div>
-                @if ($message === 'Agent not found')
-        <!-- Inline form to create agent profile -->
-        <div class="mt-4">
-            <h2>Create Agent Profile</h2>
-            <form action="{{ route('create.agent.profile') }}" method="POST">
-                @csrf
-                <div class="form-group">
-                    <label for="phone_number">Phone Number</label>
-                    <input type="text" class="form-control" id="phone_number" name="phone_number" required>
-                </div>
-                <div class="form-group">
-                    <label for="company_id">Company ID</label>
-                    <input type="text" class="form-control" id="company_id" name="company_id" required>
-                </div>
-                <div class="form-group">
-                    <label for="type">Type</label>
-                    <select class="form-control" id="type" name="type" required>
-                        <option value="salary">Salary</option>
-                        <option value="commission">Commission</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Create Profile</button>
-            </form>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Tasks</h2>
+                <p id="totalTasks" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Pending Tasks</h2>
+                <p id="pendingTasks" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Completed Tasks</h2>
+                <p id="completedTasks" class="text-2xl">0</p>
+            </div>
         </div>
-    @endif
-</div>
 
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Invoices</h2>
+                <p id="totalInvoices" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Paid Invoices</h2>
+                <p id="paidInvoices" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Unpaid Invoices</h2>
+                <p id="unpaidInvoices" class="text-2xl">0</p>
+            </div>
+        </div>
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var options = {
-            chart: {
-                type: 'bar',
-                height: 350
-            },
-            series: [{
-                name: 'Tasks',
-                data: [{{ $pendingTasksCount }}, {{ $completedTasksCount }}]
-            }],
-            xaxis: {
-                categories: ['Pending', 'Completed']
-            },
-            colors: ['#FF4560', '#00E396'], // Customize colors as needed
-            title: {
-                text: 'Pending vs Completed Tasks',
-                align: 'center'
-            }
-        };
-
-        var options2 = {
-            chart: {
-                type: 'pie',
-                height: 350
-            },
-            series: [{{ $unpaidInvoiceCount }}, {{ $paidInvoiceCount }}],
-            labels: ['UnPaid', 'Paid'], // Pie chart labels
-            colors: ['#FF4560', '#00E396'], // Customize colors as needed
-            title: {
-                text: 'Paid vs Unpaid Invoices',
-                align: 'center'
-            }
-        };
-
-
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-3">Clients Overview</h2>
+            <div id="clientsOverview" class="bg-white shadow-md rounded-lg p-5">
+                <table class="min-w-full border-collapse border border-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Client Name</th>
+                            <th class="border border-gray-300 px-4 py-2">Task Count</th>
+                            <th class="border border-gray-300 px-4 py-2">Total Invoices</th>
+                            <th class="border border-gray-300 px-4 py-2">Unpaid Invoices</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsTableBody">
+                        <!-- Client rows will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
         
-        var chart = new ApexCharts(document.querySelector("#taskChart"), options);
-        chart.render();
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-3">Invoice Overview</h2>
+            <div id="invoicesOverview" class="bg-white shadow-md rounded-lg p-5">
+                <table class="min-w-full border-collapse border border-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Invoice Number</th>
+                            <th class="border border-gray-300 px-4 py-2">Currency</th>
+                            <th class="border border-gray-300 px-4 py-2">Amount</th>
+                            <th class="border border-gray-300 px-4 py-2">Status</th>
+                            <th class="border border-gray-300 px-4 py-2">View</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-        var chart2 = new ApexCharts(document.querySelector("#taskChart2"), options2);
-        chart2.render();
-    });
-</script>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Sample data for demonstration
+            const dashboardData = @json($dashboardData);
+
+            const formattedInvoiceAmount = new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
+            currency: 'MYR' 
+        }).format(dashboardData.totalInvoiceAmount);
+
+            // Populate key metrics      
+            document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
+            document.getElementById("totalTrips").innerText = dashboardData.totalTrips; 
+            document.getElementById("totalClients").innerText = dashboardData.clientsCount; 
+            document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
+            document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
+            document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
+            document.getElementById("totalInvoices").innerText = dashboardData.totalInvoices;
+            document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
+            document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
+
+            // Create Tasks Overview Chart
+            const tasksChartOptions = {
+                chart: {
+                    type: 'bar'
+                },
+                series: [{
+                    name: 'Tasks',
+                    data: [dashboardData.pendingTasks, dashboardData.completedTasks]
+                }],
+                xaxis: {
+                    categories: ['Pending', 'Completed']
+                }
+            };
+
+            const tasksChart = new ApexCharts(document.querySelector("#tasksChart"), tasksChartOptions);
+            tasksChart.render();
+
+            // Create Invoices Overview Chart
+            const invoicesChartOptions = {
+                chart: {
+                    type: 'pie'
+                },
+                series: [dashboardData.paidInvoices, dashboardData.unpaidInvoices],
+                labels: ['Paid', 'Unpaid']
+            };
+
+            const invoicesChart = new ApexCharts(document.querySelector("#invoicesChart"), invoicesChartOptions);
+            invoicesChart.render();
+
+            // Populate Clients Overview Table
+            const clientsTableBody = document.getElementById("clientsTableBody");
+            dashboardData.clients.forEach(client => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="border border-gray-300 px-4 py-2">${client.name}</td>
+                    <td class="border border-gray-300 px-4 py-2">${client.taskCount}</td>
+                    <td class="border border-gray-300 px-4 py-2">${client.totalInvoices}</td>
+                    <td class="border border-gray-300 px-4 py-2">${client.unpaidInvoices}</td>
+                `;
+                clientsTableBody.appendChild(row);
+            });
+
+            const invoicesTableBody = document.getElementById("invoicesTableBody");
+            dashboardData.invoices.forEach(invoice => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="border border-gray-300 px-4 py-2">${invoice.invoice_number}</td>
+                    <td class="border border-gray-300 px-4 py-2">${invoice.currency}</td>
+                    <td class="border border-gray-300 px-4 py-2">${invoice.amount}</td>
+                    <td class="border border-gray-300 px-4 py-2">${invoice.status}</td>
+                    <td class="border border-gray-300 px-4 py-2">  
+                        <a href="/invoice/${invoice.invoice_number}" target="_blank">
+                            <button type="button" class="btn btn-primary">
+                                View Invoice
+                            </button>
+                        </a>
+                   </td>
+                `;
+                invoicesTableBody.appendChild(row);
+            });
+
+        });
+    </script>
 </x-app-layout>

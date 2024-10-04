@@ -21,6 +21,6 @@ class Transaction extends Model
     // Define the relationship to the Invoice model
     public function invoice()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Invoice::class,'invoice_id');
     }
 }

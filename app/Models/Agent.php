@@ -18,4 +18,19 @@ class Agent extends Model
     {
         return $this->belongsTo(Company::class, 'company_id');
     } 
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function clients()
+    {
+        return $this->hasMany(Client::class);
+    }
 }

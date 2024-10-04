@@ -6,124 +6,211 @@
     }
     </style>
     @if(Auth()->user()->role === 'admin')
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-
-        <div
-            class="bgCard w-full flex-2 bg-cover bg-center rounded-xl p-6 shadow-lg text-white flex flex-col items-center justify-center">
-            <div class="text-xl">Total Invoice</div>
-            <div class="text-5xl font-extrabold mt-2">{{ number_format($totalInvoiceAmount, 2) }} {{ $invoices->first()->currency ?? 'USD' }}</div>
-            <div class="text-green-500 text-lg mt-4">▲ $343.23</div>
-        </div>
-
-        <div class="col-span-1 md:col-span-2 flex flex-wrap gap-3">
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
-                <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
-                    <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M42 24C45.3137 24 48 21.7614 48 19C48 16.2386 45.3137 14 42 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M18 24C14.6863 24 12 21.7614 12 19C12 16.2386 14.6863 14 18 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <ellipse cx="30" cy="40" rx="12" ry="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M46 44C49.5085 43.2306 52 41.2821 52 39C52 36.7179 49.5085 34.7694 46 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M14 44C10.4915 43.2306 8 41.2821 8 39C8 36.7179 10.4915 34.7694 14 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                    </svg>
-                </div>
-                <div class="text-sm">Agents</div>
-                <div class="text-3xl font-extrabold mt-2">{{$agentCount }}</div>
-                <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
+    <div class="container mx-auto p-5">
+       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Invoice Amount</h2>
+                 <p id="totalInvoiceAmount" class="text-2xl">0</p>
             </div>
-
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
-                <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
-                    <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M42 24C45.3137 24 48 21.7614 48 19C48 16.2386 45.3137 14 42 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M18 24C14.6863 24 12 21.7614 12 19C12 16.2386 14.6863 14 18 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <ellipse cx="30" cy="40" rx="12" ry="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M46 44C49.5085 43.2306 52 41.2821 52 39C52 36.7179 49.5085 34.7694 46 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M14 44C10.4915 43.2306 8 41.2821 8 39C8 36.7179 10.4915 34.7694 14 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                    </svg>
-                </div>
-                <div class="text-sm">Clients</div>
-                <div class="text-3xl font-extrabold mt-2">{{$clientCount}}</div>
-                <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Paid Amount</h2>
+                <p id="totalPaidAmount" class="text-2xl">0</p>
             </div>
-
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
-                <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
-                    <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M42 24C45.3137 24 48 21.7614 48 19C48 16.2386 45.3137 14 42 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M18 24C14.6863 24 12 21.7614 12 19C12 16.2386 14.6863 14 18 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <ellipse cx="30" cy="40" rx="12" ry="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M46 44C49.5085 43.2306 52 41.2821 52 39C52 36.7179 49.5085 34.7694 46 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M14 44C10.4915 43.2306 8 41.2821 8 39C8 36.7179 10.4915 34.7694 14 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                    </svg>
-                </div>
-                <div class="text-sm">Tasks</div>
-                <div class="text-3xl font-extrabold mt-2">{{$taskCount}}</div>
-                <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg </div>
-            </div>
-
-            <div class="flex-1 bg-gray-900 rounded-xl p-6 shadow-lg text-white text-center w-full sm:w-1/2 lg:w-1/4">
-                <div class="flex items-center justify-center bg-gray-700 w-12 h-12 rounded-full mx-auto mb-4">
-                    <svg class="w-8 h-8" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="30" cy="18" r="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M42 24C45.3137 24 48 21.7614 48 19C48 16.2386 45.3137 14 42 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M18 24C14.6863 24 12 21.7614 12 19C12 16.2386 14.6863 14 18 14"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <ellipse cx="30" cy="40" rx="12" ry="8" stroke="#AAB3D1" stroke-width="3" />
-                        <path opacity="0.5" d="M46 44C49.5085 43.2306 52 41.2821 52 39C52 36.7179 49.5085 34.7694 46 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                        <path opacity="0.5" d="M14 44C10.4915 43.2306 8 41.2821 8 39C8 36.7179 10.4915 34.7694 14 34"
-                            stroke="#AAB3D1" stroke-width="3" stroke-linecap="round" />
-                    </svg>
-                </div>
-                <div class="text-sm">Companies</div>
-                <div class="text-3xl font-extrabold mt-2">{{$companyCount}}</div>
-                <div class="text-sm mt-2">- <span class="text-red-500">11.2%</span> on avg</div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Unpaid Amount</h2>
+                <p id="totalUnpaidAmount" class="text-2xl">0</p>
             </div>
         </div>
-    </div>
 
-
-    <div class="mt-5 bg-gray-900 rounded-lg p-4">
-        <div class="flex justify-between items-center mb-2">
-            <h2 class="text-white text-xl font-bold">Revenue</h2>
-
-            <button class="btnClight">View Report</button>
-        </div>
-        <p class="text-gray-400 text-sm">Data from 1-12 Apr, 2024</p>
-        <div class="mt-4">
-            <canvas id="revenueChart"></canvas>
-        </div>
-        <div class="flex gap-3 mt-4">
-            <div class="flex items-center">
-                <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
-                <p class="text-gray-400 text-sm">Income</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Companies</h2>
+                 <p id="totalCompanies" class="text-2xl">0</p>
             </div>
-            <div class="flex items-center">
-                <div class="w-4 h-4 rounded-full bg-[#febd5e] mr-2"></div>
-                <p class="text-gray-400 text-sm">Expense</p>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Agents</h2>
+                <p id="totalAgents" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Clients</h2>
+                <p id="totalClients" class="text-2xl">0</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Tasks</h2>
+                <p id="totalTasks" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Pending Tasks</h2>
+                <p id="pendingTasks" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Completed Tasks</h2>
+                <p id="completedTasks" class="text-2xl">0</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Total Invoices</h2>
+                <p id="totalInvoices" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Paid Invoices</h2>
+                <p id="paidInvoices" class="text-2xl">0</p>
+            </div>
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold">Unpaid Invoices</h2>
+                <p id="unpaidInvoices" class="text-2xl">0</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold mb-3">Tasks Overview</h2>
+                <div id="tasksChart" class="h-48"></div>
+            </div>
+
+            <div class="bg-white shadow-md rounded-lg p-5">
+                <h2 class="text-xl font-semibold mb-3">Invoices Overview</h2>
+                <div id="invoicesChart" class="h-48"></div>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-3">Agents Overview</h2>
+            <div id="agentssOverview" class="bg-white shadow-md rounded-lg p-5">
+                <table class="min-w-full border-collapse border border-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Company Name</th>
+                            <th class="border border-gray-300 px-4 py-2">Agent Name</th>
+                            <th class="border border-gray-300 px-4 py-2">Task Count</th>
+                            <th class="border border-gray-300 px-4 py-2">Total Invoices</th>
+                            <th class="border border-gray-300 px-4 py-2">Pending Tasks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentsTableBody">
+                        <!-- Agent rows will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-3">Clients Overview</h2>
+            <div id="clientsOverview" class="bg-white shadow-md rounded-lg p-5">
+                <table class="min-w-full border-collapse border border-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Client Name</th>
+                            <th class="border border-gray-300 px-4 py-2">Task Count</th>
+                            <th class="border border-gray-300 px-4 py-2">Total Invoices</th>
+                            <th class="border border-gray-300 px-4 py-2">Unpaid Invoices</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsTableBody">
+                        <!-- Client rows will be dynamically added here -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <div class="mt-5 bg-gray-900 rounded-lg">
-        <div class="output-console"></div>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Sample data for demonstration
+            const dashboardData = @json($dashboardData);
+
+            const formattedInvoiceAmount = new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
+            currency: 'MYR' 
+        }).format(dashboardData.totalInvoiceAmount);
+
+        const formattedPaidAmount = new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
+            currency: 'MYR' 
+        }).format(dashboardData.totalPaidAmount);
+
+        const formattedUnpaidAmount = new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
+            currency: 'MYR' 
+        }).format(dashboardData.totalUnpaidAmount);
+
+            // Populate key metrics      
+            document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
+            document.getElementById("totalPaidAmount").innerText = formattedPaidAmount;
+            document.getElementById("totalUnpaidAmount").innerText = formattedUnpaidAmount;
+            document.getElementById("totalCompanies").innerText = dashboardData.companiesCount;
+            document.getElementById("totalAgents").innerText = dashboardData.agentsCount;
+            document.getElementById("totalClients").innerText = dashboardData.clientsCount; 
+            document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
+            document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
+            document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
+            document.getElementById("totalInvoices").innerText = dashboardData.totalInvoices;
+            document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
+            document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
+
+            // Create Tasks Overview Chart
+            const tasksChartOptions = {
+                chart: {
+                    type: 'bar'
+                },
+                series: [{
+                    name: 'Tasks',
+                    data: [dashboardData.pendingTasks, dashboardData.completedTasks]
+                }],
+                xaxis: {
+                    categories: ['Pending', 'Completed']
+                }
+            };
+
+            const tasksChart = new ApexCharts(document.querySelector("#tasksChart"), tasksChartOptions);
+            tasksChart.render();
+
+            // Create Invoices Overview Chart
+            const invoicesChartOptions = {
+                chart: {
+                    type: 'pie'
+                },
+                series: [dashboardData.paidInvoices, dashboardData.unpaidInvoices],
+                labels: ['Paid', 'Unpaid']
+            };
+
+            const invoicesChart = new ApexCharts(document.querySelector("#invoicesChart"), invoicesChartOptions);
+            invoicesChart.render();
+
+            // Populate Clients Overview Table
+            const clientsTableBody = document.getElementById("clientsTableBody");
+            dashboardData.clients.forEach(client => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="border border-gray-300 px-4 py-2">${client.name}</td>
+                    <td class="border border-gray-300 px-4 py-2">${client.taskCount}</td>
+                    <td class="border border-gray-300 px-4 py-2">${client.totalInvoices}</td>
+                    <td class="border border-gray-300 px-4 py-2">${client.unpaidInvoices}</td>
+                `;
+                clientsTableBody.appendChild(row);
+            });
+
+            const agentsTableBody = document.getElementById("agentsTableBody");
+            dashboardData.agents.forEach(agent => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="border border-gray-300 px-4 py-2">${agent.companyName}</td>
+                    <td class="border border-gray-300 px-4 py-2">${agent.name}</td>
+                    <td class="border border-gray-300 px-4 py-2">${agent.taskCount}</td>
+                    <td class="border border-gray-300 px-4 py-2">${agent.totalInvoices}</td>
+                    <td class="border border-gray-300 px-4 py-2">${agent.pendingTasks}</td>
+                `;
+                agentsTableBody.appendChild(row);
+            });
+
+        });
+    </script>
 
     @elseif(Auth()->user()->role == 'company')
     <div class="">

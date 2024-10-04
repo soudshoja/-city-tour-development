@@ -18,7 +18,18 @@ class AgentController extends Controller
 {
     public function index()
     {
-        $agents = Agent::with('company')->get();
+        $user = Auth::user();
+
+        if ($user->role == 'admin') {
+            // Admin can see all agents
+            $agents = Agent::with('company')->get();
+        } elseif ($user->role == 'company') {
+            // Company can only see their agents
+            $agents = Agent::with('company')
+                            ->where('company_id', $user->company->id) // assuming user belongs to one company
+                            ->get();
+        }
+
 
         return view('agents.agentsList', compact('agents'));
     }
@@ -119,7 +130,7 @@ class AgentController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone_number' => $request->phone_number,
-                'company_id' => '',
+                'company_id' => $user->company->id,
                 'type' => $request->type,
             ]);
         }

@@ -18,4 +18,10 @@ class Company extends Model
     {
         return $this->hasMany(Agent::class);
     }
+
+        public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
 }

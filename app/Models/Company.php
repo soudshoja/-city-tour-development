@@ -13,4 +13,9 @@ class Company extends Model
     use HasFactory;
 
     protected $fillable = ['name', 'user_id','status', 'code', 'email', 'address', 'phone', 'nationality','status'];
+
+    public function agents()
+    {
+        return $this->hasMany(Agent::class);
+    }
 }

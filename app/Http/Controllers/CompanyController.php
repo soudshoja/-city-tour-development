@@ -7,10 +7,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Invoice;
+use App\Models\Client;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Auth;
 use App\Imports\companiesImport;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -52,53 +55,105 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function dashboard() 
+    public function dashboard()
     {
-
-        $response2 = $this->getTransaction();
+        // Retrieve the company for the authenticated user with agents
+        $company = Company::where('user_id', Auth::id())->with('agents')->first();
+        // Get all agents under the company
+        $agents = $company->agents;
+        $agentsCount = $company->agents->count();
+        // Count total tasks, pending tasks, and completed tasks for all agents
+        $totalTaskCount = $company->agents->sum(function ($agent) {
+            return $agent->tasks()->count(); // Count all tasks for each agent
+        });
     
-        $data2 = $response2->getData(true);
-        $status = $response2->status();
-
-        if (isset($data2['transactions']) && !empty($data2['transactions'])) {
-            // If items is an array, we can count its elements
-            $transactions = $data2['transactions']; // Assuming this is an array of items
-            // You may want to define counts based on the structure of items
-            $unpaidInvoiceCount = count(array_filter($transactions, fn($transaction) => $transaction['status'] === 'unpaid'));
-            $paidInvoiceCount = count(array_filter($transactions, fn($transaction) => $transaction['status'] === 'paid'));
-            $totalInvoiceCount = count($transactions);
-          
-            $message = null;
-            $status = 'success';
-        } else {
-            $transactions = [];
-            $message = $data2['message'] ?? 'An error occurred';
+        $pendingTaskCount = $company->agents->sum(function ($agent) {
+            return $agent->tasks()->where('status', 'pending')->count(); // Count pending tasks for each agent
+        });
     
-            if ($status === 200) {
-                $status = 'info';
-            } elseif ($status === 404) {
-                $status = 'warning';
-            } else {
-                $status = 'error';
-            }
+        $completedTaskCount = $company->agents->sum(function ($agent) {
+            return $agent->tasks()->where('status', 'completed')->count(); // Count completed tasks for each agent
+        });
     
-            // Initialize counts to zero if no items are found
-            $unpaidInvoiceCount = 0;
-            $paidInvoiceCount = 0;
-            $totalInvoiceCount = 0;
+        // Count total invoices, paid invoices, and unpaid invoices for all agents
+        $totalInvoices = $company->agents->sum(function ($agent) {
+            return $agent->invoices()->count(); // Count all invoices for each agent
+        });
 
-        }
+        $totalInvoiceAmount = $company->agents->sum(function ($agent) {
+            return $agent->invoices()->sum('amount'); // Sum the 'amount' field for all invoices of each agent
+        });
+    
+        $paidInvoices = $company->agents->sum(function ($agent) {
+            return $agent->invoices()->where('status', 'paid')->count(); // Count paid invoices for each agent
+        });
+    
+        $unpaidInvoices = $company->agents->sum(function ($agent) {
+            return $agent->invoices()->where('status', 'unpaid')->count(); // Count unpaid invoices for each agent
+        });
+    
+        // Get clients under those agents
+        $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
+        // Count clients associated with all agents
+        $clientsCount = Client::whereIn('agent_id', $company->agents->pluck('id'))->count();
+
+        // Prepare clients with task count and invoice count
+        $clientsWithDetails = $clients->map(function ($client) {
+        // Count the number of tasks related to this client
+        $taskCount = Task::where('client_id', $client->id)->count();
+
+        // Count the total number of invoices related to this client
+        $totalInvoices = Invoice::where('client_id', $client->id)->count();
+          // Count the unpaid invoices for this client
+        $unpaidInvoices = Invoice::where('client_id', $client->id)
+        ->where('status', 'unpaid')
+        ->count();
+
+        return [
+            'name' => $client->name,
+            'taskCount' => $taskCount,
+            'totalInvoices' => $totalInvoices,
+            'unpaidInvoices' => $unpaidInvoices,
+        ];
+    });
+
+        // Prepare agents with task count and invoice count
+        $agentsWithDetails = $agents->map(function ($agent) {
+            // Count the number of tasks related to this client
+            $taskCount = Task::where('agent_id', $agent->id)->count();
+            $pendingTasks = Task::where('agent_id', $agent->id)
+            ->where('status', 'pending')
+            ->count();
+            // Count the total number of invoices related to this client
+            $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
+    
+            return [
+                'name' => $agent->name,
+                'taskCount' => $taskCount,
+                'totalInvoices' => $totalInvoices,
+                'pendingTasks' => $pendingTasks,
+            ];
+        });
 
 
-        return view('companies.index', compact(
-            'transactions', 
-            'message', 
-            'status', 
-            'unpaidInvoiceCount',
-            'paidInvoiceCount',
-            'totalInvoiceCount'
-        ));
+        // Prepare the data array
+        $dashboardData = [
+            'totalTasks' => $totalTaskCount,
+            'pendingTasks' => $pendingTaskCount,
+            'completedTasks' => $completedTaskCount,
+            'totalInvoices' => $totalInvoices,
+            'totalInvoiceAmount' => $totalInvoiceAmount,
+            'paidInvoices' => $paidInvoices,
+            'unpaidInvoices' => $unpaidInvoices,
+            'clientsCount'=> $clientsCount,
+            'agentsCount' => $agentsCount,
+            'agents' => $agentsWithDetails,
+            'clients' => $clientsWithDetails,
+        ];
+        return view('companies.index', compact(            'company', 'dashboardData'));
     }
+    
+    
     public function new()
     {
         $companies = Company::all();

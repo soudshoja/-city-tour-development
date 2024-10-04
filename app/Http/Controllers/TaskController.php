@@ -15,7 +15,19 @@ class TaskController extends Controller
 {
     public function index()
     {
-        $tasks = Task::all();
+
+        $user = Auth::user();
+
+        if ($user->role == 'admin') {
+            // Admin can see all tasks across all agents
+            $tasks = Task::with('agent.company')->get();
+        } elseif ($user->role == 'company') {
+            // Company can only see tasks for their agents
+            $companyAgents = Agent::where('company_id', $user->company->id)->pluck('id'); // Get agent IDs for this company
+    
+            // Fetch tasks where agent_id is in the list of company agent IDs
+            $tasks = Task::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
+        }
 
         return view('tasks.tasksList', compact('tasks'));
     }

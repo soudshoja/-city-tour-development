@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
+use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
 {
@@ -21,12 +22,27 @@ class ClientController extends Controller
     // List all clients or clients by agent ID
     public function list($id = null)
     {
-        // If agent ID is provided, filter clients by agent ID
-        if ($id) {
-            $clients = Client::where('agent_id', $id)->get();
-        } else {
-            $clients = Client::with(relations: 'agent')->get();
+
+        $user = Auth::user();
+
+        if ($user->role == 'admin') {
+            // Admin can see all tasks across all agents
+            $clients = Client::with('agent.company')->get();
+
+        } elseif ($user->role == 'company') {
+            // Company can only see tasks for their agents
+            $companyAgents = Agent::where('company_id', $user->company->id)->pluck('id'); // Get agent IDs for this company
+    
+            // Fetch tasks where agent_id is in the list of company agent IDs
+            $clients = Client::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
+        } elseif ($user->role == 'agent') {
+            // Company can only see tasks for their agents
+            $companyAgents = Agent::where('company_id', $user->company->id)->pluck('id'); // Get agent IDs for this company
+    
+            // Fetch tasks where agent_id is in the list of company agent IDs
+            $clients = Client::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
         }
+
 
         return view('clients.list', compact('clients'));
     }

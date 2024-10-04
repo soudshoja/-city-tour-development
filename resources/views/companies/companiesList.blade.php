@@ -65,7 +65,7 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Code</th>
+                        <th>Email</th>
                         <th>Nationality</th>
                         <th>Contact</th>
                         <th>Address</th>
@@ -78,7 +78,7 @@
                     @foreach ($companies as $company)
                     <tr>
                         <td>{{ $company->name }}</td>
-                        <td>{{ $company->code }}</td>
+                        <td>{{ $company->email }}</td>
 
                         <td>{{ $company->nationality }}</td>
                         <td>{{ $company->phone }}</td>

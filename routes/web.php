@@ -32,7 +32,6 @@ Route::middleware(['auth'])->group(function () {
             return app(CompanyController::class)->dashboard(); 
         }
 
-        return redirect()->route('dashboard'); // If role doesn't match, redirect to a fallback route
     })->name('dashboard');
 
     Route::post('verify2fa', function () {

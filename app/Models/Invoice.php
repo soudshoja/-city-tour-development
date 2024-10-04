@@ -17,15 +17,14 @@ class Invoice extends Model
         'amount',
         'status',
     ];
-
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'client_id');
     }
 
     public function agent()
     {
-        return $this->belongsTo(Agent::class);
+        return $this->belongsTo(Agent::class, 'agent_id');
     }
 
     public function tasks()

@@ -17,17 +17,31 @@ use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        $invoices = Invoice::where('agent_id', auth()->user()->agent->id)
-            ->with(['client', 'agent'])
-            ->get()
-            ->groupBy('status');
 
-        return view('invoice.index', compact('invoices'));
+    public function index($id = null)
+    {
+
+        $user = Auth::user();
+     
+        if (is_null($id)) {
+            $agent = Agent::find($id); 
+        }else{
+            $agent = Agent::find( $user->agent->id);    
+        }
+
+        if ($user->role == 'admin') {
+            // Admin can see all trips and tasks
+            $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
+        } elseif ($user->role == 'company') {
+            // Company can only see trips with tasks under their agents
+            $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+            $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
+        } elseif ($user->role == 'agent') {
+            // Agent can see their tasks
+            $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $user->agent->id)->paginate(6);
+        }
+
+        return view('invoice.index', compact('invoices','agent'));
     }
 
     public function create()
@@ -163,7 +177,7 @@ class InvoiceController extends Controller
     }
 
     public function updateStatus(Request $request, Invoice $invoice)
-    {
+    {     
         $request->validate([
             'status' => 'required|string',
         ]);

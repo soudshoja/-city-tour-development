@@ -8,6 +8,8 @@ use App\Models\Agent;
 use App\Models\User;
 use App\Models\Task;
 use App\Models\Company;
+use App\Models\Client;
+use App\Models\Invoice;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
 use Exception;
@@ -44,12 +46,21 @@ class AgentController extends Controller
 
     public function show($id)
     {
-        $agent = Agent::with('company')->find($id);
+        $agent = Agent::with('company', 'tasks', 'invoices', 'clients')->findOrFail($id);
 
-        // return view('agentsShow', compact('agent'));
-        $pendingTasks = Task::where('agent_email', $agent->email)->where('status', 'pending')->get();
-        return view('agents.agentsShow', compact('agent', 'pendingTasks'));
+        // Paginate all sections when viewing the main page (agentsShow)
+        $tasks = Task::where('agent_email', $agent->email)->paginate(6);
+        $invoices = Invoice::where('agent_id', $id)->paginate(6);
+        $clients = Client::whereHas('tasks', function($query) use ($agent) {
+            $query->where('agent_email', $agent->email);
+        })->paginate(6);
+        
+        // Return the main view with paginated data
+        return view('agents.agentsShow', compact('agent', 'tasks', 'invoices', 'clients'));
     }
+    
+    
+    
 
     public function edit($id)
     {
@@ -138,7 +149,23 @@ class AgentController extends Controller
 
         return redirect()->route('agents.index')->with('success', 'Agent registered successfully');
     }
+    public function getTasks($id)
+    {
+        $tasks = Task::where('agent_id', $id)->get();
+        return response()->json(['tasks' => $tasks]);
+    }
 
+    public function getClients($id)
+    {
+        $clients = Client::where('agent_id', $id)->get();
+        return response()->json(['clients' => $clients]);
+    }
+
+    public function getInvoices($id)
+    {
+        $invoices = Invoice::where('agent_id', $id)->get();
+        return response()->json(['invoices' => $invoices]);
+    }
 
     public function upload()
     {

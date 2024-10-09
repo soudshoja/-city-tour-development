@@ -1,28 +1,25 @@
 <x-app-layout>
-    <ul class="flex space-x-2 rtl:space-x-reverse">
-        <li>
-            <a href="{{ route('dashboard') }}" class="text-primary hover:underline">Dashboard</a>
-        </li>
-        <li class="before:content-['/'] ltr:before:mr-1 rtl:before:ml-1">
-            <span>Tasks List</span>
-        </li>
-    </ul>
-
     <div class="mt-5 panel">
 
-        <div class="flex mb-5">
-           <p>Click <a href="{{ route('download.tasks') }}" class="text-primary">here</a> to download the Excel template</p>
-        </div>
         <!-- Flex container for buttons and search input, with responsive handling for mobile -->
         <div class="mb-5 flex flex-col md:flex-row justify-between items-center w-full space-y-4 md:space-y-0">
-
-            <!-- Buttons on the left -->
-            <div class="flex space-x-2">
-                    <x-primary-button id="uploadExcelBtn">Upload Excel</x-primary-button>
-                    <input type="file" id="excelFileInput" class="hidden" name="excelFile" accept=".xlsx, .xls">
-                    <x-primary-button  id="printPage" onclick="printPage()">PRINT</x-primary-button>
-                    <x-primary-button onclick="window.location='{{ route('tasks.exportCsv') }}'">Export CSV</x-primary-button>
-            </div>
+        <h3 class="text-2xl font-bold text-gray-700 mb-4">Agent Task Detail</h3>
+        <a href="{{ route('agentsshow.show', ['id' => $agent->id]) }}" class="text-blue-500 text-xs underline hover:text-blue-700">
+            Back to Agent Overview
+        </a>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p><strong>Name:</strong> {{ $agent->name }}</p>
+                        <p><strong>Email:</strong> {{ $agent->email }}</p>
+                    </div>
+                    <div>
+                        <p><strong>Phone:</strong> {{ $agent->phone_number }}</p>
+                        <p><strong>Company:</strong> {{ $agent->company->name }}</p>
+                    </div>
+                    <div>
+                        <p><strong>Type:</strong> {{ $agent->type }}</p>
+                    </div>
+                </div>
 
             <!-- Search input on the right -->
             <div class="w-full md:w-auto">
@@ -35,34 +32,30 @@
     <div id="printableArea" class="mt-5 panel">
         <div class="overflow-x-auto">
          <div class="space-y-4">
-                @foreach ($trips as $trip)
-                    <div class="border rounded-lg overflow-hidden">
-                        <button class="w-full text-left px-4 py-2 bg-gray-200 font-semibold" 
-                                onclick="toggleTrip('trip-{{ $trip->id }}')">
-                            {{ $trip->trip_name }} ({{ $trip->tasks->count() }} Tasks)
-                        </button>
 
-                        <!-- Trip's Tasks (hidden by default) -->
-                        <div id="trip-{{ $trip->id }}" class="hidden p-4">
-                            <table class="min-w-full table-auto border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th class="border px-4 py-2">Task Name</th>
-                                        <th class="border px-4 py-2">Agent Name</th>
-                                        <th class="border px-4 py-2">Company Name</th>
-                                        <th class="border px-4 py-2">Client Name</th>
-                                        <th class="border px-4 py-2">Status</th>
-                                        <th class="border px-4 py-2">Task Date</th>
-                                        <th class="border px-4 py-2">Delay (Days)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($trip->tasks as $task)
+         @if($tasks->isEmpty())
+           <p class="text-gray-600">No Tasks for this agent.</p>
+                @else
+                    <table class="min-w-full bg-white border border-gray-300 mt-4">
+                        <thead>
+                            <tr>
+                            <th class="border px-4 py-2">Task Name</th>
+                            <th class="border px-4 py-2">Agent Name</th>
+                            <th class="border px-4 py-2">Company Name</th>
+                            <th class="border px-4 py-2">Client Name</th>
+                            <th class="border px-4 py-2">Status</th>
+                            <th class="border px-4 py-2">Task Date</th>
+                            <th class="border px-4 py-2">Delay (Days)</th>
+                            <th class="border px-4 py-2">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($tasks as $task)
                                     @php
                                         // Calculate the delay in rounded days
                                         $delay = round(\Carbon\Carbon::parse($task->created_at)->diffInDays(now()));
                                     @endphp
-                                        <tr>
+                                <tr>
                                             <td class="border px-4 py-2">{{ $task->description }}</td>
                                             <td class="border px-4 py-2">{{ $task->agent->name }}</td>
                                             <td class="border px-4 py-2">{{ $task->agent->company->name ?? 'No company' }}</td>
@@ -73,13 +66,18 @@
                                                 @if ($delay > 3) text-red-600 font-semibold @endif">
                                                 {{ $delay }} days
                                             </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                    <td class="py-4 px-6 border-b">
+                                        <a href="#" class="text-indigo-500">View</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+
+                    <div class="mt-4">
+                        {{ $tasks->appends(['section' => 'tasks'])->links() }}
                     </div>
-                @endforeach
+                @endif
             </div>
         </div>
 

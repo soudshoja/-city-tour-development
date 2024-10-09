@@ -13,7 +13,10 @@
         <div class="bg-white shadow rounded-lg p-6 mb-6">
             <h3 class="text-xl font-semibold mb-4 flex justify-between items-center cursor-pointer" onclick="toggleAgentsSection()">
                 Agents Overview
+                <div class="flex space-x-2">
+                <x-primary-button  id="printPage" onclick="addAgent()"><i class="fas fa-add" title="Add Agent"></i></x-primary-button>
                 <span id="agentsToggleIcon" class="text-gray-500">▼</span>
+                </div>
             </h3>
             <div id="agentsContent" class="hidden">
                 <div class="overflow-x-auto">
@@ -148,6 +151,62 @@
             <button class="bg-gray-300 text-black px-4 py-2 rounded" onclick="configureSettings()">Configurations</button>
         </div>
   </div>
+
+  <div id="addAgentModal" class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+        
+        <!-- Close Button (Top Right) -->
+        <button onclick="closeAddAgentModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+
+        <!-- Modal Title -->
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Register New Agent</h2>
+
+        <!-- Modal Form -->
+        <form method="POST" action="{{ route('agents.store') }}" class="space-y-4">
+            @csrf
+
+            <!-- Name Field -->
+            <div class="space-y-1">
+                <label for="name" class="block text-sm font-semibold text-gray-700">Name</label>
+                <input id="name" name="name" type="text" required class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Agent Name" />
+            </div>
+
+            <!-- Email Field -->
+            <div class="space-y-1">
+                <label for="email" class="block text-sm font-semibold text-gray-700">Email</label>
+                <input id="email" name="email" type="email" required class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Agent Email" />
+            </div>
+
+            <!-- Phone Number Field -->
+            <div class="space-y-1">
+                <label for="phone_number" class="block text-sm font-semibold text-gray-700">Phone Number</label>
+                <input id="phone_number" name="phone_number" type="text" required class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Phone Number" />
+            </div>
+
+            <!-- Type Field -->
+            <div class="space-y-1">
+                <label for="type" class="block text-sm font-semibold text-gray-700">Type</label>
+                <select id="type" name="type" required class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="staff">Staff</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <input type="hidden" name="company_id" value="{{ $company->id }}" />
+            <!-- Submit Button -->
+            <div class="flex space-x-2">
+                <button type="submit"  class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
+                    Register Agent
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
   <div id="taskModal" class="fixed z-10 inset-0 overflow-y-auto hidden">
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -440,8 +499,14 @@
 // Sample functions for the buttons (implement these based on your logic)
 function addAgent() {
     // Logic to add an agent
-    console.log('Add Agent button clicked');
+    document.getElementById('addAgentModal').classList.remove('hidden');
 }
+
+function  closeAddAgentModal() {
+        // Hide the modal when "Cancel" is clicked
+        document.getElementById('addAgentModal').classList.add('hidden');
+    }
+
 
 function inviteAgency() {
     // Logic to invite an agency

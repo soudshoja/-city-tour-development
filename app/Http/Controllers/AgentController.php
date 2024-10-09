@@ -147,7 +147,8 @@ class AgentController extends Controller
         }
 
 
-        return redirect()->route('agents.index')->with('success', 'Agent registered successfully');
+        return redirect()->route('companiesshow.show', ['id' => $request->company_id])
+        ->with('success', 'Agent registered successfully');
     }
     public function getTasks($id)
     {

@@ -13,7 +13,7 @@ class AgentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return  $user->role === 'company';
     }
 
     /**

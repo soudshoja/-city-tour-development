@@ -24,26 +24,28 @@ class ClientController extends Controller
     {
 
         $user = Auth::user();
-
-        if ($user->role == 'admin') {
-            // Admin can see all tasks across all agents
-            $clients = Client::with('agent.company')->get();
-
-        } elseif ($user->role == 'company') {
-            // Company can only see tasks for their agents
-            $companyAgents = Agent::where('company_id', $user->company->id)->pluck('id'); // Get agent IDs for this company
+        
+        // Check if the agent exists
+        $agent = Agent::find($id); // This will get the full agent record
     
-            // Fetch tasks where agent_id is in the list of company agent IDs
-            $clients = Client::whereIn('agent_id', $companyAgents)->with('agent.company')->get();
-        } elseif ($user->role == 'agent') {
-            // Company can only see tasks for their agents
-    
-            // Fetch tasks where agent_id is in the list of company agent IDs
-            $clients = Client::whereIn('agent_id', $user->agent->id)->with('agent.company')->get();
+        if (!$agent) {
+            return redirect()->back()->with('error', 'Agent not found.'); // Handle the case where the agent does not exist
         }
-
-
-        return view('clients.list', compact('clients'));
+    
+        // Continue with your logic based on user roles
+        if ($user->role == 'admin') {
+            // Admin can see all trips and tasks
+            $clients = Client::with('agent.company')->where('agent_id', $id)->paginate(6);
+        } elseif ($user->role == 'company') {
+            // Company can only see trips with tasks under their agents
+            $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+            $clients = Client::with('agent.company')->where('agent_id', $id)->paginate(6);
+        } elseif ($user->role == 'agent') {
+            // Agent can see their tasks
+            $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
+        }
+    
+        return view('clients.list', compact('clients', 'agent'));
     }
 
     // Show the form to create a new client

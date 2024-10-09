@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Task;
+use App\Models\Agent;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -162,9 +163,18 @@ class CompanyController extends Controller
 
     public function show($id)
     {
-        $company = Company::findOrFail($id);
-        return view('companies.companiesShow', compact('company'));
+        // Fetch the specific company with its agents, tasks, clients, invoices, and items    
+       $companies = Company::all();
+        $company = Company::with([
+            'agents.tasks.client',
+            'agents.invoices',
+            'agents.tasks.item'
+        ])->findOrFail($id);
+    
+        // Return the view, passing the specific company to it
+        return view('companies.companiesShow', compact('company' , 'companies'));
     }
+    
 
     public function edit($id)
     {

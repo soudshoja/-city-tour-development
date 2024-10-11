@@ -1,7 +1,8 @@
 <!-- start footer section -->
 <!-- desktok footer section -->
-<div class="CityDisplaayNone mt-auto p-6 pt-0 text-center dark:text-white-dark ltr:sm:text-left rtl:sm:text-right">
-    © <span id="footer-year">2024</span>. city tour.
+<div
+    class="CityDisplaayNone mt-auto p-6 pt-0 text-center dark:text-white-dark ltr:sm:text-left rtl:sm:text-right fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-black">
+    © <span id="footer-year">2024</span> city tour.
 </div>
 <!-- desktok footer section end-->
 <!-- Mobile footer section -->
@@ -193,14 +194,9 @@
         <!-- Copyright section -->
         <div class="border-t border-t-gray border-t-[1px]
  fixed bottom-0 left-0 right-0 z-50 text-center text-sm py-2 bg-white dark:bg-black">
-            © <span id="footer-year">2024</span>. city tour.
+            © <span id="footer-year">2024</span> city tour.
         </div>
     </div>
 </div>
-
 <!-- Mobile footer section ends -->
-
-
-
-
 <!-- end footer section -->

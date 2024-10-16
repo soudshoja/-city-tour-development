@@ -14,8 +14,7 @@ class DashboardController extends Controller
 
 
     public function index()
-    {
-
+    {   
         // Get count for companies, agents, clients, invoices, and tasks
         
         $companyCount = Company::count();
@@ -36,7 +35,6 @@ class DashboardController extends Controller
         $agents = Agent::all();
         $clients = Client::all();
         $companies = Company::all();
-
         // Prepare clients with task count and invoice count
         $clientsWithDetails = $clients->map(function ($client) {
         // Count the number of tasks related to this client
@@ -84,7 +82,7 @@ class DashboardController extends Controller
             'totalInvoices' => $invoiceCount,
             'totalInvoiceAmount' => $totalInvoiceAmount,
             'totalPaidAmount' => $totalPaidAmount,
-            'totalUnpaidAmount' => $totalUnpaidAmount,
+            'totalUnpaidAmount' => $totalUnpaidAmount, 
             'paidInvoices' => $paidInvoices,
             'unpaidInvoices' => $unpaidInvoices,
             'clientsCount'=> $clientCount,
@@ -93,6 +91,7 @@ class DashboardController extends Controller
             'agents' => $agentsWithDetails,
             'clients' => $clientsWithDetails,
         ];
+        
         return view('dashboard', compact('dashboardData'));
  
     }

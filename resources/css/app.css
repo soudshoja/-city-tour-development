@@ -1,11 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import '@fortawesome/fontawesome-free/css/all.min.css';
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 body {
     max-height: 100vh;
     overflow-y: hidden;
+}
+.customBlueColor {
+    color: #3273b4;
 }
 
 /* Custom class for centering text on mobile and left-aligned on larger screens */

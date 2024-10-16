@@ -14,14 +14,14 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\TaskController;
 
 // Home route
-Route::get('/', function () {
-    return view('welcome');
-})->name('welcome');
+// Route::get('/', function () {
+//     return view('dashboard');
+// })->name('welcome');
 
 Route::middleware(['auth'])->group(function () {
     // Route::get('dashboard', [ItemController::class, 'index'])->name('dashboard');
 
-    Route::get('dashboard', function () {
+    Route::get('/', function () {
         $user = auth()->user(); // Get the authenticated user
         
         if ($user->role == 'agent') {
@@ -32,7 +32,7 @@ Route::middleware(['auth'])->group(function () {
             return app(CompanyController::class)->dashboard(); 
         }
 
-    })->name('dashboard');
+    })->middleware(['auth'])->name('dashboard');
 
     Route::post('verify2fa', function () {
         return redirect()->route('dashboard');
@@ -128,7 +128,7 @@ Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateSta
 Route::post('/payment/process/{invoiceNumber}', [PaymentController::class, 'processPayment'])->name('payment.process');
 Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
 Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-Route::get('/clients/list/{id}', [ClientController::class, 'list'])->name('clients.list');
+// Route::get('/clients/list/{id}', [ClientController::class, 'list'])->name('clients.list');
 Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
 Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
 Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');

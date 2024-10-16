@@ -18,23 +18,29 @@ use Illuminate\Support\Facades\Hash;
 
 class AgentController extends Controller
 {
-    public function index()
-    {
-        $user = Auth::user();
+   public function index() 
+{
+    $agentCount = Agent::count();
+    $user = Auth::user();
 
-        if ($user->role == 'admin') {
-            // Admin can see all agents
-            $agents = Agent::with('company')->get();
-        } elseif ($user->role == 'company') {
-            // Company can only see their agents
-            $agents = Agent::with('company')
-                            ->where('company_id', $user->company->id) // assuming user belongs to one company
-                            ->get();
-        }
-
-
-        return view('agents.agentsList', compact('agents'));
+    if ($user->role == 'admin') {
+        // Admin can see all agents
+        $agents = Agent::with('company')->get();
+    } elseif ($user->role == 'company') {
+        // Company can only see their agents
+        $agents = Agent::with('company')
+                        ->where('company_id', $user->company->id) // assuming user belongs to one company
+                        ->get();
     }
+
+    $AgentsData = [
+        'agentsCount' => $agentCount,
+    ];
+
+    // Pass both 'agents' and 'AgentsData' to the view
+    return view('agents.agentsList', compact('agents', 'AgentsData'));
+}
+
 
     public function new()
     {

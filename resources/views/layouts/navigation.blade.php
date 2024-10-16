@@ -6,8 +6,8 @@
         class="p-5 fixed top-0 left-0 right-0 flex items-center justify-center bg-white dark:bg-gray-800 shadow-md z-50 CityDisplaayNoneDesk">
         <!-- Logo and App Name -->
         <a href="{{ route('dashboard') }}" class="flex items-center">
-            <img id="logo" class="ml-[5px] w-12 flex-none pr-2 fade-in" src="{{ asset('images/City0logo.svg') }}"
-                alt="City App Logo">
+            <x-application-logo />
+
         </a>
     </nav>
     <!-- Mobile menu-->
@@ -19,7 +19,6 @@
     <!-- desktop & pads Header -->
     <div :class="sidebarOpen ? 'ml-[260px]' : 'ml-0'" class="flex-1 transition-all duration-300 ease-in-out">
         <!-- Header (Navigation) 1st -->
-
         <nav class="CityDisplaayNone bg-white text-black dark:bg-black dark:text-white shadow-sm">
             <div class="px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16 items-center">
@@ -239,7 +238,7 @@
                                         </div>
                                         <div class="ml-3 truncate">
                                             <a class="text-sm text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
-                                                href="{{ route('profile.edit') }}">
+                                                href="{{ route('register') }}">
                                                 <h4 class="text-sm font-semibold text-dark dark:text-white">
                                                     Add New Admin
                                                 </h4>
@@ -340,8 +339,11 @@
                         </div>
                     </div>
 
+
                     @can('viewAny', App\Models\Company::class)
-                    <!-- Companies -->
+                    @can('viewAny', App\Models\Agent::class)
+                    @can('viewAny', App\Models\Client::class)
+                    <!-- users -->
                     <div x-data="{ open: false }" x-cloak class="relative">
                         <a @mouseenter="open = true" @mouseleave="open = false"
                             class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
@@ -369,7 +371,7 @@
                             </svg>
 
                             <span
-                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Companies</span>
+                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Users</span>
                             <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
                                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd"
@@ -377,7 +379,7 @@
                                     clip-rule="evenodd" />
                             </svg>
                         </a>
-                        <!-- Companies Dropdown Menu -->
+                        <!-- users Dropdown Menu -->
                         <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
                             class="absolute z-10 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
                             x-transition:enter="transition ease-out duration-100"
@@ -386,75 +388,112 @@
                             x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95">
                             <div class="py-1">
-                                <a href="{{ route('companiesnew.new') }}"
-                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    Add Company
-                                </a>
-                                <a href="{{ route('companies.index') }}"
-                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    Companies List
-                                </a>
+                                <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false"
+                                    class="relative">
+                                    <a href="{{ route('companies.index') }}"
+                                        class="flex justify-between items-center block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        Companies
+                                        <svg class="h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
+                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
+                                    <div x-show="open"
+                                        class="absolute right-full top-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="transition ease-in duration-75"
+                                        x-transition:leave-start="opacity-100 scale-100"
+                                        x-transition:leave-end="opacity-0 scale-95">
+                                        <a href="{{ route('companies.index') }}"
+                                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            Companies List
+                                        </a>
+
+                                        <a href="{{ route('companiesnew.new') }}"
+                                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            Add Company
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false"
+                                    class="relative">
+                                    <a href="{{ route('agents.index') }}"
+                                        class="flex justify-between items-center block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        Agents
+                                        <svg class="h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
+                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
+                                    <div x-show="open"
+                                        class="absolute right-full top-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="transition ease-in duration-75"
+                                        x-transition:leave-start="opacity-100 scale-100"
+                                        x-transition:leave-end="opacity-0 scale-95">
+                                        <a href="{{ route('agents.index') }}"
+                                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            Agent List
+                                        </a>
+                                        <a href="{{ route('agentsnew.new') }}"
+                                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            Add Agent
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false"
+                                    class="relative">
+                                    <a href="{{ route('clients.list') }}"
+                                        class="flex justify-between items-center block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        Clients
+                                        <svg class="h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
+                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
+                                    <div x-show="open"
+                                        class="absolute right-full top-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="transition ease-in duration-75"
+                                        x-transition:leave-start="opacity-100 scale-100"
+                                        x-transition:leave-end="opacity-0 scale-95">
+                                        <a href="{{ route('clients.list') }}"
+                                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Clients
+                                            List</a>
+                                        <a href="{{ route('clients.create') }}"
+                                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Add
+                                            Client</a>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
                     @endcan
-
-                    @can('viewAny', App\Models\Agent::class)
-                    <!-- Agents -->
-                    <div x-data="{ open: false }" x-cloak class="relative">
-                        <a @mouseenter="open = true" @mouseleave="open = false"
-                            class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
-                            href="#">
-
-                            <svg width="20" height="20" class="fill-current text-[#1C274C] dark:text-white"
-                                viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M9 1.25C6.37665 1.25 4.25 3.37665 4.25 6C4.25 8.62335 6.37665 10.75 9 10.75C11.6234 10.75 13.75 8.62335 13.75 6C13.75 3.37665 11.6234 1.25 9 1.25ZM5.75 6C5.75 4.20507 7.20507 2.75 9 2.75C10.7949 2.75 12.25 4.20507 12.25 6C12.25 7.79493 10.7949 9.25 9 9.25C7.20507 9.25 5.75 7.79493 5.75 6Z"
-                                    class="fill-current" />
-                                <path
-                                    d="M15 2.25C14.5858 2.25 14.25 2.58579 14.25 3C14.25 3.41421 14.5858 3.75 15 3.75C16.2426 3.75 17.25 4.75736 17.25 6C17.25 7.24264 16.2426 8.25 15 8.25C14.5858 8.25 14.25 8.58579 14.25 9C14.25 9.41421 14.5858 9.75 15 9.75C17.0711 9.75 18.75 8.07107 18.75 6C18.75 3.92893 17.0711 2.25 15 2.25Z"
-                                    class="fill-current" />
-                                <path fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M3.67815 13.5204C5.07752 12.7208 6.96067 12.25 9 12.25C11.0393 12.25 12.9225 12.7208 14.3219 13.5204C15.7 14.3079 16.75 15.5101 16.75 17C16.75 18.4899 15.7 19.6921 14.3219 20.4796C12.9225 21.2792 11.0393 21.75 9 21.75C6.96067 21.75 5.07752 21.2792 3.67815 20.4796C2.3 19.6921 1.25 18.4899 1.25 17C1.25 15.5101 2.3 14.3079 3.67815 13.5204ZM4.42236 14.8228C3.26701 15.483 2.75 16.2807 2.75 17C2.75 17.7193 3.26701 18.517 4.42236 19.1772C5.55649 19.8253 7.17334 20.25 9 20.25C10.8267 20.25 12.4435 19.8253 13.5776 19.1772C14.733 18.517 15.25 17.7193 15.25 17C15.25 16.2807 14.733 15.483 13.5776 14.8228C12.4435 14.1747 10.8267 13.75 9 13.75C7.17334 13.75 5.55649 14.1747 4.42236 14.8228Z"
-                                    class="fill-current" />
-                                <path
-                                    d="M18.1607 13.2674C17.7561 13.1787 17.3561 13.4347 17.2674 13.8393C17.1787 14.2439 17.4347 14.6439 17.8393 14.7326C18.6317 14.9064 19.2649 15.2048 19.6829 15.5468C20.1014 15.8892 20.25 16.2237 20.25 16.5C20.25 16.7507 20.1294 17.045 19.7969 17.3539C19.462 17.665 18.9475 17.9524 18.2838 18.1523C17.8871 18.2717 17.6624 18.69 17.7818 19.0867C17.9013 19.4833 18.3196 19.708 18.7162 19.5886C19.5388 19.3409 20.2743 18.9578 20.8178 18.4529C21.3637 17.9457 21.75 17.2786 21.75 16.5C21.75 15.6352 21.2758 14.912 20.6328 14.3859C19.9893 13.8593 19.1225 13.4783 18.1607 13.2674Z"
-                                    class="fill-current" />
-                            </svg>
-
-                            <span
-                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Agents</span>
-                            <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
-                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                        <!-- Agents Dropdown Menu -->
-                        <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
-                            class="absolute z-10 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
-                            x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95">
-                            <div class="py-1">
-                                <a href="{{ route('agentsnew.new') }}"
-                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    Add Agent
-                                </a>
-                                <a href="{{ route('agents.index') }}"
-                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    Agent List
-                                </a>
-                            </div>
-                        </div>
-                    </div>
                     @endcan
+                    @endcan
+
+
+
+
 
                     @can('viewAny', App\Models\Item::class)
-                    <!-- Tasks -->
+
+                    <!-- Activities -->
                     <div x-data="{ open: false }" x-cloak class="relative">
                         <a @mouseenter="open = true" @mouseleave="open = false"
                             class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
@@ -473,7 +512,7 @@
                             </svg>
 
                             <span
-                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Tasks</span>
+                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Activities</span>
 
                             <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
                                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -493,7 +532,7 @@
                             <div class="py-1">
                                 <a href="{{ route('tasks.index') }}"
                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    Tasks List
+                                    Activities List
                                 </a>
 
                             </div>
@@ -501,65 +540,9 @@
                     </div>
                     @endcan
 
-                    @can('viewAny', App\Models\Client::class)
-                    <!-- Clients -->
-                    <div x-data="{ open: false }" x-cloak class="relative">
-                        <a @mouseenter="open = true" @mouseleave="open = false"
-                            class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
-                            href="#">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M15.5 7.5C15.5 9.433 13.933 11 12 11C10.067 11 8.5 9.433 8.5 7.5C8.5 5.567 10.067 4 12 4C13.933 4 15.5 5.567 15.5 7.5Z"
-                                    class="fill-current text-dark-mode-light" />
-                                <path
-                                    d="M18 16.5C18 18.433 15.3137 20 12 20C8.68629 20 6 18.433 6 16.5C6 14.567 8.68629 13 12 13C15.3137 13 18 14.567 18 16.5Z"
-                                    class="fill-current text-dark-mode-light" />
-                                <path
-                                    d="M7.12205 5C7.29951 5 7.47276 5.01741 7.64005 5.05056C7.23249 5.77446 7 6.61008 7 7.5C7 8.36825 7.22131 9.18482 7.61059 9.89636C7.45245 9.92583 7.28912 9.94126 7.12205 9.94126C5.70763 9.94126 4.56102 8.83512 4.56102 7.47063C4.56102 6.10614 5.70763 5 7.12205 5Z"
-                                    class="fill-current text-dark-mode-light" />
-                                <path
-                                    d="M5.44734 18.986C4.87942 18.3071 4.5 17.474 4.5 16.5C4.5 15.5558 4.85657 14.744 5.39578 14.0767C3.4911 14.2245 2 15.2662 2 16.5294C2 17.8044 3.5173 18.8538 5.44734 18.986Z"
-                                    class="fill-current text-dark-mode-light" />
-                                <path
-                                    d="M16.9999 7.5C16.9999 8.36825 16.7786 9.18482 16.3893 9.89636C16.5475 9.92583 16.7108 9.94126 16.8779 9.94126C18.2923 9.94126 19.4389 8.83512 19.4389 7.47063C19.4389 6.10614 18.2923 5 16.8779 5C16.7004 5 16.5272 5.01741 16.3599 5.05056C16.7674 5.77446 16.9999 6.61008 16.9999 7.5Z"
-                                    class="fill-current text-dark-mode-light" />
-                                <path
-                                    d="M18.5526 18.986C20.4826 18.8538 21.9999 17.8044 21.9999 16.5294C21.9999 15.2662 20.5088 14.2245 18.6041 14.0767C19.1433 14.744 19.4999 15.5558 19.4999 16.5C19.4999 17.474 19.1205 18.3071 18.5526 18.986Z"
-                                    class="fill-current text-dark-mode-light" />
-                            </svg>
 
 
 
-                            <span
-                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Clients</span>
-
-                            <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
-                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                        <!-- Clients Dropdown Menu -->
-                        <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
-                            class="absolute z-10 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
-                            x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95">
-                            <div class="py-1">
-                                <a href="{{ route('clients.list') }}" class="block px-4 py-2">Clients List</a>
-                                <a href="{{ route('clients.create') }}" class="block px-4 py-2">Add Client</a>
-
-
-                            </div>
-
-
-                        </div>
-                    </div>
-                    @endcan
                     @if(Auth()->user()->role === 'agent')
                     <a href="{{ route('invoice.create') }}" class="btn btn-success ml-2">Create Invoice</a>
                     @endif

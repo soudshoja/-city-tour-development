@@ -6,11 +6,69 @@
     }
     </style>
     @if(Auth()->user()->role === 'admin')
+
+
+    <div class="p-3">
+        <!-- Button to open the modal -->
+
+        <x-primary-button onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'example-modal' }))">
+            Open Modal
+        </x-primary-button>
+
+        <!-- Modal Component -->
+        <x-modal name="example-modal" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold mb-4">Example Modal Title</h2>
+                <p class="text-gray-700">This is the content inside your modal.</p>
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button"
+                        onclick="window.dispatchEvent(new CustomEvent('close-modal', { detail: 'example-modal' }))"
+                        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </x-modal>
+
+    </div>
+
+
+    <div class="p-3">
+        <div class="md:flex gap-2">
+            <!-- income revenue -->
+            <div class="panel w-[100%] md:w-[80%]">
+                <div class="mb-5 flex justify-between">
+                    <h5 class="text-lg font-semibold dark:text-white-light">
+                        <span class="text-primary">Income</span> Revenue
+                    </h5>
+                    <i class="p-1 fas cursor-pointer fa-chevron-down" id="Income-icon"></i>
+
+
+                </div>
+
+            </div>
+            <!-- income revenue -->
+            <!-- users revenue -->
+            <div class="panel w-[100%] md:w-[20%] mt-5 sm:mt-0">
+                <div class="mb-5 flex justify-between">
+                    <h5 class="text-lg font-semibold dark:text-white-light">
+                        <span class="text-primary">Users</span> Revenue
+                    </h5>
+                    <i class="p-1 fas cursor-pointer fa-chevron-down" id="toggle-icon"></i>
+
+                </div>
+
+
+            </div>
+            <!-- users revenue done-->
+        </div>
+    </div>
     <div class="container mx-auto p-5">
-       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-white shadow-md rounded-lg p-5">
                 <h2 class="text-xl font-semibold">Total Invoice Amount</h2>
-                 <p id="totalInvoiceAmount" class="text-2xl">0</p>
+                <p id="totalInvoiceAmount" class="text-2xl">0</p>
             </div>
             <div class="bg-white shadow-md rounded-lg p-5">
                 <h2 class="text-xl font-semibold">Total Paid Amount</h2>
@@ -25,7 +83,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-white shadow-md rounded-lg p-5">
                 <h2 class="text-xl font-semibold">Total Companies</h2>
-                 <p id="totalCompanies" class="text-2xl">0</p>
+                <p id="totalCompanies" class="text-2xl">0</p>
             </div>
             <div class="bg-white shadow-md rounded-lg p-5">
                 <h2 class="text-xl font-semibold">Total Agents</h2>
@@ -121,95 +179,95 @@
 
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            // Sample data for demonstration
-            const dashboardData = @json($dashboardData);
+    document.addEventListener("DOMContentLoaded", function() {
+        // Sample data for demonstration
+        const dashboardData = @json($dashboardData);
 
-            const formattedInvoiceAmount = new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: 'MYR' 
+        const formattedInvoiceAmount = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'MYR'
         }).format(dashboardData.totalInvoiceAmount);
 
-        const formattedPaidAmount = new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: 'MYR' 
+        const formattedPaidAmount = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'MYR'
         }).format(dashboardData.totalPaidAmount);
 
-        const formattedUnpaidAmount = new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: 'MYR' 
+        const formattedUnpaidAmount = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'MYR'
         }).format(dashboardData.totalUnpaidAmount);
 
-            // Populate key metrics      
-            document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
-            document.getElementById("totalPaidAmount").innerText = formattedPaidAmount;
-            document.getElementById("totalUnpaidAmount").innerText = formattedUnpaidAmount;
-            document.getElementById("totalCompanies").innerText = dashboardData.companiesCount;
-            document.getElementById("totalAgents").innerText = dashboardData.agentsCount;
-            document.getElementById("totalClients").innerText = dashboardData.clientsCount; 
-            document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
-            document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
-            document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
-            document.getElementById("totalInvoices").innerText = dashboardData.totalInvoices;
-            document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
-            document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
+        // Populate key metrics      
+        document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
+        document.getElementById("totalPaidAmount").innerText = formattedPaidAmount;
+        document.getElementById("totalUnpaidAmount").innerText = formattedUnpaidAmount;
+        document.getElementById("totalCompanies").innerText = dashboardData.companiesCount;
+        document.getElementById("totalAgents").innerText = dashboardData.agentsCount;
+        document.getElementById("totalClients").innerText = dashboardData.clientsCount;
+        document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
+        document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
+        document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
+        document.getElementById("totalInvoices").innerText = dashboardData.totalInvoices;
+        document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
+        document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
 
-            // Create Tasks Overview Chart
-            const tasksChartOptions = {
-                chart: {
-                    type: 'bar'
-                },
-                series: [{
-                    name: 'Tasks',
-                    data: [dashboardData.pendingTasks, dashboardData.completedTasks]
-                }],
-                xaxis: {
-                    categories: ['Pending', 'Completed']
-                }
-            };
+        // Create Tasks Overview Chart
+        const tasksChartOptions = {
+            chart: {
+                type: 'bar'
+            },
+            series: [{
+                name: 'Tasks',
+                data: [dashboardData.pendingTasks, dashboardData.completedTasks]
+            }],
+            xaxis: {
+                categories: ['Pending', 'Completed']
+            }
+        };
 
-            const tasksChart = new ApexCharts(document.querySelector("#tasksChart"), tasksChartOptions);
-            tasksChart.render();
+        const tasksChart = new ApexCharts(document.querySelector("#tasksChart"), tasksChartOptions);
+        tasksChart.render();
 
-            // Create Invoices Overview Chart
-            const invoicesChartOptions = {
-                chart: {
-                    type: 'pie'
-                },
-                series: [dashboardData.paidInvoices, dashboardData.unpaidInvoices],
-                labels: ['Paid', 'Unpaid']
-            };
+        // Create Invoices Overview Chart
+        const invoicesChartOptions = {
+            chart: {
+                type: 'pie'
+            },
+            series: [dashboardData.paidInvoices, dashboardData.unpaidInvoices],
+            labels: ['Paid', 'Unpaid']
+        };
 
-            const invoicesChart = new ApexCharts(document.querySelector("#invoicesChart"), invoicesChartOptions);
-            invoicesChart.render();
+        const invoicesChart = new ApexCharts(document.querySelector("#invoicesChart"), invoicesChartOptions);
+        invoicesChart.render();
 
-            // Populate Clients Overview Table
-            const clientsTableBody = document.getElementById("clientsTableBody");
-            dashboardData.clients.forEach(client => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
+        // Populate Clients Overview Table
+        const clientsTableBody = document.getElementById("clientsTableBody");
+        dashboardData.clients.forEach(client => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2">${client.name}</td>
                     <td class="border border-gray-300 px-4 py-2">${client.taskCount}</td>
                     <td class="border border-gray-300 px-4 py-2">${client.totalInvoices}</td>
                     <td class="border border-gray-300 px-4 py-2">${client.unpaidInvoices}</td>
                 `;
-                clientsTableBody.appendChild(row);
-            });
+            clientsTableBody.appendChild(row);
+        });
 
-            const agentsTableBody = document.getElementById("agentsTableBody");
-            dashboardData.agents.forEach(agent => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
+        const agentsTableBody = document.getElementById("agentsTableBody");
+        dashboardData.agents.forEach(agent => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2">${agent.companyName}</td>
                     <td class="border border-gray-300 px-4 py-2">${agent.name}</td>
                     <td class="border border-gray-300 px-4 py-2">${agent.taskCount}</td>
                     <td class="border border-gray-300 px-4 py-2">${agent.totalInvoices}</td>
                     <td class="border border-gray-300 px-4 py-2">${agent.pendingTasks}</td>
                 `;
-                agentsTableBody.appendChild(row);
-            });
-
+            agentsTableBody.appendChild(row);
         });
+
+    });
     </script>
 
     @elseif(Auth()->user()->role == 'company')

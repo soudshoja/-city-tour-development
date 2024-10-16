@@ -1,7 +1,7 @@
 <!-- start footer section -->
 <!-- desktok footer section -->
 <div
-    class="CityDisplaayNone mt-auto p-6 pt-0 text-center dark:text-white-dark ltr:sm:text-left rtl:sm:text-right fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-black">
+    class="pt-5 CityDisplaayNone mt-auto p-6 pt-0 text-center dark:text-[#f3f4f6]  fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900">
     © <span id="footer-year">2024</span> city tour.
 </div>
 <!-- desktok footer section end-->
@@ -200,3 +200,26 @@
 </div>
 <!-- Mobile footer section ends -->
 <!-- end footer section -->
+
+<!-- Scripts -->
+
+<script>
+// Check localStorage for the dark mode setting before the page is fully loaded
+if (localStorage.getItem('darkMode') === 'true') {
+    document.documentElement.classList.add('dark');
+} else {
+    document.documentElement.classList.remove('dark');
+}
+</script>
+<!-- Include Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- Alpine.js -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3" defer></script>
+<script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/collapse.min.js" defer></script>
+
+<!-- Scripts -->
+
+<script src="https://code.jquery.com/jquery-3.7.1.slim.js"
+    integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
+<!-- new js added here -->

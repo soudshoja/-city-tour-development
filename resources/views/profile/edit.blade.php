@@ -6,8 +6,9 @@
                 <div class="mb-6 flex items-center justify-between">
                     <div
                         class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white ltr:pr-3 rtl:pl-3">
-                        <img class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 rtl:ml-1"
-                            src="{{ asset('images/City0logo.svg') }}" alt="image">
+                        <x-application-logo
+                            class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 rtl:ml-1" />
+
                         <h3 class="px-2">{{ Auth::user()->name }}</h3>
                     </div>
                     <button type="button"

@@ -5,7 +5,7 @@
 
         <div class="flex items-center justify-between px-4 py-3 mb-5">
             <a href="{{ route('dashboard') }}" class="main-logo flex shrink-0 items-center">
-                <img class="ml-[5px] w-12 flex-none pr-2" src="{{ asset('images/City0logo.svg') }}" alt="image">
+                <x-application-logo />
                 <span
                     class="align-middle text-2xl font-semibold ltr:ml-1.5 rtl:mr-1.5 dark:text-white-light lg:inline">City
                     App</span>

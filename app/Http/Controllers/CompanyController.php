@@ -35,8 +35,9 @@ class CompanyController extends Controller
         // Fetch paginated companies
         $companies = Company::paginate($perPage);
 
+        $companiesCount = Company::count();
         // Return view with the paginated data
-        return view('companies.companiesList', compact('companies'));
+        return view('companies.companiesList', compact('companies', 'companiesCount'));
     }
 
     public function getTransaction()
@@ -83,6 +84,22 @@ class CompanyController extends Controller
 
         $totalInvoiceAmount = $company->agents->sum(function ($agent) {
             return $agent->invoices()->sum('amount'); // Sum the 'amount' field for all invoices of each agent
+        });
+
+        $totalPaidAmount = $company->agents->sum(function ($agent) {
+            return $agent->invoices()->where('status', 'paid')->sum('amount'); // Sum the 'amount' field for all invoices of each agent
+        });
+       $totalPaidAmountChart =Invoice::where('status', 'paid')
+            ->selectRaw('SUM(amount) as total, DATE_FORMAT(created_at, "%Y-%m") as month')
+            ->groupBy('month')
+            ->get();
+        $totalUnpaidAmountChart =Invoice::where('status', 'unpaid')
+            ->selectRaw('SUM(amount) as total, DATE_FORMAT(created_at, "%Y-%m") as month')
+            ->groupBy('month')
+            ->get();
+
+        $totalUnpaidAmount = $company->agents->sum(function ($agent) {
+            return $agent->invoices()->where('status', 'unpaid')->sum('amount'); // Sum the 'amount' field for all invoices of each agent
         });
     
         $paidInvoices = $company->agents->sum(function ($agent) {
@@ -144,6 +161,10 @@ class CompanyController extends Controller
             'completedTasks' => $completedTaskCount,
             'totalInvoices' => $totalInvoices,
             'totalInvoiceAmount' => $totalInvoiceAmount,
+            'totalPaidAmount' => $totalPaidAmount,
+            'totalUnpaidAmount' => $totalUnpaidAmount,
+            'totalPaidAmountChart' => $totalPaidAmountChart,
+            'totalUnpaidAmountChart' => $totalUnpaidAmountChart,
             'paidInvoices' => $paidInvoices,
             'unpaidInvoices' => $unpaidInvoices,
             'clientsCount'=> $clientsCount,
@@ -151,7 +172,8 @@ class CompanyController extends Controller
             'agents' => $agentsWithDetails,
             'clients' => $clientsWithDetails,
         ];
-        return view('companies.index', compact(            'company', 'dashboardData'));
+
+        return view('companies.index', compact('company', 'dashboardData'));
     }
     
     

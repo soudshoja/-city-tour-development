@@ -1,7 +1,7 @@
 <!-- start footer section -->
 <!-- desktok footer section -->
 <div
-    class="pt-5 CityDisplaayNone mt-auto p-6 pt-0 text-center dark:text-[#f3f4f6]  fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900">
+    class="pt-5 CityDisplaayNone mt-auto p-6 pt-0 text-center dark:text-[#f3f4f6]  fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900">
     © <span id="footer-year">2024</span> city tour.
 </div>
 <!-- desktok footer section end-->

@@ -240,9 +240,9 @@
                 <!-- Add User Button -->
                 <a href="{{ route('companiesnew.new') }}" class="h-12">
                     <button type="button"
-                        class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 focus:outline-none">
-                        <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
+                        class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
+                        <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                         Add Company

@@ -339,10 +339,7 @@
                         </div>
                     </div>
 
-
-                    @can('viewAny', App\Models\Company::class)
-                    @can('viewAny', App\Models\Agent::class)
-                    @can('viewAny', App\Models\Client::class)
+                    @if(Auth::user()->role == 'admin')
                     <!-- users -->
                     <div x-data="{ open: false }" x-cloak class="relative">
                         <a @mouseenter="open = true" @mouseleave="open = false"
@@ -483,14 +480,7 @@
 
                         </div>
                     </div>
-                    @endcan
-                    @endcan
-                    @endcan
-
-
-
-
-
+                    @endif
                     @can('viewAny', App\Models\Item::class)
 
                     <!-- Activities -->

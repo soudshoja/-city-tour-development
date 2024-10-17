@@ -15,7 +15,6 @@
 
     <div class="p-3">
         <!-- main content -->
-        <!-- tasks revenue -->
         <!-- Tasks Revenue -->
         <div class="flex gap-4 mb-5">
             <div class="panel w-[5%] md:w-[5%] flex items-center justify-center">
@@ -89,7 +88,7 @@
             </div>
         </div>
 
-        <!-- tasks revenue done -->
+        <!-- ./ tasks revenue -->
 
 
         <!-- second row -->
@@ -359,7 +358,7 @@
 
 
         </div>
-        <!-- second done -->
+        <!-- ./ second row -->
     </div>
 
     <div class="h-24"></div>

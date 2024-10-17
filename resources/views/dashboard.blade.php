@@ -8,30 +8,6 @@
     @if(Auth()->user()->role === 'admin')
 
 
-    <div class="p-3">
-        <!-- Button to open the modal -->
-
-        <x-primary-button onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'example-modal' }))">
-            Open Modal
-        </x-primary-button>
-
-        <!-- Modal Component -->
-        <x-modal name="example-modal" maxWidth="md">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold mb-4">Example Modal Title</h2>
-                <p class="text-gray-700">This is the content inside your modal.</p>
-
-                <div class="mt-6 flex justify-end">
-                    <button type="button"
-                        onclick="window.dispatchEvent(new CustomEvent('close-modal', { detail: 'example-modal' }))"
-                        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </x-modal>
-
-    </div>
 
 
     <div class="p-3">
@@ -46,7 +22,17 @@
 
 
                 </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="shadow-md rounded-lg p-5">
+                        <h2 class="text-xl font-semibold mb-3">Tasks Overview</h2>
+                        <div id="tasksChart" class="h-48"></div>
+                    </div>
 
+                    <div class="shadow-md rounded-lg p-5">
+                        <h2 class="text-xl font-semibold mb-3">Invoices Overview</h2>
+                        <div id="invoicesChart" class="h-48"></div>
+                    </div>
+                </div>
             </div>
             <!-- income revenue -->
             <!-- users revenue -->
@@ -125,17 +111,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-white shadow-md rounded-lg p-5">
-                <h2 class="text-xl font-semibold mb-3">Tasks Overview</h2>
-                <div id="tasksChart" class="h-48"></div>
-            </div>
 
-            <div class="bg-white shadow-md rounded-lg p-5">
-                <h2 class="text-xl font-semibold mb-3">Invoices Overview</h2>
-                <div id="invoicesChart" class="h-48"></div>
-            </div>
-        </div>
 
         <div class="mb-6">
             <h2 class="text-xl font-semibold mb-3">Agents Overview</h2>

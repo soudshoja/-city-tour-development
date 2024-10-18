@@ -12,6 +12,8 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\AdminUsersController;
+
 
 // Home route
 // Route::get('/', function () {
@@ -41,6 +43,10 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes requiring authentication
 Route::middleware('auth')->group(function () {
+
+    Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('admin.users.index');
+
+
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

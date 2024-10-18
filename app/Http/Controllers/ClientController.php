@@ -21,29 +21,26 @@ class ClientController extends Controller
 
     // List all clients or clients by agent ID
     public function list()
-    {
+{
+    $user = Auth::user();
+    $clientsCount = Client::count();
 
-        $user = Auth::user();
-
-    
-        // Continue with your logic based on user roles
-        if ($user->role == 'admin') {
-            // Admin can see all trips and tasks
-            $agentIds = Agent::all()->pluck('id')->toArray();
-            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
-        } elseif ($user->role == 'company') {
-            // Company can only see trips with tasks under their agents
-            $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
-            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
-        } elseif ($user->role == 'agent') {
-            // Agent can see their tasks
-            DD($user->id);
-            $agent = Agent::where('user_id', $user->id)->first();
-            $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
-        }
-    
-        return view('clients.list', compact('clients'));
+    if ($user->role == 'admin') {
+        $agentIds = Agent::all()->pluck('id')->toArray();
+        $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+    } elseif ($user->role == 'company') {
+        $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
+        $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+    } elseif ($user->role == 'agent') {
+        $agent = Agent::where('user_id', $user->id)->first();
+        $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
     }
+
+    $clientsNo = $clientsCount;
+
+    return view('clients.list', compact('clients', 'clientsNo'));
+}
+
 
     // Show the form to create a new client
     public function create()
@@ -102,6 +99,8 @@ class ClientController extends Controller
     // Update the client in the database
     public function update(Request $request, $id)
     {
+        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:clients,email,' . $id,
@@ -119,6 +118,7 @@ class ClientController extends Controller
                 'phone' => $request->get('phone'),
             ]);
 
+            
             // Redirect to the clients list with a success message
             return redirect()->route('clients.list')->with('success', 'Client updated successfully!');
         } catch (Exception $e) {

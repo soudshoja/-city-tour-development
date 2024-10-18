@@ -67,7 +67,7 @@
                 <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
             </li>
             <li class="before:content-['/'] before:mr-1 ">
-                <span>Companies List</span>
+                <span>Admins List</span>
             </li>
         </ul>
         <!-- ./Breadcrumbs -->
@@ -101,124 +101,16 @@
                         href="#">
                         <span
                             class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Total
-                            Companies</span>
+                            Admins</span>
 
 
                     </a>
                     <a class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-info-light dark:bg-gray-700"
-                        href="#"><span id="totalCompanies"></span>
+                        href="#"><span id="totalAdmins"></span>
                     </a>
                 </div>
 
-                <div class="flex gap-2 !mt-0">
-                    <input type="file" id="excelFileInput" class="hidden" name="excelFile" accept=".xlsx, .xls">
-                    <!-- export data -->
-                    <div x-data="{ open: false }" x-cloak class="relative">
-                        <a @mouseenter="open = true" @mouseleave="open = false"
-                            class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
-                            href="#">
-                            <svg class="w-5 h-5 mr-2 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
-                                viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path opacity="0.5" fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M3 14.25C3.41421 14.25 3.75 14.5858 3.75 15C3.75 16.4354 3.75159 17.4365 3.85315 18.1919C3.9518 18.9257 4.13225 19.3142 4.40901 19.591C4.68577 19.8678 5.07435 20.0482 5.80812 20.1469C6.56347 20.2484 7.56459 20.25 9 20.25H15C16.4354 20.25 17.4365 20.2484 18.1919 20.1469C18.9257 20.0482 19.3142 19.8678 19.591 19.591C19.8678 19.3142 20.0482 18.9257 20.1469 18.1919C20.2484 17.4365 20.25 16.4354 20.25 15C20.25 14.5858 20.5858 14.25 21 14.25C21.4142 14.25 21.75 14.5858 21.75 15V15.0549C21.75 16.4225 21.75 17.5248 21.6335 18.3918C21.5125 19.2919 21.2536 20.0497 20.6517 20.6516C20.0497 21.2536 19.2919 21.5125 18.3918 21.6335C17.5248 21.75 16.4225 21.75 15.0549 21.75H8.94513C7.57754 21.75 6.47522 21.75 5.60825 21.6335C4.70814 21.5125 3.95027 21.2536 3.34835 20.6517C2.74643 20.0497 2.48754 19.2919 2.36652 18.3918C2.24996 17.5248 2.24998 16.4225 2.25 15.0549C2.25 15.0366 2.25 15.0183 2.25 15C2.25 14.5858 2.58579 14.25 3 14.25Z"
-                                    fill="currentColor" />
-                                <path fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M12 2.25C12.2106 2.25 12.4114 2.33852 12.5535 2.49392L16.5535 6.86892C16.833 7.17462 16.8118 7.64902 16.5061 7.92852C16.2004 8.20802 15.726 8.18678 15.4465 7.88108L12.75 4.9318V16C12.75 16.4142 12.4142 16.75 12 16.75C11.5858 16.75 11.25 16.4142 11.25 16V4.9318L8.55353 7.88108C8.27403 8.18678 7.79963 8.20802 7.49393 7.92852C7.18823 7.64902 7.16698 7.17462 7.44648 6.86892L11.4465 2.49392C11.5886 2.33852 11.7894 2.25 12 2.25Z"
-                                    fill="currentColor" />
-                            </svg>
-                            <span
-                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Export</span>
-                            <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
-                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                        <!-- Dropdown Menu -->
-                        <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
-                            class="absolute z-10 mt-2 w-32 bg-black text-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
-                            x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95">
-                            <div class="py-1">
-                                <!-- export csv  -->
 
-                                <a onclick="window.location='{{ route('companies.exportCsv') }}'"
-                                    class="block px-4 py-2 text-sm bg-black text-white hover:bg-gray-800">CSV</a>
-                                <a id="printPage" onclick="printPage()"
-                                    class="block px-4 py-2 text-sm bg-black text-white hover:bg-gray-800">PRINT</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Excel -->
-                    <div x-data="{ open: false }" x-cloak class="relative">
-                        <a @mouseenter="open = true" @mouseleave="open = false"
-                            class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
-                            href="#">
-
-                            <svg class="w-5 h-5 mr-2 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
-                                viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path opacity="0.5"
-                                    d="M22 14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M10 22C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                <path opacity="0.5"
-                                    d="M10 2C6.22876 2 4.34315 2 3.17157 3.17157C2 4.34315 2 6.22876 2 10"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M14 2C17.7712 2 19.6569 2 20.8284 3.17157C22 4.34315 22 6.22876 22 10"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                            </svg>
-
-                            <span
-                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Excel</span>
-                            <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
-                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                        <!-- Dropdown Menu -->
-                        <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
-                            class="absolute z-10 mt-2 w-32 bg-black text-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
-                            x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95">
-                            <div class="py-1">
-                                <!-- export csv  -->
-
-                                <a href="{{ route('download.company') }}"
-                                    class="block px-4 py-2 text-sm bg-black text-white hover:bg-gray-800">Get
-                                    Template</a>
-                                <a id="uploadExcelBtn"
-                                    class="block px-4 py-2 text-sm bg-black text-white hover:bg-gray-800">Upload
-                                    Excel</a>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Loading Spinner -->
-                    <div id="loadingSpinner" class="hidden mt-4 flex justify-center items-center">
-                        <span class="mr-2">Uploading...</span>
-                        <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                            </circle>
-                            <path class="opacity-75" fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z">
-                            </path>
-                        </svg>
-                    </div>
-
-                    <!-- Status Message -->
-                    <div id="statusMessage" class="hidden mt-4"></div>
-                </div>
             </div>
 
 
@@ -238,14 +130,13 @@
 
 
                 <!-- Add User Button -->
-
-                <button type="button" onclick="addCompany()"
+                <button type="button" onclick="addAdmin()"
                     class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
                     <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Add Company
+                    Add Admin
                 </button>
             </div>
 
@@ -287,40 +178,23 @@
                                 </svg>
                                 <span>Name</span>
                             </th>
-                            <th class="px-4 py-2">Code</th>
                             <th class="px-4 py-2">Email</th>
-                            <th class="px-4 py-2">Contact</th>
-                            <th class="px-4 py-2">Region</th>
-                            <th class="px-4 py-2">Status</th>
                             <th class="px-4 py-2">Actions</th>
+
+
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
-                        @foreach ($companies as $company)
+                        @foreach ($adminUsers as $admin)
                         <tr>
                             <td class="px-4 py-2">
                                 <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                             </td>
-                            <td class="px-4 py-2">{{ $company->name }}</td>
-                            <td class="px-4 py-2">{{ $company->code }}</td>
-                            <td class="px-4 py-2">{{ $company->email }}</td>
-                            <td class="px-4 py-2">{{ $company->phone }}</td>
-                            <td class="px-4 py-2">{{ $company->nationality }}</td>
-                            <td class="px-4 py-2">
-                                <svg id="toggle-{{ $company->id }}" class="toggle-svg cursor-pointer"
-                                    viewBox="0 0 44 24" width="44" height="24"
-                                    onclick="toggleStatus({{ $company->id }}, '{{ $company->status }}')"
-                                    data-status="{{ $company->status }}">
-                                    <rect id="rect-{{ $company->id }}" width="44" height="24" rx="12"
-                                        fill="{{ $company->status == 1 ? '#00ab55' : '#ccc' }}"></rect>
-                                    <circle id="circle-{{ $company->id }}"
-                                        cx="{{ $company->status == 0 ? '32' : '12' }}" cy="12" r="10" fill="white">
-                                    </circle>
-                                </svg>
-                            </td>
+                            <td class="px-4 py-2">{{ $admin->name }}</td>
+                            <td class="px-4 py-2">{{ $admin->email }}</td>
 
                             <td class="px-4 py-2 flex gap-2">
-                                <a href="{{ route('companiesshow.show', ['id' => $company->id]) }}">
+                                <a href="">
                                     <svg class="dark:fill-white" width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
                                         <path
@@ -331,7 +205,7 @@
                                             fill="currentColor" />
                                     </svg>
                                 </a>
-                                <a href="{{ route('companies.edit', ['id' => $company->id]) }}">
+                                <a href="">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
                                         <path fill-rule="evenodd" clip-rule="evenodd"
@@ -353,13 +227,13 @@
 
     <!-- ./Table Section -->
 
-    <!-- add company modal -->
-    <div id="addCompanyModal" onclick="closeModalIbg(event)"
+    <!-- add admin modal -->
+    <div id="addAdminModal" onclick="closeModalIfClickedOutside(event)"
         class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
         <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
 
             <!-- Close Button (Top Right) -->
-            <button onclick="closeAddCompanyModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+            <button onclick="closeAddAdminModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
                     stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -367,13 +241,12 @@
             </button>
 
             <!-- Modal Title -->
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Add New Company
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Register New Admin
             </h2>
 
             <!-- Modal Form -->
             <!-- Registration Form -->
-            <!-- Registration Form -->
-            <form method="POST" action="{{ route('companies.store') }}">
+            <form method="POST" action="{{ route('register') }}">
                 @csrf
 
                 <!-- Name Field -->
@@ -381,7 +254,7 @@
                     <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
                     <input id="name" name="name" type="text" :value="old('name')" required autofocus autocomplete="name"
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Company Name" />
+                        placeholder="Your Name" />
                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                 </div>
 
@@ -391,109 +264,56 @@
                         class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
                     <input id="email" type="email" name="email" :value="old('email')" required autocomplete="username"
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Company Email" />
+                        placeholder="Your Email" />
                     <x-input-error :messages="$errors->get('email')" class="mt-2" />
                 </div>
-                <!-- phone Field -->
+
+                <!-- Password Field -->
+                <div class="mb-4 relative">
+                    <label for="password"
+                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Password</label>
+
+                    <input id="password" type="password" name="password" required autocomplete="new-password"
+                        class="shadow appearance-none border rounded w-full py-2 pr-10 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        placeholder="Your Password" />
+
+                    <!-- Eye Icon for Toggle -->
+                    <span class="mt-4 absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                        onclick="togglePasswordVisibility()">
+                        <svg id="eyeIcon" class="blackCity" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </span>
+
+                    <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                </div>
+
+
+
+                <!-- Confirm Password Field -->
                 <div class="mb-4">
-                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
-                        Number</label>
-                    <input id="phone" name="phone" type="text" required
+                    <label for="password_confirmation"
+                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Confirm
+                        Password</label>
+                    <input id="password_confirmation" type="password" name="password_confirmation" required
+                        autocomplete="new-password"
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Company Contact" />
+                        placeholder="Confirm Your Password" />
+
+                    <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
                 </div>
-                <!-- country Field -->
-                <div class="mb-4">
-                    <label for="nationality"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Country
-                    </label>
-                    <input id="nationality" name="nationality" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Company country" />
-                </div>
-                <!-- Address Field -->
-                <div class="mb-4">
-                    <label for="address"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                    <input id="address" name="address" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Company Address" />
-                    <x-input-error :messages="$errors->get('address')" class="mt-2" />
-                </div>
-
-                <!-- iata Field -->
-                <div class="mb-4">
-                    <label for="iata_status" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Does
-                        this company
-                        has an
-                        IATA ID?</label>
-                    <div class="flex items-center">
-                        <input type="radio" id="iata_yes" name="iata_status" value="yes" class="mr-2"
-                            onclick="toggleIataInput(true)">
-                        <label for="iata_yes" class="mr-4 text-gray-700 dark:text-gray-300">Yes</label>
-                        <input type="radio" id="iata_no" name="iata_status" value="no" class="mr-2"
-                            onclick="toggleIataInput(false)">
-                        <label for="iata_no" class="text-gray-700 dark:text-gray-300">No</label>
-                    </div>
-                </div>
-
-                <div class="mb-4" id="iata_input" style="display: none;">
-                    <label for="iata" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">IATA
-                        ID</label>
-                    <input id="iata" name="iata" type="text"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Enter IATA ID" />
-                </div>
-
-                <script>
-                function toggleIataInput(show) {
-                    var iataInput = document.getElementById('iata_input');
-                    if (show) {
-                        iataInput.style.display = 'block';
-                    } else {
-                        iataInput.style.display = 'none';
-                    }
-                }
-                </script>
-                <!-- Commercial License Field -->
-                <div class="mb-4">
-                    <label for="commercial_license"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                        Commercial License (PDF)
-                    </label>
-                    <!-- Hidden File Input -->
-                    <input id="commercial_license" name="commercial_license" type="file" accept="application/pdf"
-                        class="hidden">
-                    <!-- Custom Button to Trigger File Input -->
-                    <div class="flex items-center">
-                        <button type="button" onclick="document.getElementById('commercial_license').click()"
-                            class="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                            Choose file...
-                        </button>
-                        <span id="file-name" class="ml-3 text-sm text-gray-500">No file chosen</span>
-                    </div>
-                    <x-input-error :messages="$errors->get('commercial_license')" class="mt-2" />
-                </div>
-
-                <script>
-                document.getElementById('commercial_license').addEventListener('change', function() {
-                    const fileName = this.files[0] ? this.files[0].name : 'No file chosen';
-                    document.getElementById('file-name').textContent = fileName;
-                });
-                </script>
-
-
-
-
-
 
                 <!-- Already Registered Link -->
                 <div class="flex items-center justify-between mt-4">
 
+
                     <!-- Submit Button -->
-                    <x-primary-button class="px-8">
+                    <button
+                        class="w-full px-8 py-2 bg-black text-white font-bold rounded hover:bg-blue-700 focus:outline-none focus:shadow-outline">
                         {{ __('Register') }}
-                    </x-primary-button>
+                    </button>
 
 
                 </div>
@@ -502,17 +322,17 @@
 
         </div>
     </div>
-    <!-- ./add company modal -->
-
+    <!-- ./add admin modal -->
 
     <div class="h-24"></div>
     <script>
     // BSZ95 New code
     document.addEventListener("DOMContentLoaded", function() {
         // Access the data passed from the controller
-        const companiesCount = @json($companiesCount);
-        document.getElementById("totalCompanies").innerText = companiesCount;
+        const NumberOfAdmins = @json($NumberOfAdmins);
+        document.getElementById("totalAdmins").innerText = NumberOfAdmins;
     });
+
 
     document.addEventListener("DOMContentLoaded", function() {
         const selectAllSVG = document.getElementById("selectAllSVG");
@@ -601,6 +421,8 @@
     });
 
 
+
+
     // Toggle status functionality
     function toggleStatus(companyId, currentStatus) {
         // Define the next status
@@ -640,23 +462,26 @@
             });
     }
 
-    function addCompany() {
 
-        document.getElementById('addCompanyModal').classList.remove('hidden');
+
+    function addAdmin() {
+
+        document.getElementById('addAdminModal').classList.remove('hidden');
     }
 
-    function closeAddCompanyModal() {
+    function closeAddAdminModal() {
         // Hide the modal when "Cancel" is clicked
-        document.getElementById('addCompanyModal').classList.add('hidden');
+        document.getElementById('addAdminModal').classList.add('hidden');
     }
 
-    function closeModalIbg(event) {
+    function closeModalIfClickedOutside(event) {
         // Close the modal if the user clicks outside of the modal content
-        const modalContent = document.querySelector('#addCompanyModal > div');
+        const modalContent = document.querySelector('#addAdminModal > div');
         if (!modalContent.contains(event.target)) {
-            closeAddCompanyModal();
+            closeAddAdminModal();
         }
     }
+
 
     // BSZ95 New code ./
 

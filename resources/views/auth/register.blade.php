@@ -1,8 +1,8 @@
 <x-guest-layout>
     <!-- Form and Image Section -->
-    <div class="flex justify-center items-center">
+    <div class="bg-slate-400 h-screen flex items-center justify-center">
         <div
-            class="mt-20 panel flex flex-col lg:flex-row justify-between items-stretch w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+            class=" mt-20 panel flex flex-col lg:flex-row justify-between items-stretch w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
 
             <!-- Image Section -->
             <div class="w-full lg:w-2/5 h-96 lg:h-auto">
@@ -82,14 +82,13 @@
 
                         <!-- Already Registered Link -->
                         <div class="flex items-center justify-between mt-4">
-                            <a href="{{ route('login') }}">
-                                {{ __('Already registered?') }}
-                            </a>
+
 
                             <!-- Submit Button -->
-                            <x-primary-button class="px-8">
+                            <button
+                                class="w-full px-8 py-2 bg-black text-white font-bold rounded hover:bg-blue-700 focus:outline-none focus:shadow-outline">
                                 {{ __('Register') }}
-                            </x-primary-button>
+                            </button>
 
 
                         </div>

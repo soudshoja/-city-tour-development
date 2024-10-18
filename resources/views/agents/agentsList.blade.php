@@ -248,16 +248,97 @@
 
 
                 <!-- Add User Button -->
-                <a href="{{ route('agentsnew.new') }}" class="h-12">
-                    <button type="button"
-                        class="h-full flex items-center px-4 py-2 bg-black text-white dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 focus:outline-none">
-                        <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add agent
-                    </button>
-                </a>
+                <button type="button" onclick="addAgent()"
+                    class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
+                    <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Agent
+                </button>
+
+                <!-- add Agent modal -->
+                <div id="addAgentModal" onclick="closeModalIbgagent(event)"
+                    class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
+                    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+
+                        <!-- Close Button (Top Right) -->
+                        <button onclick="closeAddAgentModal()"
+                            class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+
+                        <!-- Modal Title -->
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Register New
+                            Agent
+                        </h2>
+
+                        <!-- Modal Form -->
+                        <!-- Registration Form -->
+                        <form method="POST" action="{{ route('agents.store') }}">
+                            @csrf
+
+                            @csrf
+                            <!-- Name Field -->
+                            <div class="mb-4">
+                                <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                                <input id="name" name="name" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Agent Name" />
+                            </div>
+
+                            <!-- Email Address -->
+                            <div class="mb-4">
+                                <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                                <input id="email" name="email" type="email" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Agent Email" />
+                            </div>
+
+
+
+
+                            <!-- phone Field -->
+                            <div class="mb-4">
+                                <label for="phone_number" class="block text-gray-700 text-sm font-bold mb-2">Phone
+                                    Number</label>
+                                <input id="phone_number" name="phone_number" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Phone Number" />
+                            </div>
+
+
+
+
+                            <!-- Agent Type -->
+                            <div class="mb-4">
+                                <label for="type" class="block text-gray-700 text-sm font-bold mb-2">Type</label>
+                                <select id="type" name="type" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="staff">Staff</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+
+                            <!-- Already Registered Link -->
+                            <div class="flex items-center justify-between mt-4">
+                                <!-- Submit Button -->
+                                <x-primary-button class="px-8">
+                                    {{ __('Register') }}
+                                </x-primary-button>
+
+                            </div>
+                        </form>
+                        <!-- ./Registration Form -->
+
+                    </div>
+                </div>
+                <!-- ./add Agent modal -->
+
             </div>
 
 
@@ -480,6 +561,28 @@
         };
     });
 
+
+
+
+
+
+    function addAgent() {
+
+        document.getElementById('addAgentModal').classList.remove('hidden');
+    }
+
+    function closeAddAgentModal() {
+        // Hide the modal when "Cancel" is clicked
+        document.getElementById('addAgentModal').classList.add('hidden');
+    }
+
+    function closeModalIbgagent(event) {
+        // Close the modal if the user clicks outside of the modal content
+        const modalContent = document.querySelector('#addAgentModal > div');
+        if (!modalContent.contains(event.target)) {
+            closeAddAgentModal();
+        }
+    }
 
 
 

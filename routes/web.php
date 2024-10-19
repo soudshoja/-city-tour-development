@@ -93,10 +93,18 @@ Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('co
 Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
 Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
 
-Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index');
+// Route to list all tasks, e.g., for company role or all agents
 Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+
+// Route to list tasks for a specific agent by ID
+Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
+
+// Route for uploading tasks (GET for form view)
 Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
+
+// Route for importing tasks (POST for form submission)
 Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+
 // Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 //     Route::get('login/otp', [OTPController::class, 'show'])->name('login.otp');
 //     Route::post('login/otp', [OTPController::class, 'check']);

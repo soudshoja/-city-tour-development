@@ -221,19 +221,110 @@
                     </svg>
                 </div>
 
-
-
                 <!-- Add User Button -->
-                <a href="{{ route('companiesnew.new') }}" class="h-12">
-                    <button type="button"
-                        class="h-full flex items-center px-4 py-2 bg-black text-white dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 focus:outline-none">
-                        <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Client
-                    </button>
-                </a>
+                <button type="button" onclick="addClient()"
+                    class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
+                    <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Client
+                </button>
+
+                <!-- add  modal -->
+                <div id="addClientModal" onclick="closeModalIbgC(event)"
+                    class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
+                    <div class="bg-white rounded-lg shadow-lg max-w-xl w-full relative">
+
+                        <div class="h-24 bg-black bg-cover bg-center"
+                            style="background-image: url('{{ asset('images/registeruser.jpg') }}');">
+                            <!-- Close Button (Top Right) -->
+                            <button onclick="closeAddClientModal()"
+                                class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                    stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-6">
+
+                            <!-- Modal Title -->
+                            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Register
+                                New
+                                Client
+                            </h2>
+
+                            <!-- Modal Form -->
+                            <!-- Registration Form -->
+                            <form method="POST" action="{{ route('clients.store') }}">
+                                @csrf
+
+                                <!-- Name Field -->
+                                <div class="mb-4">
+                                    <label for="name"
+                                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                    <input id="name" name="name" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Name" />
+                                </div>
+
+                                <!-- Email and Phone Fields -->
+                                <div class="mb-4 flex space-x-4">
+                                    <!-- Email Field -->
+                                    <div class="w-1/2">
+                                        <label for="email"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                        <input id="email" name="email" type="email" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Client Email" />
+                                    </div>
+
+                                    <!-- Phone Field -->
+                                    <div class="w-1/2">
+                                        <label for="phone"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                        <input id="phone" name="phone" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Client Phone" />
+                                    </div>
+                                </div>
+
+
+
+                                <!-- Passport Field -->
+                                <div class="mb-4">
+                                    <label for="passport_no"
+                                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport
+                                        Number</label>
+                                    <input id="passport_no" name="passport_no" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Passport Number" />
+                                </div>
+
+                                <!-- Email Field -->
+                                <div class="mb-4">
+                                    <label for="agent_email"
+                                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent
+                                        Email</label>
+                                    <input id="agent_email" name="agent_email" type="email" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Agent Email" />
+                                </div>
+
+
+                                <!-- Submit Button -->
+                                <div class="flex items-center justify-center">
+                                    <x-primary-button class="px-8 text-center">
+                                        {{ __('Register') }}
+                                    </x-primary-button>
+                                </div>
+                            </form>
+                            <!-- ./Registration Form -->
+                        </div>
+                    </div>
+                </div>
+                <!-- ./add  modal -->
             </div>
 
 
@@ -323,5 +414,26 @@
             </div>
         </div>
     </div>
+
+
+    <script>
+    function addClient() {
+
+        document.getElementById('addClientModal').classList.remove('hidden');
+    }
+
+    function closeAddClientModal() {
+        // Hide the modal when "Cancel" is clicked
+        document.getElementById('addClientModal').classList.add('hidden');
+    }
+
+    function closeModalIbgC(event) {
+        // Close the modal if the user clicks outside of the modal content
+        const modalContent = document.querySelector('#addClientModal > div');
+        if (!modalContent.contains(event.target)) {
+            closeAddClientModal();
+        }
+    }
+    </script>
 
 </x-app-layout>

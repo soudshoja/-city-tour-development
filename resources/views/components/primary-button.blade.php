@@ -7,7 +7,7 @@
 
 <button {{ $attributes->merge([
     'type' => 'submit',
-    'class' => 'btn btn-primary'
+    'class' => 'h-full flex items-center px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none'
     ]) }}>
     {{ $slot }}
 </button>

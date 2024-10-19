@@ -14,34 +14,57 @@ use Illuminate\Support\Facades\Redirect;
 
 class TaskController extends Controller
 {
-    public function index($id = null)
-    {
+  public function index($id = null)
+{
+    $user = Auth::user();
+    
+    // Initialize agent variable as null by default
+    $agent = null;
 
-    
-        $user = Auth::user();
-        
-        // Check if the agent exists
-        $agent = Agent::find($id); // This will get the full agent record
-    
-        if (!$agent) {
-            return redirect()->back()->with('error', 'Agent not found.'); // Handle the case where the agent does not exist
+    // If the user is an admin
+    if ($user->role == 'admin') {
+        // Admin can see all tasks
+        $tasks = Task::with('agent.company', 'client')->paginate(6);
+    } 
+    // If the user is a company
+    elseif ($user->role == 'company') {
+        // Get all agents under the logged-in company
+        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+
+        // Get all tasks for those agents
+        $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(6);
+    } 
+    // If the user is an agent
+    elseif ($user->role == 'agent') {
+        if ($id) {
+            // If $id is provided, find the agent
+            $agent = Agent::find($id);
+            if ($agent) {
+                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
+            } else {
+                return redirect()->back()->with('error', 'Agent not found.');
+            }
+        } else {
+            // If $id is not provided, use the logged-in agent
+            $agent = $user->agent;
+            if ($agent) {
+                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
+            } else {
+                return redirect()->back()->with('error', 'Agent not found.');
+            }
         }
-    
-        // Continue with your logic based on user roles
-        if ($user->role == 'admin') {
-            // Admin can see all trips and tasks
-            $tasks = Task::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role == 'company') {
-            // Company can only see trips with tasks under their agents
-            $agents = Agent::where('company_id', $user->company->id)->pluck('id');
-            $tasks = Task::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role == 'agent') {
-            // Agent can see their tasks
-            $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
-        }
-    
-        return view('tasks.tasksList', compact('tasks', 'agent'));
+    } 
+    else {
+        return redirect()->back()->with('error', 'Unauthorized access.');
     }
+
+    // In case no tasks are set, initialize tasks as empty to prevent undefined errors
+    $tasks = $tasks ?? collect();
+
+    return view('tasks.tasksList', compact('tasks', 'agent'));
+}
+
+
        
 
     public function upload()

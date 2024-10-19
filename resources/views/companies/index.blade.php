@@ -1,5 +1,51 @@
 <x-app-layout>
 
+    <style>
+    /* Apply dark mode specific styles only */
+    @media (prefers-color-scheme: dark) {
+        .dark-scrollbar {
+            scrollbar-width: thin;
+            /* Firefox */
+            scrollbar-color: #444 #2d2d2d;
+            /* Firefox */
+        }
+
+        .dark-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            /* Width for Webkit browsers */
+        }
+
+        .dark-scrollbar::-webkit-scrollbar-track {
+            background: #2d2d2d;
+            /* Dark mode track color */
+        }
+
+        .dark-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #444;
+            /* Dark mode thumb color */
+            border-radius: 6px;
+        }
+    }
+
+    /* Remove custom scrollbar styles in light mode */
+    .dark-scrollbar {
+        scrollbar-width: auto;
+        /* Reset for light mode */
+        scrollbar-color: initial;
+        /* Reset for light mode */
+    }
+
+    .dark-scrollbar::-webkit-scrollbar {
+        width: auto;
+        /* Reset width for light mode */
+    }
+
+    .dark-scrollbar::-webkit-scrollbar-track,
+    .dark-scrollbar::-webkit-scrollbar-thumb {
+        background: initial;
+        /* Reset colors for light mode */
+    }
+    </style>
 
 
 
@@ -106,7 +152,7 @@
                         class="ml-2 text-primary"></span>
                 </p>
                 <div id="Income-content" class="relative overflow-hidden">
-                    <div x-ref="revenueChart" id="revenueChart" class="rounded-lg bg-white dark:bg-black"
+                    <div x-ref="revenueChart" id="revenueChart" class="rounded-lg bg-white dark:bg-[#0e1726]"
                         style="min-height: 340px;"></div>
 
                     <div class="flex justify-center gap-2">
@@ -160,7 +206,7 @@
                     <i class="p-1 fas cursor-pointer fa-chevron-down" id="toggle-icon"></i>
 
                 </div>
-                <div class="content" id="toggle-content">
+                <div class="" id="toggle-content">
                     <!-- Content that you want to show or hide goes here -->
                     <div class="flex space-x-6 justify-between">
 
@@ -194,7 +240,7 @@
                             <h5 class="pt-5 text-lg font-semibold"><span class="text-primary">Users</span> Activity</h5>
 
                         </div>
-                        <div class="perfect-scrollbar relative -mr-3 h-[360px] pr-3 ps overflow-y-auto">
+                        <div class="perfect-scrollbar relative -mr-3 h-[360px] pr-3 ps overflow-y-auto dark-scrollbar">
                             <div class="space-y-7">
                                 <div class="flex">
                                     <div

@@ -1,14 +1,12 @@
 <x-app-layout>
 
-
-
     <!-- Second Section: Form and Image -->
     <div class="flex justify-center items-center">
         <div
-            class="mt-5 panel flex flex-col lg:flex-row justify-between items-stretch w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+            class="mt-5 panel p-0 flex flex-col lg:flex-row justify-between items-stretch w-full max-w-4xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
 
             <!-- Image Section -->
-            <div class="w-full  h-96 lg:h-auto">
+            <div class="w-full lg:w-2/5 h-80 lg:h-auto">
                 <img src="{{ asset('images/registeruser.jpg') }}" alt="" class="w-full h-full object-cover" />
             </div>
 
@@ -23,7 +21,8 @@
                         @csrf
                         <!-- Name Field -->
                         <div class="mb-4">
-                            <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                            <label for="name"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
                             <input id="name" name="name" type="text" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Agent Name" />
@@ -31,29 +30,28 @@
 
                         <!-- Email Address -->
                         <div class="mb-4">
-                            <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                            <label for="email"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
                             <input id="email" name="email" type="email" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Agent Email" />
                         </div>
 
-
-
-
-                        <!-- phone Field -->
+                        <!-- Phone Field -->
                         <div class="mb-4">
-                            <label for="phone_number" class="block text-gray-700 text-sm font-bold mb-2">Phone
+                            <label for="phone_number"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
                                 Number</label>
                             <input id="phone_number" name="phone_number" type="text" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Phone Number" />
                         </div>
 
-
                         @if(Auth()->user()->role === 'admin')
-                        <!-- agent -->
+                        <!-- Company Selection -->
                         <div class="mb-4">
-                            <label for="agent_id" class="block text-gray-700 text-sm font-bold mb-2">Company</label>
+                            <label for="company_id"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Company</label>
                             <select id="company_id" name="company_id" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                                 <option value="" disabled selected>Select a company</option>
@@ -66,7 +64,8 @@
 
                         <!-- Agent Type -->
                         <div class="mb-4">
-                            <label for="type" class="block text-gray-700 text-sm font-bold mb-2">Type</label>
+                            <label for="type"
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Type</label>
                             <select id="type" name="type" required
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                                 <option value="staff">Staff</option>
@@ -78,10 +77,9 @@
                         <!-- Already Registered Link -->
                         <div class="flex items-center justify-between mt-4">
                             <!-- Submit Button -->
-                            <x-primary-button class="px-8">
+                            <x-primary-button>
                                 {{ __('Register') }}
                             </x-primary-button>
-
                         </div>
                     </form>
                 </div>
@@ -91,4 +89,7 @@
 
 
 
+
+
+    <div class="h-24"></div>
 </x-app-layout>

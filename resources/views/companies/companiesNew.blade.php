@@ -1,9 +1,9 @@
 <x-app-layout>
 
     <!-- Form and Image Section -->
-    <div class="flex justify-center items-center">
+    <div class="flex justify-center items-center overflow-y-auto">
         <div
-            class="mt-20  flex flex-col lg:flex-row justify-between items-stretch w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+            class="mt-10 flex flex-col lg:flex-row justify-between items-stretch w-full max-w-7xl bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
 
             <!-- Image Section -->
             <div class="w-full lg:w-2/5 h-96 lg:h-auto">
@@ -151,6 +151,8 @@
             </div>
         </div>
     </div>
+
+    <div class="h-24"></div>
     <script>
     function togglePasswordVisibility() {
         var passwordField = document.getElementById('password');

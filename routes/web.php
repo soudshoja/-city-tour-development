@@ -131,6 +131,8 @@ Route::group([
 });
 
 // INVOICE
+Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgentsInvoices'])->name('invoices.company.agents');
+
 Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
 Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');

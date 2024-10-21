@@ -104,6 +104,8 @@ Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload
 
 // Route for importing tasks (POST for form submission)
 Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+Route::get('/tasks/{id}', [TaskController::class, 'show'])->name('tasks.show');
+
 
 // Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 //     Route::get('login/otp', [OTPController::class, 'show'])->name('login.otp');

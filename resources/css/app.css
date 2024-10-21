@@ -11,6 +11,10 @@ body {
     color: #3273b4;
 }
 
+.CheckBoxColor {
+    color: #bec7e3 !important;
+}
+
 /* Custom class for centering text on mobile and left-aligned on larger screens */
 .text-center-mobile-left-desktop {
     text-align: center; /* Center on mobile by default */
@@ -450,4 +454,46 @@ table thead tr {
     .CityMobileTable {
         min-width: 160%;
     }
+}
+
+#searchInput:focus {
+    outline: none !important;
+    /* Removes the blue outline */
+    box-shadow: none !important;
+    /* Removes any focus box-shadow */
+    border-color: inherit !important;
+    /* Keeps the border color unchanged */
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    /* For Firefox */
+    scrollbar-color: #bec7e3 #edf2f7;
+    /* Thumb color and track color for Firefox */
+}
+
+/* WebKit browsers (Chrome, Safari, etc.) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    /* Width of the scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #bec7e3;
+    /* Track color */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #4fd1c5;
+    /* Thumb color */
+    border-radius: 10px;
+    /* Rounded edges */
+    border: 2px solid #edf2f7;
+    /* Adds a little padding around the thumb */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #000;
+    /* Thumb color on hover */
 }

@@ -1,73 +1,11 @@
 <x-app-layout>
 
 
-
-
-    <style>
-    #searchInput:focus {
-        outline: none !important;
-        /* Removes the blue outline */
-        box-shadow: none !important;
-        /* Removes any focus box-shadow */
-        border-color: inherit !important;
-        /* Keeps the border color unchanged */
-    }
-
-    .CheckBoxColor {
-        color: #bec7e3 !important;
-    }
-
-    /* Custom scrollbar styling for webkit browsers */
-    .custom-scrollbar {
-        scrollbar-width: thin;
-        /* For Firefox */
-        scrollbar-color: #bec7e3 #edf2f7;
-        /* Thumb color and track color for Firefox */
-    }
-
-    /* WebKit browsers (Chrome, Safari, etc.) */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 8px;
-        /* Width of the scrollbar */
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: #bec7e3;
-        /* Track color */
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: #4fd1c5;
-        /* Thumb color */
-        border-radius: 10px;
-        /* Rounded edges */
-        border: 2px solid #edf2f7;
-        /* Adds a little padding around the thumb */
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: #000;
-        /* Thumb color on hover */
-    }
-
-    .mt07 {
-        margin-top: 0.7rem !important;
-    }
-
-    @media screen and (min-width: 1024px) {
-        .mt07 {
-            margin-top: 0 !important;
-        }
-
-    }
-    </style>
-
-
     <div class="p-3">
         <!-- Breadcrumbs -->
         <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
             <li>
-                <a href="{{ route('dashboard') }}" class="text-primary hover:underline">Dashboard</a>
+                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
             </li>
             <li class="before:content-['/'] before:mr-1 ">
                 <span>Agents List</span>

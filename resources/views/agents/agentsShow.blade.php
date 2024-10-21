@@ -79,9 +79,9 @@
 
 
             <!-- Agent Details -->
-            <div class="panel h-full overflow-hidden border-0 p-0 w-[100%] md:w-[25%] mt-5 sm:mt-0">
+            <div class="panel overflow-hidden border-0 p-0 w-[100%] md:w-[25%] mt-5 sm:mt-0">
 
-                <div class="min-h-[190px] bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
+                <div class="h-full bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
                     <div class="mb-6 flex items-center justify-between">
                         <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white pr-3 ">
                             <x-application-logo
@@ -310,7 +310,7 @@
     </div><!-- ./p-3 -->
 
 
-
+    <div class="h-24"></div>
 
 
     <script>

@@ -14,54 +14,53 @@ use Illuminate\Support\Facades\Redirect;
 
 class TaskController extends Controller
 {
-  public function index($id = null)
+public function index($id = null)
 {
     $user = Auth::user();
-    
-    // Initialize agent variable as null by default
     $agent = null;
+    $taskCount = 0;
 
-    // If the user is an admin
     if ($user->role == 'admin') {
-        // Admin can see all tasks
         $tasks = Task::with('agent.company', 'client')->paginate(6);
+        $taskCount = Task::count(); // Total task count for admin
     } 
-    // If the user is a company
     elseif ($user->role == 'company') {
-        // Get all agents under the logged-in company
         $agents = Agent::where('company_id', $user->company->id)->pluck('id');
-
-        // Get all tasks for those agents
         $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(6);
+        $taskCount = Task::whereIn('agent_id', $agents)->count(); // Task count for the company
     } 
-    // If the user is an agent
     elseif ($user->role == 'agent') {
         if ($id) {
-            // If $id is provided, find the agent
             $agent = Agent::find($id);
             if ($agent) {
                 $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
+                $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for a specific agent
             } else {
                 return redirect()->back()->with('error', 'Agent not found.');
             }
         } else {
-            // If $id is not provided, use the logged-in agent
             $agent = $user->agent;
             if ($agent) {
                 $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
+                $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
             } else {
                 return redirect()->back()->with('error', 'Agent not found.');
             }
         }
-    } 
-    else {
+    } else {
         return redirect()->back()->with('error', 'Unauthorized access.');
     }
 
-    // In case no tasks are set, initialize tasks as empty to prevent undefined errors
     $tasks = $tasks ?? collect();
 
-    return view('tasks.tasksList', compact('tasks', 'agent'));
+    return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount')); // Pass task count to the view
+}
+
+public function show($id)
+{
+    $task = Task::with('agent.company', 'client')->findOrFail($id);
+
+    return view('tasks.singleTask', compact('task'));
 }
 
 

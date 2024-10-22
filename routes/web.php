@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskController;
 
 // Home route
@@ -23,15 +24,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/', function () {
         $user = auth()->user(); // Get the authenticated user
-        
-        if ($user->role == 'agent') {
-            return app(ItemController::class)->index(); 
-        } elseif ($user->role == 'admin') {
-            return app(DashboardController::class)->index(); 
-        } elseif ($user->role == 'company') {
-            return app(CompanyController::class)->dashboard(); 
-        }
 
+        if ($user->role == 'agent') {
+            return app(ItemController::class)->index();
+        } elseif ($user->role == 'admin') {
+            return app(DashboardController::class)->index();
+        } elseif ($user->role == 'company') {
+            return app(CompanyController::class)->dashboard();
+        }
     })->middleware(['auth'])->name('dashboard');
 
     Route::post('verify2fa', function () {
@@ -91,11 +91,6 @@ Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.index')
 Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
 Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
-// Route::middleware(['auth', 'throttle:60,1'])->group(function () {
-//     Route::get('login/otp', [OTPController::class, 'show'])->name('login.otp');
-//     Route::post('login/otp', [OTPController::class, 'check']);
-// });
-
 
 Route::get('pin', function () {
     return view('auth.pin');
@@ -183,5 +178,9 @@ Route::get('/download-client', function () {
 })->name('download.client');
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 
+
+//ROLE
+Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+Route::get('/create-role', [RoleController::class, 'create'])->name('roles.create');
 
 require __DIR__ . '/auth.php';

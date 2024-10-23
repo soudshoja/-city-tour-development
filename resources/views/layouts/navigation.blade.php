@@ -830,18 +830,23 @@
          <!-- Page Content -->
          <main class="p-4 mobile-m-5 ">
              <!-- Your main content goes here -->
-             {{ $slot }}
-             @if($errors->any())
-             @foreach($errors->all() as $error)
-             <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                 {{ $error }}
-                 <button type="button" class="close text-white ml-2" aria-label="Close"
-                     onclick="this.parentElement.style.display='none';">
-                     <span aria-hidden="true">&times;</span>
-                 </button>
+             <div class="p-3">
+                 {{ $slot }}
+                 @if($errors->any())
+                 @foreach($errors->all() as $error)
+                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                     {{ $error }}
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+                 @endforeach
+                 @endif
              </div>
-             @endforeach
-             @endif
+
+             <div class="h-24"></div>
+
          </main>
 
 

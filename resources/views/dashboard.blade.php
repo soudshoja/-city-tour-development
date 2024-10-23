@@ -2,7 +2,7 @@
 
     @if(Auth()->user()->role === 'admin')
 
-    <div class="p-3">
+    <div>
 
 
     </div>

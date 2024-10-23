@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="p-3">
+    <div>
         <!-- Breadcrumbs -->
         <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
             <li>

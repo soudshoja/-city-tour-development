@@ -1,4 +1,14 @@
 <x-app-layout>
+
+
+    @if(isset($error))
+    <div class="alert alert-danger">{{ $error }}</div>
+    @else
+    <!-- Display your content as usual -->
+    @endif
+
+
+
     <div class="bg-gray-300 font-sans leading-normal tracking-normal h-screen flex">
         <div class="w-1/4 p-6 bg-white shadow-lg overflow-y-auto">
             <h2 class="text-xl font-bold mb-4">Chart of Accounts</h2>
@@ -12,7 +22,8 @@
                         <li onclick="showDetails('cash-and-cash-equivalents')" class="cursor-pointer">Cash and Cash
                             Equivalents</li>
                         <li onclick="showDetails('accounts-receivable')" class="cursor-pointer">Accounts Receivable
-                            <span id="receivable-count" class="text-sm text-gray-500">(0)</span></li>
+                            <span id="receivable-count" class="text-sm text-gray-500">(0)</span>
+                        </li>
                         <ul id="accounts-receivable-list" class="details pl-4 hidden">
                             <!-- Client names will be populated here -->
                         </ul>
@@ -97,6 +108,7 @@
         </div>
 
     </div>
+
 
     <script>
     let invoices = @json($invoices);

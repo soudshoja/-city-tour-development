@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Task;
 use App\Models\Item;
+use App\Models\Agent;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
-use App\Models\Agent;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-
+use Illuminate\Models\Suppliers;
 class TaskController extends Controller
 {
 public function index($id = null)
@@ -21,27 +21,30 @@ public function index($id = null)
     $taskCount = 0;
 
     if ($user->role == 'admin') {
-        $tasks = Task::with('agent.company', 'client')->paginate(6);
+        $tasks = Task::with('agent.company', 'client')->get(); // Retrieve all tasks for admin
         $taskCount = Task::count(); // Total task count for admin
     } 
     elseif ($user->role == 'company') {
-        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
-        $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(6);
-        $taskCount = Task::whereIn('agent_id', $agents)->count(); // Task count for the company
+        $agents = Agent::all();
+   
+         // Get all agents for this company
+        $agentIds = $agents->pluck('id'); // Get all agents for this company
+        $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+        $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
     } 
     elseif ($user->role == 'agent') {
         if ($id) {
             $agent = Agent::find($id);
             if ($agent) {
-                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
-                $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for a specific agent
+                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
+                $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
             } else {
                 return redirect()->back()->with('error', 'Agent not found.');
             }
         } else {
             $agent = $user->agent;
             if ($agent) {
-                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->paginate(6);
+                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
                 $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
             } else {
                 return redirect()->back()->with('error', 'Agent not found.');
@@ -51,29 +54,50 @@ public function index($id = null)
         return redirect()->back()->with('error', 'Unauthorized access.');
     }
 
-    $tasks = $tasks ?? collect();
+    $tasks = $tasks ?? collect(); // Ensure $tasks is not null
 
-    return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount')); // Pass task count to the view
+    // dd($tasks, $agent, $agents, $taskCount);
+    return view('tasks.tasksList', compact('tasks', 'agent','agents', 'taskCount')); // Pass the tasks and task count to the view
 }
+
 
 public function show($id)
 {
     $task = Task::with('agent.company', 'client')->findOrFail($id);
-
     return view('tasks.singleTask', compact('task'));
 }
 
 
-       
+// edit and update tasks
 
-    public function upload()
-    {
-        $tasks = Task::all();
+public function edit($id)
+{
+    // Include both 'agent' and 'client' in the query
+    $task = Task::with(['agent', 'client'])->findOrFail($id);
+    return view('tasks.update', compact('task'));
+}
 
-        return view('tasks.tasksUpload', compact('tasks'));
-    }
 
-    public function import(Request $request)
+public function update(Request $request, $id)
+{
+    // Validate the form fields
+
+    // Find the task
+    $task = Task::findOrFail($id);
+
+    // Update task data
+    $task->update($request->only(['status', 'type', 'tax', 'price', 'client_name', 'agent_id']));
+
+    // Redirect back with success message
+    return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
+}
+
+
+
+
+   
+
+public function import(Request $request)
     {
         $request->validate([
             'excel_file' => 'required|mimes:xlsx',
@@ -84,7 +108,7 @@ public function show($id)
         return redirect()->back()->with('success', 'Tasks imported successfully.');
     }
 
-    public function getTaskbyItemId($itemId)
+public function getTaskbyItemId($itemId)
     {
         $tasks = Task::where('item_id', $itemId)->get();
 
@@ -99,7 +123,7 @@ public function show($id)
         ], 200);
     }
 
-    public function exportCsv()
+public function exportCsv()
     {
         // Fetch all agents data
         $tasks = Task::with('agent')->get();

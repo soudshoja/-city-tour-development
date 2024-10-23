@@ -13,6 +13,8 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
+use App\Http\Controllers\CoaController;
+use App\Http\Controllers\SupplierController;
 
 
 // Home route
@@ -95,6 +97,14 @@ Route::post('/company/{company}/toggle-status', [CompanyController::class, 'togg
 
 // Route to list all tasks, e.g., for company role or all agents
 Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+Route::get('/tasks/{id}/edit', [TaskController::class, 'edit'])->name('task.edit');
+Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+
+// verdors routes
+Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
+
+
+
 
 // Route to list tasks for a specific agent by ID
 Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
@@ -154,6 +164,9 @@ Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.u
 Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
 Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
 
+
+// Account
+Route::get('/coa/accounts', action: [CoaController::class, 'accounts'])->name('coa.accounts');
 
 
 Route::get('/download-company', function () {

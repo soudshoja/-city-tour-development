@@ -27,6 +27,7 @@
 </head>
 
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100">
+
     <div x-data="{ sidebarOpen: false }" class="flex md:h-screen">
         <!-- Sidebar -->
         @include('layouts.sidebar')

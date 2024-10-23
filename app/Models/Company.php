@@ -12,7 +12,7 @@ class Company extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'user_id','status', 'code', 'email', 'address', 'phone', 'nationality','status'];
+    protected $fillable = ['name', 'user_id','status', 'code', 'email', 'address', 'phone', 'nationality'];
 
     public function agents()
     {

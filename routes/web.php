@@ -110,7 +110,7 @@ Route::group([
 });
 
 // INVOICE
-Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+Route::get('/invoice-create', [InvoiceController::class, 'create'])->name('invoice.create');
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
 Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
@@ -180,7 +180,8 @@ Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('client
 
 
 //ROLE
-Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
-Route::get('/create-role', [RoleController::class, 'create'])->name('roles.create');
+Route::get('/role', [RoleController::class, 'index'])->name('role.index');
+Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
+Route::get('/permission', [RoleController::class, 'permission'])->name('role.permission');
 
 require __DIR__ . '/auth.php';

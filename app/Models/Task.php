@@ -10,28 +10,25 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = [
-        'description',
+        'additional_info',
         'status',
-        'contract_id',
-        'ext_id',
-        'agent_email',
-        'client_email',
-        'task_type',
-        'item_id',
+        'price',
+        'surcharge',
+        'total',
+        'tax',
+        'reference',
+        'type',
         'agent_id',
         'client_id',
+        'supplier_id',
         'client_name',
-        'client_phone'
+        'cancellation_policy',
+        'venue'
     ];
 
     public function invoices()
     {
         return $this->belongsToMany(Invoice::class);
-    }
-
-    public function item()
-    {
-        return $this->belongsTo(Item::class,'item_id');
     }
 
     public function agent()
@@ -43,4 +40,12 @@ class Task extends Model
     {
         return $this->belongsTo(Client::class, 'client_id');
     }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Suppliers::class, 'supplier_id');
+    }
+
+    public $timestamps = false;
+
 }

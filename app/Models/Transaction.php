@@ -16,6 +16,7 @@ class Transaction extends Model
         'transaction_amount',
         'payment_type',
         'transaction_details',
+        'created_at',
     ];
 
     // Define the relationship to the Invoice model

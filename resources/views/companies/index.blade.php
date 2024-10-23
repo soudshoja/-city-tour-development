@@ -59,7 +59,7 @@
 
 
 
-    <div class="p-3">
+    <div>
         <!-- main content -->
         <!-- Tasks Revenue -->
         <div class="flex gap-4 mb-5">
@@ -406,8 +406,6 @@
         </div>
         <!-- ./ second row -->
     </div>
-
-    <div class="h-24"></div>
 
 
 

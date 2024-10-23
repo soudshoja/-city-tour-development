@@ -67,7 +67,7 @@ class DashboardController extends Controller
     
             return [
                 'name' => $agent->name,
-                'companyName' => $agent->company->name,
+                // 'companyName' => $agent->company->name,
                 'taskCount' => $taskCount,
                 'totalInvoices' => $totalInvoices,
                 'pendingTasks' => $pendingTasks,

@@ -152,7 +152,6 @@
         </div>
     </div>
 
-    <div class="h-24"></div>
     <script>
     function togglePasswordVisibility() {
         var passwordField = document.getElementById('password');

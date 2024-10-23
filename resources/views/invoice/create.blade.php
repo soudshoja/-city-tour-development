@@ -480,5 +480,4 @@
     <!-- end main content section -->
 
 
-    <div class="h-24"></div>
 </x-app-layout>

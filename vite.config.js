@@ -10,7 +10,6 @@ export default defineConfig({
                 "resources/css/animate.css",
                 "resources/js/dashboard.js",
                 "resources/js/app.js",
-                "resources/js/CityJs.js",
             ],
             refresh: true,
         }),

@@ -69,7 +69,7 @@
 
 
 
-    <div class="font-sans leading-normal tracking-normal flex">
+    <div class="font-sans leading-normal tracking-normal flex flex-shrink-0">
         <div class="w-1/4 p-6 bg-gray-300 rounded-lg shadow-lg overflow-y-auto m-2">
             <!-- Search Input Field -->
             <div class="COA"> <input type="text" style="background-color: #23327a47;"
@@ -146,15 +146,14 @@
                 <div class="panel h-full overflow-hidden border-0 p-0">
                     <div class="min-h-[190px] bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
                         <div class="mb-6 flex items-center justify-between">
-                            <div
-                                class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white ltr:pr-3 ">
+                            <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white pr-3 ">
                                 <x-application-logo
-                                    class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 " />
+                                    class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover mr-1 " />
 
                                 <h3 class="px-2">{{ Auth::user()->name }}</h3>
                             </div>
                             <button type="button"
-                                class="flex h-9 w-9 items-center justify-between rounded-md bg-black text-white hover:opacity-80 ltr:ml-auto ">
+                                class="flex h-9 w-9 items-center justify-between rounded-md bg-black text-white hover:opacity-80 ml-auto ">
                                 <svg class="m-auto h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"
                                     fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -171,7 +170,7 @@
                         </div>
 
                     </div>
-                    <div class="-mt-12 grid grid-cols-2 gap-2 px-8">
+                    <div class="mb-5 -mt-12 grid grid-cols-2 gap-2 px-8">
                         <div class="rounded-md bg-white px-4 py-2.5 shadow dark:bg-[#060818]">
                             <span class="mb-4 flex items-center justify-between dark:text-white">Received
                                 <svg class="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none"
@@ -204,7 +203,7 @@
 
                 </div>
             </div>
-            <div class="p-6 bg-gray-300 rounded-lg shadow-lg h-screen">
+            <div class="MaxCOAHight overflow-y-auto p-6 bg-gray-300 rounded-lg shadow-lg h-screen">
                 <h2 id="details-title" class="text-xl font-bold mb-4">Details</h2>
                 <div id="details-content" class="space-y-4">
                     <p>Select an invoice to view details.</p>

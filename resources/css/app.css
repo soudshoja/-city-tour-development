@@ -532,3 +532,6 @@ select:focus {
     color: #f7f9fc !important;
     /* This ensures the color applies */
 }
+.MaxCOAHight {
+    max-height: 30rem;
+}

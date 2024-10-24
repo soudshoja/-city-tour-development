@@ -415,10 +415,6 @@ table thead tr {
     border-width: 1px;
     outline: none !important;
 }
-.dataTable-dropdown .dataTable-selector:focus,
-.dataTable-search .dataTable-input:focus {
-    border-color: #4361ee;
-}
 
 .dataTable-search .dataTable-input {
     box-shadow: none !important;
@@ -461,8 +457,6 @@ table thead tr {
     /* Removes the blue outline */
     box-shadow: none !important;
     /* Removes any focus box-shadow */
-    border-color: inherit !important;
-    /* Keeps the border color unchanged */
 }
 
 /* Custom scrollbar styling for webkit browsers */
@@ -496,4 +490,45 @@ table thead tr {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #000;
     /* Thumb color on hover */
+}
+
+[type="text"]:focus,
+input:where(:not([type])):focus,
+[type="email"]:focus,
+[type="url"]:focus,
+[type="password"]:focus,
+[type="number"]:focus,
+[type="date"]:focus,
+[type="datetime-local"]:focus,
+[type="month"]:focus,
+[type="search"]:focus,
+[type="tel"]:focus,
+[type="time"]:focus,
+[type="week"]:focus,
+[multiple]:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-inset: var(--tw-empty, /*!*/ /*!*/);
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-color: #23327a;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0
+        var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0
+        calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow),
+        var(--tw-shadow);
+    border-color: #23327a;
+}
+
+.txtDarkColor {
+    color: #3b3f5c;
+}
+
+/* Placeholder text color for input fields inside .COA class */
+.COA input::placeholder {
+    color: #f7f9fc !important;
+    /* This ensures the color applies */
 }

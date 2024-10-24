@@ -1,6 +1,66 @@
 <x-app-layout>
 
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        calculateTotals();
+    });
+
+    function filterAccounts(query) {
+        // Get all list items (the account categories in the sidebar)
+        const items = document.querySelectorAll('#coa-list > li');
+
+        // Convert the query to lowercase to make the search case-insensitive
+        const lowerCaseQuery = query.toLowerCase();
+
+        // Loop through each list item (account category)
+        items.forEach(item => {
+            // Get the category name (the span inside the button)
+            const accountName = item.querySelector('span').textContent.toLowerCase();
+
+            // Check if the account name includes the query string
+            if (accountName.includes(lowerCaseQuery)) {
+                item.style.display = 'block'; // Show the item if it matches
+            } else {
+                item.style.display = 'none'; // Hide the item if it doesn't match
+            }
+        });
+    }
+
+    // Function for received  and spented payments
+
+    function calculateTotals() {
+        // Calculate total received from the payments array
+        const totalReceived = payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+        // Calculate total spent from the accountsPayable array
+        const totalSpent = accountsPayable.reduce((sum, payable) => sum + payable.amount, 0);
+
+        // Calculate the available balance
+        const availableBalance = totalReceived - totalSpent;
+
+        // Display the totals in the respective elements by their IDs
+        document.getElementById('total-received').textContent = `$${totalReceived.toFixed(2)}`;
+        document.getElementById('total-spent').textContent = `$${totalSpent.toFixed(2)}`;
+
+        // Display the available balance in the wallet balance section
+        document.getElementById('wallet-balance').textContent = `$${availableBalance.toFixed(2)}`;
+    }
+    </script>
+
+    <!-- Breadcrumbs -->
+    <ul class="flex space-x-2  pb-5 text-base md:text-lg sm:text-sm">
+        <li>
+            <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
+        </li>
+        <li class="before:content-['/'] before:mr-1 ">
+            <span>Chart of Account</span>
+        </li>
+    </ul>
+    <!-- ./Breadcrumbs -->
+
+
+
     @if(isset($error))
     <div class="alert alert-danger">{{ $error }}</div>
     @else
@@ -9,13 +69,20 @@
 
 
 
-    <div class="bg-gray-300 font-sans leading-normal tracking-normal h-screen flex">
-        <div class="w-1/4 p-6 bg-white shadow-lg overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4">Chart of Accounts</h2>
+    <div class="font-sans leading-normal tracking-normal flex">
+        <div class="w-1/4 p-6 bg-gray-300 rounded-lg shadow-lg overflow-y-auto m-2">
+            <!-- Search Input Field -->
+            <div class="COA"> <input type="text" style="background-color: #23327a47;"
+                    class="text-black w-full p-2 border rounded-lg mb-4" placeholder="Search..."
+                    onkeyup="filterAccounts(this.value)"></div>
+
+
+
+
             <ul id="coa-list" class="space-y-2">
                 <li>
                     <button class="flex justify-between w-full text-left" onclick="toggleDetails('current-assets')">
-                        <span class="current_asset">Current Assets</span>
+                        <span class="txtDarkColor">Current Assets</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <ul id="current-assets" class="details pl-4">
@@ -33,7 +100,7 @@
                 </li>
                 <li>
                     <button class="flex justify-between w-full text-left" onclick="toggleDetails('liabilities')">
-                        <span class="liabilities">Liabilities</span>
+                        <span class="txtDarkColor">Liabilities</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <ul id="liabilities" class="details pl-4">
@@ -45,7 +112,7 @@
                 </li>
                 <li>
                     <button class="flex justify-between w-full text-left" onclick="toggleDetails('equity')">
-                        <span class="equity">Equity</span>
+                        <span class="txtDarkColor">Equity</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <ul id="equity" class="details pl-4">
@@ -54,7 +121,7 @@
                 </li>
                 <li>
                     <button class="flex justify-between w-full text-left" onclick="toggleDetails('income')">
-                        <span class="income">Income</span>
+                        <span class="txtDarkColor">Income</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <ul id="income" class="details pl-4">
@@ -65,7 +132,7 @@
                 </li>
                 <li>
                     <button class="flex justify-between w-full text-left" onclick="toggleDetails('expenses')">
-                        <span class="expenses">Expenses</span>
+                        <span class="txtDarkColor">Expenses</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <ul id="expenses" class="details pl-4">
@@ -74,20 +141,85 @@
                 </li>
             </ul>
         </div>
-        <div class="w-1/2 p-6 bg-white shadow-lg">
-            <h2 id="details-title" class="text-xl font-bold mb-4">Details</h2>
-            <div id="details-content" class="space-y-4">
-                <p>Select an invoice to view details.</p>
+        <div class="w-1/2 m-2">
+            <div class="mb-3 bg-gray-300 rounded-lg shadow-lg">
+                <div class="panel h-full overflow-hidden border-0 p-0">
+                    <div class="min-h-[190px] bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
+                        <div class="mb-6 flex items-center justify-between">
+                            <div
+                                class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white ltr:pr-3 ">
+                                <x-application-logo
+                                    class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 " />
+
+                                <h3 class="px-2">{{ Auth::user()->name }}</h3>
+                            </div>
+                            <button type="button"
+                                class="flex h-9 w-9 items-center justify-between rounded-md bg-black text-white hover:opacity-80 ltr:ml-auto ">
+                                <svg class="m-auto h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <p class="text-xl text-white">Wallet Balance</p>
+                            <h5 class="text-2xl ml-auto text-white">
+                                <span id="wallet-balance">0.00</span>
+                                <!-- This will be updated with the calculated balance -->
+                            </h5>
+                        </div>
+
+                    </div>
+                    <div class="-mt-12 grid grid-cols-2 gap-2 px-8">
+                        <div class="rounded-md bg-white px-4 py-2.5 shadow dark:bg-[#060818]">
+                            <span class="mb-4 flex items-center justify-between dark:text-white">Received
+                                <svg class="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 15L12 9L5 15" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </span>
+                            <div id="total-received"
+                                class="btn w-full border-0 bg-[#ebedf2] py-1 text-base text-[#515365] shadow-none dark:bg-black dark:text-[#bfc9d4]">
+                                $0.00
+                            </div>
+                        </div>
+
+                        <div class="rounded-md bg-white px-4 py-2.5 shadow dark:bg-[#060818]">
+                            <span class="mb-4 flex items-center justify-between dark:text-white">Spent
+                                <svg class="h-4 w-4 text-danger" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 9L12 15L5 9" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </span>
+                            <div id="total-spent"
+                                class="btn w-full border-0 bg-[#ebedf2] py-1 text-base text-[#515365] shadow-none dark:bg-black dark:text-[#bfc9d4]">
+                                $0.00
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
             </div>
+            <div class="p-6 bg-gray-300 rounded-lg shadow-lg h-screen">
+                <h2 id="details-title" class="text-xl font-bold mb-4">Details</h2>
+                <div id="details-content" class="space-y-4">
+                    <p>Select an invoice to view details.</p>
+                </div>
+            </div>
+
         </div>
 
-        <div id="additional-info-column" class="w-1/4 p-6 bg-white shadow-lg hidden">
-            <h2 class="text-xl font-bold mb-4">Additional Info</h2>
+        <div id="additional-info-column" class="w-1/4 p-6 bg-gray-300 rounded-lg shadow-lg hidden m-2">
+            <h2 class="text-xl font-bold mb-4 customBlueColor">Additional Info</h2>
             <div id="additional-info" class="space-y-4"></div>
         </div>
 
         <!-- Add Invoice Modal -->
-        <div id="add-invoice-modal" class="modal hidden">
+        <div id="add-invoice-modal" class="modal hidden ">
             <div class="modal-content">
                 <span class="close" onclick="closeModal('add-invoice-modal')">&times;</span>
                 <h2>Add New Invoice</h2>
@@ -167,7 +299,6 @@
                 title.innerText = 'Cash and Cash Equivalents';
                 detailsContent.innerHTML = `
                     <p style="color:black;">Details about Cash and Cash Equivalents, including the management of cash flows and liquid assets.</p>
-                    <input type="text" placeholder="Add New Account" class="p-2 border rounded">
                 `;
                 break;
             case 'accounts-receivable':
@@ -180,7 +311,6 @@
                             .map(i => `<li onclick="showInvoiceDetails(${i.id})" class="cursor-pointer">${i.client.name} - ${i.invoice_number} $${i.amount} (${i.status})</li>`)
                             .join('')}
                     </ul>
-                    <input type="text" placeholder="Add New Receivable" class="p-2 border rounded">
                 `;
 
                 // clientList.innerHTML = `
@@ -197,28 +327,24 @@
                 title.innerText = 'Prepaid Expenses';
                 detailsContent.innerHTML = `
                     <p>Details about Prepaid Expenses, covering costs paid in advance for services or benefits to be received in the future.</p>
-                    <input type="text" placeholder="Add New Account" class="p-2 border rounded">
                 `;
                 break;
             case 'inventory':
                 title.innerText = 'Inventory';
                 detailsContent.innerHTML = `
                     <p>Details about Inventory, including travel packages and promotional materials on hand.</p>
-                    <input type="text" placeholder="Add New Account" class="p-2 border rounded">
                 `;
                 break;
             case 'current-liabilities':
                 title.innerText = 'Current Liabilities';
                 detailsContent.innerHTML = `
                     <p>Details about Current Liabilities, including obligations that need to be settled within a year.</p>
-                    <input type="text" placeholder="Add New Liability" class="p-2 border rounded">
                 `;
                 break;
             case 'long-term-liabilities':
                 title.innerText = 'Long-Term Liabilities';
                 detailsContent.innerHTML = `
                     <p>Details about Long-Term Liabilities, which includes obligations due beyond one year.</p>
-                    <input type="text" placeholder="Add New Liability" class="p-2 border rounded">
                 `;
                 break;
             case 'accounts-payable':
@@ -231,14 +357,12 @@
                             return `<li>${a.supplier} - $${a.amount} (Due: ${a.dueDate}) - ${a.status} - Related Invoice: ${relatedInvoice ? relatedInvoice.client + ' - $' + relatedInvoice.amount : 'N/A'}</li>`;
                         }).join('')}
                     </ul>
-                    <input type="text" placeholder="Add New Payable" class="p-2 border rounded">
                 `;
                 break
             case 'owners-equity':
                 title.innerText = "Owner's Equity";
                 detailsContent.innerHTML = `
                     <p>Details about Owner's Equity, which represents the owner's investment in the business.</p>
-                    <input type="text" placeholder="Add New Equity" class="p-2 border rounded">
                 `;
                 break;
             case 'client-payments':
@@ -248,21 +372,18 @@
                     <ul class="list-disc pl-6">
                         ${payments.map(p => `<li>Payment for Invoice ID ${p.invoiceId} - $${p.amount}</li>`).join('')}
                     </ul>
-                    <input type="text" placeholder="Add New Payment" class="p-2 border rounded">
                 `;
                 break;
             case 'commission-income':
                 title.innerText = 'Commission Income';
                 detailsContent.innerHTML = `
                     <p>Details about Commission Income, including earnings from supplier commissions.</p>
-                    <input type="text" placeholder="Add New Income" class="p-2 border rounded">
                 `;
                 break;
             case 'operating-expenses':
                 title.innerText = 'Operating Expenses';
                 detailsContent.innerHTML = `
                     <p>Details about Operating Expenses, encompassing all costs of running the agency.</p>
-                    <input type="text" placeholder="Add New Expense" class="p-2 border rounded">
                 `;
                 break;
             default:
@@ -382,13 +503,7 @@
         cursor: pointer;
     }
 
-    h2 {
-        color: #4A90E2;
-        /* Header Color */
-        font-size: 1.75rem;
-        /* Larger font size for headers */
-        margin-bottom: 1rem;
-    }
+
 
     p,
     li {
@@ -459,12 +574,12 @@
         transition: background-color 0.2s ease;
     }
 
-    li:hover {
+    /* li:hover {
         background-color: #e0e0e0;
         /* Light gray on hover */
-    }
 
-    button {
+
+    */ button {
         padding: 0.5rem 1rem;
         border-radius: 4px;
         border: none;
@@ -477,31 +592,6 @@
     .bg-gray-200 {
         background-color: #d1d5db;
         /* Highlight color for selected items */
-    }
-
-    .current_asset {
-        color: #4CAF50;
-        font-size: 20px;
-    }
-
-    .liabilities {
-        color: #2196F3;
-        font-size: 20px;
-    }
-
-    .equity {
-        color: #FF9800;
-        font-size: 20px;
-    }
-
-    .income {
-        color: #9C27B0;
-        font-size: 20px;
-    }
-
-    .expenses {
-        color: #F44336;
-        font-size: 20px;
     }
     </style>
 

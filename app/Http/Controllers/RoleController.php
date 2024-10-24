@@ -84,30 +84,51 @@ class RoleController extends Controller
         return view('role.index', compact('roles'));
     }
 
-    public function permission()
+    public function permission($role)
     {
 
         $permissions = [
-            'user' => [
-                'view-user',
-                'create-user',
-                'edit-user',
-                'delete-user'
+            [
+                'id' => 1,
+                'name' => 'User',
+                'sub' => [
+                    'view-user',
+                    'create-user',
+                    'edit-user',
+                    'delete-user',
+                    'edit-profile'
+                ],
             ],
-            'profile' => [
-                'edit-profile'
+            [
+                'id' => 2,
+                'name' => 'Role',
+                'sub' => [
+                    'view-role',
+                    'create-role',
+                    'edit-role',
+                    'delete-role'
+                ],
             ],
-            'role' => [
-                'view-role',
-                'create-role',
-                'edit-role',
-                'delete-role'
+            [
+                'id' => 3,
+                'name' => 'Profile',
+                'sub' => [
+                    'edit-profile'
+                ],
+            ],
+            [
+                'id' => 4,
+                'name' => 'Agent',
+                'sub' => [
+                    'view-agent',
+                    'edit-agent'
+                ],
             ]
         ];
 
         $clients = Client::all();
 
-        return view('role.permission', compact('permissions', 'clients'));
+        return view('role.permission', compact('permissions', 'clients', 'role'));
     }
 
     public function create()

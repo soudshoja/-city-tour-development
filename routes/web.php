@@ -182,6 +182,6 @@ Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('client
 //ROLE
 Route::get('/role', [RoleController::class, 'index'])->name('role.index');
 Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
-Route::get('/permission', [RoleController::class, 'permission'])->name('role.permission');
+Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 require __DIR__ . '/auth.php';

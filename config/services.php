@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'tap' => [
+        'secret' => env('APP_ENV') == 'production' ? env('TAP_SECRET') : env('TAP_SANDBOX_SECRET'),
+        'public' => env('APP_ENV') == 'production' ? env('TAP_PUBLIC') : env('TAP_SANDBOX_PUBLIC'),
+        'url' => env('TAP_URL') . '/v2',
+    ],
 ];

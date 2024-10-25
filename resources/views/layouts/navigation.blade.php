@@ -577,7 +577,7 @@
                      </div><!-- ./suppliers -->
                      @endif
 
-                     @if(Auth::user()->role == 'company')
+                     @if(Auth::user()->role == 'company' || Auth::user()->role === 'admin')
                      <!-- company dashboard -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"

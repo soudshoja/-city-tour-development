@@ -60,9 +60,19 @@
                 </div>
 
 
+                <!-- Upload Task Button -->
+                <div class="relative flex items-center h-12">
+                    <input id="pdfInput" type="file" accept=".pdf" class="hidden" />
+                    <button id="uploadTaskButton" 
+                            class="h-full flex items-center px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-700 focus:outline-none">
+                        <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Upload Task</span>
+                    </button>
+                </div>
 
                 <!-- Add Task Button -->
-
                 <a
                     class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
                     <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
@@ -365,29 +375,42 @@
 
     </div> <!-- ./p-3 -->
 
-
-
-
     <script>
+
+document.getElementById('uploadTaskButton').addEventListener('click', function() {
+        document.getElementById('pdfInput').click();
+    });
+
+    document.getElementById('pdfInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            fetch('/upload-pdf', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('PDF uploaded and tasks added successfully!');
+                    // Optionally refresh the page or update the UI
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert( error);
+            });
+        }
+    });
+
     function EditTask(modalNameId) {
 
         document.getElementById(modalNameId).classList.remove('hidden');
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     function closeTaskModal() {

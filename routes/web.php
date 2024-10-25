@@ -165,8 +165,12 @@ Route::post('/clientsupload', [ClientController::class, 'import'])->name('client
 Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
 
 
+Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
+
 // Account
 Route::get('/coa/accounts', action: [CoaController::class, 'accounts'])->name('coa.accounts');
+Route::post('/coa/store', [CoaController::class, 'store'])->name('coa.store');
+
 
 
 Route::get('/download-company', function () {

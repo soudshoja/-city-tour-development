@@ -10,7 +10,79 @@ class RoleController extends Controller
     public function index()
     {
 
-        $roles = [
+        $roles = $this->getAllRole();
+
+        return view('role.index', compact('roles'));
+    }
+
+    public function create()
+    {
+        $permissions = $this->getAllPermission();
+        return view('role.create', compact('permissions'));
+    }
+
+    public function store()
+    {
+        return redirect()->route('role.index');
+    }
+
+    public function edit($role)
+    {
+        $permissions = $this->getAllPermission();
+        return view('role.edit', compact('role', 'permissions'));
+    }
+
+    public function update($role)
+    {
+        return redirect()->route('role.index');
+    }
+
+    private function getAllPermission()
+    {
+
+        return [
+            [
+                'id' => 1,
+                'name' => 'User',
+                'sub' => [
+                    'view-user',
+                    'create-user',
+                    'edit-user',
+                    'delete-user',
+                    'edit-profile'
+                ],
+            ],
+            [
+                'id' => 2,
+                'name' => 'Role',
+                'sub' => [
+                    'view-role',
+                    'create-role',
+                    'edit-role',
+                    'delete-role'
+                ],
+            ],
+            [
+                'id' => 3,
+                'name' => 'Profile',
+                'sub' => [
+                    'edit-profile'
+                ],
+            ],
+            [
+                'id' => 4,
+                'name' => 'Agent',
+                'sub' => [
+                    'view-agent',
+                    'edit-agent'
+                ],
+            ]
+        ];
+    }
+
+    public function getAllRole()
+    {
+        return [
             [
                 'id' => 1,
                 'name' => 'Admin',
@@ -80,59 +152,18 @@ class RoleController extends Controller
                 ],
             ]
         ];
-
-        return view('role.index', compact('roles'));
     }
 
-    public function permission($role)
+    public function getRole($id)
     {
+        $roles = $this->getAllRole();
 
-        $permissions = [
-            [
-                'id' => 1,
-                'name' => 'User',
-                'sub' => [
-                    'view-user',
-                    'create-user',
-                    'edit-user',
-                    'delete-user',
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 2,
-                'name' => 'Role',
-                'sub' => [
-                    'view-role',
-                    'create-role',
-                    'edit-role',
-                    'delete-role'
-                ],
-            ],
-            [
-                'id' => 3,
-                'name' => 'Profile',
-                'sub' => [
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 4,
-                'name' => 'Agent',
-                'sub' => [
-                    'view-agent',
-                    'edit-agent'
-                ],
-            ]
-        ];
+        foreach ($roles as $role) {
+            if ($role['id'] == $id) {
+                return $role;
+            }
+        }
 
-        $clients = Client::all();
-
-        return view('role.permission', compact('permissions', 'clients', 'role'));
-    }
-
-    public function create()
-    {
-        return view('role.create');
+        return null;
     }
 }

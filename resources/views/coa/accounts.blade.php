@@ -67,79 +67,179 @@
     <!-- Display your content as usual -->
     @endif
 
-
-
     <div class="font-sans leading-normal tracking-normal flex flex-shrink-0">
+                <div class="container mx-auto py-6 flex">
+                    <div class="w-1/3">
+                        <h1 class="text-2xl font-bold mb-4">Chart of Accounts</h1>
+                        <ul class="list-none">
+                            @foreach($accounts as $account)
+                                @include('coa.partials.account', ['account' => $account])
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    <div class="w-2/3 pl-6">
+                        <div id="formContainer" class="hidden bg-white shadow-md rounded-lg p-4">
+                                    <!-- Selected Account Display -->
+                        <div id="selectedAccount" class="mb-4 p-2 bg-gray-100 border border-gray-300 rounded-md hidden">
+                            <span class="font-medium text-gray-700">Add Account for </span>
+                            <span id="accountNameDisplay" class="text-gray-900">None</span>
+                        </div>
+                            
+                            <form id="itemForm" action="{{ route('coa.store') }}" method="POST" enctype="multipart/form-data">
+                                @csrf
+
+                                <!-- Account Info Section -->
+                                <fieldset class="mb-3 border rounded-lg bg-gray-50 p-3">
+                                    <legend class="text-base font-semibold mb-2 text-gray-700">Account Info</legend>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <input id="parent_id" name="parent_id" class="form-checkbox CheckBoxColor hidden">
+                                    <input id="acc_name" name="acc_name" class="form-checkbox CheckBoxColor hidden">
+                                        <div>
+                                            <label for="account_name" class="text-xs font-medium text-gray-700">Account Name</label>
+                                            <input type="text" id="account_name" name="account_name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm" required>
+                                        </div>
+                                        <div>
+                                            <label for="balance" class="text-xs font-medium text-gray-700">Balance</label>
+                                            <input type="number" id="balance" name="balance" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <label for="account_description" class="text-xs font-medium text-gray-700">Account Description</label>
+                                        <textarea id="account_description" name="account_description" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm" rows="2" required></textarea>
+                                    </div>
+                                    <div class="mt-2">
+                                        <label for="client_or_supplier" class="text-xs font-medium text-gray-700">Select Client or Supplier</label>
+                                        <select id="client_or_supplier" name="client_or_supplier" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
+                                            <option value="">-- Select --</option>
+                                            <option value="client">Client</option>
+                                            <option value="supplier">Supplier</option>
+                                        </select>
+                                    </div>
+                                </fieldset>
+
+                                <!-- Transaction Details Section -->
+                                <fieldset class="mb-3 border rounded-lg bg-gray-50 p-3">
+                                    <legend class="text-base font-semibold mb-2 text-gray-700">Transaction Details</legend>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label for="currency" class="text-xs font-medium text-gray-700">Currency</label>
+                                            <select id="currency" name="currency" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="transaction_type" class="text-xs font-medium text-gray-700">Type</label>
+                                            <select id="transaction_type" name="transaction_type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
+                                                <option value="debit">Debit</option>
+                                                <option value="credit">Credit</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label for="group" class="text-xs font-medium text-gray-700">Group</label>
+                                            <select id="group" name="group" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
+                                                <option value="">-- Select Group --</option>
+                                                <option value="group1">Group 1</option>
+                                                <option value="group2">Group 2</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="branch" class="text-xs font-medium text-gray-700">Branch</label>
+                                            <select id="branch" name="branch" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
+                                                <option value="">-- Select Branch --</option>
+                                                <option value="branch1">Branch 1</option>
+                                                <option value="branch2">Branch 2</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </fieldset>
+
+                                <!-- Other Details Section -->
+                                <fieldset class="mb-3 border rounded-lg bg-gray-50 p-3">
+                                    <legend class="text-base font-semibold mb-2 text-gray-700">Other Details</legend>
+                                    <div class="mb-2">
+                                        <label for="documents" class="text-xs font-medium text-gray-700">Upload Documents</label>
+                                        <input type="file" id="documents" name="documents[]" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm" multiple>
+                                    </div>
+                                </fieldset>
+
+                                <button type="submit" class="px-4 py-2 bg-gray-200 text-white rounded hover:bg-gray-700 text-sm">Add Account</button>
+                            </form>
+                        </div>
+                    </div>
+
+
+
+                <script>
+                    function showForm(accountId, accountName) {
+                        document.getElementById('parent_id').value = accountId;
+                        document.getElementById('selectedAccount').classList.remove('hidden');
+                        document.getElementById('accountNameDisplay').innerText = accountName;
+
+                        document.getElementById('formContainer').classList.remove('hidden');
+
+                        document.getElementById('acc_name').value = accountName;
+                        document.getElementById('formTitle').innerText = `Add Item under ${accountName}`;
+                        // Clear previous values
+                        document.getElementById('itemName').value = '';
+
+                    }
+
+                    function toggleChildren(element) {
+                        const childrenList = element.nextElementSibling; // Get the sibling <ul> (children)
+                        if (childrenList) {
+                            childrenList.classList.toggle('hidden'); // Toggle the hidden class
+                        }
+                    }
+
+                    function updateSelectedAccount(accountName) {
+                        const selectedAccountDiv = document.getElementById('selectedAccount');
+                        const accountNameDisplay = document.getElementById('accountNameDisplay');
+
+                        if (accountName) {
+                            accountNameDisplay.textContent = accountName;
+                            selectedAccountDiv.classList.remove('hidden');
+                        } else {
+                            accountNameDisplay.textContent = 'None';
+                            selectedAccountDiv.classList.add('hidden');
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', function () {
+                        // Attach click event to account items
+                        document.querySelectorAll('.account-item').forEach(item => {
+                            item.addEventListener('click', function (e) {
+                                e.stopPropagation(); // Prevent event bubbling
+                                const accountId = this.dataset.id;
+                                const accountName = this.dataset.name;
+                                showForm(accountId, accountName);
+                            });
+                        });
+                    });
+                </script>
+
+
+
+    <!-- <div class="font-sans leading-normal tracking-normal flex flex-shrink-0">
         <div class="w-1/4 p-6 bg-gray-300 rounded-lg shadow-lg overflow-y-auto m-2">
-            <!-- Search Input Field -->
             <div class="COA"> <input type="text" style="background-color: #23327a47;"
                     class="text-black w-full p-2 border rounded-lg mb-4" placeholder="Search..."
                     onkeyup="filterAccounts(this.value)"></div>
 
-
-
-
-            <ul id="coa-list" class="space-y-2">
-                <li>
-                    <button class="flex justify-between w-full text-left" onclick="toggleDetails('current-assets')">
-                        <span class="txtDarkColor">Current Assets</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <ul id="current-assets" class="details pl-4">
-                        <li onclick="showDetails('cash-and-cash-equivalents')" class="cursor-pointer">Cash and Cash
-                            Equivalents</li>
-                        <li onclick="showDetails('accounts-receivable')" class="cursor-pointer">Accounts Receivable
-                            <span id="receivable-count" class="text-sm text-gray-500">(0)</span>
-                        </li>
-                        <ul id="accounts-receivable-list" class="details pl-4 hidden">
-                            <!-- Client names will be populated here -->
+                    <div class="container">
+                        <h1>Chart of Accounts</h1>
+                        <ul>
+                            @foreach($accounts as $account)
+                                @include('coa.partials.account', ['account' => $account])
+                            @endforeach
                         </ul>
-                        <li onclick="showDetails('prepaid-expenses')" class="cursor-pointer">Prepaid Expenses</li>
-                        <li onclick="showDetails('inventory')" class="cursor-pointer">Inventory</li>
-                    </ul>
-                </li>
-                <li>
-                    <button class="flex justify-between w-full text-left" onclick="toggleDetails('liabilities')">
-                        <span class="txtDarkColor">Liabilities</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <ul id="liabilities" class="details pl-4">
-                        <li onclick="showDetails('current-liabilities')" class="cursor-pointer">Current Liabilities</li>
-                        <li onclick="showDetails('long-term-liabilities')" class="cursor-pointer">Long-Term Liabilities
-                        </li>
-                        <li onclick="showDetails('accounts-payable')" class="cursor-pointer">Accounts Payable</li>
-                    </ul>
-                </li>
-                <li>
-                    <button class="flex justify-between w-full text-left" onclick="toggleDetails('equity')">
-                        <span class="txtDarkColor">Equity</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <ul id="equity" class="details pl-4">
-                        <li onclick="showDetails('owners-equity')" class="cursor-pointer">Owner's Equity</li>
-                    </ul>
-                </li>
-                <li>
-                    <button class="flex justify-between w-full text-left" onclick="toggleDetails('income')">
-                        <span class="txtDarkColor">Income</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <ul id="income" class="details pl-4">
-                        <li onclick="showDetails('client-payments')" class="cursor-pointer">Client Payments <span
-                                id="payment-count" class="text-sm text-gray-500">(0)</span></li>
-                        <li onclick="showDetails('commission-income')" class="cursor-pointer">Commission Income</li>
-                    </ul>
-                </li>
-                <li>
-                    <button class="flex justify-between w-full text-left" onclick="toggleDetails('expenses')">
-                        <span class="txtDarkColor">Expenses</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <ul id="expenses" class="details pl-4">
-                        <li onclick="showDetails('operating-expenses')" class="cursor-pointer">Operating Expenses</li>
-                    </ul>
-                </li>
-            </ul>
+                    </div>
+
+        
         </div>
         <div class="w-1/2 m-2">
             <div class="mb-3 bg-gray-300 rounded-lg shadow-lg">
@@ -165,7 +265,6 @@
                             <p class="text-xl text-white">Wallet Balance</p>
                             <h5 class="text-2xl ml-auto text-white">
                                 <span id="wallet-balance">0.00</span>
-                                <!-- This will be updated with the calculated balance -->
                             </h5>
                         </div>
 
@@ -217,7 +316,6 @@
             <div id="additional-info" class="space-y-4"></div>
         </div>
 
-        <!-- Add Invoice Modal -->
         <div id="add-invoice-modal" class="modal hidden ">
             <div class="modal-content">
                 <span class="close" onclick="closeModal('add-invoice-modal')">&times;</span>
@@ -225,7 +323,6 @@
                 <form id="invoice-form">
                     <label for="client">Client</label>
                     <select id="client" class="p-2 border rounded">
-                        <!-- Dynamically populate clients -->
                     </select>
                     <label for="amount">Amount</label>
                     <input type="number" id="amount" class="p-2 border rounded" required>
@@ -284,12 +381,10 @@
         const detailsContent = document.getElementById('details-content');
         const title = document.getElementById('details-title');
 
-        // Clear existing highlights
         document.querySelectorAll('#coa-list li').forEach(item => {
             item.classList.remove('bg-gray-200');
         });
 
-        // Highlight the selected item
         const selectedItem = event.target;
         selectedItem.classList.add('bg-gray-200');
 
@@ -306,20 +401,11 @@
                     <p>Outstanding invoices that clients owe to the agency.</p>
                     <ul class="list-disc pl-6">
                              ${invoices
-                            .filter(i => i.status === 'unpaid') // Filter for unpaid invoices
+                            .filter(i => i.status === 'unpaid') 
                             .map(i => `<li onclick="showInvoiceDetails(${i.id})" class="cursor-pointer">${i.client.name} - ${i.invoice_number} $${i.amount} (${i.status})</li>`)
                             .join('')}
                     </ul>
                 `;
-
-                // clientList.innerHTML = `
-                //     <h3 class="mt-4">Clients with Unpaid Invoices:</h3>
-                //     <ul class="list-disc pl-6">
-                //         ${[...new Set(invoices.filter(i => i.status === 'unpaid').map(i => i.client.name))]
-                //             .map(clientName => `<li>${clientName}</li>`)
-                //             .join('')}
-                //     </ul>
-                // `;
 
                 break;
             case 'prepaid-expenses':
@@ -407,7 +493,6 @@
         const dueDate = document.getElementById('due-date').value;
         const description = document.getElementById('description').value;
 
-        // Add new invoice to the invoices array
         invoices.push({
             id: invoices.length + 1,
             client: {
@@ -433,7 +518,6 @@
 
         title.innerText = `Invoice Details for ${invoice.client.name}`;
 
-        // Populate additional info section
         additionalInfo.innerHTML = `
             Invoice Details for ${invoice.client.name}
             <p><strong>Invoice ID:</strong> ${invoice.id}</p>
@@ -450,8 +534,6 @@
             <p>${invoice.paymentStatus ? 'Paid' : 'Unpaid'}</p>
             <button onclick="markAsPaid(${invoice.id})" class="mt-4 bg-green-500 text-white p-2 rounded">Mark as Paid</button>
         `;
-
-        // Show the additional info column if there's content
         if (additionalInfo.innerHTML.trim() !== '') {
             additionalInfoColumn.classList.remove('hidden');
         } else {
@@ -459,10 +541,8 @@
         }
     }
 
-
-    // Initialize counts
     updateCounts();
-    </script>
+    </script> -->
     <style>
     body {
         font-family: 'Arial', sans-serif;

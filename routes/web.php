@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\CoaController;
@@ -30,6 +31,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', function () {
         $user = \Illuminate\Support\Facades\Auth::user(); // Get the authenticated user
         
+        $user = auth()->user(); // Get the authenticated user
+
         if ($user->role == 'agent') {
             return app(ItemController::class)->index(); 
         } elseif ($user->role == 'admin') {
@@ -38,6 +41,13 @@ Route::middleware(['auth'])->group(function () {
             return app(CompanyController::class)->dashboard(); 
         }
 
+        if ($user->role == 'agent') {
+            return app(ItemController::class)->index();
+        } elseif ($user->role == 'admin') {
+            return app(DashboardController::class)->index();
+        } elseif ($user->role == 'company') {
+            return app(CompanyController::class)->dashboard();
+        }
     })->middleware(['auth'])->name('dashboard');
 
     Route::post('verify2fa', function () {
@@ -112,11 +122,6 @@ Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload
 Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
 
 
-// Route::middleware(['auth', 'throttle:60,1'])->group(function () {
-//     Route::get('login/otp', [OTPController::class, 'show'])->name('login.otp');
-//     Route::post('login/otp', [OTPController::class, 'check']);
-// });
-
 
 Route::get('pin', function () {
     return view('auth.pin');
@@ -160,8 +165,12 @@ Route::post('/clientsupload', [ClientController::class, 'import'])->name('client
 Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
 
 
+Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
+
 // Account
 Route::get('/coa/accounts', action: [CoaController::class, 'accounts'])->name('coa.accounts');
+Route::post('/coa/store', [CoaController::class, 'store'])->name('coa.store');
+
 
 
 Route::get('/download-company', function () {
@@ -209,5 +218,13 @@ Route::get('/download-client', function () {
 })->name('download.client');
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 
+
+//ROLE
+Route::get('/role', [RoleController::class, 'index'])->name('role.index');
+Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
+Route::post('/role', [RoleController::class, 'store'])->name('role.store');
+Route::get('/edit-role/{role}', [RoleController::class, 'edit'])->name('role.edit');
+Route::put('/role/{role}', [RoleController::class, 'update'])->name('role.update');
+Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 require __DIR__ . '/auth.php';

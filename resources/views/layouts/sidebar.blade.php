@@ -54,7 +54,7 @@
                 </button>
 
                 <!-- Dashboard dropdown -->
-                <ul x-show="activeDropdown === 'dashboard'" x-collapse="" class="sub-menu text-gray-500"
+                <ul x-show="activeDropdown === 'dashboard'" class="sub-menu text-gray-500"
                     style="height: auto;">
                     <li>
                         <a href="{{ route('dashboard') }}">Revenue</a>
@@ -102,7 +102,7 @@
                         </svg>
                     </div>
                 </button>
-                <ul x-show="activeDropdown === 'companies'" x-collapse="" class="sub-menu text-gray-500">
+                <ul x-show="activeDropdown === 'companies'" class="sub-menu text-gray-500">
 
                     <li>
                         <a href="{{ route('companiesnew.new') }}"
@@ -147,7 +147,7 @@
                         </svg>
                     </div>
                 </button>
-                <ul x-show="activeDropdown === 'agents'" x-collapse="" class="sub-menu text-gray-500">
+                <ul x-show="activeDropdown === 'agents'" class="sub-menu text-gray-500">
 
                     <li>
                         <a href="{{ route('agents.index') }}"
@@ -191,15 +191,49 @@
                         </svg>
                     </div>
                 </button>
-                <ul x-show="activeDropdown === 'tasks'" x-collapse="" class="sub-menu text-gray-500">
+                <ul x-show="activeDropdown === 'tasks'" class="sub-menu text-gray-500">
                     <li>
-                        <a href="{{ route('tasks.index') }}" class="{{ request()->is('tasks') ? 'active' : '' }}">Task
-                            List</a>
+                        <a href="{{ route('tasks.index') }}" class="{{ request()->is('tasks') ? 'active' : '' }}">
+                            Task List
+                        </a>
                     </li>
-
                 </ul>
             </li>
             @endcan
+            <li class="menu nav-item">
+                <button type="button" class="nav-link group" :class="{'active' : activeDropdown === 'role'}"
+                    @click="activeDropdown === 'role' ? activeDropdown = null : activeDropdown = 'role'">
+                    <div class="flex items-center">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            class="stroke-current text-[#1C274C] dark:text-white">
+                            <path
+                                d="M3.79424 12.0291C4.33141 9.34329 4.59999 8.00036 5.48746 7.13543C5.65149 6.97557 5.82894 6.8301 6.01786 6.70061C7.04004 6 8.40956 6 11.1486 6H12.8515C15.5906 6 16.9601 6 17.9823 6.70061C18.1712 6.8301 18.3486 6.97557 18.5127 7.13543C19.4001 8.00036 19.6687 9.34329 20.2059 12.0291C20.9771 15.8851 21.3627 17.8131 20.475 19.1793C20.3143 19.4267 20.1267 19.6555 19.9157 19.8616C18.7501 21 16.7839 21 12.8515 21H11.1486C7.21622 21 5.25004 21 4.08447 19.8616C3.87342 19.6555 3.68582 19.4267 3.5251 19.1793C2.63744 17.8131 3.02304 15.8851 3.79424 12.0291Z"
+                                stroke-width="1.5" class="stroke-current" />
+                            <path d="M9 6V5C9 3.34315 10.3431 2 12 2C13.6569 2 15 3.34315 15 5V6" stroke-width="1.5"
+                                stroke-linecap="round" class="stroke-current" />
+                            <path
+                                d="M9.1709 15C9.58273 16.1652 10.694 17 12.0002 17C13.3064 17 14.4177 16.1652 14.8295 15"
+                                stroke-width="1.5" stroke-linecap="round" class="stroke-current" />
+                        </svg>
+                        <span
+                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Roles</span>
+                    </div>
+                    <div class="rtl:rotate-180" :class="{'!rotate-90' : activeDropdown === 'role'}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </button>
+                <ul x-show="activeDropdown === 'role'" class="sub-menu text-gray-500">
+                    <li>
+                        <a href="{{ route('role.index') }}" class="{{ request()->is('role') ? 'active' : '' }}">
+                            Role Manager
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
         </ul>
 
     </div>

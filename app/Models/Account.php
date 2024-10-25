@@ -10,39 +10,23 @@ class Account extends Model
     use HasFactory;
 
     protected $fillable = [
-        'description',
-        'category_id',
-        'company_id',
-        'task_id',
-        'amount',
-        'date',
-        'tax', 
-        'supplier_id', 
-        'customer_id',
-        'reference',
-        'notes', 
+       'name', 
+       'level', 
+       'parent_id', 
+       'company_id', 
+       'description',
+       'balance',
     ];
 
-    public function coacategory()
+    public function parent()
     {
-        return $this->belongsTo(CoaCategory::class, 'category_id');
-    } 
-
-    public function company()
-    {
-        return $this->belongsTo(Company::class, 'company_id');
-    } 
-
-    public function client()
-    {
-        return $this->belongsTo(Client::class, 'customer_id');
+        return $this->belongsTo(Account::class, 'parent_id');
     }
 
-    public function supplier()
+    public function children()
     {
-        return $this->belongsTo(supplier::class, 'supplier_id');
+        return $this->hasMany(Account::class, 'parent_id');
     }
-
 
 
 }

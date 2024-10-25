@@ -15,6 +15,8 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\SupplierController;
+use Illuminate\Support\Facades\Response;
+
 
 
 // Home route
@@ -26,7 +28,7 @@ Route::middleware(['auth'])->group(function () {
     // Route::get('dashboard', [ItemController::class, 'index'])->name('dashboard');
 
     Route::get('/', function () {
-        $user = auth()->user(); // Get the authenticated user
+        $user = \Illuminate\Support\Facades\Auth::user(); // Get the authenticated user
         
         if ($user->role == 'agent') {
             return app(ItemController::class)->index(); 
@@ -95,26 +97,19 @@ Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('co
 Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
 Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
 
-// Route to list all tasks, e.g., for company role or all agents
-Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-Route::get('/tasks/{id}/edit', [TaskController::class, 'edit'])->name('task.edit');
-Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+
 
 // verdors routes
 Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
 
 
-
-
-// Route to list tasks for a specific agent by ID
+// task routes
+Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
+Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
 Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
-
-// Route for uploading tasks (GET for form view)
 Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
-
-// Route for importing tasks (POST for form submission)
 Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
-Route::get('/tasks/{id}', [TaskController::class, 'show'])->name('tasks.show');
 
 
 // Route::middleware(['auth', 'throttle:60,1'])->group(function () {

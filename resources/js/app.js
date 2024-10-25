@@ -1,6 +1,7 @@
 import Alpine from "alpinejs";
-import '@fortawesome/fontawesome-free/css/all.css';
+import "@fortawesome/fontawesome-free/css/all.css";
 
+// sidebar toggle
 window.Alpine = Alpine;
 
 Alpine.start();
@@ -17,6 +18,7 @@ document.addEventListener("alpine:init", () => {
     });
 });
 
+// Dark mode toggle
 document.addEventListener("DOMContentLoaded", function () {
     const darkModeToggle = document.getElementById("darkModeToggle");
     const lightModeIcon = document.getElementById("lightModeIcon");
@@ -49,115 +51,167 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-//login
-
-// dashboard
-
-const outputConsole = document.querySelector(".output-console");
-
-var commandStart = [
-    "Performing DNS Lookups for",
-    "Searching ",
-    "Analyzing ",
-    "Estimating Approximate Location of ",
-    "Compressing ",
-    "Requesting Authorization From : ",
-    "wget -a -t ",
-    "tar -xzf ",
-    "Entering Location ",
-    "Compilation Started of ",
-    "Downloading ",
-];
-
-var commandParts = [
-    "Data Structure",
-    "http://wwjd.com?au&2",
-    "Texture",
-    "TPS Reports",
-    " .... Searching ... ",
-    "http://zanb.se/?23&88&far=2",
-    "http://ab.ret45-33/?timing=1ww",
-];
-
-var commandResponses = [
-    "Authorizing ",
-    "Authorized...",
-    "Access Granted..",
-    "Going Deeper....",
-    "Compression Complete.",
-    "Compilation of Data Structures Complete..",
-    "Entering Security Console...",
-    "Encryption Unsuccessful Attempting Retry...",
-    "Waiting for response...",
-    "....Searching...",
-    "Calculating Space Requirements ",
-];
-
-var isProcessing = false;
-var processTime = 0;
-var lastProcess = 0;
-
-function consoleOutput() {
-    var textEl = document.createElement("p");
-
-    if (isProcessing) {
-        textEl = document.createElement("span");
-        textEl.textContent += Math.random() + " ";
-        if (Date.now() > lastProcess + processTime) {
-            isProcessing = false;
-        }
-    } else {
-        var commandType = ~~(Math.random() * 4);
-        switch (commandType) {
-            case 0:
-                textEl.textContent =
-                    commandStart[~~(Math.random() * commandStart.length)] +
-                    commandParts[~~(Math.random() * commandParts.length)];
-                break;
-            case 3:
-                isProcessing = true;
-                processTime = ~~(Math.random() * 5000);
-                lastProcess = Date.now();
-                break;
-            default:
-                textEl.textContent =
-                    commandResponses[
-                        ~~(Math.random() * commandResponses.length)
-                    ];
-                break;
-        }
-    }
-
-    outputConsole.scrollTop = outputConsole.scrollHeight;
-    outputConsole.appendChild(textEl);
-
-    // Remove excess lines if the output console gets too long
-    if (outputConsole.scrollHeight > window.innerHeight) {
-        var removeNodes = outputConsole.querySelectorAll("*");
-        for (var n = 0; n < ~~(removeNodes.length / 3); n++) {
-            outputConsole.removeChild(removeNodes[n]);
-        }
-    }
-
-    setTimeout(consoleOutput, ~~(Math.random() * 200));
-}
-
-setTimeout(function () {
-    outputConsole.style.height = (window.innerHeight / 3) * 2 + "px";
-    outputConsole.style.top = window.innerHeight / 3 + "px";
-
-    consoleOutput();
-}, 200);
-
+// tasklist page js
 document.addEventListener("DOMContentLoaded", function () {
-    setTimeout(function () {
-        var flashMessage = document.getElementById("flash-message");
-        if (flashMessage) {
-            flashMessage.style.transition = "opacity 0.5s ease";
-            flashMessage.style.opacity = "0";
-            setTimeout(function () {
-                flashMessage.remove();
-            }, 500);
+    // Handle task count display
+    const taskCount = window.taskCount;
+
+    document.getElementById("TasksData").innerText = taskCount;
+
+    // Select all functionality
+    const selectAllSVG = document.getElementById("selectAllSVG");
+    const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+
+    selectAllSVG.addEventListener("click", () => {
+        const allChecked = Array.from(rowCheckboxes).every(
+            (checkbox) => checkbox.checked
+        );
+        rowCheckboxes.forEach((checkbox) => (checkbox.checked = !allChecked));
+    });
+
+    // Update SVG color based on checkbox selection
+    rowCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+            const allChecked = Array.from(rowCheckboxes).every(
+                (cb) => cb.checked
+            );
+            selectAllSVG.style.fill = allChecked ? "#4fd1c5" : "#1C274C"; // Change color accordingly
+        });
+    });
+
+    // Handle the "Add Task" form submission
+    const editableCells = document.querySelectorAll('[contenteditable="true"]');
+    editableCells.forEach((cell) => {
+        cell.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); // Prevent the default behavior (line break)
+
+                const taskId = this.getAttribute("data-id");
+                const field = this.getAttribute("data-field");
+                const value = this.textContent.trim();
+
+                // Disable the cell temporarily to prevent multiple submissions
+                this.setAttribute("contenteditable", "false");
+
+                // Send an AJAX request to update the task
+                saveTaskField(taskId, field, value, this);
+
+                // Recalculate the total if one of the relevant fields is updated
+                if (
+                    field === "price" ||
+                    field === "surcharge" ||
+                    field === "tax"
+                ) {
+                    calculateTotal(taskId);
+                }
+            }
+        });
+    });
+
+    function calculateTotal(taskId) {
+        // Find the row that matches the task ID
+        const row = document
+            .querySelector(`[data-id="${taskId}"]`)
+            .closest("tr");
+        const price =
+            parseFloat(
+                row.querySelector('[data-field="price"]').textContent.trim()
+            ) || 0;
+        const surcharge =
+            parseFloat(
+                row.querySelector('[data-field="surcharge"]').textContent.trim()
+            ) || 0;
+        const tax =
+            parseFloat(
+                row.querySelector('[data-field="tax"]').textContent.trim()
+            ) || 0;
+
+        // Calculate the total
+        const total = price + surcharge + tax;
+
+        // Update the total field in the UI
+        row.querySelector('[data-field="total"]').textContent =
+            total.toFixed(2);
+
+        // Optionally, you can send the updated total back to the server
+        saveTaskField(
+            taskId,
+            "total",
+            total.toFixed(2),
+            row.querySelector('[data-field="total"]')
+        );
+    }
+
+    function saveTaskField(taskId, field, value, cell) {
+        fetch(`/tasks-update/${taskId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": document
+                    .querySelector('meta[name="csrf-token"]')
+                    .getAttribute("content"),
+            },
+            body: JSON.stringify({
+                [field]: value,
+            }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    // Task updated successfully, re-enable the cell for further edits
+                    cell.setAttribute("contenteditable", "true");
+                    cell.textContent = value; // Update the cell content to the saved value
+
+                    // Show custom notification
+                    showNotification("Task updated successfully!", "success");
+                } else {
+                    // Show an error message if saving failed
+                    showNotification(
+                        "Error updating task: " +
+                            (data.message || "Unknown error."),
+                        "error"
+                    );
+                    cell.setAttribute("contenteditable", "true"); // Re-enable the cell
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error); // Log the error to the console for debugging
+                showNotification(
+                    "Error updating task. Please try again.",
+                    "error"
+                );
+                cell.setAttribute("contenteditable", "true"); // Re-enable the cell
+            });
+    }
+
+    function showNotification(message, type = "success") {
+        const notification = document.getElementById("notification");
+        const notificationMessage = document.getElementById(
+            "notificationMessage"
+        );
+
+        // Set message and notification color based on type
+        notificationMessage.textContent = message;
+        if (type === "success") {
+            notification.classList.add("bg-green-500");
+            notification.classList.remove("bg-red-500");
+        } else if (type === "error") {
+            notification.classList.add("bg-red-500");
+            notification.classList.remove("bg-green-500");
         }
-    }, 5000);
+
+        // Show the notification
+        notification.classList.remove("hidden");
+        notification.classList.add("show");
+
+        // Hide the notification after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove("show");
+            setTimeout(() => {
+                notification.classList.add("hidden");
+            }, 500); // Delay hiding for smooth transition
+        }, 3000);
+    }
 });
+
+// ./tasklist page js

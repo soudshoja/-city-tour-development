@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\TaskFlightDetail;
 use App\Models\Task;
 use App\Models\Item;
 use App\Models\Agent;
@@ -12,6 +13,11 @@ use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\Log;
+use Google\Cloud\Vision\V1\ImageAnnotatorClient;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Storage;
+
 class TaskController extends Controller
 {
 public function index($id = null)
@@ -177,4 +183,53 @@ public function exportCsv()
     }
 
 
+        public function uploadPdf(Request $request)
+        {
+            // Validate the PDF upload
+            $request->validate([
+                'pdf' => 'required|mimes:pdf|max:20480',  // 20MB max file size
+            ]);
+    
+            // Store the uploaded PDF file
+            $pdfFile = $request->file('pdf');
+            $pdfFilePath = $pdfFile->store('pdfs', 'public');  // Save to storage/app/public/pdfs
+    
+            // Extract text from the uploaded PDF
+            $extractedText = $this->extractTextFromPdf(storage_path("app/public/{$pdfFilePath}"));
+    
+            if (strpos($extractedText, 'No text found') !== false) {
+                return response()->json(['success' => false, 'error' => $extractedText]);
+            }
+    
+            // Parse tasks from the extracted text
+            $tasks = $this->parseTasksFromText($extractedText);
+    
+            // Save the tasks to the database
+            foreach ($tasks as $taskData) {
+                Task::create([
+                    'description' => $taskData['description'], // Adjust according to your Task model
+                    // Add other fields as needed
+                ]);
+            }
+    
+            return response()->json(['success' => true]);
+        }
+    
+        protected function extractTextFromPdf($pdfFilePath)
+        {
+            // Use OpenAI API or a PDF text extraction method
+            $text = shell_exec("pdftotext $pdfFilePath -");
+            return trim($text) ?: 'No text found in the PDF.';
+        }
+    
+        protected function parseTasksFromText($text)
+        {
+            // Your logic to parse the extracted text into an array of tasks
+            $tasks = [];
+            foreach (explode("\n", $text) as $line) {
+                $tasks[] = ['description' => trim($line)]; // Adjust according to your needs
+            }
+            return $tasks;
+        }
+    
 }

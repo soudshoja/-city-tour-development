@@ -535,3 +535,44 @@ select:focus {
 .MaxCOAHight {
     max-height: 30rem;
 }
+
+#notification {
+    transition: opacity 0.5s ease-in-out;
+    opacity: 0;
+}
+
+#notification.show {
+    opacity: 1;
+}
+
+.editable-cell {
+    background-color: #f0f8ff;
+
+    /* Blue border */
+    cursor: text;
+    /* Text cursor to indicate editability */
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.editable-cell:focus {
+    background-color: #e0f7fa;
+    /* Lighter background when focused */
+    border-color: #00acc1;
+    /* Change border color when focused */
+    outline: none;
+    /* Remove the default outline */
+}
+
+.editable-cell:hover {
+    background-color: #e7f0ff;
+    /* Slightly different color on hover */
+    border-color: #1c74d1;
+    /* Slightly darker border on hover */
+}
+
+.hidden {
+    display: none;
+}
+.bg-opacity-50 {
+    background-color: rgba(0, 0, 0, 0.5);
+}

@@ -63,8 +63,8 @@
                 <!-- Upload Task Button -->
                 <div class="relative flex items-center h-12">
                     <input id="pdfInput" type="file" accept=".pdf" class="hidden" />
-                    <button id="uploadTaskButton" 
-                            class="h-full flex items-center px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-700 focus:outline-none">
+                    <button id="uploadTaskButton"
+                        class="h-full flex items-center px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-700 focus:outline-none">
                         <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
@@ -376,115 +376,114 @@
     </div> <!-- ./p-3 -->
 
     <script>
-
-document.getElementById('uploadTaskButton').addEventListener('click', function() {
-        document.getElementById('pdfInput').click();
-    });
-
-    document.getElementById('pdfInput').addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const formData = new FormData();
-            formData.append('pdf', file);
-
-            fetch('/upload-pdf', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('PDF uploaded and tasks added successfully!');
-                    // Optionally refresh the page or update the UI
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert( error);
-            });
-        }
-    });
-
-    function EditTask(modalNameId) {
-
-        document.getElementById(modalNameId).classList.remove('hidden');
-    }
-
-
-    function closeTaskModal() {
-        document.getElementById('taskModal').classList.add('hidden'); // Assuming 'taskModal' is the modal's ID
-    }
-
-
-
-    function closeEditTaskModal(modalNameId) {
-        document.getElementById(modalNameId).classList.add('hidden');
-    }
-
-
-    // Function to open Show Task modal
-    function ShowTask(taskId) {
-        fetch(`/tasks/${taskId}`)
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('taskModalContent').innerHTML = html;
-                toggleModal('taskModal', false); // Show modal
-            })
-            .catch(error => console.error('Error fetching task details:', error));
-    }
-
-    // Function to toggle modal visibility
-    function toggleModal(modalId, hide = true) {
-        const modal = document.getElementById(modalId);
-        if (hide) {
-            modal.classList.add('hidden');
-        } else {
-            modal.classList.remove('hidden');
-        }
-    }
-
-    // Close the modal by clicking outside of its content
-    function closeModalOutsideClick(event, modalId, modalContentSelector) {
-        const modalContent = document.querySelector(modalContentSelector);
-        if (!modalContent.contains(event.target)) {
-            toggleModal(modalId);
-        }
-    }
-
-    // Document ready event listener
-    document.addEventListener("DOMContentLoaded", () => {
-        // Handle task count display
-        const taskCount = @json($taskCount);
-        document.getElementById("TasksData").innerText = taskCount;
-
-        // Select all functionality
-        const selectAllSVG = document.getElementById("selectAllSVG");
-        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
-
-        selectAllSVG.addEventListener("click", () => {
-            const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
-            rowCheckboxes.forEach(checkbox => checkbox.checked = !allChecked);
+        document.getElementById('uploadTaskButton').addEventListener('click', function() {
+            document.getElementById('pdfInput').click();
         });
 
-        // Update SVG color based on checkbox selection
-        rowCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener("change", () => {
-                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-                selectAllSVG.style.fill = allChecked ? "#4fd1c5" :
-                    "#1C274C"; // Change color accordingly
+        document.getElementById('pdfInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append('pdf', file);
+
+                fetch('/upload-pdf', {
+                        method: 'POST',
+                        body: formData,
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('PDF uploaded and tasks added successfully!');
+                            // Optionally refresh the page or update the UI
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert(error);
+                    });
+            }
+        });
+
+        function EditTask(modalNameId) {
+
+            document.getElementById(modalNameId).classList.remove('hidden');
+        }
+
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.add('hidden'); // Assuming 'taskModal' is the modal's ID
+        }
+
+
+
+        function closeEditTaskModal(modalNameId) {
+            document.getElementById(modalNameId).classList.add('hidden');
+        }
+
+
+        // Function to open Show Task modal
+        function ShowTask(taskId) {
+            fetch(`/tasks/${taskId}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('taskModalContent').innerHTML = html;
+                    toggleModal('taskModal', false); // Show modal
+                })
+                .catch(error => console.error('Error fetching task details:', error));
+        }
+
+        // Function to toggle modal visibility
+        function toggleModal(modalId, hide = true) {
+            const modal = document.getElementById(modalId);
+            if (hide) {
+                modal.classList.add('hidden');
+            } else {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        // Close the modal by clicking outside of its content
+        function closeModalOutsideClick(event, modalId, modalContentSelector) {
+            const modalContent = document.querySelector(modalContentSelector);
+            if (!modalContent.contains(event.target)) {
+                toggleModal(modalId);
+            }
+        }
+
+        // Document ready event listener
+        document.addEventListener("DOMContentLoaded", () => {
+            // Handle task count display
+            const taskCount = @json($taskCount);
+            document.getElementById("TasksData").innerText = taskCount;
+
+            // Select all functionality
+            const selectAllSVG = document.getElementById("selectAllSVG");
+            const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+
+            selectAllSVG.addEventListener("click", () => {
+                const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+                rowCheckboxes.forEach(checkbox => checkbox.checked = !allChecked);
+            });
+
+            // Update SVG color based on checkbox selection
+            rowCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener("change", () => {
+                    const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                    selectAllSVG.style.fill = allChecked ? "#4fd1c5" :
+                        "#1C274C"; // Change color accordingly
+                });
             });
         });
-    });
 
-    // Close modals by clicking outside
-    document.getElementById('taskModal').addEventListener('click', (event) => {
-        closeModalOutsideClick(event, 'taskModal', '#taskModal > div');
-    });
-    document.getElementById('EditTaskModal').addEventListener('click', (event) => {
-        closeModalOutsideClick(event, 'EditTaskModal', '#EditTaskModal > div');
-    });
+        // Close modals by clicking outside
+        document.getElementById('taskModal').addEventListener('click', (event) => {
+            closeModalOutsideClick(event, 'taskModal', '#taskModal > div');
+        });
+        document.getElementById('EditTaskModal').addEventListener('click', (event) => {
+            closeModalOutsideClick(event, 'EditTaskModal', '#EditTaskModal > div');
+        });
     </script>
 
 

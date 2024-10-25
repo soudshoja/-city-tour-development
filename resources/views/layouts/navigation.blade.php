@@ -43,14 +43,14 @@
 
                         <!-- Add this to your CSS file -->
                         <style>
-                        .fade-in {
-                            opacity: 0;
-                            transition: opacity 0.3s ease-in;
-                        }
+                            .fade-in {
+                                opacity: 0;
+                                transition: opacity 0.3s ease-in;
+                            }
 
-                        .fade-in-loaded {
-                            opacity: 1;
-                        }
+                            .fade-in-loaded {
+                                opacity: 1;
+                            }
                         </style>
 
                         <!-- Logo and App Name -->
@@ -63,10 +63,10 @@
 
                         <!-- Add this to your script (can be at the bottom of your page) -->
                         <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            document.getElementById('logo').classList.add('fade-in-loaded');
-                            document.getElementById('appName').classList.add('fade-in-loaded');
-                        });
+                            document.addEventListener('DOMContentLoaded', function() {
+                                document.getElementById('logo').classList.add('fade-in-loaded');
+                                document.getElementById('appName').classList.add('fade-in-loaded');
+                            });
                         </script>
 
 
@@ -539,6 +539,51 @@
                         </div>
                     </div>
                     @endcan
+
+                    <div x-data="{ open: false }" x-cloak class="relative">
+                        <a @mouseenter="open = true" @mouseleave="open = false"
+                            class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
+                            href="#">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="stroke-current text-[#1C274C] dark:text-white">
+                                <path
+                                    d="M3.79424 12.0291C4.33141 9.34329 4.59999 8.00036 5.48746 7.13543C5.65149 6.97557 5.82894 6.8301 6.01786 6.70061C7.04004 6 8.40956 6 11.1486 6H12.8515C15.5906 6 16.9601 6 17.9823 6.70061C18.1712 6.8301 18.3486 6.97557 18.5127 7.13543C19.4001 8.00036 19.6687 9.34329 20.2059 12.0291C20.9771 15.8851 21.3627 17.8131 20.475 19.1793C20.3143 19.4267 20.1267 19.6555 19.9157 19.8616C18.7501 21 16.7839 21 12.8515 21H11.1486C7.21622 21 5.25004 21 4.08447 19.8616C3.87342 19.6555 3.68582 19.4267 3.5251 19.1793C2.63744 17.8131 3.02304 15.8851 3.79424 12.0291Z"
+                                    stroke-width="1.5" class="stroke-current" />
+                                <path d="M9 6V5C9 3.34315 10.3431 2 12 2C13.6569 2 15 3.34315 15 5V6" stroke-width="1.5"
+                                    stroke-linecap="round" class="stroke-current" />
+                                <path
+                                    d="M9.1709 15C9.58273 16.1652 10.694 17 12.0002 17C13.3064 17 14.4177 16.1652 14.8295 15"
+                                    stroke-width="1.5" stroke-linecap="round" class="stroke-current" />
+                            </svg>
+
+                            <span
+                                class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Roles</span>
+
+                            <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
+                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                        <!-- Tasks Dropdown Menu -->
+                        <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
+                            class="absolute z-10 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95">
+                            <div class="py-1">
+                                <a href="{{ route('role.index') }}"
+                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                    Manage Roles
+                                </a>
+
+                            </div>
+                        </div>
+                    </div>
 
 
 

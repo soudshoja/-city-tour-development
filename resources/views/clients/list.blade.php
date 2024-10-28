@@ -18,14 +18,11 @@
 
     <div>
         <!-- Breadcrumbs -->
-        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
-            <li>
-                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-            </li>
-            <li class="before:content-['/'] before:mr-1 ">
-                <span>Clients List</span>
-            </li>
-        </ul>
+        <x-breadcrumbs :breadcrumbs="[
+    ['label' => 'Dashboard', 'url' => route('dashboard')],
+    ['label' => 'Clients List']
+]" />
+
         <!-- ./Breadcrumbs -->
         <!-- session status -->
         @if (session('success'))

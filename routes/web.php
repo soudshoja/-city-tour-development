@@ -18,6 +18,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
+use App\Http\Controllers\ToDoListController;
 
 
 
@@ -230,5 +231,13 @@ Route::post('/role', [RoleController::class, 'store'])->name('role.store');
 Route::get('/edit-role/{role}', [RoleController::class, 'edit'])->name('role.edit');
 Route::put('/role/{role}', [RoleController::class, 'update'])->name('role.update');
 Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
+
+
+// todo list routes
+Route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.index');
+Route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.store');
+Route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
+Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
+
 
 require __DIR__ . '/auth.php';

@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Payment\Support\PaymentGateway;
+namespace App\Support\PaymentGateway;
 
 class Tap
 {

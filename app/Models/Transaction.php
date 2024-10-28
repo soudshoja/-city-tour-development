@@ -13,15 +13,22 @@ class Transaction extends Model
         'invoice_id',
         'agent_id',
         'client_id',
-        'transaction_amount',
+        'transaction_date',
+        'amount',
+        'status',
         'payment_type',
-        'transaction_details',
+        'description',
         'created_at',
     ];
 
     // Define the relationship to the Invoice model
     public function invoice()
     {
-        return $this->belongsTo(Invoice::class,'invoice_id');
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function payment()
+    {
+        return $this->hasOne(Payment::class, 'transaction_id');
     }
 }

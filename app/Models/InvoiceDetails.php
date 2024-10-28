@@ -23,4 +23,8 @@ class InvoiceDetails extends Model
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
+    public function task()
+    {
+        return $this->belongsTo(Task::class, 'task_id');
+    }
 }

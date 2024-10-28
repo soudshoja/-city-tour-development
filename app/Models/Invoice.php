@@ -31,4 +31,9 @@ class Invoice extends Model
     {
         return $this->belongsToMany(Task::class);
     }
+
+    public function payment()
+    {
+        return $this->hasMany(Payment::class, 'invoice_id');
+    }
 }

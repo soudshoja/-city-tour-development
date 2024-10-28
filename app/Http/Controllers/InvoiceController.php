@@ -22,11 +22,11 @@ class InvoiceController extends Controller
     {
 
         $user = Auth::user();
-     
+
         if (is_null($id)) {
-            $agent = Agent::find($id); 
-        }else{
-            $agent = Agent::find( $user->agent->id);    
+            $agent = Agent::find($id);
+        } else {
+            $agent = Agent::find($user->agent->id);
         }
 
         if ($user->role == 'admin') {
@@ -41,80 +41,80 @@ class InvoiceController extends Controller
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $user->agent->id)->paginate(6);
         }
 
-        return view('invoice.index', compact('invoices','agent'));
+        return view('invoice.index', compact('invoices', 'agent'));
     }
 
     public function create()
-{
-    $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
-    $clients = Client::where('agent_id', $agentId)->get();
-    $tasks = Task::where('status', 'pending')->get();
+    {
+        $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
+        $clients = Client::where('agent_id', $agentId)->get();
+        $tasks = Task::where('status', 'pending')->get();
 
-    // Fetch the company associated with the logged-in user
-    $company = Auth::user()->company;
+        // Fetch the company associated with the logged-in user
+        $company = Auth::user()->company;
 
-    $invoice = null; // No invoice exists yet, this can be passed as null
+        $invoice = null; // No invoice exists yet, this can be passed as null
 
-    return view('invoice.create', compact('clients', 'tasks', 'invoice', 'company'));
-}
+        return view('invoice.create', compact('clients', 'tasks', 'invoice', 'company'));
+    }
 
 
     /**
      * Store a newly created resource in storage.
      */
-   public function store(Request $request)
-{
-    $tasks = $request->input('tasks');
-    $amount = $request->input('total');
-    $clientId = $request->input('clientId');
-    $currency = $request->input('currency');
-    $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
+    public function store(Request $request)
+    {
+        $tasks = $request->input('tasks');
+        $amount = $request->input('total');
+        $clientId = $request->input('clientId');
+        $currency = $request->input('currency');
+        $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
 
-    try {
-        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+        try {
+            $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
 
-        if (!$invoiceSequence) {
-            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
-        }
+            if (!$invoiceSequence) {
+                $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+            }
 
-        $currentSequence = $invoiceSequence->current_sequence;
-        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+            $currentSequence = $invoiceSequence->current_sequence;
+            $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
-        $invoiceSequence->current_sequence++;
-        $invoiceSequence->save();
+            $invoiceSequence->current_sequence++;
+            $invoiceSequence->save();
 
-        $invoice = Invoice::create([
-            'invoice_number' => $invoiceNumber,
-            'client_id' => $clientId,
-            'agent_id' => $agentId,
-            'amount' => $amount,
-            'currency' => $currency,
-            'status' => 'unpaid',
-        ]);
+            $invoice = Invoice::create([
+                'invoice_number' => $invoiceNumber,
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'amount' => $amount,
+                'currency' => $currency,
+                'status' => 'unpaid',
+            ]);
 
-        if (is_array($tasks) && !empty($tasks)) {
-            foreach ($tasks as $task) {
-                try {
-                    InvoiceDetails::create([
-                        'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoiceNumber,
-                        'task_id' => $task['taskId'],
-                        'task_description' => $task['taskName'],
-                        'task_remark' => $task['remark'],
-                        'task_price' => $task['price'],
-                    ]);
-                } catch (Exception $e) {
-                    Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                    return redirect()->back()->with('error', 'Failed to create InvoiceDetails for task: ' . $task['taskName']);
+            if (is_array($tasks) && !empty($tasks)) {
+                foreach ($tasks as $task) {
+                    try {
+                        InvoiceDetails::create([
+                            'invoice_id' => $invoice->id,
+                            'invoice_number' => $invoiceNumber,
+                            'task_id' => $task['taskId'],
+                            'task_description' => $task['taskName'],
+                            'task_remark' => $task['remark'],
+                            'task_price' => $task['price'],
+                        ]);
+                    } catch (Exception $e) {
+                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                        return redirect()->back()->with('error', 'Failed to create InvoiceDetails for task: ' . $task['taskName']);
+                    }
                 }
             }
-        }
 
-        return redirect()->route('invoice.companyAgentsInvoices')->with('success', 'Invoice created successfully!');
-    } catch (Exception $e) {
-        return redirect()->back()->with('error', 'Invoice creation failed!');
+            return redirect()->route('invoice.companyAgentsInvoices')->with('success', 'Invoice created successfully!');
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Invoice creation failed!');
+        }
     }
-}
 
 
 
@@ -124,41 +124,42 @@ class InvoiceController extends Controller
         return sprintf('INV-%s-%05d', $year, $sequence);
     }
 
-   public function companyAgentsInvoices()
-{
-    $user = Auth::user();
+    public function companyAgentsInvoices()
+    {
+        $user = Auth::user();
 
-    // Ensure that the user is a company
-    if ($user->role !== 'company') {
-        return redirect()->back()->with('error', 'Unauthorized access.');
+        // Ensure that the user is a company
+        if ($user->role !== 'company') {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        // Get all agents under the company
+        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+
+        // Get invoices related to those agents
+        $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
+
+        // Get clients related to the agents
+        $clients = Client::whereIn('agent_id', $agents)->get();
+
+        // Get tasks related to the agents
+        $tasks = Task::whereIn('agent_id', $agents)->get();
+
+        $totalInvoices = $invoices->total();
+
+        return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
     }
 
-    // Get all agents under the company
-    $agents = Agent::where('company_id', $user->company->id)->pluck('id');
-
-    // Get invoices related to those agents
-    $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
-
-    // Get clients related to the agents
-    $clients = Client::whereIn('agent_id', $agents)->get();
-
-    // Get tasks related to the agents
-    $tasks = Task::whereIn('agent_id', $agents)->get();
-
-    $totalInvoices = $invoices->total();
-
-    return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
-}
 
 
-    
     /**
      * Display the specified resource.
      */
 
-      
+
     public function show(string $invoiceNumber)
     {
+
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
 
@@ -201,7 +202,7 @@ class InvoiceController extends Controller
     }
 
     public function updateStatus(Request $request, Invoice $invoice)
-    {     
+    {
         $request->validate([
             'status' => 'required|string',
         ]);

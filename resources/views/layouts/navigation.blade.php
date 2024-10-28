@@ -901,7 +901,7 @@
                              <div class="py-1">
                                  <a href="{{ route('reports.index') }}"
                                      class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    Reports
+                                     Reports
                                  </a>
 
                              </div>
@@ -934,6 +934,24 @@
                      </button>
                  </div>
                  @endforeach
+                 @endif
+
+                 @if(session('success'))
+                 <div class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
+                     {{ session('success') }}
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+                 @elseif(session('error'))
+                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                     {{ session('error') }}
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
                  @endif
              </div>
 

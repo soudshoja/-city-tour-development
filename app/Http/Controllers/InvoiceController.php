@@ -13,7 +13,7 @@ use App\Models\InvoiceDetails;
 use App\Models\CoaCategory;
 use App\Models\Account;
 use App\Models\Task;
-use App\Models\Vendor;
+use App\Models\Suppliers;
 use Exception;
 use Illuminate\Http\Request;
 use App\Models\InvoiceSequence;
@@ -54,8 +54,8 @@ class InvoiceController extends Controller
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
         $clients = Client::where('agent_id', $agentId)->get();
         $tasks = Task::where('status', 'pending')->get();
-        $vendors = Vendor::all();
-        return view('invoice.create', compact('clients', 'tasks', 'vendors'));
+        $suppliers = Suppliers::all();
+        return view('invoice.create', compact('clients', 'tasks', 'suppliers'));
     }
 
     /**
@@ -133,7 +133,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                             'account_id'=>  $payableAccounts->account_id,
                             'transaction_date' => Carbon::now(), 
-                            'description'=> 'Accounts Payable for Supplier: ' . $selectedtask->vendor->name,
+                            'description'=> 'Accounts Payable for Supplier: ' . $selectedtask->supplier->name,
                             'debit' => 0,
                             'credit' => $selectedtask->total,
                             'balance' => $payableAccounts->balance + $selectedtask->total,

@@ -49,16 +49,12 @@
     </script>
 
     <!-- Breadcrumbs -->
-    <ul class="flex space-x-2  pb-5 text-base md:text-lg sm:text-sm">
-        <li>
-            <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-        </li>
-        <li class="before:content-['/'] before:mr-1 ">
-            <span>Chart of Account</span>
-        </li>
-    </ul>
-    <!-- ./Breadcrumbs -->
+    <x-breadcrumbs :breadcrumbs="[
+    ['label' => 'Dashboard', 'url' => route('dashboard')],
+    ['label' => 'Chart of Account']
+]" />
 
+    <!-- ./Breadcrumbs -->
 
 
     @if(isset($error))

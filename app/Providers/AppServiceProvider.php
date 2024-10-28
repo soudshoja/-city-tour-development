@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Providers;
+use Illuminate\Support\Facades\View;
+
 
 use App\Models\Client;
 use App\Models\Company;
@@ -30,6 +32,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Item::class, ItemPolicy::class);
         Gate::policy(Client::class, ClientPolicy::class);
-
+       
     }
 }

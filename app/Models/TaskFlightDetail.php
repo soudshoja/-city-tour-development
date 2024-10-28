@@ -10,17 +10,22 @@ class TaskFlightDetail extends Model
     use HasFactory;
 
     protected $fillable = [
+        'farebase',
         'departure_time',
         'departure_from',
+        'airport_from',
         'arrival_time',
+        'terminal_to',
         'arrive_to',
-        'terminal',
+        'airport_to',
+        'terminal_from',
         'airline_id',
         'flight_number',
-        'class',
+        'class_type',
         'baggage_allowed',
         'equipment',
         'flight_meal',
+        'seat_no',
         'task_id',
     ];
 

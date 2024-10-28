@@ -26,6 +26,13 @@ class Task extends Model
         'venue'
     ];
 
+    // In Task.php
+    public function flightDetails()
+   {
+             return $this->hasOne(TaskFlightDetail::class, 'task_id');
+    }
+
+
     public function invoices()
     {
         return $this->belongsToMany(Invoice::class);

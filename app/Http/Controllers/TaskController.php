@@ -66,12 +66,17 @@ public function index($id = null)
     return view('tasks.tasksList', compact('tasks', 'agent','agents', 'taskCount')); // Pass the tasks and task count to the view
 }
 
-
 public function show($id)
 {
-    $task = Task::with('agent.company', 'client')->findOrFail($id);
-    return view('tasks.singleTask', compact('task'));
+    $task = Task::with(['agent', 'client'])->find($id);
+
+    if (!$task) {
+        return response()->json(['error' => 'Task not found'], 404);
+    }
+
+    return response()->json(['task' => $task], 200);
 }
+
 
 
 // edit and update tasks
@@ -83,21 +88,38 @@ public function edit($id)
     return view('tasks.update', compact('task'));
 }
 
-
 public function update(Request $request, $id)
 {
-    // Validate the form fields
-
     // Find the task
     $task = Task::findOrFail($id);
+    // If the request is an AJAX request, handle inline editing
+    if ($request->ajax()) {
+        try {
+            $field = key($request->all()); // Get the field being updated
+            $value = $request->input($field);
 
-    // Update task data
-    $task->update($request->only(['status', 'type', 'tax', 'price', 'client_name', 'agent_id']));
+            // Update the specific field
+            $task->update([$field => $value]);
+            return 'true';
+            return response()->json(['success' => true], 200);  // Ensure a 200 OK response with JSON format
+        } catch (Exception $e) {
+            return 'true';
 
-    // Redirect back with success message
-    return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500); // Return error response with status 500
+        }
+    } else {
+
+        try{
+            $task->update($request->only(['status', 'type', 'tax','surcharge', 'price', 'total','client_name', 'agent_id']));
+        
+            return response()->json(['success' => true], 200);
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+    }
+
 }
-
 
 
 

@@ -67,10 +67,24 @@
     <!-- Display your content as usual -->
     @endif
 
+
+
     <div class="font-sans leading-normal tracking-normal flex flex-shrink-0">
+
         <div class="container mx-auto py-6 flex">
-            <div class="w-1/3">
-                <h1 class="text-2xl font-bold mb-4">Chart of Accounts</h1>
+            <div class="w-1/2">
+
+                <div class="flex justify-between">
+                    <h1 class="text-2xl font-bold mb-4">Chart of Accounts</h1>
+                    <!-- Toggle Form Button -->
+                    <button onclick="toggleForm()"
+                        class="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none"><svg
+                            class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New</button>
+                </div>
                 <ul class="list-none">
                     @foreach($accounts as $account)
                     @include('coa.partials.account', ['account' => $account])
@@ -78,10 +92,13 @@
                 </ul>
             </div>
 
-            <div class="w-2/3 pl-6">
-                <div>
-                    @include('coa.partials.chart);
+            <div class="w-1/2 pl-6">
+                <!-- Chart Container -->
+                <div id="chartContainer">
+                    @include('coa.partials.chart')
                 </div>
+
+                <!-- Form Container (initially hidden) -->
                 <div id="formContainer" class="hidden bg-white shadow-md rounded-lg p-4">
                     <!-- Selected Account Display -->
                     <div id="selectedAccount" class="mb-4 p-2 bg-gray-100 border border-gray-300 rounded-md hidden">
@@ -191,7 +208,25 @@
                             Account</button>
                     </form>
                 </div>
+
+
             </div>
+
+            <script>
+            function toggleForm() {
+                const formContainer = document.getElementById('formContainer');
+                const chartContainer = document.getElementById('chartContainer');
+
+                // Toggle visibility
+                if (formContainer.classList.contains('hidden')) {
+                    formContainer.classList.remove('hidden');
+                    chartContainer.classList.add('hidden');
+                } else {
+                    formContainer.classList.add('hidden');
+                    chartContainer.classList.remove('hidden');
+                }
+            }
+            </script>
 
 
 

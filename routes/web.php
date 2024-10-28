@@ -14,6 +14,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
@@ -164,6 +165,9 @@ Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.u
 Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
 Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
 
+
+
+Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 
 Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 

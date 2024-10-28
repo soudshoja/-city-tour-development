@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use App\Models\Suppliers;
+use App\Models\Supplier;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
@@ -19,10 +19,10 @@ class SupplierController extends Controller
         }
 
         // Get all the suppliers
-        $suppliers = Suppliers::all();
+        $suppliers = Supplier::all();
      
         // Count the suppliers
-        $SuppliersCount = Suppliers::count();
+        $SuppliersCount = Supplier::count();
         
         // Return view with suppliers and the count
         return view('suppliers.SuppliersList', compact('suppliers', 'SuppliersCount'));

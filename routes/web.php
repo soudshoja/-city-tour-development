@@ -178,6 +178,9 @@ Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('to
 //CHARGES
 Route::get('/charges', [ChargeController::class, 'index'])->name('charges.index');
 Route::get('/charges/create', [ChargeController::class, 'create'])->name('charges.create');
+Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.show');
+Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
+Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
 
 
 require __DIR__ . '/auth.php';

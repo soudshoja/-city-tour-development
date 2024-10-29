@@ -55,9 +55,21 @@ class PaymentController extends Controller
 
         $invoice = Invoice::with('agent.company', 'client')->where('invoice_number', $invoiceNumber)->first();
 
+        $transaction1 = Transaction::create([
+            'invoice_id' => $invoice->id,
+            'company_id'  =>  $invoice->agent->company->id,
+            'client_id' =>  $invoice->client->id,
+            'transaction_date' => Carbon::now(),
+            'amount' =>  $request->total_amount,
+            'status'  => 'completed',
+            'description' => 'pay to Invoice:' . $invoiceNumber,
+        ]);
+
+
         $payment = Payment::create([
             'client_id' => $invoice->client->id,
             'invoice_id' => $invoice->id,
+            'transaction_id' => $transaction1->id,
             'agent_id' => $invoice->agent->id,
             'payment_date' => Carbon::now(),
             'amount' => $request->total_amount,

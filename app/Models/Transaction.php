@@ -14,6 +14,7 @@ class Transaction extends Model
         'company_id',
         'client_id',
         'transaction_date',
+        'transaction_type',
         'amount',
         'status',
         'payment_type',

@@ -172,6 +172,10 @@ Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent']
 
 
 Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('reports.agent');
+Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('reports.client');
+Route::get('/reports/performance', [ReportController::class, 'performance'])->name('reports.performance');
+Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
 
 Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 

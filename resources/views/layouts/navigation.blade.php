@@ -923,11 +923,22 @@
                              x-transition:leave-start="opacity-100 scale-100"
                              x-transition:leave-end="opacity-0 scale-95">
                              <div class="py-1">
-                                 <a href="{{ route('reports.index') }}"
+                                 <a href="{{ route('reports.summary') }}"
                                      class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                     Reports
+                                     Summary
                                  </a>
-
+                                 <a href="{{ route('reports.performance') }}"
+                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                     Performance
+                                 </a>
+                                 <a href="{{ route('reports.agent') }}"
+                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                     Agent Reports
+                                 </a>
+                                 <a href="{{ route('reports.client') }}"
+                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                     Client Reports
+                                 </a>
                              </div>
                          </div>
                      </div>

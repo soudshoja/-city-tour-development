@@ -927,6 +927,10 @@
                                      class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
                                      Summary
                                  </a>
+                                 <a href="{{ route('reports.accsummary') }}"
+                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                     Account Summary
+                                 </a>
                                  <a href="{{ route('reports.performance') }}"
                                      class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
                                      Performance

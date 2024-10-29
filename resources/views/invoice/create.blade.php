@@ -590,9 +590,9 @@
             subtotal: 0,
             total: 0,
             tasksNew: [],
-            currency: 'usd',
+            currency: 'USD',
             items: [],
-            invoiceNumber: '',
+            invoiceNumber:  @json($invoiceNumber),
             selectedCurrency:'USD',
             isSaving: false,
             isSaved: false,
@@ -719,50 +719,59 @@
 
             // Method to generate invoice
             async generateInvoice() {
-            if (this.isSaving) return;
+                    if (this.isSaving) return;
 
-             // Indicate saving process
-                this.isSaving = true;
-                this.isSaved = false;
-                
-                const invoiceUrl = "{{ route('invoice.store') }}";
-                const csrfToken = "{{ csrf_token() }}";
-
-              // const client_id = document.getElementById('client').value;
-              const currency = document.getElementById('currency').value;
-              const params = this.params;
-              const total = this.total;
-              const subtotal = this.subtotal;
-              const tasks = this.items;
-              const clientId = this.selectedClientId;
-
-     try {
-           const response = await fetch(invoiceUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({ clientId, subtotal, total, tasks, params })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error("Failed to reach controller");
-                    }
-                    const result = await response.json();
-                } catch (error) {
-                    this.isSaving = false;
+                    // Indicate saving process
+                    this.isSaving = true;
                     this.isSaved = false;
-                    console.error(error);
-                } 
-                finally{
-               setTimeout(() => {
-                this.invoiceLink = `http://127.0.0.1:8000/invoice/` + result.invoiceNumber; 
-                this.isSaving = false;
-                this.isSaved = true;
-               }, 2000);
-             }
-            },
+                    this.invoiceLink = null;
+
+                    // Extract necessary values
+                    const invoiceUrl = "{{ route('invoice.store') }}";
+                    const csrfToken = "{{ csrf_token() }}";
+                    const currency = this.selectedCurrency;
+                    const params = this.params;
+                    const total = this.total;
+                    const subtotal = this.subtotal;
+                    const tasks = this.items;
+                    const clientId = this.selectedClientId;
+
+                    // Basic validation
+                    if (!clientId || !subtotal || !total || !tasks.length) {
+                        console.error("Required data is missing.");
+                        this.isSaving = false;
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({ clientId, subtotal, total, tasks, params, currency })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error("Failed to reach the invoice controller.");
+                        }
+
+                        const result = await response.json();
+
+                        // Generate invoice link after success
+                        this.invoiceLink = `http://127.0.0.1:8000/invoice/`+this.invoiceNumber;
+                        this.isSaved = true;
+                    } catch (error) {
+                        console.error("Error generating invoice:", error);
+                        this.isSaved = false;
+                    } finally {
+                        // Reset saving state after delay
+                        setTimeout(() => {
+                            this.isSaving = false;
+                        }, 1000);
+                    }
+                },
 
             get filteredClients() {
                 return this.clients.filter(client =>

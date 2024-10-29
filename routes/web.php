@@ -32,15 +32,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/', function () {
         $user = \Illuminate\Support\Facades\Auth::user(); // Get the authenticated user
-        
+
         $user = auth()->user(); // Get the authenticated user
 
         if ($user->role == 'agent') {
-            return app(ItemController::class)->index(); 
+            return app(ItemController::class)->index();
         } elseif ($user->role == 'admin') {
-            return app(DashboardController::class)->index(); 
+            return app(DashboardController::class)->index();
         } elseif ($user->role == 'company') {
-            return app(CompanyController::class)->dashboard(); 
+            return app(CompanyController::class)->dashboard();
         }
 
         if ($user->role == 'agent') {
@@ -155,7 +155,10 @@ Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateSta
 
 
 // PAYMENT
-Route::post('/payment/process/{invoiceNumber}', [PaymentController::class, 'processPayment'])->name('payment.process');
+Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
+Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
+Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
+Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
 Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
 Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
 // Route::get('/clients/list/{id}', [ClientController::class, 'list'])->name('clients.list');

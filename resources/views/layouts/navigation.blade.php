@@ -599,7 +599,7 @@
                      </div><!-- ./suppliers -->
                      @endif
 
-                     @if(Auth::user()->role == 'company')
+                     @if(Auth::user()->role == 'company' || Auth::user()->role === 'admin')
                      <!-- company dashboard -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"
@@ -958,6 +958,24 @@
                      </button>
                  </div>
                  @endforeach
+                 @endif
+
+                 @if(session('success'))
+                 <div class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
+                     {{ session('success') }}
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+                 @elseif(session('error'))
+                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                     {{ session('error') }}
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
                  @endif
              </div>
 

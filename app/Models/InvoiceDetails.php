@@ -16,6 +16,9 @@ class InvoiceDetails extends Model
         'task_description',
         'task_remark',
         'task_price',
+        'supplier_price',
+        'markup_price',
+        'paid',
     ];
 
     public function invoice()

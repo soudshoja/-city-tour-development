@@ -11,12 +11,12 @@ class Transaction extends Model
 
     protected $fillable = [
         'invoice_id',
-        'agent_id',
+        'company_id',
         'client_id',
-        'transaction_amount',
-        'payment_type',
-        'transaction_details',
-        'created_at',
+        'transaction_date',
+        'amount',
+        'status',
+        'description',
     ];
 
     // Define the relationship to the Invoice model

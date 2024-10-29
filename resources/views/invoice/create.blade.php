@@ -1,6 +1,6 @@
 <x-app-layout>
-
-    <!-- start main content section -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<div x-data="invoiceModal()">
     <div x-data="invoiceAdd">
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
@@ -13,27 +13,23 @@
                             @else
                             <p>No company assigned</p>
                             @endif
-
-
-
-
                         </div>
                         <div class="mt-6 space-y-1 text-gray-500 dark:text-gray-400">
-                            <div>13 Tetrick Road, Cypress Gardens, Florida, 33884, US</div>
-                            <div>vristo@gmail.com</div>
-                            <div>+1 (070) 123-4567</div>
+                            <div>{{ $company->address }}</div>
+                            <div>{{ $company->email }}</div>
+                            <div>{{ $company->phone }}</div>
                         </div>
                     </div>
                     <div class="w-full lg:w-1/2 lg:max-w-fit">
                         <div class="flex items-center">
-                            <label for="number" class="mb-0 flex-1 mr-2 ">Invoice Number</label>
-                            <input id="number" type="text" name="inv-num" class="form-input w-2/3 lg:w-[250px]"
-                                placeholder="#8801" x-model="params.invoiceNo" />
+                            <label for="invoiceNumber" class="mb-0 flex-1 mr-2 ">Invoice Number</label>
+                            <input type="text" name="invoiceNumber" class="form-input w-2/3 lg:w-[250px]"
+                                placeholder="#8801" x-model="params.invoiceNumber" value="{{$invoiceNumber}}" />
                         </div>
                         <div class="mt-4 flex items-center">
                             <label for="invoiceLabel" class="mb-0 flex-1 mr-2 ">Invoice Label</label>
                             <input id="invoiceLabel" type="text" name="inv-label" class="form-input w-2/3 lg:w-[250px]"
-                                placeholder="Enter Invoice Label" x-model="params.title" />
+                                placeholder="Enter Invoice Label" x-model="params.label" />
                         </div>
                         <div class="mt-4 flex items-center">
                             <label for="startDate" class="mb-0 flex-1 mr-2 ">Invoice Date</label>
@@ -51,31 +47,258 @@
                 <div class="mt-8 px-4">
                     <div class="flex flex-col justify-between lg:flex-row">
                         <div class="mb-6 w-full lg:w-1/2 lg:mr-6 ">
-
-                            <div class="text-lg font-semibold">Bill To</div>
-                            <div class="mt-4 flex items-center">
-                                <label for="reciever-name" class="mb-0 w-1/3 mr-2 ">Name</label>
-                                <input id="reciever-name" type="text" name="reciever-name" class="form-input flex-1"
-                                    x-model="params.to.name" placeholder="Enter Name" />
+                           <div class="flex items-center justify-between">
+                                <div class="text-lg font-semibold">Bill To</div>               
+                                <button @click="openClientModal()" class="p-2 bg-blue-500 text-white rounded-lg hover:bg-yellow-600 transition-all duration-300 ease-in-out">
+                                    <i class="fas fa-user-plus"></i> Select Client
+                                </button>
                             </div>
                             <div class="mt-4 flex items-center">
-                                <label for="reciever-email" class="mb-0 w-1/3 mr-2 ">Email</label>
-                                <input id="reciever-email" type="email" name="reciever-email" class="form-input flex-1"
-                                    x-model="params.to.email" placeholder="Enter Email" />
+                                <label for="receiverName" class="mb-0 w-1/3 mr-2 ">Name</label>
+                                <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
+                                    value="{{ old('client_name', $receiverName ?? '') }}"
+                                    x-model="receiverName" placeholder="Enter Name" />
                             </div>
                             <div class="mt-4 flex items-center">
-                                <label for="reciever-address" class="mb-0 w-1/3 mr-2">Address</label>
-                                <input id="reciever-address" type="text" name="reciever-address"
-                                    class="form-input flex-1" x-model="params.to.address" placeholder="Enter Address" />
+                                <label for="receiverEmail" class="mb-0 w-1/3 mr-2 ">Email</label>
+                                <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1"
+                                  value="{{ old('client_email', $receiverEmail ?? '') }}"
+                                    x-model="receiverEmail" placeholder="Enter Email" />
                             </div>
                             <div class="mt-4 flex items-center">
-                                <label for="reciever-number" class="mb-0 w-1/3 mr-2 ">Phone Number</label>
-                                <input id="reciever-number" type="text" name="reciever-number" class="form-input flex-1"
-                                    x-model="params.to.phone" placeholder="Enter Phone Number" />
+                                <label for="receiverAddress" class="mb-0 w-1/3 mr-2">Address</label>
+                                <input id="receiverAddress" type="text" name="receiverAddress"
+                                  value="{{ old('client_address', $receiverAddress ?? '') }}"
+                                    class="form-input flex-1" x-model="receiverAddress" placeholder="Enter Address" />
+                            </div>
+                            <div class="mt-4 flex items-center">
+                                <label for="receiverPhone" class="mb-0 w-1/3 mr-2 ">Phone Number</label>
+                                <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
+                                       value="{{ old('client_phone', $receiverPhone ?? '') }}"
+                                    x-model="receiverPhone" placeholder="Enter Phone Number" />
                             </div>
                         </div>
 
-
+                        <div class="w-full lg:w-1/2">
+                            <div class="text-lg font-semibold">Payment Details</div>
+                            <div class="mt-4 flex items-center">
+                                <label for="acno" class="mb-0 w-1/3 mr-2 ">Account Number</label>
+                                <input id="acno" type="text" name="acno" class="form-input flex-1"
+                                    x-model="params.accNo" placeholder="Enter Account Number" />
+                            </div>
+                            <div class="mt-4 flex items-center">
+                                <label for="bank-name" class="mb-0 w-1/3 mr-2 ">Bank Name</label>
+                                <input id="bank-name" type="text" name="bank-name" class="form-input flex-1"
+                                    x-model="params.bankName" placeholder="Enter Bank Name" />
+                            </div>
+                            <div class="mt-4 flex items-center">
+                                <label for="swift-code" class="mb-0 w-1/3 mr-2 ">SWIFT Number</label>
+                                <input id="swift-code" type="text" name="swift-code" class="form-input flex-1"
+                                    x-model="params.swiftCode" placeholder="Enter SWIFT Number" />
+                            </div>
+                            <div class="mt-4 flex items-center">
+                                <label for="iban-code" class="mb-0 w-1/3 mr-2 ">IBAN Number</label>
+                                <input id="iban-code" type="text" name="iban-code" class="form-input flex-1"
+                                    x-model="params.ibanNo" placeholder="Enter IBAN Number" />
+                            </div>
+                            <div class="mt-4 flex items-center">
+                                <label for="country" class="mb-0 w-1/3 mr-2 ">Country</label>
+                                <select id="country" name="country" class="form-select flex-1"
+                                    x-model="params.country">
+                                    <option value="">Choose Country</option>
+                                    <option value="United States">United States</option>
+                                    <option value="United Kingdom">United Kingdom</option>
+                                    <option value="Canada">Canada</option>
+                                    <option value="Australia">Australia</option>
+                                    <option value="Germany">Germany</option>
+                                    <option value="Sweden">Sweden</option>
+                                    <option value="Denmark">Denmark</option>
+                                    <option value="Norway">Norway</option>
+                                    <option value="New-Zealand">New Zealand</option>
+                                    <option value="Afghanistan">Afghanistan</option>
+                                    <option value="Albania">Albania</option>
+                                    <option value="Algeria">Algeria</option>
+                                    <option value="American-Samoa">Andorra</option>
+                                    <option value="Angola">Angola</option>
+                                    <option value="Antigua Barbuda">Antigua &amp; Barbuda</option>
+                                    <option value="Argentina">Argentina</option>
+                                    <option value="Armenia">Armenia</option>
+                                    <option value="Aruba">Aruba</option>
+                                    <option value="Austria">Austria</option>
+                                    <option value="Azerbaijan">Azerbaijan</option>
+                                    <option value="Bahamas">Bahamas</option>
+                                    <option value="Bahrain">Bahrain</option>
+                                    <option value="Bangladesh">Bangladesh</option>
+                                    <option value="Barbados">Barbados</option>
+                                    <option value="Belarus">Belarus</option>
+                                    <option value="Belgium">Belgium</option>
+                                    <option value="Belize">Belize</option>
+                                    <option value="Benin">Benin</option>
+                                    <option value="Bermuda">Bermuda</option>
+                                    <option value="Bhutan">Bhutan</option>
+                                    <option value="Bolivia">Bolivia</option>
+                                    <option value="Bosnia">Bosnia &amp; Herzegovina</option>
+                                    <option value="Botswana">Botswana</option>
+                                    <option value="Brazil">Brazil</option>
+                                    <option value="British">British Virgin Islands</option>
+                                    <option value="Brunei">Brunei</option>
+                                    <option value="Bulgaria">Bulgaria</option>
+                                    <option value="Burkina">Burkina Faso</option>
+                                    <option value="Burundi">Burundi</option>
+                                    <option value="Cambodia">Cambodia</option>
+                                    <option value="Cameroon">Cameroon</option>
+                                    <option value="Cape">Cape Verde</option>
+                                    <option value="Cayman">Cayman Islands</option>
+                                    <option value="Central-African">Central African Republic</option>
+                                    <option value="Chad">Chad</option>
+                                    <option value="Chile">Chile</option>
+                                    <option value="China">China</option>
+                                    <option value="Colombia">Colombia</option>
+                                    <option value="Comoros">Comoros</option>
+                                    <option value="Costa-Rica">Costa Rica</option>
+                                    <option value="Croatia">Croatia</option>
+                                    <option value="Cuba">Cuba</option>
+                                    <option value="Cyprus">Cyprus</option>
+                                    <option value="Czechia">Czechia</option>
+                                    <option value="Côte">Côte d'Ivoire</option>
+                                    <option value="Djibouti">Djibouti</option>
+                                    <option value="Dominica">Dominica</option>
+                                    <option value="Dominican">Dominican Republic</option>
+                                    <option value="Ecuador">Ecuador</option>
+                                    <option value="Egypt">Egypt</option>
+                                    <option value="El-Salvador">El Salvador</option>
+                                    <option value="Equatorial-Guinea">Equatorial Guinea</option>
+                                    <option value="Eritrea">Eritrea</option>
+                                    <option value="Estonia">Estonia</option>
+                                    <option value="Ethiopia">Ethiopia</option>
+                                    <option value="Fiji">Fiji</option>
+                                    <option value="Finland">Finland</option>
+                                    <option value="France">France</option>
+                                    <option value="Gabon">Gabon</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Ghana">Ghana</option>
+                                    <option value="Greece">Greece</option>
+                                    <option value="Grenada">Grenada</option>
+                                    <option value="Guatemala">Guatemala</option>
+                                    <option value="Guernsey">Guernsey</option>
+                                    <option value="Guinea">Guinea</option>
+                                    <option value="Guinea-Bissau">Guinea-Bissau</option>
+                                    <option value="Guyana">Guyana</option>
+                                    <option value="Haiti">Haiti</option>
+                                    <option value="Honduras">Honduras</option>
+                                    <option value="Hong-Kong">Hong Kong SAR China</option>
+                                    <option value="Hungary">Hungary</option>
+                                    <option value="Iceland">Iceland</option>
+                                    <option value="India">India</option>
+                                    <option value="Indonesia">Indonesia</option>
+                                    <option value="Iran">Iran</option>
+                                    <option value="Iraq">Iraq</option>
+                                    <option value="Ireland">Ireland</option>
+                                    <option value="Israel">Israel</option>
+                                    <option value="Italy">Italy</option>
+                                    <option value="Jamaica">Jamaica</option>
+                                    <option value="Japan">Japan</option>
+                                    <option value="Jordan">Jordan</option>
+                                    <option value="Kazakhstan">Kazakhstan</option>
+                                    <option value="Kenya">Kenya</option>
+                                    <option value="Kuwait">Kuwait</option>
+                                    <option value="Kyrgyzstan">Kyrgyzstan</option>
+                                    <option value="Laos">Laos</option>
+                                    <option value="Latvia">Latvia</option>
+                                    <option value="Lebanon">Lebanon</option>
+                                    <option value="Lesotho">Lesotho</option>
+                                    <option value="Liberia">Liberia</option>
+                                    <option value="Libya">Libya</option>
+                                    <option value="Liechtenstein">Liechtenstein</option>
+                                    <option value="Lithuania">Lithuania</option>
+                                    <option value="Luxembourg">Luxembourg</option>
+                                    <option value="Macedonia">Macedonia</option>
+                                    <option value="Madagascar">Madagascar</option>
+                                    <option value="Malawi">Malawi</option>
+                                    <option value="Malaysia">Malaysia</option>
+                                    <option value="Maldives">Maldives</option>
+                                    <option value="Mali">Mali</option>
+                                    <option value="Malta">Malta</option>
+                                    <option value="Mauritania">Mauritania</option>
+                                    <option value="Mauritius">Mauritius</option>
+                                    <option value="Mexico">Mexico</option>
+                                    <option value="Moldova">Moldova</option>
+                                    <option value="Monaco">Monaco</option>
+                                    <option value="Mongolia">Mongolia</option>
+                                    <option value="Montenegro">Montenegro</option>
+                                    <option value="Morocco">Morocco</option>
+                                    <option value="Mozambique">Mozambique</option>
+                                    <option value="Myanmar">Myanmar (Burma)</option>
+                                    <option value="Namibia">Namibia</option>
+                                    <option value="Nepal">Nepal</option>
+                                    <option value="Netherlands">Netherlands</option>
+                                    <option value="Nicaragua">Nicaragua</option>
+                                    <option value="Niger">Niger</option>
+                                    <option value="Nigeria">Nigeria</option>
+                                    <option value="North-Korea">North Korea</option>
+                                    <option value="Oman">Oman</option>
+                                    <option value="Pakistan">Pakistan</option>
+                                    <option value="Palau">Palau</option>
+                                    <option value="Palestinian">Palestinian Territories</option>
+                                    <option value="Panama">Panama</option>
+                                    <option value="Papua">Papua New Guinea</option>
+                                    <option value="Paraguay">Paraguay</option>
+                                    <option value="Peru">Peru</option>
+                                    <option value="Philippines">Philippines</option>
+                                    <option value="Poland">Poland</option>
+                                    <option value="Portugal">Portugal</option>
+                                    <option value="Puerto">Puerto Rico</option>
+                                    <option value="Qatar">Qatar</option>
+                                    <option value="Romania">Romania</option>
+                                    <option value="Russia">Russia</option>
+                                    <option value="Rwanda">Rwanda</option>
+                                    <option value="Réunion">Réunion</option>
+                                    <option value="Samoa">Samoa</option>
+                                    <option value="San-Marino">San Marino</option>
+                                    <option value="Saudi-Arabia">Saudi Arabia</option>
+                                    <option value="Senegal">Senegal</option>
+                                    <option value="Serbia">Serbia</option>
+                                    <option value="Seychelles">Seychelles</option>
+                                    <option value="Sierra-Leone">Sierra Leone</option>
+                                    <option value="Singapore">Singapore</option>
+                                    <option value="Slovakia">Slovakia</option>
+                                    <option value="Slovenia">Slovenia</option>
+                                    <option value="Solomon-Islands">Solomon Islands</option>
+                                    <option value="Somalia">Somalia</option>
+                                    <option value="South-Africa">South Africa</option>
+                                    <option value="South-Korea">South Korea</option>
+                                    <option value="Spain">Spain</option>
+                                    <option value="Sri-Lanka">Sri Lanka</option>
+                                    <option value="Sudan">Sudan</option>
+                                    <option value="Suriname">Suriname</option>
+                                    <option value="Swaziland">Swaziland</option>
+                                    <option value="Switzerland">Switzerland</option>
+                                    <option value="Syria">Syria</option>
+                                    <option value="Sao-Tome-and-Principe">São Tomé &amp; Príncipe</option>
+                                    <option value="Tajikistan">Tajikistan</option>
+                                    <option value="Tanzania">Tanzania</option>
+                                    <option value="Thailand">Thailand</option>
+                                    <option value="Timor-Leste">Timor-Leste</option>
+                                    <option value="Togo">Togo</option>
+                                    <option value="Tonga">Tonga</option>
+                                    <option value="Trinidad-and-Tobago">Trinidad &amp; Tobago</option>
+                                    <option value="Tunisia">Tunisia</option>
+                                    <option value="Turkey">Turkey</option>
+                                    <option value="Turkmenistan">Turkmenistan</option>
+                                    <option value="Uganda">Uganda</option>
+                                    <option value="Ukraine">Ukraine</option>
+                                    <option value="UAE">United Arab Emirates</option>
+                                    <option value="Uruguay">Uruguay</option>
+                                    <option value="Uzbekistan">Uzbekistan</option>
+                                    <option value="Vanuatu">Vanuatu</option>
+                                    <option value="Venezuela">Venezuela</option>
+                                    <option value="Vietnam">Vietnam</option>
+                                    <option value="Yemen">Yemen</option>
+                                    <option value="Zambia">Zambia</option>
+                                    <option value="Zimbabwe">Zimbabwe</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-8">
@@ -100,15 +323,18 @@
                                     <tr class="border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b]">
                                         <td>
                                             <input type="text" class="form-input min-w-[200px]"
-                                                placeholder="Enter Item Name" x-model="item.title" />
+                                                placeholder="Enter Item Name" x-model="item.description" />
                                             <textarea class="form-textarea mt-4" placeholder="Enter Description"
-                                                x-model="item.description"></textarea>
+                                                id="item-name"
+                                                x-model="item.remark"></textarea>
                                         </td>
                                         <td><input type="number" class="form-input w-32" placeholder="Quantity"
-                                                x-model="item.quantity" /></td>
-                                        <td><input type="text" class="form-input w-32" placeholder="Price"
-                                                x-model="item.amount" /></td>
-                                        <td x-text="`$${item.amount * item.quantity}`"></td>
+                                                x-model="item.quantity"  /></td>
+                                        <td>
+                                            <input type="text" class="form-input w-32" placeholder="Price"
+                                                x-model.number="item.total" @input="updateItemTotal(item)" />
+                                        </td>
+                                        <td x-text="`$${(item.total * item.quantity).toFixed(2)}`"></td>
                                         <td>
                                             <button type="button" @click="removeItem(item)">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
@@ -127,28 +353,31 @@
                     </div>
                     <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
                         <div class="mb-6 sm:mb-0">
-                            <button type="button" class="btn btn-primary" @click="addItem()">Add Item</button>
+                            <button @click="openTaskModal()" class="ml-4 p-2 bg-blue-500 text-white rounded-lg hover:bg-yellow-600 transition-all duration-300 ease-in-out">
+                                <i class="fas fa-tasks"></i> Add Item
+                            </button>
+
                         </div>
                         <div class="sm:w-2/5">
                             <div class="flex items-center justify-between">
                                 <div>Subtotal</div>
-                                <div>$0.00</div>
+                                <span x-text="subtotal">$0.00</span>
                             </div>
                             <div class="mt-4 flex items-center justify-between">
                                 <div>Tax(%)</div>
-                                <div>0%</div>
+                                <div x-text="params.tax + '%'">0%</div>
                             </div>
                             <div class="mt-4 flex items-center justify-between">
                                 <div>Shipping Rate($)</div>
-                                <div>$0.00</div>
+                                <div x-text="params.shippingCharge">$0.00</div>
                             </div>
                             <div class="mt-4 flex items-center justify-between">
                                 <div>Discount(%)</div>
-                                <div>0%</div>
+                                <div x-text="params.discount + '%'">0%</div>
                             </div>
                             <div class="mt-4 flex items-center justify-between font-semibold">
                                 <div>Total</div>
-                                <div>$0.00</div>
+                                <span x-text="total">$0.00</span>
                             </div>
                         </div>
                     </div>
@@ -167,7 +396,7 @@
                         <label for="currency">Currency</label>
                         <select id="currency" name="currency" class="form-select" x-model="selectedCurrency">
                             <template x-for="(currency, i) in currencyList" :key="i">
-                                <option :value="currency" x-text="currency"></option>
+                                <option :value="currency" x-text="params.currency"></option>
                             </template>
                         </select>
                     </div>
@@ -176,12 +405,12 @@
                             <div>
                                 <label for="tax">Tax(%) </label>
                                 <input id="tax" type="number" name="tax" class="form-input" placeholder="Tax"
-                                    x-model="tax" />
+                                @input="updateSubTotal()" x-model="params.tax" />
                             </div>
                             <div>
                                 <label for="discount">Discount(%) </label>
                                 <input id="discount" type="number" name="discount" class="form-input"
-                                    placeholder="Discount" x-model="discount" />
+                                @input="updateSubTotal()" placeholder="Discount" x-model="params.discount" />
                             </div>
                         </div>
                     </div>
@@ -189,12 +418,12 @@
                         <div>
                             <label for="shipping-charge">Shipping Charge($) </label>
                             <input id="shipping-charge" type="number" name="shipping-charge" class="form-input"
-                                placeholder="Shipping Charge" x-model="shippingCharge" />
+                            @input="updateSubTotal()"  placeholder="Shipping Charge" x-model="params.shippingCharge" />
                         </div>
                     </div>
                     <div class="mt-4">
                         <label for="payment-method">Accept Payment Via</label>
-                        <select id="payment-method" name="payment-method" class="form-select" x-model="paymentMethod">
+                        <select id="payment-method" name="payment-method" class="form-select" x-model="params.paymentMethod">
                             <option value="">Select Payment</option>
                             <option value="bank">Bank Account</option>
                             <option value="paypal">Paypal</option>
@@ -204,7 +433,13 @@
                 </div>
                 <div class="panel">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                        <button type="button" class="btn btn-success w-full gap-2">
+                            <!-- Invoice Link Display -->
+                        <div x-show="isSaved" class="mt-4">
+                            <label>Invoice Link:</label>
+                            <a :href="invoiceLink" class="text-blue-600 underline" target="_blank" x-text="invoiceLink"></a>
+                        </div>
+
+                        <button @click="generateInvoice()" type="button" :disabled="isSaving" class="btn btn-success w-full gap-2" id="generate-invoice-btn">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
                                 <path
@@ -216,7 +451,9 @@
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            Save
+                            <span x-show="!isSaving && !isSaved" id="button-text">Save</span>
+                            <span x-show="isSaving" id="button-loading">Saving...</span>
+                            <span x-show="isSaved" id="button-saved">Saved</span>
                         </button>
 
                         <button type="button" class="btn btn-info w-full gap-2">
@@ -257,10 +494,345 @@
                         </button>
                     </div>
                 </div>
+                    <!-- Clients Modal -->
+                    <div x-show="isClientModalOpen" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75" style="display: none;">
+                        <div class="bg-white p-4 rounded-lg shadow-lg w-3/4 md:w-1/2">
+                            <p class="text-yellow-500 font-bold mb-4">Choose Client</p>
+
+                            <!-- Search Box -->
+                            <input
+                                type="text"
+                                placeholder="Search Client..."
+                                x-model="searchClient"
+                                class="w-full p-2 mb-4 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring focus:ring-yellow-500"
+                            />
+
+                            <!-- List of Clients -->
+                            <ul class="max-h-60 overflow-y-auto">
+                                <template x-for="client in filteredClients" :key="client.id">
+                                    <li @click="selectClient(client)" class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
+                                        <span x-text="client.name"></span> - <span x-text="client.email"></span>
+                                    </li>
+                                </template>
+                            </ul>
+
+                            <!-- Close Modal Button -->
+                            <div class="text-right mt-4">
+                                <button @click="closeClientModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Close</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Tasks Modal -->
+                    <div x-show="isTaskModalOpen" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75" style="display: none;">
+                        <div class="bg-white p-4 rounded-lg shadow-lg w-3/4 md:w-1/2">
+                            <p class="text-yellow-500 font-bold mb-4">Choose Task</p>
+
+                            <!-- Search Box -->
+                            <input
+                                type="text"
+                                placeholder="Search Task..."
+                                x-model="searchTask"
+                                class="w-full p-2 mb-4 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring focus:ring-yellow-500"
+                            />
+
+                            <!-- List of Tasks -->
+                            <ul class="max-h-60 overflow-y-auto">
+                                <template x-for="task in filteredTasks" :key="task.id">
+                                    <li @click="selectTask(task)" class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
+                                    <span x-text="task.reference"></span>-
+                                    <span x-text="task.type"></span>
+                                    <span x-text="task.additional_info"></span>
+                                    ( <span x-text="task.venue"></span>)
+                                    </li>
+                                </template>
+                            </ul>
+
+                            <!-- Close Modal Button -->
+                            <div class="text-right mt-4">
+                                <button @click="closeTaskModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Close</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+
             </div>
         </div>
     </div>
     <!-- end main content section -->
+ </div>
 
+ <script>
+
+    function invoiceModal() {
+
+        return {
+            isClientModalOpen: false,
+            isTaskModalOpen: false,
+            searchClient: '',
+            searchTask: '',
+            clients: @json($clients),
+            tasks: @json($tasks), 
+            suppliers: @json($suppliers), 
+            selectedClient: null,
+            selectedClientId: null,
+            receiverName: null,
+            receiverName: null,
+            receiverEmail: null,
+            receiverAddress: null,
+            receiverPhone: null,
+            selectedTaskName: null,
+            selectedTask: null,
+            taskRemark: '',
+            taskPrice: 0,
+            subtotal: 0,
+            total: 0,
+            tasksNew: [],
+            currency: 'usd',
+            items: [],
+            invoiceNumber: '',
+            selectedCurrency:'USD',
+            isSaving: false,
+            isSaved: false,
+            invoiceLink: '',
+            params: {
+                label: '' ,
+                invoiceDate: '' ,
+                dueDate:'',
+                accNo:'',
+                bankName:'',
+                swiftCode:'',
+                ibanNo:'',
+                country:'',
+                currency:'',
+                tax:0,
+                discount:0,
+                shippingCharge:0,
+                paymentMethod:'', 
+                invoiceNumber: @json($invoiceNumber),
+            },
+
+            openClientModal() {
+                this.isClientModalOpen = true;
+            },
+
+            closeClientModal() {
+                this.isClientModalOpen = false;
+            },
+
+            selectClient(client) {
+                this.selectedClient = client;
+                this.selectedClientId = client.id ?? '';
+                this.receiverName = client.name ?? '';
+                this.receiverAddress = client.address ?? '';
+                this.receiverPhone = client.phone ?? '';
+                this.receiverEmail = client.email ?? '';
+                    document.getElementById('receiverName').value = client.name ?? '';
+                    document.getElementById('receiverEmail').value = client.email ?? '';
+                    const addressField = document.getElementById('receiverAddress');
+                    if (addressField) {
+                        addressField.value = client.address ? client.address : '';
+                    }
+
+                    const phoneField = document.getElementById('receiverPhone');
+                    if (phoneField) {
+                        phoneField.value = client.phone ? client.phone : '';
+                    }
+                this.closeClientModal();
+            },
+
+            openTaskModal() {
+                this.isTaskModalOpen = true;
+            },
+
+            closeTaskModal() {
+                this.isTaskModalOpen = false;
+            },
+
+            selectTask(task) {
+                this.selectedTask = task;
+                const taskExists = this.items.some(item => item.id === task.id);
+
+                if (!taskExists) {
+                this.items.push({
+                    ...task,
+                    remark: '',
+                    quantity: 1,
+                    price: task.total || 0,
+                    description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`
+                });
+              }
+                this.selectedTaskName = task.reference + '-' +  task.type +  task.additional_info +'('+task.venue+')';
+                this.updateTotal(this.items);
+                //  document.getElementById('item-name').value =  task.reference + '-' +  task.type +  task.additional_info +'('+task.venue+')';
+                this.closeTaskModal();
+            },
+
+            updateItemTotal(item) {
+            // Update total if necessary
+            item.total = parseFloat(item.total) || 0; // Ensure total is a valid number
+            item.quantity = parseFloat(item.quantity) || 1; // Ensure quantity is at least 1
+            // Update any other logic or overall total here if needed
+            this.updateTotal(this.items); // Update the overall total
+            },
+
+            updateSubTotal(){
+                const taxAmount = this.subtotal * (this.params.tax / 100);
+                const discountAmount = this.subtotal * (this.params.discount / 100);
+
+                // Calculate total
+                this.total = this.subtotal + taxAmount + this.params.shippingCharge - discountAmount;
+  
+            },
+
+            updateTotal(items) {
+                    const total = items.reduce((sum, item) => sum + (item.total * item.quantity), 0); // Calculate total based on price and quantity
+                    this.subtotal = total; 
+                    this.updateSubTotal();
+                },
+              // Method to add task
+              addTask() {
+                if (this.taskRemark && this.taskPrice !== null) {
+                    const newTask = {
+                        clientName:  this.selectedClientName,
+                        taskId: this.selectedTask.id,
+                        taskName: this.selectedTaskName,
+                        remark: this.taskRemark,
+                        price: this.taskPrice
+                    };
+
+                    this.tasksNew.push(newTask);
+                    this.total += parseFloat(this.taskPrice);
+                    this.clearInputs();
+                } else {
+                    alert('Please fill in all fields');
+                }
+            },
+
+            // Clear input fields
+            clearInputs() {
+                this.taskRemark = '';
+                this.taskPrice = 0;
+            },
+
+            // Method to generate invoice
+            async generateInvoice() {
+            if (this.isSaving) return;
+
+             // Indicate saving process
+                this.isSaving = true;
+                this.isSaved = false;
+                
+                const invoiceUrl = "{{ route('invoice.store') }}";
+                const csrfToken = "{{ csrf_token() }}";
+
+              // const client_id = document.getElementById('client').value;
+              const currency = document.getElementById('currency').value;
+              const params = this.params;
+              const total = this.total;
+              const subtotal = this.subtotal;
+              const tasks = this.items;
+              const clientId = this.selectedClientId;
+
+     try {
+           const response = await fetch(invoiceUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ clientId, subtotal, total, tasks, params })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Failed to reach controller");
+                    }
+                    const result = await response.json();
+                } catch (error) {
+                    this.isSaving = false;
+                    this.isSaved = false;
+                    console.error(error);
+                } 
+                finally{
+               setTimeout(() => {
+                this.invoiceLink = `http://127.0.0.1:8000/invoice/` + result.invoiceNumber; 
+                this.isSaving = false;
+                this.isSaved = true;
+               }, 2000);
+             }
+            },
+
+            get filteredClients() {
+                return this.clients.filter(client =>
+                    client.name.toLowerCase().includes(this.searchClient.toLowerCase())
+                );
+            },
+
+            get filteredTasks() {
+            return this.tasks
+            .filter(task => task.client_id === this.selectedClientId) // Filter by selected client ID
+            .filter(task => task.additional_info.toLowerCase().includes(this.searchTask.toLowerCase()));
+          },
+        }
+    };
+
+</script>
+
+
+  <script>
+
+    const modal = document.getElementById("modal");
+    const openModalBtn = document.getElementById("openModalBtn");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+
+    openModalBtn.addEventListener("click", () => {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    });
+
+    closeModalBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    function toggleClientFields() {
+      var clientSelect = document.getElementById('client-select');
+      var newClientFields = document.getElementById('new-client-fields');
+      if (clientSelect.value === 'new') {
+        newClientFields.style.display = 'block';
+      } else {
+        newClientFields.style.display = 'none';
+      }
+    }
+  </script>
+  <script>
+    let tasks = [];
+
+    document.getElementById('add-task-btn').addEventListener('click', function () {
+        const selectedTaskId = document.querySelector('input[type="checkbox"]:checked').value;
+        const remark = document.getElementById('remark').value;
+        const price = parseFloat(document.getElementById('price').value);
+
+        tasks.push({ task_id: selectedTaskId, remark: remark, price: price });
+
+        updateTaskList();
+        updateTotal();
+    });
+
+    function updateTaskList() {
+        const taskListElement = document.getElementById('tasks');
+        taskListElement.innerHTML = '';
+
+        tasks.forEach(task => {
+            const taskElement = document.createElement('li');
+            taskElement.className = 'list-group-item bg-dark text-light';
+            taskElement.innerText = `Task ${task.task_id}: ${task.remark} - $${task.price}`;
+            taskListElement.appendChild(taskElement);
+        });
+    }
+
+
+</script>
 
 </x-app-layout>

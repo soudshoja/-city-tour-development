@@ -14,8 +14,22 @@ class Invoice extends Model
         'client_id',
         'agent_id',
         'currency',
+        'sub_amount',
         'amount',
         'status',
+        'invoice_date',
+        'due_date',
+        'label',
+        'account_number',
+        'bank_name',
+        'swift_no',
+        'iban_no',
+        'country',
+        'tax',
+        'discount',
+        'shipping',
+        'accept_payment',
+        
     ];
     public function client()
     {

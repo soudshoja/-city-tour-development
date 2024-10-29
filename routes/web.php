@@ -176,6 +176,7 @@ Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('re
 Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('reports.client');
 Route::get('/reports/performance', [ReportController::class, 'performance'])->name('reports.performance');
 Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
+Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('reports.accsummary');
 
 Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 

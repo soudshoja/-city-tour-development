@@ -127,7 +127,7 @@ class PaymentController extends Controller
         if (isset($response['error'])) {
             return redirect()->back()->with('error', $response['error']['description']);
         }
-
+        
         $payment->payment_reference = $response['id'];
         $payment->status = 'initiate';
         $payment->save();

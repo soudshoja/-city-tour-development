@@ -191,4 +191,27 @@ class ReportController extends Controller
         ]);
     }
 
+    public function accsummary()
+    {
+        // Fetch summary of accounts based on company_id
+        $accounts = DB::table('accounts')
+            ->join('companies', 'companies.id', '=', 'accounts.company_id')
+            ->join('users', 'users.id', '=', 'companies.user_id')
+            ->select( 'accounts.name', 'balance', 'accounts.company_id')
+            ->get();
+
+        // Fetch clients and suppliers
+        $clients = DB::table('clients')
+            ->join('agents', 'agents.id', '=', 'clients.agent_id')
+            ->join('companies', 'companies.id', '=', 'agents.company_id')
+            ->select('clients.id', 'clients.name', 'clients.agent_id')
+            ->get();
+
+        $suppliers = DB::table('suppliers') // Assuming there's a suppliers table
+            ->select('id','name')
+            ->get();
+
+        return view('reports.accsummary', compact('accounts', 'clients', 'suppliers'));
+    }
+
 }

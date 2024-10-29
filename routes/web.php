@@ -147,7 +147,7 @@ Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgents
 
 Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
-Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
 Route::get('/invoice/list/{id}', [InvoiceController::class, 'list'])->name('invoice.list');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');

@@ -49,5 +49,6 @@
     </div>
 
 </body>
+<x-toast />
 
 </html>

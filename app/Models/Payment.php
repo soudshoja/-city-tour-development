@@ -14,6 +14,7 @@ class Payment extends Model
         'invoice_id',
         'client_id',
         'agent_id',
+        'payment_reference',
         'payment_date',
         'amount',
         'payment_method',

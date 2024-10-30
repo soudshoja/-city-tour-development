@@ -16,6 +16,8 @@ class Account extends Model
        'company_id', 
        'description',
        'balance',
+       'code',
+       
     ];
 
     public function parent()

@@ -134,12 +134,6 @@
                             <div class="mt-2">
                                 <label for="client_or_supplier" class="text-xs font-medium text-gray-700">Select Client
                                     or Supplier</label>
-                                <select id="client_or_supplier" name="client_or_supplier"
-                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50 text-sm">
-                                    <option value="">-- Select --</option>
-                                    <option value="client">Client</option>
-                                    <option value="supplier">Supplier</option>
-                                </select>
                             </div>
                         </fieldset>
 

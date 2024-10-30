@@ -22,6 +22,7 @@ public function index($id = null)
     $taskCount = 0;
 
     if ($user->role == 'admin') {
+        $agents = Agent::all();
         $tasks = Task::with('agent.company', 'client')->get(); // Retrieve all tasks for admin
         $taskCount = Task::count(); // Total task count for admin
     } 

@@ -19,7 +19,7 @@ use App\Http\Controllers\CoaController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
-
+use App\Http\Controllers\BranchController;
 
 
 // Home route
@@ -158,7 +158,6 @@ Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateSta
 Route::post('/payment/process/{invoiceNumber}', [PaymentController::class, 'processPayment'])->name('payment.process');
 Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
 Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-// Route::get('/clients/list/{id}', [ClientController::class, 'list'])->name('clients.list');
 Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
 Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
 Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
@@ -233,11 +232,20 @@ Route::put('/role/{role}', [RoleController::class, 'update'])->name('role.update
 Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 
-// todo list routes
+// todolist routes
 Route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.index');
 Route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.store');
 Route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
 Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
+
+
+
+// Branches routes
+Route::get('/brancheslist', [BranchController::class, 'index'])->name('brancheslist.index');
+Route::get('/branches/create', [BranchController::class, 'create'])->name('branches.create');
+Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+
+
 
 
 require __DIR__ . '/auth.php';

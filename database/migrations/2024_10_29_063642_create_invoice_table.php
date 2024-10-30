@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            if (!Schema::hasColumn('tasks', 'status')) {
-                $table->string('status')->default('unpaid')->after('reference');
-            }
+        Schema::create('invoice', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
         });
     }
 
@@ -23,8 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->dropColumn('status');
-        });
+        Schema::dropIfExists('invoice');
     }
 };

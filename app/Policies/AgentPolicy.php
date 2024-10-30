@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Agent;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -13,7 +14,7 @@ class AgentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return  $user->role === 'company';
+        return  $user->role_id === Role::COMPANY;
     }
 
     /**
@@ -21,7 +22,7 @@ class AgentPolicy
      */
     public function view(User $user, Agent $agent): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     /**
@@ -29,7 +30,7 @@ class AgentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     /**
@@ -37,7 +38,7 @@ class AgentPolicy
      */
     public function update(User $user, Agent $agent): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     /**
@@ -45,7 +46,7 @@ class AgentPolicy
      */
     public function delete(User $user, Agent $agent): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     /**
@@ -53,7 +54,7 @@ class AgentPolicy
      */
     public function restore(User $user, Agent $agent): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     /**
@@ -61,6 +62,6 @@ class AgentPolicy
      */
     public function forceDelete(User $user, Agent $agent): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 }

@@ -1,14 +1,16 @@
  <style>
-.fade-in {
-    opacity: 0;
-    transition: opacity 0.3s ease-in;
-}
+     .fade-in {
+         opacity: 0;
+         transition: opacity 0.3s ease-in;
+     }
 
-.fade-in-loaded {
-    opacity: 1;
-}
+     .fade-in-loaded {
+         opacity: 1;
+     }
  </style>
-
+ @php
+ use App\Models\Role;
+ @endphp
  <div x-data="{ sidebarOpen: false, darkMode: localStorage.getItem('darkMode') === 'true' }"
      :class="{ 'dark': darkMode }" class="flex h-screen">
 
@@ -217,7 +219,7 @@
                                      </div>
 
                                      <div class="border-t border-gray-200 dark:border-gray-600"></div>
-                                     @if(Auth::user()->role == 'admin')
+                                     @if(Auth::user()->role_id === Role::ADMIN)
                                      <!-- Add New Admin Link -->
                                      <div class="flex items-center px-4 py-2">
                                          <div class="flex-none">
@@ -299,7 +301,7 @@
              class="CityDisplaayNone bg-white text-black dark:bg-gray-900 dark:text-white shadow-sm border-t border-gray-200 dark:border-gray-700">
              <div class="px-4 sm:px-6 lg:px-8">
                  <div class="flex justify-start h-12 items-center space-x-8">
-                     @if(Auth::user()->role == 'admin')
+                     @if(Auth::user()->role_id === Role::ADMIN)
                      <!-- First Menu Item with Active State -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"
@@ -600,6 +602,7 @@
                      @endif
 
                      @if(Auth::user()->role == 'company' || Auth::user()->role === 'admin')
+                     @if(Auth::user()->role_id === Role::COMPANY)
                      <!-- company dashboard -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"
@@ -1010,8 +1013,8 @@
 
  <!-- Scripts -->
  <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('logo').classList.add('fade-in-loaded');
-    document.getElementById('appName').classList.add('fade-in-loaded');
-});
+     document.addEventListener('DOMContentLoaded', function() {
+         document.getElementById('logo').classList.add('fade-in-loaded');
+         document.getElementById('appName').classList.add('fade-in-loaded');
+     });
  </script>

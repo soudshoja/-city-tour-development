@@ -15,6 +15,7 @@ use App\Models\Task;
 use Exception;
 use Illuminate\Http\Request;
 use App\Models\InvoiceSequence;
+use App\Models\Role;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -27,24 +28,29 @@ class InvoiceController extends Controller
 
         $user = Auth::user();
 
+
         if (is_null($id)) {
+            $agent = Agent::find($id);
+        } else {
+            $agent = Agent::find($user->agent->id);
             $agent = Agent::find($id);
         } else {
             $agent = Agent::find($user->agent->id);
         }
 
-        if ($user->role == 'admin') {
+        if ($user->role_id == Role::ADMIN) {
             // Admin can see all trips and tasks
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role == 'company') {
+        } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
             $agents = Agent::where('company_id', $user->company->id)->pluck('id');
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role == 'agent') {
+        } elseif ($user->role_id == Role::AGENT) {
             // Agent can see their tasks
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $user->agent->id)->paginate(6);
         }
 
+        return view('invoice.index', compact('invoices', 'agent'));
         return view('invoice.index', compact('invoices', 'agent'));
     }
 
@@ -52,9 +58,9 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role == 'company') {
+        if ($user->role_id == Role::COMPANY) {
             $company = Auth::user()->company;
-        } elseif ($user->role == 'agent') {
+        } elseif ($user->role_id == Role::AGENT) {
             $agent = Auth::user()->agent;
             $company = Company::where('id', $agent->company_id)->first();
         }
@@ -62,12 +68,12 @@ class InvoiceController extends Controller
 
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
 
-        if (!$invoiceSequence) {
-            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
-        }
+            if (!$invoiceSequence) {
+                $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+            }
 
-        $currentSequence = $invoiceSequence->current_sequence;
-        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+            $currentSequence = $invoiceSequence->current_sequence;
+            $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
@@ -224,34 +230,51 @@ class InvoiceController extends Controller
     public function companyAgentsInvoices()
     {
         $user = Auth::user();
+    }
+    public function companyAgentsInvoices()
+    {
+        $user = Auth::user();
 
         // Ensure that the user is a company
-        if ($user->role !== 'company') {
+        if ($user->role_id !== Role::COMPANY) {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
         // Get all agents under the company
         $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+        // Get all agents under the company
+        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
 
+        // Get invoices related to those agents
+        $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
         // Get invoices related to those agents
         $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agents)->get();
+        // Get clients related to the agents
+        $clients = Client::whereIn('agent_id', $agents)->get();
 
+        // Get tasks related to the agents
+        $tasks = Task::whereIn('agent_id', $agents)->get();
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agents)->get();
 
         $totalInvoices = $invoices->total();
+        $totalInvoices = $invoices->total();
 
         return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
     }
+        return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
+    }
+
 
 
 
     /**
      * Display the specified resource.
      */
+
 
 
     public function show(string $invoiceNumber)
@@ -300,6 +323,7 @@ class InvoiceController extends Controller
 
     public function updateStatus(Request $request, Invoice $invoice)
     {
+    {
         $request->validate([
             'status' => 'required|string',
         ]);
@@ -310,3 +334,4 @@ class InvoiceController extends Controller
         return redirect()->route('invoice.index')->with('status', 'Invoice status updated successfully!');
     }
 }
+

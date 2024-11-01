@@ -601,8 +601,7 @@
                      </div><!-- ./suppliers -->
                      @endif
 
-                     @if(Auth::user()->role == 'company' || Auth::user()->role === 'admin')
-                     @if(Auth::user()->role_id === Role::COMPANY)
+                     @if(Auth::user()->role_id === Role::COMPANY || Auth::user()->role_id === Role::ADMIN)
                      <!-- company dashboard -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"

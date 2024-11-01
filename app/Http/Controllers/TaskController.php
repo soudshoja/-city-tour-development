@@ -10,6 +10,7 @@ use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
 use App\Models\Role;
+use ConvertApi\ConvertApi;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -121,14 +122,30 @@ class TaskController extends Controller
     }
 
 
-
-
-
     public function import(Request $request)
     {
+        dd($request->all());
         $request->validate([
-            'excel_file' => 'required|mimes:xlsx',
+            'excel_file' => 'required|mimes:pdf',
         ]);
+
+        if ($request->file('excel_file')->getClientOriginalExtension() == 'pdf') {
+            // dd($request->file('excel_file')->getPathname());
+            // dd(config('services.convert-api.secret'));
+            ConvertApi::setApiCredentials(config('services.convert-api.secret'));
+
+            $result = ConvertApi::convert(
+                'txt',
+                [
+                    'File' => $request->file('excel_file')->getPathname()
+                ],
+                'pdf'
+            );
+            dd($result);
+
+            return redirect()->back()->with('error', 'PDF files are not allowed for import.');
+        }
+
 
         Excel::import(new TasksImport, $request->file('excel_file'));
 

@@ -40,4 +40,8 @@ return [
         'public' => env('APP_ENV') == 'production' ? env('TAP_PUBLIC') : env('TAP_SANDBOX_PUBLIC'),
         'url' => env('TAP_URL') . '/v2',
     ],
+
+    'convert-api' => [
+        'secret' => env('CONVERT_API_SECRET'),
+    ],
 ];

@@ -9,14 +9,15 @@ use App\Models\Invoice;
 use App\Models\Company;
 use App\Models\Client;
 use App\Models\Task;
+
 class DashboardController extends Controller
 {
 
 
     public function index()
-    {   
+    {
         // Get count for companies, agents, clients, invoices, and tasks
-        
+
         $companyCount = Company::count();
         $agentCount = Agent::count();
         $clientCount = Client::count();
@@ -37,34 +38,34 @@ class DashboardController extends Controller
         $companies = Company::all();
         // Prepare clients with task count and invoice count
         $clientsWithDetails = $clients->map(function ($client) {
-        // Count the number of tasks related to this client
-        $taskCount = Task::where('client_id', $client->id)->count();
+            // Count the number of tasks related to this client
+            $taskCount = Task::where('client_id', $client->id)->count();
 
-        // Count the total number of invoices related to this client
-        $totalInvoices = Invoice::where('client_id', $client->id)->count();
-          // Count the unpaid invoices for this client
-        $unpaidInvoices = Invoice::where('client_id', $client->id)
-        ->where('status', 'unpaid')
-        ->count();
+            // Count the total number of invoices related to this client
+            $totalInvoices = Invoice::where('client_id', $client->id)->count();
+            // Count the unpaid invoices for this client
+            $unpaidInvoices = Invoice::where('client_id', $client->id)
+                ->where('status', 'unpaid')
+                ->count();
 
-        return [
-            'name' => $client->name,
-            'taskCount' => $taskCount,
-            'totalInvoices' => $totalInvoices,
-            'unpaidInvoices' => $unpaidInvoices,
-        ];
-    });
+            return [
+                'name' => $client->name,
+                'taskCount' => $taskCount,
+                'totalInvoices' => $totalInvoices,
+                'unpaidInvoices' => $unpaidInvoices,
+            ];
+        });
 
         // Prepare agents with task count and invoice count
         $agentsWithDetails = $agents->map(function ($agent) {
             // Count the number of tasks related to this client
             $taskCount = Task::where('agent_id', $agent->id)->count();
             $pendingTasks = Task::where('agent_id', $agent->id)
-            ->where('status', 'pending')
-            ->count();
+                ->where('status', 'pending')
+                ->count();
             // Count the total number of invoices related to this client
             $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
-    
+
             return [
                 'name' => $agent->name,
                 // 'companyName' => $agent->company->name,
@@ -82,18 +83,16 @@ class DashboardController extends Controller
             'totalInvoices' => $invoiceCount,
             'totalInvoiceAmount' => $totalInvoiceAmount,
             'totalPaidAmount' => $totalPaidAmount,
-            'totalUnpaidAmount' => $totalUnpaidAmount, 
+            'totalUnpaidAmount' => $totalUnpaidAmount,
             'paidInvoices' => $paidInvoices,
             'unpaidInvoices' => $unpaidInvoices,
-            'clientsCount'=> $clientCount,
+            'clientsCount' => $clientCount,
             'agentsCount' => $agentCount,
             'companiesCount' => $companyCount,
             'agents' => $agentsWithDetails,
             'clients' => $clientsWithDetails,
         ];
-        
+
         return view('dashboard', compact('dashboardData'));
- 
     }
-    
 }

@@ -19,6 +19,7 @@ use App\Http\Controllers\CoaController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
+use App\Models\Role;
 
 
 
@@ -35,19 +36,11 @@ Route::middleware(['auth'])->group(function () {
 
         $user = auth()->user(); // Get the authenticated user
 
-        if ($user->role == 'agent') {
+        if ($user->role_id == Role::ADMIN) {
             return app(ItemController::class)->index();
-        } elseif ($user->role == 'admin') {
+        } elseif ($user->role_id == Role::AGENT) {
             return app(DashboardController::class)->index();
-        } elseif ($user->role == 'company') {
-            return app(CompanyController::class)->dashboard();
-        }
-
-        if ($user->role == 'agent') {
-            return app(ItemController::class)->index();
-        } elseif ($user->role == 'admin') {
-            return app(DashboardController::class)->index();
-        } elseif ($user->role == 'company') {
+        } elseif ($user->role_id == Role::COMPANY) {
             return app(CompanyController::class)->dashboard();
         }
     })->middleware(['auth'])->name('dashboard');

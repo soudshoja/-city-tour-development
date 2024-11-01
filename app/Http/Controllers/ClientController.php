@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
+use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
@@ -21,25 +22,25 @@ class ClientController extends Controller
 
     // List all clients or clients by agent ID
     public function list()
-{
-    $user = Auth::user();
-    $clientsCount = Client::count();
+    {
+        $user = Auth::user();
+        $clientsCount = Client::count();
 
-    if ($user->role == 'admin') {
-        $agentIds = Agent::all()->pluck('id')->toArray();
-        $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
-    } elseif ($user->role == 'company') {
-        $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
-        $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
-    } elseif ($user->role == 'agent') {
-        $agent = Agent::where('user_id', $user->id)->first();
-        $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
+        if ($user->role_id == Role::ADMIN) {
+            $agentIds = Agent::all()->pluck('id')->toArray();
+            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+        } elseif ($user->role_id == Role::COMPANY) {
+            $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = Agent::where('user_id', $user->id)->first();
+            $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
+        }
+
+        $clientsNo = $clientsCount;
+
+        return view('clients.list', compact('clients', 'clientsNo'));
     }
-
-    $clientsNo = $clientsCount;
-
-    return view('clients.list', compact('clients', 'clientsNo'));
-}
 
 
     // Show the form to create a new client
@@ -50,13 +51,13 @@ class ClientController extends Controller
 
     // Store a new client
     public function store(Request $request)
-    {   
+    {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:clients,email',
             'phone' => 'nullable|string|max:15',    // Optional phone field
         ]);
-        
+
         // Create a new client record
         try {
             $agent = Agent::where('email', $request->get('agent_email'))->first();
@@ -86,7 +87,7 @@ class ClientController extends Controller
         $invoices = Invoice::where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
 
-        return view('clients.profile', compact('client','agents', 'invoices', 'tasks')); // Ensure the view exists
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -99,7 +100,7 @@ class ClientController extends Controller
     // Update the client in the database
     public function update(Request $request, $id)
     {
-        
+
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -118,7 +119,7 @@ class ClientController extends Controller
                 'phone' => $request->get('phone'),
             ]);
 
-            
+
             // Redirect to the clients list with a success message
             return redirect()->route('clients.list')->with('success', 'Client updated successfully!');
         } catch (Exception $e) {
@@ -160,17 +161,16 @@ class ClientController extends Controller
         // Get the new agent details
         $newAgent = $client->agent;
 
-          // Update only pending tasks related to this client, changing the agent's email and id
-          Task::where('client_id', $client->id)
-          ->where('status', 'pending')
-          ->update([
-              'agent_id' => $newAgent->id,
-              'agent_email' => $newAgent->email,
-          ]);
+        // Update only pending tasks related to this client, changing the agent's email and id
+        Task::where('client_id', $client->id)
+            ->where('status', 'pending')
+            ->update([
+                'agent_id' => $newAgent->id,
+                'agent_email' => $newAgent->email,
+            ]);
 
-      // Redirect back with a success message
-      return redirect()->back()->with('success', 'Agent updated successfully for pending tasks.');
-
+        // Redirect back with a success message
+        return redirect()->back()->with('success', 'Agent updated successfully for pending tasks.');
     }
 
     public function exportCsv()
@@ -202,5 +202,4 @@ class ClientController extends Controller
         fclose($handle);
         exit();
     }
-
 }

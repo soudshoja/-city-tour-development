@@ -215,3 +215,39 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ./tasklist page js
+
+// COA page js
+
+// search in COA page
+
+document.getElementById("search-icon").addEventListener("click", function () {
+    const searchInput = document.getElementById("search-input");
+    if (searchInput.classList.contains("hidden")) {
+        searchInput.classList.remove("hidden");
+        searchInput.classList.add("visible");
+        searchInput.focus(); // Automatically focus the input when it appears
+    } else {
+        searchInput.classList.remove("visible");
+        searchInput.classList.add("hidden");
+        searchInput.value = ""; // Clear the input when hiding
+        filterItems(""); // Reset the filtering
+    }
+});
+
+document.getElementById("search-input").addEventListener("input", function () {
+    const query = this.value.toLowerCase();
+    filterItems(query);
+});
+
+function filterItems(query) {
+    // Select all search items
+    const items = document.querySelectorAll(".search-item");
+    items.forEach((item) => {
+        // Check if the item's text includes the search query
+        if (item.textContent.toLowerCase().includes(query)) {
+            item.style.display = ""; // Show the item
+        } else {
+            item.style.display = "none"; // Hide the item
+        }
+    });
+}

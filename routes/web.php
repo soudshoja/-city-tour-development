@@ -183,8 +183,12 @@ Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 
 // Account
 Route::get('/coa', action: [CoaController::class, 'index'])->name('coa.index');
-Route::get('/coa/accounts', action: [CoaController::class, 'accounts'])->name('coa.accounts');
-Route::post('/coa/store', [CoaController::class, 'store'])->name('coa.store');
+Route::post('/coa/create', [CoaController::class, 'createAccountForAssets'])->name('coa.create');
+Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
+Route::post('/path-to-save-code/{id}', [CoaController::class, 'updateCode']);
+
+
+
 
 
 

@@ -21,7 +21,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'role',
+        'role_id',
         'fa_type_id',
         'two_factor_code',
         'two_factor_expires_at',
@@ -56,6 +56,7 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+
     protected function twoFactorCode(): Attribute
     {
         return new Attribute(
@@ -66,11 +67,6 @@ class User extends Authenticatable implements MustVerifyEmail
                 return $value ? encrypt($value) : null;
             }
         );
-    }
-
-    public function role()
-    {
-        return $this->hasOne(Role::class);
     }
 
     public function agent()

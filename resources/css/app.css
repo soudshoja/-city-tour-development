@@ -10,6 +10,9 @@ body {
 .customBlueColor {
     color: #3273b4;
 }
+.customBgDarkColor {
+    background-color: #1c274c !important;
+}
 
 .CheckBoxColor {
     color: #bec7e3 !important;
@@ -575,4 +578,28 @@ select:focus {
 }
 .bg-opacity-50 {
     background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* coa page */
+
+/* Modal styling */
+#assets-modal {
+    display: none;
+    /* Hidden by default */
+}
+
+#assets-modal:not(.hidden) {
+    display: flex;
+    /* Show modal when not hidden */
+}
+
+.fixed {
+    position: fixed;
+}
+
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
 }

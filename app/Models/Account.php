@@ -12,12 +12,12 @@ class Account extends Model
     protected $fillable = [
        'name', 
        'level', 
+       'actual_balance',
+       'budget_balance',    
+       'variance',  
        'parent_id', 
        'company_id', 
-       'description',
-       'balance',
        'code',
-       
     ];
 
     public function parent()

@@ -40,4 +40,10 @@ return [
         'public' => env('APP_ENV') == 'production' ? env('TAP_PUBLIC') : env('TAP_SANDBOX_PUBLIC'),
         'url' => env('TAP_URL') . '/v2',
     ],
+
+    'whatsapp' => [
+        'url' => env('WHATSAPP_URL') . '/' . env('WHATSAPP_API_VERSION'),
+        'phone-number-id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'token' => env('WHATSAPP_TOKEN'),
+    ],
 ];

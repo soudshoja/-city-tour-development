@@ -153,6 +153,8 @@ Route::get('/payment/process', [PaymentController::class, 'process'])->name('pay
 Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
 Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
 Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
+Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
+Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
 Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
 Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
 // Route::get('/clients/list/{id}', [ClientController::class, 'list'])->name('clients.list');

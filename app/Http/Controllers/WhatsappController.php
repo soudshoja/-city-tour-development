@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Traits\HttpRequestTrait;
-use App\Models\Client;
+use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 
@@ -13,12 +13,12 @@ class WhatsappController extends Controller
     public function sendMessage(Request $request)
     {
         $client = json_decode($request->client);
-        // dd(json_decode($client));
-        // dd($client->phone);
+        $agent = Agent::find($client->agent_id);
         $invoiceNumber = $request->invoiceNumber;
 
         $header = "Your Invoice Is Ready!";
-        $link = route('payment.create', ['invoiceNumber' => $invoiceNumber]);
+        $link = route('payment.clients', ['invoiceNumber' => $invoiceNumber], false);
+
         $reqBody = [
             "messaging_product" => "whatsapp",
             "to" => '+60' . $client->phone,
@@ -34,7 +34,7 @@ class WhatsappController extends Controller
                         "parameters" => [
                             [
                                 "type" => "text",
-                                "text" => $header
+                                "text" => $client->name,
                             ]
                         ]
                     ],
@@ -56,11 +56,11 @@ class WhatsappController extends Controller
                 ]
             ]
         ];
-
+       
         $bodies = [
-            "Dear " . $client->name . ",",
-            "We are pleased to inform you that your account has been successfully created.",
-            "Please click the link below to activate your account.",
+            $invoiceNumber,
+            $agent->name,
+            "Testing",
         ];
         foreach ($bodies as $body) {
             $reqBody['template']['components'][1]['parameters'][] = [
@@ -81,6 +81,10 @@ class WhatsappController extends Controller
         );
 
         logger($response);
+        
+        if(!isset($response['messages'][0]['message_status'])){
+            return Redirect::back()->with('error', 'Failed to send message');
+        }
 
         return Redirect::back()->with('success', 'Message sent successfully');
     }

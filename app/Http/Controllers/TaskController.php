@@ -12,9 +12,11 @@ use App\Imports\TasksImport;
 use App\Models\Role;
 use ConvertApi\ConvertApi;
 use Exception;
+use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
@@ -124,30 +126,30 @@ class TaskController extends Controller
 
     public function import(Request $request)
     {
-        dd($request->all());
+
         $request->validate([
-            'excel_file' => 'required|mimes:pdf',
+            'task_file' => 'required|mimes:pdf',
         ]);
 
-        if ($request->file('excel_file')->getClientOriginalExtension() == 'pdf') {
-            // dd($request->file('excel_file')->getPathname());
-            // dd(config('services.convert-api.secret'));
-            ConvertApi::setApiCredentials(config('services.convert-api.secret'));
+        ConvertApi::setApiCredentials(config('services.convert-api.secret'));
 
-            $result = ConvertApi::convert(
-                'txt',
-                [
-                    'File' => $request->file('excel_file')->getPathname()
-                ],
-                'pdf'
-            );
-            dd($result);
+        $file = $request->file('task_file');
+        $destinationPath = 'uploads';
+        if ($fileUploaded = $file->move($destinationPath, $file->getClientOriginalName())) {
+            $result = ConvertApi::convert('txt', ['File' => $fileUploaded->getPathname()], 'pdf');
 
-            return redirect()->back()->with('error', 'PDF files are not allowed for import.');
+            Log::info('File converted successfully: ', $result->getFiles());
+            $response = $result->saveFiles($destinationPath);
+
+            Log::info('File uploaded successfully: ', $response);
+
+            return Redirect::back()->with('success', 'File uploaded successfully');
+        } else {
+            Log::error('File upload failed');
+            return Redirect::back()->with('error', 'File upload failed');
         }
 
-
-        Excel::import(new TasksImport, $request->file('excel_file'));
+        // Excel::import(new TasksImport, $request->file('excel_file'));
 
         return redirect()->back()->with('success', 'Tasks imported successfully.');
     }

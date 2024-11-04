@@ -63,7 +63,7 @@
                 <div class="relative flex items-center h-12">
                     <form action="{{ route('tasksupload.import') }}" method="POST" enctype="multipart/form-data" class="inline-flex">
                         @csrf
-                        <input id="pdfInput" type="file" accept=".pdf" class="text" name="excel_file" />
+                        <input id="pdfInput" type="file" accept=".pdf" class="text" name="task_file" />
                         <button id="uploadTaskButton"
                             type="submit"
                             class="h-full flex items-center px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-700 focus:outline-none">

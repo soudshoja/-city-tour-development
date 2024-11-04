@@ -19,6 +19,7 @@ use App\Http\Controllers\CoaController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
+use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
 
 
@@ -181,10 +182,6 @@ Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destr
 Route::post('/path-to-save-code/{id}', [CoaController::class, 'updateCode']);
 
 
-
-
-
-
 Route::get('/download-company', function () {
     $filePath = public_path('templates/company.xlsx'); // Path to your Excel template
 
@@ -246,5 +243,7 @@ Route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.s
 Route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
 Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
 
+// whatsapp
+Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 require __DIR__ . '/auth.php';

@@ -13,6 +13,66 @@ body {
 .customBgDarkColor {
     background-color: #1c274c !important;
 }
+.GreenCustombgColor {
+    background-color: #1a5319 !important;
+}
+
+.YellowCustombgColor {
+    background-color: #fccd2a !important;
+}
+
+/* chart of account page */
+
+
+.ExpensesColor{
+    color: #AF1740 !important;
+}
+.IncomeColor{
+    color: #004C9E !important;
+}
+
+.main-container {
+    display: flex;
+    width: 100%;
+}
+
+.left-div {
+    width: 90%;
+}
+
+.right-div {
+    width: 10%;
+}
+
+.refreshAssetsIcon,
+.refreshLiabilitiesIcon, .ExpensesRefreshIcon, .IncomeRefreshIcon {
+    transition: transform 0.3s ease;
+    /* Smooth transition */
+}
+
+.rotate {
+    transform: rotate(180deg);
+}
+
+.incomeRefreshIcon.rotate {
+    transform: rotate(360deg);
+    transition: transform 0.3s ease-in-out;
+}
+
+
+
+
+#AssetsDetails, #LiabilitiesDetails, #IncomeDetails, #ExpensesDetails {
+    display: none;
+    /* Initially hidden */
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+
+    background-color: #f9f9f9;
+}
+
+/* chart of account page style ends */
 
 .CheckBoxColor {
     color: #bec7e3 !important;
@@ -602,4 +662,60 @@ select:focus {
     right: 0;
     bottom: 0;
     left: 0;
+}
+
+#searchInput:focus {
+    outline: none !important;
+    /* Removes the blue outline */
+    box-shadow: none !important;
+    /* Removes any focus box-shadow */
+    border-color: inherit !important;
+    /* Keeps the border color unchanged */
+}
+
+.CheckBoxColor {
+    color: #bec7e3 !important;
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    /* For Firefox */
+    scrollbar-color: #bec7e3 #edf2f7;
+    /* Thumb color and track color for Firefox */
+}
+
+/* WebKit browsers (Chrome, Safari, etc.) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    /* Width of the scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #bec7e3;
+    /* Track color */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #4fd1c5;
+    /* Thumb color */
+    border-radius: 10px;
+    /* Rounded edges */
+    border: 2px solid #edf2f7;
+    /* Adds a little padding around the thumb */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #000;
+    /* Thumb color on hover */
+}
+
+.mt07 {
+    margin-top: 0.7rem !important;
+}
+
+@media screen and (min-width: 1024px) {
+    .mt07 {
+        margin-top: 0 !important;
+    }
 }

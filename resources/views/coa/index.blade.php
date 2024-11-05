@@ -22,133 +22,23 @@
 
     <div class="bg-gray-100 min-h-screen">
         <!-- Top Card Section -->
+         <!-- Top Card Section -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <!-- Card 1 Assets -->
-            <div class="bg-white p-5 rounded-lg shadow ">
+            @php
+                // Define types and their colors
+                $types = [
+                    'Assets' => '1A5319',
+                    'Liabilities' => 'FCC157',
+                    'Income' => '004C9E',
+                    'Expenses' => 'AF1740'
+                ];
+            @endphp
 
-                <div class="flex justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path opacity="0.5"
-                                d="M2.5 6.5C2.5 4.29086 4.29086 2.5 6.5 2.5C8.70914 2.5 10.5 4.29086 10.5 6.5V9.16667C10.5 9.47666 10.5 9.63165 10.4659 9.75882C10.3735 10.1039 10.1039 10.3735 9.75882 10.4659C9.63165 10.5 9.47666 10.5 9.16667 10.5H6.5C4.29086 10.5 2.5 8.70914 2.5 6.5Z"
-                                stroke="currentColor" stroke-width="1.5"></path>
-                            <path opacity="0.5"
-                                d="M13.5 14.8333C13.5 14.5233 13.5 14.3683 13.5341 14.2412C13.6265 13.8961 13.8961 13.6265 14.2412 13.5341C14.3683 13.5 14.5233 13.5 14.8333 13.5H17.5C19.7091 13.5 21.5 15.2909 21.5 17.5C21.5 19.7091 19.7091 21.5 17.5 21.5C15.2909 21.5 13.5 19.7091 13.5 17.5V14.8333Z"
-                                stroke="currentColor" stroke-width="1.5"></path>
-                            <path
-                                d="M2.5 17.5C2.5 15.2909 4.29086 13.5 6.5 13.5H8.9C9.46005 13.5 9.74008 13.5 9.95399 13.609C10.1422 13.7049 10.2951 13.8578 10.391 14.046C10.5 14.2599 10.5 14.5399 10.5 15.1V17.5C10.5 19.7091 8.70914 21.5 6.5 21.5C4.29086 21.5 2.5 19.7091 2.5 17.5Z"
-                                stroke="currentColor" stroke-width="1.5"></path>
-                            <path
-                                d="M13.5 6.5C13.5 4.29086 15.2909 2.5 17.5 2.5C19.7091 2.5 21.5 4.29086 21.5 6.5C21.5 8.70914 19.7091 10.5 17.5 10.5H14.6429C14.5102 10.5 14.4438 10.5 14.388 10.4937C13.9244 10.4415 13.5585 10.0756 13.5063 9.61196C13.5 9.55616 13.5 9.48982 13.5 9.35714V6.5Z"
-                                stroke="currentColor" stroke-width="1.5"></path>
-                        </svg>
-                        <h3 class="font-semibold text-lg">Assets</h3>
-                    </div>
-
-                    <!-- Add New SVG Icon -->
-                    <div id="create-assets-button" class="cursor-pointer">
-                        <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd" clip-rule="evenodd"
-                                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12.75 9C12.75 8.58579 12.4142 8.25 12 8.25C11.5858 8.25 11.25 8.58579 11.25 9L11.25 11.25H9C8.58579 11.25 8.25 11.5858 8.25 12C8.25 12.4142 8.58579 12.75 9 12.75H11.25V15C11.25 15.4142 11.5858 15.75 12 15.75C12.4142 15.75 12.75 15.4142 12.75 15L12.75 12.75H15C15.4142 12.75 15.75 12.4142 15.75 12C15.75 11.5858 15.4142 11.25 15 11.25H12.75V9Z"
-                                fill="#1C274C" />
-                        </svg>
-                    </div>
-                </div>
-
-
-            </div>
-
-            <!-- Card 2 Liabilities -->
-            <div class="bg-white p-5 rounded-lg shadow ">
-
-                <div class="flex justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M4.97883 9.68508C2.99294 8.89073 2 8.49355 2 8C2 7.50645 2.99294 7.10927 4.97883 6.31492L7.7873 5.19153C9.77318 4.39718 10.7661 4 12 4C13.2339 4 14.2268 4.39718 16.2127 5.19153L19.0212 6.31492C21.0071 7.10927 22 7.50645 22 8C22 8.49355 21.0071 8.89073 19.0212 9.68508L16.2127 10.8085C14.2268 11.6028 13.2339 12 12 12C10.7661 12 9.77318 11.6028 7.7873 10.8085L4.97883 9.68508Z"
-                                stroke="#1C274C" stroke-width="1.5" />
-                            <path opacity="0.5"
-                                d="M5.76613 10L4.97883 10.3149C2.99294 11.1093 2 11.5065 2 12C2 12.4935 2.99294 12.8907 4.97883 13.6851L7.7873 14.8085C9.77318 15.6028 10.7661 16 12 16C13.2339 16 14.2268 15.6028 16.2127 14.8085L19.0212 13.6851C21.0071 12.8907 22 12.4935 22 12C22 11.5065 21.0071 11.1093 19.0212 10.3149L18.2339 10M5.76613 14L4.97883 14.3149C2.99294 15.1093 2 15.5065 2 16C2 16.4935 2.99294 16.8907 4.97883 17.6851L7.7873 18.8085C9.77318 19.6028 10.7661 20 12 20C13.2339 20 14.2268 19.6028 16.2127 18.8085L19.0212 17.6851C21.0071 16.8907 22 16.4935 22 16C22 15.5065 21.0071 15.1093 19.0212 14.3149L18.2339 14"
-                                stroke="#1C274C" stroke-width="1.5" />
-                        </svg>
-
-                        <h3 class="font-semibold text-lg">Liabilities</h3>
-                    </div>
-
-
-                    <!-- Add New SVG Icon -->
-                    <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd"
-                            d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12.75 9C12.75 8.58579 12.4142 8.25 12 8.25C11.5858 8.25 11.25 8.58579 11.25 9L11.25 11.25H9C8.58579 11.25 8.25 11.5858 8.25 12C8.25 12.4142 8.58579 12.75 9 12.75H11.25V15C11.25 15.4142 11.5858 15.75 12 15.75C12.4142 15.75 12.75 15.4142 12.75 15L12.75 12.75H15C15.4142 12.75 15.75 12.4142 15.75 12C15.75 11.5858 15.4142 11.25 15 11.25H12.75V9Z"
-                            fill="#1C274C" />
-                    </svg>
-
-                </div>
-
-
-            </div>
-
-            <!-- Card 3 Income -->
-            <div class="bg-white p-5 rounded-lg shadow ">
-
-                <div class="flex justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path opacity="0.5"
-                                d="M22 12C22 13.9778 21.4135 15.9112 20.3147 17.5557C19.2159 19.2002 17.6541 20.4819 15.8268 21.2388C13.9996 21.9957 11.9889 22.1937 10.0491 21.8079C8.10929 21.422 6.32746 20.4696 4.92893 19.0711C3.53041 17.6725 2.578 15.8907 2.19215 13.9509C1.80629 12.0111 2.00433 10.0004 2.7612 8.17317C3.51808 6.3459 4.79981 4.78412 6.4443 3.6853C8.08879 2.58649 10.0222 2 12 2"
-                                stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                            <path d="M15 12L12 12M12 12L9 12M12 12L12 9M12 12L12 15" stroke="#1C274C" stroke-width="1.5"
-                                stroke-linecap="round" />
-                            <path d="M14.5 2.31494C18.014 3.21939 20.7805 5.98588 21.685 9.4999" stroke="#1C274C"
-                                stroke-width="1.5" stroke-linecap="round" />
-                        </svg>
-
-                        <h3 class="font-semibold text-lg">Income</h3>
-                    </div>
-
-
-                    <!-- Add New SVG Icon -->
-                    <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd"
-                            d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12.75 9C12.75 8.58579 12.4142 8.25 12 8.25C11.5858 8.25 11.25 8.58579 11.25 9L11.25 11.25H9C8.58579 11.25 8.25 11.5858 8.25 12C8.25 12.4142 8.58579 12.75 9 12.75H11.25V15C11.25 15.4142 11.5858 15.75 12 15.75C12.4142 15.75 12.75 15.4142 12.75 15L12.75 12.75H15C15.4142 12.75 15.75 12.4142 15.75 12C15.75 11.5858 15.4142 11.25 15 11.25H12.75V9Z"
-                            fill="#1C274C" />
-                    </svg>
-
-                </div>
-
-
-            </div>
-
-            <!-- Card 4 Expenses -->
-            <div class="bg-white p-5 rounded-lg shadow ">
-
-                <div class="flex justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z"
-                                stroke="#1C274C" stroke-width="1.5" />
-                            <path opacity="0.5"
-                                d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5"
-                                stroke="#1C274C" stroke-width="1.5" />
-                        </svg>
-
-                        <h3 class="font-semibold text-lg">Expenses</h3>
-                    </div>
-
-
-                    <!-- Add New SVG Icon -->
-                    <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd"
-                            d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12.75 9C12.75 8.58579 12.4142 8.25 12 8.25C11.5858 8.25 11.25 8.58579 11.25 9L11.25 11.25H9C8.58579 11.25 8.25 11.5858 8.25 12C8.25 12.4142 8.58579 12.75 9 12.75H11.25V15C11.25 15.4142 11.5858 15.75 12 15.75C12.4142 15.75 12.75 15.4142 12.75 15L12.75 12.75H15C15.4142 12.75 15.75 12.4142 15.75 12C15.75 11.5858 15.4142 11.25 15 11.25H12.75V9Z"
-                            fill="#1C274C" />
-                    </svg>
-
-                </div>
-
-
-            </div>
-
+            @foreach($types as $type => $color)
+                <!-- Pass `type` and `color` to both card and modal components -->
+                <x-coa-card :type="$type" :color="$color" />
+                <x-coa-modal :type="$type" :color="$color" />
+            @endforeach
         </div>
 
         <!-- Accounts Overview -->
@@ -180,116 +70,55 @@
 
 
 
-    <!-- Add New asset Modal -->
-    <div id="assets-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
-            <h2 class="text-xl font-bold mb-4">Create Assets Account</h2>
-            <form id="assets-form" class="flex flex-row items-center space-x-4">
-                <div class="">
-                    <label for="accountName" class="mr-2 text-sm font-medium text-gray-700">Account Name</label>
-                    <input type="text" id="accountName" name="accountName" required
-                        class="block border border-gray-300 rounded-md p-2 w-40">
-                </div>
-
-                <div class="flex items-center space-x-2 mt-6">
-                    <button type="submit"
-                        class="customBgDarkColor text-white px-4 py-2 rounded hover:bg-gray-400 transition">Create</button>
-                    <button type="button" id="close-modal"
-                        class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition">Cancel</button>
-
-                </div>
-            </form>
-
-        </div>
-    </div>
-
-
+    <!-- JavaScript for Modal and Form Handling -->
     <script>
-    // Get modal and button elements
-    const createAssetsButton = document.getElementById("create-assets-button");
-    const assetsModal = document.getElementById("assets-modal");
-    const closeModalButton = document.getElementById("close-modal");
-    const assetsForm = document.getElementById("assets-form");
-    const messageArea = document.getElementById("message-area");
-    const messageDiv = document.getElementById("message");
+        document.addEventListener("DOMContentLoaded", function () {
+            const types = ["assets", "liabilities", "income", "expenses"];
+            
+            types.forEach((type) => {
+                const modal = document.getElementById(`${type}-modal`);
+                const form = document.getElementById(`${type}-form`);
+                const openButton = document.getElementById(`create-${type}-button`);
+                const closeButton = modal.querySelector(".close-modal");
 
-    // Function to show a message
-    function showMessage(message, type = "success") {
-        messageDiv.textContent = message;
-        messageDiv.className =
-            type === "success" ?
-            "bg-green-500 text-white p-4 rounded-lg" :
-            "bg-red-500 text-white p-4 rounded-lg";
+                // Open modal
+                openButton.addEventListener("click", () => {
+                    modal.classList.remove("hidden");
+                });
 
-        messageArea.classList.remove("hidden"); // Show message
-        setTimeout(() => {
-            messageArea.classList.add("hidden"); // Hide after 3 seconds
-        }, 3000);
-    }
+                // Close modal
+                closeButton.addEventListener("click", () => {
+                    modal.classList.add("hidden");
+                });
 
-    // Open the modal when the SVG is clicked
-    createAssetsButton.addEventListener("click", () => {
-        assetsModal.classList.remove("hidden");
-    });
+                // Form submission with AJAX
+                form.addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    formData.append("type", type);
 
-    // Close the modal when the cancel button is clicked
-    closeModalButton.addEventListener("click", () => {
-        assetsModal.classList.add("hidden");
-        assetsForm.reset(); // Reset form fields when closing the modal
-    });
-
-    // Close the modal if the user clicks outside of the modal content
-    function closeAssetsModalIbg(event) {
-        const assetsModalContent = document.querySelector("#assets-modal > div");
-        if (!assetsModalContent.contains(event.target)) {
-            assetsModal.classList.add("hidden");
-            assetsForm.reset(); // Reset form fields when closing the modal
-        }
-    }
-
-    // Handle form submission
-    assetsForm.addEventListener("submit", (event) => {
-        event.preventDefault(); // Prevent default form submission
-
-        // Get the account name from the input
-        const accountName = document.getElementById("accountName").value;
-
-        // Use AJAX to submit the form
-        fetch("coa/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}", // Ensure CSRF token is included
-                },
-                body: JSON.stringify({
-                    name: accountName,
-                }),
-            })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return response.json();
-            })
-            .then((data) => {
-                // Display success message
-                showMessage(data.message, "success");
-                assetsModal.classList.add("hidden"); // Close the modal
-                assetsForm.reset(); // Reset form fields when closing the modal
-                // You can update the UI or perform other actions based on the response
-            })
-            .catch((error) => {
-                console.error(
-                    "There was a problem with the fetch operation:",
-                    error
-                );
-                // Display error message
-                showMessage("Error: " + error.message, "error");
+                    fetch("{{ route('coa.create') }}", {
+                        method: "POST",
+                        headers: {
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                            "Accept": "application/json"
+                        },
+                        body: formData,
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(`Account created for ${type}`);
+                            modal.classList.add("hidden");
+                            form.reset();
+                        } else {
+                            alert(`Failed to create account: ${data.message}`);
+                        }
+                    })
+                    .catch(error => console.error("Error:", error));
+                });
             });
-    });
-
-    // Event listener for closing the modal when clicking outside
-    assetsModal.addEventListener("click", closeAssetsModalIbg);
+        });
     </script>
 
 </x-app-layout>

@@ -150,7 +150,7 @@ class CoaController extends Controller
                     // Fetch level 4 for each level 3
                     $level3income->level4incomes = Account::where('parent_id', $level3income->id)->get();
 
-                    foreach ($level3income->level4income as $level4income) {
+                    foreach ($level3income->level4incomes as $level4income) {
                         // Assuming level4income has actual_balance and budget_balance attributes
                         $actualBalanceIncome = $level4income->actual_balance; // Replace with the actual field name
                         $budgetBalanceIncome = $level4income->budget_balance; // Replace with the actual field name
@@ -211,61 +211,69 @@ class CoaController extends Controller
 
     
     // create accounts
+public function createAccounts(Request $request)
+{
+    // Allowed account types in lowercase for validation
+    $allowedTypes = ['assets', 'liabilities', 'income', 'expenses'];
 
-    public function createAccountForAssets(Request $request)
-    {
-        // Validate the incoming request to ensure a name is provided
-        $request->validate([
-            'name' => 'required|string|max:255', // Adjust validation as necessary
-        ]);
+    // Validate the incoming request, allowing case-insensitive matching for 'type'
+    $request->validate([
+        'accountName' => 'required|string|max:255',
+        'type' => ['required', 'string', function ($attribute, $value, $fail) use ($allowedTypes) {
+            if (!in_array(strtolower($value), $allowedTypes)) {
+                $fail('The selected type is invalid.');
+            }
+        }],
+    ]);
 
-        // Get the authenticated user
-        $user = Auth::user();
+    // Get the authenticated user
+    $user = Auth::user();
 
-        // Retrieve the company associated with the user
-        $company = Company::where('user_id', $user->id)->first();
+    // Retrieve the company associated with the user
+    $company = Company::where('user_id', $user->id)->first();
 
-        // Ensure the company exists before proceeding
-        if (!$company) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Company not found.',
-            ], 404);
-        }
-
-        // Check if the account with name 'Assets' exists for the company
-        $assetsId = Account::where('name', 'Assets')->where('company_id', $company->id)->value('id');
-
-        // If the account does not exist, create it first
-        if (!$assetsId) {
-            $assetsAccount = Account::create([
-                'name' => 'Assets',
-                'company_id' => $company->id, // Set the company_id
-                'code' => $request->code,
-            ]);
-            $assetsId = $assetsAccount->id; // Get the newly created Assets ID
-        }
-
-        // Now create the new account with parent_id set to Assets ID
-        $newAccount = Account::create([
-            'name' => $request->name, // Use the name from the request
-            'parent_id' => $assetsId,  // Set the parent_id to Assets ID
-            'company_id' => $company->id, // Set the company_id
-            'level' => 2, // Set the level as necessary
-            'actual_balance' => 0, // Set the actual balance as necessary
-            'budget_balance' => 0, // Set the budget balance as necessary
-            'variance' => 0, // Set the variance as necessary
-            // Add other fields as necessary
-        ]);
-
+    if (!$company) {
         return response()->json([
-            'success' => true,
-            'message' => 'New account created successfully with parent ID set to Assets.',
-            'account' => $newAccount,
-        ], 201);
+            'success' => false,
+            'message' => 'Company not found.',
+        ], 404);
     }
 
+    // Convert 'type' to capitalize the first letter (e.g., 'assets' -> 'Assets')
+    $type = ucfirst(strtolower($request->type));
 
+    // Find the parent account ID based on the type and company
+    $parentAccount = Account::where('name', $type)
+                            ->where('company_id', $company->id)
+                            ->first();
+
+    if (!$parentAccount) {
+        return response()->json([
+            'success' => false,
+            'message' => "{$type} account not found for this company.",
+        ], 404);
+    }
+
+    // Create the new account under the correct parent_id
+    $newAccount = Account::create([
+        'name' => $request->accountName,
+        'parent_id' => $parentAccount->id,
+        'company_id' => $company->id,
+        'level' => 2,
+        'actual_balance' => 0,
+        'budget_balance' => 0,
+        'variance' => 0,
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => "New {$type} account created successfully with parent ID {$parentAccount->id}.",
+        'account' => $newAccount,
+    ], 201);
+}
+
+
+    
     public function dstry($id)
     
     {
@@ -285,16 +293,16 @@ class CoaController extends Controller
                 }
         }
 
-
-   public function updateCode(Request $request, $id)
+public function updateCode(Request $request, $id)
 {
     // Validate the incoming request to ensure a code is provided
     $request->validate([
         'code' => 'required|string|max:255',
     ]);
 
-    // Find the asset by ID
+    // Find the asset and liability by ID
     $asset = Account::find($id);
+    $liability = Account::find($id); // Assuming liabilities are also stored in the Account model
 
     if (!$asset) {
         return response()->json([
@@ -303,15 +311,27 @@ class CoaController extends Controller
         ], 404);
     }
 
+    if (!$liability) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Liability not found.',
+        ], 404);
+    }
+
     // Update the asset's code
     $asset->code = $request->code;
     $asset->save();
 
+    // Update the liability's code
+    $liability->code = $request->code; // Assuming the same code update for liability
+    $liability->save();
+
     return response()->json([
         'success' => true,
-        'message' => 'Code updated successfully.',
+        'message' => 'Code updated successfully ',
     ]);
 }
+
 
 
 public function store(Request $request)

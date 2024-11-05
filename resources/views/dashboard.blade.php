@@ -1,6 +1,6 @@
 <x-app-layout>
 
-    @if(Auth()->user()->role_id === Role::ADMIN)
+    @if(Auth()->user()->role_id === \App\Models\Role::ADMIN)
 
    @elseif(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
    <div>

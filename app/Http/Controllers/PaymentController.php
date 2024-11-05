@@ -55,67 +55,96 @@ class PaymentController extends Controller
 
         $invoice = Invoice::with('agent.company', 'client')->where('invoice_number', $invoiceNumber)->first();
 
-        $transaction1 = Transaction::create([
-            'invoice_id' => $invoice->id,
-            'company_id'  =>  $invoice->agent->company->id,
-            'client_id' =>  $invoice->client->id,
-            'transaction_date' => Carbon::now(),
-            'amount' =>  $request->total_amount,
-            'status'  => 'completed',
-            'description' => 'pay to Invoice:' . $invoiceNumber,
-        ]);
-
-
-        $payment = Payment::create([
-            'client_id' => $invoice->client->id,
-            'invoice_id' => $invoice->id,
-            'transaction_id' => $transaction1->id,
-            'agent_id' => $invoice->agent->id,
-            'payment_date' => Carbon::now(),
-            'amount' => $request->total_amount,
-            'payment_method' => $request->payment_method,
-            'status'  => 'pending',
-        ]);
-
         $data = [
-            'amount' => $request->total_amount,
-            'currency' => 'KWD',
-            'save_card' => false,
-            'customer' => [
-                'first_name' => $request->client_name,
-                'email' => $request->client_email,
-            ],
-            'source' => [
-                'id' => 'src_all',
-            ],
-            'description' => 'Payment for order ',
-            'metadata' => [
-                'invoice_number' => $invoiceNumber,
-                'payment_id' => $payment->id,
-
-            ],
-            'redirect' => [
-                'url' => route('payment.process'),
-            ],
-            'post' => [
-                'url' => route('payment.webhook'),
-            ],
+            'invoice' => $invoice,
+            'client_name' => $request->client_name,
+            'client_email' => $request->client_email,
+            'client_phone' => $request->client_phone,
+            'total_amount' => $request->total_amount,
+            'payment_method' => $request->payment_method,
+            'selected_items' => $request->selected_items,
+            'redirect_url' => route('payment.process'),
+            'webhook_url' => route('payment.webhook'),
         ];
 
-        if ($clientPhone = $request->client_phone) {
-            $data['customer']['phone'] = $clientPhone;
+
+        if($clientMiddleName = $request->client_middle_name){
+            $data['client_middle_name'] = $clientMiddleName;
+        }
+
+        if($clientLastName = $request->client_last_name){
+            $data['client_last_name'] = $clientLastName;
         }
 
         if ($clientMiddleName = $request->client_middle_name) {
             $data['customer']['middle_name'] = $clientMiddleName;
         }
 
-        if ($clientLastName = $request->client_last_name) {
-            $data['customer']['last_name'] = $clientLastName;
+        if ($request->selected_items) {
+            $data['selected_items'] = $request->selected_items;
         }
 
-        if ($request->selected_items) {
-            foreach ($request->selected_items as $key => $item) {
+        $response = $this->initiatePayment($data);
+
+        if (isset($response['error'])) {
+            return redirect()->back()->with('error', $response['error']);
+        }
+        
+        return redirect($response['url']);
+    }
+
+    public function initiatePayment($data){
+
+        $invoice = $data['invoice'];
+
+        $transaction = Transaction::create([
+            'invoice_id' => $invoice->id,
+            'company_id'  =>  $invoice->agent->company->id,
+            'client_id' =>  $invoice->client->id,
+            'transaction_date' => Carbon::now(),
+            'amount' =>  $data['total_amount'],
+            'status'  => 'completed',
+            'description' => 'pay to Invoice:' . $invoice->invoice_number,
+        ]);
+
+
+        $payment = Payment::create([
+            'client_id' => $invoice->client->id,
+            'invoice_id' => $invoice->id,
+            'transaction_id' => $transaction->id,
+            'agent_id' => $invoice->agent->id,
+            'payment_date' => Carbon::now(),
+            'amount' => $data['total_amount'],
+            'payment_method' => $data['payment_method'],
+            'status'  => 'pending',
+        ]);
+
+        $requestTap = [
+            'amount' => $data['total_amount'],
+            'currency' => 'KWD',
+            'save_card' => false,
+            'customer' => [
+                'first_name' => $data['client_name'],
+                'email' => $data['client_email'],
+            ],
+            'source' => [
+                'id' => 'src_all',
+            ],
+            'description' => 'Payment for order ',
+            'metadata' => [
+                'invoice_number' => $data['invoice_number'],
+                'payment_id' => $payment->id,
+            ],
+            'redirect' => [
+                'url' => $data['redirect_url'],
+            ],
+            'post' => [
+                'url' => $data['webhook_url'],
+            ],
+        ];
+
+        if (isset($data['selected_items'])) {
+            foreach ($data['selected_items'] as $key => $item) {
                 $selectedItemKey = 'selected_item_' . $key;
                 $data['metadata'][$selectedItemKey] = $item;
             }
@@ -123,16 +152,19 @@ class PaymentController extends Controller
 
         $tap = new Tap();
 
-        $response = $tap->createCharge($data);
+        $response = $tap->createCharge($requestTap);
         if (isset($response['error'])) {
-            return redirect()->back()->with('error', $response['error']['description']);
+            return response()->json(['error' => $response['error']['description']], 500);
         }
-        
+
         $payment->payment_reference = $response['id'];
         $payment->status = 'initiate';
         $payment->save();
 
-        return redirect($response['transaction']['url']);
+        return response()->json([
+            'success' => 'Payment initiated successfully',
+            'url' => $response['transaction']['url'],
+        ]);
     }
 
     public function process(Request $request)
@@ -286,5 +318,47 @@ class PaymentController extends Controller
     public function webhook(Request $request)
     {
         Log::info('Webhook received: ' . $request->getContent());
+    }
+
+    public function paymentClientRedirect($invoiceNumber)
+    {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+
+        $data = [
+            'invoice' => $invoice,
+            'total_amount' => $invoice->amount,
+            'payment_method' => 'debit_card', // change to get from tap check charges later
+            'client_name' => $invoice->client->name,
+            'client_email' => $invoice->client->email,
+            'invoice_number' => $invoice->invoice_number,
+            'redirect_url' => route('payment.clients.process'),
+            'webhook_url' => route('payment.webhook'),
+        ];
+        
+        $response = json_decode($this->initiatePayment($data)->content(), true);
+       
+        if(isset($response['error'])){
+            return Redirect::route('payment.error', ['invoiceNumber' => $invoiceNumber]);
+        }
+
+        return redirect($response['url']);
+    }
+
+    public function paymentClientProcess(Request $request){
+        $tap = new Tap();
+
+        $tap_id = $request->tap_id;
+
+        $response = $tap->getCharge($tap_id);
+
+        if (isset($response['errors'])) {
+            return view('clients.response', ['status' => 'error', 'message' => 'Payment error']);
+        }
+
+        if ($response['status'] != 'CAPTURED') {
+            return view('clients.response', ['status' => 'error', 'message' => 'Payment error']);
+        }
+
+        return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
     }
 }

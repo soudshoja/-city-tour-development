@@ -120,8 +120,16 @@
     </div>
 
     <!-- Payment Details -->
-    <div class="mb-8">
+    <div class="mb-8 inline-flex gap-2">
       @if($invoice->status === 'unpaid')
+      <form action="{{ route('whatsapp.send') }}" method="POST">
+        @csrf
+        <input type="hidden" name="client" value='{{ $invoice->client }}'>
+        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number}}'>
+        <button type="submit" class="btn btn-primary">
+          Send Invoice To Client
+        </button>
+      </form>
       <form id="paymentForm" action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}" method="POST">
         @csrf
         <input type="hidden" name="total_amount" value="{{ $invoice->amount }}">

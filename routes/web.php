@@ -21,6 +21,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
+use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
 
 
@@ -132,6 +133,8 @@ Route::get('/payment/process', [PaymentController::class, 'process'])->name('pay
 Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
 Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
 Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
+Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
+Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
 Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
 Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
 Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
@@ -195,5 +198,8 @@ Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.sh
 Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
 Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
 
+// whatsapp
+Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 require __DIR__ . '/auth.php';
+

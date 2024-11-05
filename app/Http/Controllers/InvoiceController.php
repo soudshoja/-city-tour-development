@@ -48,7 +48,6 @@ class InvoiceController extends Controller
         }
 
         return view('invoice.index', compact('invoices', 'agent'));
-        return view('invoice.index', compact('invoices', 'agent'));
     }
 
     public function create()

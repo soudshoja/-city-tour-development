@@ -44,4 +44,10 @@ return [
     'convert-api' => [
         'secret' => env('CONVERT_API_SECRET'),
     ],
+
+    'whatsapp' => [
+        'url' => env('WHATSAPP_URL') . '/' . env('WHATSAPP_API_VERSION'),
+        'phone-number-id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'token' => env('WHATSAPP_TOKEN'),
+    ],
 ];

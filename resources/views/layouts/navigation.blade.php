@@ -1020,7 +1020,7 @@
                          </div>
                      </div>
 
-                     @if(Auth()->user()->role === 'agent')
+                     @if(Auth::user()->role_id === Role::AGENT)
                      <a href="{{ route('invoice.create') }}" class="btn btn-success ml-2">Create Invoice</a>
                      @endif
                  </div>

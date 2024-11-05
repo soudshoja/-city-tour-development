@@ -1,8 +1,7 @@
 <x-app-layout>
 
     <div class="container mx-auto p-5">
-        <h1 class="text-3xl font-bold mb-5">{{$company->name}}</h1>
-        <h4 class="text-3xl font-bold mb-5">{{$agent->name}}</h4>
+
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div class="bg-white shadow-md rounded-lg p-5">
@@ -19,7 +18,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-white shadow-md rounded-lg p-5">
                 <h2 class="text-xl font-semibold">Total Invoice Amount</h2>
-                 <p id="totalInvoiceAmount" class="text-2xl">0</p>
+                <p id="totalInvoiceAmount" class="text-2xl">0</p>
             </div>
             <div class="bg-white shadow-md rounded-lg p-5">
                 <h2 class="text-xl font-semibold">Total Trips</h2>
@@ -79,7 +78,7 @@
                 </table>
             </div>
         </div>
-        
+
         <div class="mb-6">
             <h2 class="text-xl font-semibold mb-3">Invoice Overview</h2>
             <div id="invoicesOverview" class="bg-white shadow-md rounded-lg p-5">
@@ -103,72 +102,72 @@
 
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            // Sample data for demonstration
-            const dashboardData = @json($dashboardData);
+    document.addEventListener("DOMContentLoaded", function() {
+        // Sample data for demonstration
+        const dashboardData = @json($dashboardData);
 
-            const formattedInvoiceAmount = new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: 'MYR' 
+        const formattedInvoiceAmount = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'MYR'
         }).format(dashboardData.totalInvoiceAmount);
 
-            // Populate key metrics      
-            document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
-            document.getElementById("totalTrips").innerText = dashboardData.totalTrips; 
-            document.getElementById("totalClients").innerText = dashboardData.clientsCount; 
-            document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
-            document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
-            document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
-            document.getElementById("totalInvoices").innerText = dashboardData.totalInvoices;
-            document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
-            document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
+        // Populate key metrics      
+        document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
+        document.getElementById("totalTrips").innerText = dashboardData.totalTrips;
+        document.getElementById("totalClients").innerText = dashboardData.clientsCount;
+        document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
+        document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
+        document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
+        document.getElementById("totalInvoices").innerText = dashboardData.totalInvoices;
+        document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
+        document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
 
-            // Create Tasks Overview Chart
-            const tasksChartOptions = {
-                chart: {
-                    type: 'bar'
-                },
-                series: [{
-                    name: 'Tasks',
-                    data: [dashboardData.pendingTasks, dashboardData.completedTasks]
-                }],
-                xaxis: {
-                    categories: ['Pending', 'Completed']
-                }
-            };
+        // Create Tasks Overview Chart
+        const tasksChartOptions = {
+            chart: {
+                type: 'bar'
+            },
+            series: [{
+                name: 'Tasks',
+                data: [dashboardData.pendingTasks, dashboardData.completedTasks]
+            }],
+            xaxis: {
+                categories: ['Pending', 'Completed']
+            }
+        };
 
-            const tasksChart = new ApexCharts(document.querySelector("#tasksChart"), tasksChartOptions);
-            tasksChart.render();
+        const tasksChart = new ApexCharts(document.querySelector("#tasksChart"), tasksChartOptions);
+        tasksChart.render();
 
-            // Create Invoices Overview Chart
-            const invoicesChartOptions = {
-                chart: {
-                    type: 'pie'
-                },
-                series: [dashboardData.paidInvoices, dashboardData.unpaidInvoices],
-                labels: ['Paid', 'Unpaid']
-            };
+        // Create Invoices Overview Chart
+        const invoicesChartOptions = {
+            chart: {
+                type: 'pie'
+            },
+            series: [dashboardData.paidInvoices, dashboardData.unpaidInvoices],
+            labels: ['Paid', 'Unpaid']
+        };
 
-            const invoicesChart = new ApexCharts(document.querySelector("#invoicesChart"), invoicesChartOptions);
-            invoicesChart.render();
+        const invoicesChart = new ApexCharts(document.querySelector("#invoicesChart"), invoicesChartOptions);
+        invoicesChart.render();
 
-            // Populate Clients Overview Table
-            const clientsTableBody = document.getElementById("clientsTableBody");
-            dashboardData.clients.forEach(client => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
+        // Populate Clients Overview Table
+        const clientsTableBody = document.getElementById("clientsTableBody");
+        dashboardData.clients.forEach(client => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2">${client.name}</td>
                     <td class="border border-gray-300 px-4 py-2">${client.taskCount}</td>
                     <td class="border border-gray-300 px-4 py-2">${client.totalInvoices}</td>
                     <td class="border border-gray-300 px-4 py-2">${client.unpaidInvoices}</td>
                 `;
-                clientsTableBody.appendChild(row);
-            });
+            clientsTableBody.appendChild(row);
+        });
 
-            const invoicesTableBody = document.getElementById("invoicesTableBody");
-            dashboardData.invoices.forEach(invoice => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
+        const invoicesTableBody = document.getElementById("invoicesTableBody");
+        dashboardData.invoices.forEach(invoice => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2">${invoice.invoice_number}</td>
                     <td class="border border-gray-300 px-4 py-2">${invoice.currency}</td>
                     <td class="border border-gray-300 px-4 py-2">${invoice.amount}</td>
@@ -181,9 +180,9 @@
                         </a>
                    </td>
                 `;
-                invoicesTableBody.appendChild(row);
-            });
-
+            invoicesTableBody.appendChild(row);
         });
+
+    });
     </script>
 </x-app-layout>

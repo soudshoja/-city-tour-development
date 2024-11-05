@@ -19,5 +19,5 @@ class Role extends Model
     public const COMPANY = 2;
     public const AGENT = 3;
     public const ACCOUNTANT = 4;
-    public const CLIENT = 5;
+    public const CLIENT =   5;
 }

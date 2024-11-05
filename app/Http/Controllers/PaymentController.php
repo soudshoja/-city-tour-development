@@ -84,7 +84,7 @@ class PaymentController extends Controller
             $data['selected_items'] = $request->selected_items;
         }
 
-        $response = $this->initiatePayment($data);
+        $response = json_decode($this->initiatePayment($data)->content(), true);
 
         if (isset($response['error'])) {
             return redirect()->back()->with('error', $response['error']);

@@ -15,7 +15,7 @@ class WhatsappController extends Controller
         $client = json_decode($request->client);
         $agent = Agent::find($client->agent_id);
         $invoiceNumber = $request->invoiceNumber;
-
+        
         $header = "Your Invoice Is Ready!";
         $link = route('payment.clients', ['invoiceNumber' => $invoiceNumber], false);
 
@@ -56,11 +56,11 @@ class WhatsappController extends Controller
                 ]
             ]
         ];
-       
+
         $bodies = [
             $invoiceNumber,
             $agent->name,
-            "Testing",
+            $agent->company->name,
         ];
         foreach ($bodies as $body) {
             $reqBody['template']['components'][1]['parameters'][] = [

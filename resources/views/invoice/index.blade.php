@@ -1,23 +1,23 @@
 <x-app-layout>
     <div class="container">
-    <div class="mb-5 flex flex-col md:flex-row justify-between items-center w-full space-y-4 md:space-y-0">
-        <h3 class="text-2xl font-bold text-gray-700 mb-4">Agent Invoices Detail</h3>
-        <a href="{{ route('agentsshow.show', ['id' => $agent->id]) }}" class="text-blue-500 text-xs underline hover:text-blue-700">
-            Back to Agent Overview
-        </a>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p><strong>Name:</strong> {{ $agent->name }}</p>
-                        <p><strong>Email:</strong> {{ $agent->email }}</p>
-                    </div>
-                    <div>
-                        <p><strong>Phone:</strong> {{ $agent->phone_number }}</p>
-                        <p><strong>Company:</strong> {{ $agent->company->name }}</p>
-                    </div>
-                    <div>
-                        <p><strong>Type:</strong> {{ $agent->type }}</p>
-                    </div>
+        <div class="mb-5 flex flex-col md:flex-row justify-between items-center w-full space-y-4 md:space-y-0">
+            <h3 class="text-2xl font-bold text-gray-700 mb-4">Agent Invoices Detail</h3>
+            <a href="{{ route('agentsshow.show', ['id' => $agent->id]) }}" class="text-blue-500 text-xs underline hover:text-blue-700">
+                Back to Agent Overview
+            </a>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p><strong>Name:</strong> {{ $agent->name }}</p>
+                    <p><strong>Email:</strong> {{ $agent->email }}</p>
                 </div>
+                <div>
+                    <p><strong>Phone:</strong> {{ $agent->phone_number }}</p>
+                    <p><strong>Company:</strong> {{ $agent->company->name }}</p>
+                </div>
+                <div>
+                    <p><strong>Type:</strong> {{ $agent->type }}</p>
+                </div>
+            </div>
 
             <!-- Search input on the right -->
             <div class="w-full md:w-auto">
@@ -49,14 +49,15 @@
                     </td>
                     <td>{{ $invoice->created_at }}</td>
                     <td>
-                       <button  href="/invoice/{{$invoice->invoice_number}}" class="btn btn-primary mt-2">View</button>
+                        <button href="{{route('invoice.show', ['invoiceNumber' =>$invoice=>invoice_number])}}" class="btn btn-primary mt-2">View</button>
                     </td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
 
-              <div class="mt-4">
-                    {{ $invoices->appends(['section' => 'invoices'])->links() }}
-                </div>
+        <div class="mt-4">
+            {{ $invoices->appends(['section' => 'invoices'])->links() }}
+        </div>
+
 </x-app-layout>

@@ -1,4 +1,6 @@
-   @if(Auth()->user()->role_id === \App\Models\Role::ADMIN)
+<x-app-layout>
+
+    @if(Auth()->user()->role_id === Role::ADMIN)
 
    @elseif(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
    <div>
@@ -10,3 +12,4 @@
        @include('items.index')
    </div>
    @endif
+</x-app-layout>

@@ -247,144 +247,149 @@
 </x-app-layout>
 
 <script>
-function openAddInvoiceModal() {
-    document.getElementById('addInvoiceModal').classList.remove('hidden');
-}
+    function openAddInvoiceModal() {
+        document.getElementById('addInvoiceModal').classList.remove('hidden');
+    }
 
-function closeAddInvoiceModal() {
-    document.getElementById('addInvoiceModal').classList.add('hidden');
-}
+    function closeAddInvoiceModal() {
+        document.getElementById('addInvoiceModal').classList.add('hidden');
+    }
 
-document.addEventListener("DOMContentLoaded", function() {
-    // Update total invoices count
-    const totalInvoices = @json($totalInvoices);
-    document.getElementById("totalInvoices").innerText = totalInvoices;
+    document.addEventListener("DOMContentLoaded", function() {
+        // Update total invoices count
+        const totalInvoices = @json($totalInvoices);
+        document.getElementById("totalInvoices").innerText = totalInvoices;
 
-    // Search functionality
-    const searchInput = document.getElementById("searchInput");
-    const tableRows = document.querySelectorAll(".InvoiceTable tbody tr");
+        // Search functionality
+        const searchInput = document.getElementById("searchInput");
+        const tableRows = document.querySelectorAll(".InvoiceTable tbody tr");
 
-    searchInput.addEventListener("input", function() {
-        const query = searchInput.value.toLowerCase();
+        searchInput.addEventListener("input", function() {
+            const query = searchInput.value.toLowerCase();
 
-        tableRows.forEach(row => {
-            const cells = row.querySelectorAll("td");
-            let rowContainsQuery = false;
+            tableRows.forEach(row => {
+                const cells = row.querySelectorAll("td");
+                let rowContainsQuery = false;
 
-            cells.forEach(cell => {
-                if (cell.innerText.toLowerCase().includes(query)) {
-                    rowContainsQuery = true;
+                cells.forEach(cell => {
+                    if (cell.innerText.toLowerCase().includes(query)) {
+                        rowContainsQuery = true;
+                    }
+                });
+
+                if (rowContainsQuery) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
                 }
             });
-
-            if (rowContainsQuery) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
         });
     });
-});
-</script>
 
-<script>
-function searchableClientDropdown() {
-    return {
-        searchQuery: '',
-        selectedClientId: null,
-        clients: @json($clients),
-        filteredClients: [],
+    function searchableClientDropdown() {
+        return {
+            searchQuery: '',
+            selectedClientId: null,
+            clients: @json($clients),
+            filteredClients: [],
 
-        filterClients() {
-            if (this.searchQuery.trim() === '') {
+            filterClients() {
+                if (this.searchQuery.trim() === '') {
+                    this.filteredClients = [];
+                    return;
+                }
+
+                const query = this.searchQuery.toLowerCase();
+                this.filteredClients = this.clients.filter(client =>
+                    client.name.toLowerCase().includes(query)
+                );
+            },
+
+            selectClient(client) {
+                this.selectedClientId = client.id;
+                this.searchQuery = client.name;
                 this.filteredClients = [];
-                return;
             }
-
-            const query = this.searchQuery.toLowerCase();
-            this.filteredClients = this.clients.filter(client =>
-                client.name.toLowerCase().includes(query)
-            );
-        },
-
-        selectClient(client) {
-            this.selectedClientId = client.id;
-            this.searchQuery = client.name;
-            this.filteredClients = [];
-        }
-    };
-}
-
-function searchableTaskDropdown() {
-    return {
-        searchTaskQuery: '',
-        selectedTaskId: null,
-        tasks: @json($tasks),
-        filteredTasks: [],
-
-        filterTasks() {
-            if (this.searchTaskQuery.trim() === '') {
-                this.filteredTasks = [];
-                return;
-            }
-
-            const query = this.searchTaskQuery.toLowerCase();
-            this.filteredTasks = this.tasks.filter(task =>
-                task.description.toLowerCase().includes(query)
-            );
-        },
-
-        selectTask(task) {
-            this.selectedTaskId = task.id;
-            this.searchTaskQuery = task.description;
-            this.filteredTasks = [];
-        }
-    };
-}
-</script>
-
-
-
-<script>
-function openInvoiceModal(invoiceNumber) {
-    const modal = document.getElementById('viewInvoiceModal');
-    const contentDiv = document.getElementById('invoiceContent');
-
-    // Clear previous content
-    contentDiv.innerHTML = '';
-
-    // Open the modal
-    modal.classList.remove('hidden');
-
-    // Fetch the invoice details
-    fetch(`/invoice/${invoiceNumber}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.text();
-        })
-        .then(data => {
-            contentDiv.innerHTML = data;
-        })
-        .catch(error => {
-            console.error('Error fetching invoice details:', error);
-            contentDiv.innerHTML =
-                '<p class="text-center text-red-500">Failed to load invoice details.</p>';
-        });
-}
-
-function closeViewInvoiceModal() {
-    const modal = document.getElementById('viewInvoiceModal');
-    modal.classList.add('hidden');
-}
-
-// Close the modal when clicking outside of the content area
-window.addEventListener('click', function(event) {
-    const modal = document.getElementById('viewInvoiceModal');
-    const modalContent = modal.querySelector('.bg-white');
-    if (event.target === modal && !modalContent.contains(event.target)) {
-        closeViewInvoiceModal();
+        };
     }
-});
+
+    function searchableTaskDropdown() {
+        return {
+            searchTaskQuery: '',
+            selectedTaskId: null,
+            tasks: @json($tasks),
+            filteredTasks: [],
+
+            filterTasks() {
+                if (this.searchTaskQuery.trim() === '') {
+                    this.filteredTasks = [];
+                    return;
+                }
+
+                const query = this.searchTaskQuery.toLowerCase();
+                this.filteredTasks = this.tasks.filter(task =>
+                    task.description.toLowerCase().includes(query)
+                );
+            },
+
+            selectTask(task) {
+                this.selectedTaskId = task.id;
+                this.searchTaskQuery = task.description;
+                this.filteredTasks = [];
+            }
+        };
+    }
+
+    function openInvoiceModal(invoiceNumber) {
+        const modal = document.getElementById('viewInvoiceModal');
+        const contentDiv = document.getElementById('invoiceContent');
+
+        // Clear previous content
+        contentDiv.innerHTML = '';
+
+        // Open the modal
+        modal.classList.remove('hidden');
+        url = "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}"
+            .replace(':invoiceNumber', invoiceNumber);
+
+        // Fetch the invoice details
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(data => {
+                contentDiv.innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Error fetching invoice details:', error);
+                contentDiv.innerHTML =
+                    '<p class="text-center text-red-500">Failed to load invoice details.</p>';
+            });
+    }
+
+    function closeViewInvoiceModal() {
+        const modal = document.getElementById('viewInvoiceModal');
+        modal.classList.add('hidden');
+    }
+
+    function copyToClipboard(url) {
+
+        navigator.clipboard.writeText(url).then(function() {
+            showToast('Invoice URL copied to clipboard');
+        }, function() {
+            showToast('Failed to copy invoice URL');
+        });
+    }
+
+    // Close the modal when clicking outside of the content area
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('viewInvoiceModal');
+        const modalContent = modal.querySelector('.bg-white');
+        if (event.target === modal && !modalContent.contains(event.target)) {
+            closeViewInvoiceModal();
+        }
+    });
 </script>

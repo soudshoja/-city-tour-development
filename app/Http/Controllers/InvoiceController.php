@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\Company;
+use App\Models\GeneralLedger;
 use App\Models\InvoiceDetails;
 use App\Models\Task;
 use Exception;
 use Illuminate\Http\Request;
 use App\Models\InvoiceSequence;
+use App\Models\Role;
+use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class InvoiceController extends Controller
 {
@@ -22,55 +27,41 @@ class InvoiceController extends Controller
     {
 
         $user = Auth::user();
-     
+
+
         if (is_null($id)) {
-            $agent = Agent::find($id); 
-        }else{
-            $agent = Agent::find( $user->agent->id);    
+            $agent = Agent::find($id);
+        } else {
+            $agent = Agent::find($user->agent->id);
         }
 
-        if ($user->role == 'admin') {
+        if ($user->role_id == Role::ADMIN) {
             // Admin can see all trips and tasks
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role == 'company') {
+        } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
             $agents = Agent::where('company_id', $user->company->id)->pluck('id');
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role == 'agent') {
+        } elseif ($user->role_id == Role::AGENT) {
             // Agent can see their tasks
             $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $user->agent->id)->paginate(6);
         }
 
-        return view('invoice.index', compact('invoices','agent'));
+        return view('invoice.index', compact('invoices', 'agent'));
     }
 
     public function create()
-{
-    $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
-    $clients = Client::where('agent_id', $agentId)->get();
-    $tasks = Task::where('status', 'pending')->get();
+    {
+        $user = Auth::user();
 
-    // Fetch the company associated with the logged-in user
-    $company = Auth::user()->company;
-
-    $invoice = null; // No invoice exists yet, this can be passed as null
-
-    return view('invoice.create', compact('clients', 'tasks', 'invoice', 'company'));
-}
+        if ($user->role_id == Role::COMPANY) {
+            $company = Auth::user()->company;
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = Auth::user()->agent;
+            $company = Company::where('id', $agent->company_id)->first();
+        }
 
 
-    /**
-     * Store a newly created resource in storage.
-     */
-   public function store(Request $request)
-{
-    $tasks = $request->input('tasks');
-    $amount = $request->input('total');
-    $clientId = $request->input('clientId');
-    $currency = $request->input('currency');
-    $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
-
-    try {
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
 
         if (!$invoiceSequence) {
@@ -83,38 +74,146 @@ class InvoiceController extends Controller
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
 
-        $invoice = Invoice::create([
-            'invoice_number' => $invoiceNumber,
-            'client_id' => $clientId,
-            'agent_id' => $agentId,
-            'amount' => $amount,
-            'currency' => $currency,
-            'status' => 'unpaid',
-        ]);
 
-        if (is_array($tasks) && !empty($tasks)) {
-            foreach ($tasks as $task) {
-                try {
-                    InvoiceDetails::create([
-                        'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoiceNumber,
-                        'task_id' => $task['taskId'],
-                        'task_description' => $task['taskName'],
-                        'task_remark' => $task['remark'],
-                        'task_price' => $task['price'],
-                    ]);
-                } catch (Exception $e) {
-                    Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                    return redirect()->back()->with('error', 'Failed to create InvoiceDetails for task: ' . $task['taskName']);
+        $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
+        $clients = Client::where('agent_id', $agentId)->get();
+        $tasks = Task::where('status', 'pending')->get();
+        $suppliers = Supplier::all();
+
+
+        // Fetch the company associated with the logged-in user
+
+
+        $invoice = null; // No invoice exists yet, this can be passed as null
+
+        return view('invoice.create', compact('clients', 'tasks', 'invoice', 'company', 'suppliers', 'invoiceNumber'));
+    }
+
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $tasks = $request->input('tasks');
+        $params = $request->input('params');
+        $subamount = $request->input('subtotal');
+        $amount = $request->input('total');
+        $clientId = $request->input(key: 'clientId');
+        $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
+        $invoiceNumber = data_get($params, 'invoiceNumber');
+
+
+        $agent = Agent::where('user_id', Auth::id())->first();
+        $agentId = $agent ? $agent->id : null;
+        $companyId = $agent ? $agent->company_id : null;
+
+        $receivableAccounts = Account::where('name', 'like', '%Receivable%')
+            ->where('company_id', $companyId)
+            ->first();
+        $payableAccounts =  Account::where('name', 'like', '%Payable%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        try {
+
+
+            $invoice = Invoice::create([
+                'invoice_number' => $invoiceNumber,
+                'agent_id' => $agentId,
+                'client_id' => $clientId,
+                'sub_amount' => $subamount,
+                'amount' => $amount,
+                'currency' => data_get($params, 'currency'),
+                'status' => 'unpaid',
+                'invoice_date' => data_get($params, 'invoiceDate'),
+                'due_date' => data_get($params, 'dueDate'),
+                'label' => data_get($params, 'label'),
+                'account_number' => data_get($params, 'accNo'),
+                'bank_name' => data_get($params, 'bankName'),
+                'swift_no' => data_get($params, 'swiftNo'),
+                'iban_no' => data_get($params, 'ibanNo'),
+                'country' => data_get($params, 'country'),
+                'tax' => data_get($params, 'tax'),
+                'discount' => data_get($params, 'discount'),
+                'shipping' => data_get($params, 'shippingCharge'),
+                'accept_payment' => data_get($params, 'paymentMethod'),
+            ]);
+
+            if (!empty($tasks)) {
+                foreach ($tasks as $task) {
+                    try {
+
+                        $selectedtask = Task::where('id', operator: $task['id'])->first();
+
+                        // Create a transaction record first
+                        $transaction = Transaction::create([
+                            'invoice_id' => $invoice->id,
+                            'company_id'  => $companyId,
+                            'client_id' => $clientId,
+                            'transaction_date' => Carbon::now(),
+                            'amount' => $task['price'],
+                            'status'  => 'pending',
+                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                        ]);
+
+                        // Try to create payable account
+                        GeneralLedger::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $companyId,
+                            'account_id' =>  $payableAccounts->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Accounts Payable for Supplier: ' . $selectedtask->supplier->name,
+                            'debit' => 0,
+                            'credit' => $selectedtask->total,
+                            'balance' => $payableAccounts->balance + $selectedtask->total,
+
+                        ]);
+
+                        $payableAccounts->balance += $selectedtask->total;
+                        $payableAccounts->save();
+
+                        // Try to create receivable account
+                        GeneralLedger::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $companyId,
+                            'account_id' =>  $receivableAccounts->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Accounts Receivable for Invoice: ' . $invoiceNumber,
+                            'debit' => $task['price'],
+                            'credit' => 0,
+                            'balance' => $receivableAccounts->balance + $task['price'],
+
+                        ]);
+
+                        $receivableAccounts->balance += $task['price'];
+                        $receivableAccounts->save();
+
+
+                        InvoiceDetails::create([
+                            'invoice_id' => $invoice->id,
+                            'invoice_number' => $invoiceNumber,
+                            'task_id' => $task['id'],
+                            'task_description' => $task['description'],
+                            'task_remark' => $task['remark'],
+                            'task_price' => $task['total'],
+                            'supplier_price' => $selectedtask->total,
+                            'markup_price' => $task['price'] - $selectedtask->total,
+                            'paid' => false,
+                        ]);
+                    } catch (Exception $e) {
+                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description']);
+                    }
                 }
             }
-        }
 
-        return redirect()->route('invoice.companyAgentsInvoices')->with('success', 'Invoice created successfully!');
-    } catch (Exception $e) {
-        return redirect()->back()->with('error', 'Invoice creation failed!');
+            return response()->json('Invoice created successfully!');
+        } catch (Exception $e) {
+            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+            return response()->json('Invoice creation failed!');
+        }
     }
-}
 
 
 
@@ -124,41 +223,42 @@ class InvoiceController extends Controller
         return sprintf('INV-%s-%05d', $year, $sequence);
     }
 
-   public function companyAgentsInvoices()
-{
-    $user = Auth::user();
+    public function companyAgentsInvoices()
+    {
+        $user = Auth::user();
 
-    // Ensure that the user is a company
-    if ($user->role !== 'company') {
-        return redirect()->back()->with('error', 'Unauthorized access.');
+        // Ensure that the user is a company
+        if ($user->role_id !== Role::COMPANY) {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        // Get all agents under the company
+        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+
+        // Get invoices related to those agents
+        $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
+
+        // Get clients related to the agents
+        $clients = Client::whereIn('agent_id', $agents)->get();
+
+        // Get tasks related to the agents
+        $tasks = Task::whereIn('agent_id', $agents)->get();
+
+        $totalInvoices = $invoices->total();
+
+        return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
     }
 
-    // Get all agents under the company
-    $agents = Agent::where('company_id', $user->company->id)->pluck('id');
 
-    // Get invoices related to those agents
-    $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
-
-    // Get clients related to the agents
-    $clients = Client::whereIn('agent_id', $agents)->get();
-
-    // Get tasks related to the agents
-    $tasks = Task::whereIn('agent_id', $agents)->get();
-
-    $totalInvoices = $invoices->total();
-
-    return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
-}
-
-
-    
     /**
      * Display the specified resource.
      */
 
-      
+
+
     public function show(string $invoiceNumber)
     {
+
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
 
@@ -201,7 +301,8 @@ class InvoiceController extends Controller
     }
 
     public function updateStatus(Request $request, Invoice $invoice)
-    {     
+    {
+
         $request->validate([
             'status' => 'required|string',
         ]);

@@ -1,63 +1,5 @@
 <x-app-layout>
 
-    <style>
-    /* Apply dark mode specific styles only */
-    @media (prefers-color-scheme: dark) {
-        .dark-scrollbar {
-            scrollbar-width: thin;
-            /* Firefox */
-            scrollbar-color: #444 #2d2d2d;
-            /* Firefox */
-        }
-
-        .dark-scrollbar::-webkit-scrollbar {
-            width: 8px;
-            /* Width for Webkit browsers */
-        }
-
-        .dark-scrollbar::-webkit-scrollbar-track {
-            background: #2d2d2d;
-            /* Dark mode track color */
-        }
-
-        .dark-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #444;
-            /* Dark mode thumb color */
-            border-radius: 6px;
-        }
-    }
-
-    /* Remove custom scrollbar styles in light mode */
-    .dark-scrollbar {
-        scrollbar-width: auto;
-        /* Reset for light mode */
-        scrollbar-color: initial;
-        /* Reset for light mode */
-    }
-
-    .dark-scrollbar::-webkit-scrollbar {
-        width: auto;
-        /* Reset width for light mode */
-    }
-
-    .dark-scrollbar::-webkit-scrollbar-track,
-    .dark-scrollbar::-webkit-scrollbar-thumb {
-        background: initial;
-        /* Reset colors for light mode */
-    }
-    </style>
-
-
-
-    <style>
-    /* Add this CSS to ensure the hidden class works */
-    .hidden {
-        display: none;
-    }
-    </style>
-
-
-
 
     <div>
         <!-- main content -->
@@ -456,6 +398,9 @@
         document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
         document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
         document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
+
+
+        // chart data
 
         var incomeData = dashboardData.totalPaidAmountChart;
         var expensesData = dashboardData.totalUnpaidAmountChart;

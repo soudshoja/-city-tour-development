@@ -14,9 +14,11 @@ class DashboardController extends Controller
 
 
     public function index()
-    {   
-        // Get count for companies, agents, clients, invoices, and tasks
+    {
+
         
+        
+        // Get count for companies, agents, clients, invoices, and tasks
         $companyCount = Company::count();
         $agentCount = Agent::count();
         $clientCount = Client::count();
@@ -32,7 +34,7 @@ class DashboardController extends Controller
         $unpaidInvoices =  Invoice::where('status', 'unpaid')->count();
         $invoices = Invoice::all();
         $tasks = Task::all();
-        $agents = Agent::all();
+        $agents = Agent::with('company')->get();
         $clients = Client::all();
         $companies = Company::all();
         // Prepare clients with task count and invoice count
@@ -55,24 +57,21 @@ class DashboardController extends Controller
         ];
     });
 
-        // Prepare agents with task count and invoice count
         $agentsWithDetails = $agents->map(function ($agent) {
-            // Count the number of tasks related to this client
-            $taskCount = Task::where('agent_id', $agent->id)->count();
-            $pendingTasks = Task::where('agent_id', $agent->id)
-            ->where('status', 'pending')
-            ->count();
-            // Count the total number of invoices related to this client
-            $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
-    
-            return [
-                'name' => $agent->name,
-                // 'companyName' => $agent->company->name,
-                'taskCount' => $taskCount,
-                'totalInvoices' => $totalInvoices,
-                'pendingTasks' => $pendingTasks,
-            ];
-        });
+    $taskCount = Task::where('agent_id', $agent->id)->count();
+    $pendingTasks = Task::where('agent_id', $agent->id)
+        ->where('status', 'pending')
+        ->count();
+    $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
+
+    return [
+        'name' => $agent->name,
+        'companyName' => $agent->company ? $agent->company->name : 'N/A', // Safely access company name
+        'taskCount' => $taskCount,
+        'totalInvoices' => $totalInvoices,
+        'pendingTasks' => $pendingTasks,
+    ];
+});
 
 
         $dashboardData = [

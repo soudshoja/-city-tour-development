@@ -1,24 +1,12 @@
-<x-app-layout>
+   @if(Auth()->user()->role_id === \App\Models\Role::ADMIN)
 
-    @if(Auth()->user()->role === 'admin')
+   @elseif(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+   <div>
+       @include('companies.index')
+   </div>
 
-    <div>
-
-
-    </div>
-
-
-
-    @elseif(Auth()->user()->role == 'company')
-    <div>
-        @include('companies.index')
-    </div>
-
-    @elseif(Auth()->user()->role == 'agent')
-    <div>
-        @include('items.index')
-    </div>
-    @endif
-
-
-</x-app-layout>
+   @elseif(Auth()->user()->role_id ==\App\Models\Role::AGENT)
+   <div>
+       @include('items.index')
+   </div>
+   @endif

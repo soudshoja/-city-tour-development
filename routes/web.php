@@ -29,21 +29,13 @@ use App\Http\Controllers\BranchController;
 
 Route::middleware(['auth'])->group(function () {
     // Route::get('dashboard', [ItemController::class, 'index'])->name('dashboard');
-
+    
     Route::get('/', function () {
         $user = \Illuminate\Support\Facades\Auth::user(); // Get the authenticated user
         
         $user = auth()->user(); // Get the authenticated user
-
-        if ($user->role == 'agent') {
-            return app(ItemController::class)->index(); 
-        } elseif ($user->role == 'admin') {
-            return app(DashboardController::class)->index(); 
-        } elseif ($user->role == 'company') {
-            return app(CompanyController::class)->dashboard(); 
-        }
-
-        if ($user->role == 'agent') {
+        
+        if ($user->role_id == Role::ADMIN) {
             return app(ItemController::class)->index();
         } elseif ($user->role == 'admin') {
             return app(DashboardController::class)->index();
@@ -172,8 +164,14 @@ Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'
 Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 
 // Account
-Route::get('/coa/accounts', action: [CoaController::class, 'accounts'])->name('coa.accounts');
-Route::post('/coa/store', [CoaController::class, 'store'])->name('coa.store');
+Route::get('/coa', action: [CoaController::class, 'index'])->name('coa.index');
+Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');
+Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
+Route::post('/updateCode/{id}', [CoaController::class, 'updateCode']);
+
+
+
+
 
 
 

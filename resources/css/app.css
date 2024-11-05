@@ -10,6 +10,69 @@ body {
 .customBlueColor {
     color: #3273b4;
 }
+.customBgDarkColor {
+    background-color: #1c274c !important;
+}
+.GreenCustombgColor {
+    background-color: #1a5319 !important;
+}
+
+.YellowCustombgColor {
+    background-color: #fccd2a !important;
+}
+
+/* chart of account page */
+
+
+.ExpensesColor{
+    color: #AF1740 !important;
+}
+.IncomeColor{
+    color: #004C9E !important;
+}
+
+.main-container {
+    display: flex;
+    width: 100%;
+}
+
+.left-div {
+    width: 90%;
+}
+
+.right-div {
+    width: 10%;
+}
+
+.refreshAssetsIcon,
+.refreshLiabilitiesIcon, .ExpensesRefreshIcon, .IncomeRefreshIcon {
+    transition: transform 0.3s ease;
+    /* Smooth transition */
+}
+
+.rotate {
+    transform: rotate(180deg);
+}
+
+.incomeRefreshIcon.rotate {
+    transform: rotate(360deg);
+    transition: transform 0.3s ease-in-out;
+}
+
+
+
+
+#AssetsDetails, #LiabilitiesDetails, #IncomeDetails, #ExpensesDetails {
+    display: none;
+    /* Initially hidden */
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+
+    background-color: #f9f9f9;
+}
+
+/* chart of account page style ends */
 
 .CheckBoxColor {
     color: #bec7e3 !important;

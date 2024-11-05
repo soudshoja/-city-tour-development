@@ -22,6 +22,7 @@ use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\OpenApiController;
 use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
 
@@ -209,6 +210,11 @@ Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('char
 
 // whatsapp
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
+
+// open api
+Route::get('/open-api', [OpenApiController::class, 'index'])->name('open-api.index');
+Route::post('/open-api', [OpenApiController::class, 'store'])->name('open-api.store');
+Route::get('/test-open-api', [OpenApiController::class, 'test'])->name('open-api.test');
 
 require __DIR__ . '/auth.php';
 

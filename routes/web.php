@@ -21,6 +21,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
+use App\Http\Controllers\BranchController;
 use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
 
@@ -150,12 +151,10 @@ Route::get('/reports', [ReportController::class, 'index'])->name('reports.index'
 Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 
 // Account
-Route::get('/coa/accounts', action: [CoaController::class, 'accounts'])->name('coa.accounts');
-Route::post('/coa/store', [CoaController::class, 'store'])->name('coa.store');
 Route::get('/coa', action: [CoaController::class, 'index'])->name('coa.index');
-Route::post('/coa/create', [CoaController::class, 'createAccountForAssets'])->name('coa.create');
+Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');
 Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
-Route::post('/path-to-save-code/{id}', [CoaController::class, 'updateCode']);
+Route::post('/updateCode/{id}', [CoaController::class, 'updateCode']);
 
 Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('reports.agent');
 Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('reports.client');
@@ -175,7 +174,6 @@ Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.ex
 
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 
-
 //ROLE
 Route::get('/role', [RoleController::class, 'index'])->name('role.index');
 Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
@@ -185,11 +183,18 @@ Route::put('/role/{role}', [RoleController::class, 'update'])->name('role.update
 Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 
-// todo list routes
+// todolist routes
 Route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.index');
 Route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.store');
 Route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
 Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
+
+
+// Branches routes
+Route::get('/brancheslist', [BranchController::class, 'index'])->name('brancheslist.index');
+Route::get('/branches/create', [BranchController::class, 'create'])->name('branches.create');
+Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+
 
 //CHARGES
 Route::get('/charges', [ChargeController::class, 'index'])->name('charges.index');

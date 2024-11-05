@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->string('email')->nullable()->after('name');
-        });
+        // Check if the 'email' column does not already exist before adding it
+        if (!Schema::hasColumn('clients', 'email')) {
+            Schema::table('clients', function (Blueprint $table) {
+                $table->string('email')->nullable()->after('name');
+            });
+        }
     }
 
     /**
@@ -22,7 +25,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn('email');
+            // Check if the 'email' column exists before trying to drop it
+            if (Schema::hasColumn('clients', 'email')) {
+                $table->dropColumn('email');
+            }
         });
     }
 };

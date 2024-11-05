@@ -12,25 +12,53 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('items', function (Blueprint $table) {
-            $table->string('item_code')->nullable();
-            $table->timestamp('time_signed')->nullable();
-            $table->string('client_email')->nullable();
-            $table->string('agent_email')->nullable();
-            $table->decimal('total_price', 8, 2)->nullable();
-            $table->timestamp('payment_date')->nullable();
-            $table->boolean('paid')->default(false);
-            $table->timestamp('payment_time')->nullable();
-            $table->decimal('payment_amount', 8, 2)->nullable();
-            $table->boolean('refunded')->default(false);
-            $table->string('trip_name')->nullable();
-            $table->string('trip_code')->nullable();
+            if (!Schema::hasColumn('items', 'item_code')) {
+                $table->string('item_code')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'time_signed')) {
+                $table->timestamp('time_signed')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'client_email')) {
+                $table->string('client_email')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'agent_email')) {
+                $table->string('agent_email')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'total_price')) {
+                $table->decimal('total_price', 8, 2)->nullable();
+            }
+            if (!Schema::hasColumn('items', 'payment_date')) {
+                $table->timestamp('payment_date')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'paid')) {
+                $table->boolean('paid')->default(false);
+            }
+            if (!Schema::hasColumn('items', 'payment_time')) {
+                $table->timestamp('payment_time')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'payment_amount')) {
+                $table->decimal('payment_amount', 8, 2)->nullable();
+            }
+            if (!Schema::hasColumn('items', 'refunded')) {
+                $table->boolean('refunded')->default(false);
+            }
+            if (!Schema::hasColumn('items', 'trip_name')) {
+                $table->string('trip_name')->nullable();
+            }
+            if (!Schema::hasColumn('items', 'trip_code')) {
+                $table->string('trip_code')->nullable();
+            }
 
-            // Add foreign key constraint if client_id references clients table
-            $table->unsignedBigInteger('client_id')->nullable()->change();
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
+            // Foreign key setup
+            if (!Schema::hasColumn('items', 'client_id')) {
+                $table->unsignedBigInteger('client_id')->nullable()->change();
+                $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
+            }
 
-            $table->unsignedBigInteger('agent_id')->nullable()->after('client_id');
-            $table->foreign('agent_id')->references('id')->on('agents')->onDelete('cascade');
+            if (!Schema::hasColumn('items', 'agent_id')) {
+                $table->unsignedBigInteger('agent_id')->nullable()->after('client_id');
+                $table->foreign('agent_id')->references('id')->on('agents')->onDelete('cascade');
+            }
         });
     }
 

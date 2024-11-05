@@ -14,8 +14,10 @@ class AddStatusToCompaniesTable extends Migration
     public function up()
     {
         Schema::table('companies', function (Blueprint $table) {
-            // Add a 'status' column that can store values like 'active', 'inactive', 'suspended', 'terminated'
-            $table->enum('status', ['active', 'inactive', 'suspended', 'terminated'])->default('inactive')->after('user_id');
+            // Check if the 'status' column does not already exist before adding it
+            if (!Schema::hasColumn('companies', 'status')) {
+                $table->enum('status', ['active', 'inactive', 'suspended', 'terminated'])->default('inactive')->after('user_id');
+            }
         });
     }
 

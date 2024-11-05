@@ -29,7 +29,7 @@ class Task extends Model
     // In Task.php
     public function flightDetails()
    {
-             return $this->hasOne(TaskFlightDetail::class, 'task_id');
+        return $this->hasOne(TaskFlightDetail::class, 'task_id');
     }
 
 

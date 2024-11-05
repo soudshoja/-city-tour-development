@@ -99,12 +99,16 @@ Route::post('/company/{company}/toggle-status', [CompanyController::class, 'togg
 Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
 
 // task routes
-Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
-Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
-Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
-Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
-Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+Route::group([
+    'middleware' => ['auth'],
+], function(){
+    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
+    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
+    Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
+    Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+});
 
 // ITEMS
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');

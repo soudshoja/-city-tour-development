@@ -10,13 +10,16 @@ use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
 use App\Models\Role;
+use App\Services\TextFileProcessor;
 use ConvertApi\ConvertApi;
 use Exception;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
@@ -63,8 +66,6 @@ class TaskController extends Controller
         // dd($tasks, $agent, $agents, $taskCount);
         return view('tasks.tasksList', compact('tasks', 'agent', 'agents', 'taskCount')); // Pass the tasks and task count to the view
     }
-
-
 
     public function show($id)
 
@@ -130,18 +131,26 @@ class TaskController extends Controller
         $request->validate([
             'task_file' => 'required|mimes:pdf',
         ]);
+        // $filepath = 'C:\Users\User\Documents\GitHub\city-tour\public\storage\HotelVoucher_7e0d9dab-affd-4062-a780-d2372f46046e.txt';
+        // dump(File::exists($filepath));
+        
+        $file = $request->file('task_file')->store('tasks');
 
         ConvertApi::setApiCredentials(config('services.convert-api.secret'));
 
-        $file = $request->file('task_file');
-        $destinationPath = 'uploads';
-        if ($fileUploaded = $file->move($destinationPath, $file->getClientOriginalName())) {
-            $result = ConvertApi::convert('txt', ['File' => $fileUploaded->getPathname()], 'pdf');
-
+        
+        if ($file) {
+        
+            $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $file)], 'pdf');
+ 
             Log::info('File converted successfully: ', $result->getFiles());
-            $response = $result->saveFiles($destinationPath);
-
-            Log::info('File uploaded successfully: ', $response);
+            $response = $result->saveFiles(storage_path('app/public/tasks'));
+    // dd($response);
+    //         $txtFilePath = storage_path('app/public/' . $file);
+            
+            $textFileProcessor = new TextFileProcessor();
+            $data = $textFileProcessor->readAndExtractData($response[0]);
+            dd($data);
 
             return Redirect::back()->with('success', 'File uploaded successfully');
         } else {
@@ -198,5 +207,9 @@ class TaskController extends Controller
 
         fclose($handle);
         exit();
+    }
+
+    public function fileToTask(){
+
     }
 }

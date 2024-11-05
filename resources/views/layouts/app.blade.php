@@ -27,6 +27,8 @@
 
     <!-- jQuery -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
+
 
     <!-- DataTables JS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
@@ -49,5 +51,6 @@
     </div>
 
 </body>
+<x-toast />
 
 </html>

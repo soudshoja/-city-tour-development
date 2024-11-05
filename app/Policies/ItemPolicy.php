@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Role;
 use App\Models\User;
 
 class ItemPolicy
@@ -16,26 +17,26 @@ class ItemPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     public function view(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     public function create(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     public function update(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 
     public function delete(User $user): bool
     {
-        return $user->role === 'admin' || $user->role === 'company';
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+  use Illuminate\Support\Facades\Log;
 
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -9,10 +10,9 @@ use App\Models\Agent;
 use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Account;
-use App\Models\CoaCategory;
+use App\Models\Supplier;
+use App\Models\Task;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\DB;
 
 class CoaController extends Controller
 {

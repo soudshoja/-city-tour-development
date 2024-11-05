@@ -9,135 +9,152 @@ use App\Models\Agent;
 use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
+use App\Models\Role;
+use ConvertApi\ConvertApi;
 use Exception;
+use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\Log;
+
 class TaskController extends Controller
 {
-public function index($id = null)
-{
-    $user = Auth::user();
-    $agent = null;
-    $taskCount = 0;
+    public function index($id = null)
+    {
+        $user = Auth::user();
+        $agent = null;
+        $taskCount = 0;
 
-    if ($user->role == 'admin') {
-        $tasks = Task::with('agent.company', 'client')->get(); // Retrieve all tasks for admin
-        $taskCount = Task::count(); // Total task count for admin
-    } 
-    elseif ($user->role == 'company') {
-        $agents = Agent::all();
-   
-         // Get all agents for this company
-        $agentIds = $agents->pluck('id'); // Get all agents for this company
-        $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
-        $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
-    } 
-    elseif ($user->role == 'agent') {
-        if ($id) {
-            $agent = Agent::find($id);
-            if ($agent) {
-                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
-                $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
+        if ($user->role_id == Role::ADMIN) {
+            $tasks = Task::with('agent.company', 'client')->get(); // Retrieve all tasks for admin
+            $taskCount = Task::count(); // Total task count for admin
+        } elseif ($user->role_id == Role::COMPANY) {
+            $agents = Agent::all();
+
+            // Get all agents for this company
+            $agentIds = $agents->pluck('id'); // Get all agents for this company
+            $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
+        } elseif ($user->role_id == Role::AGENT) {
+            if ($id) {
+                $agent = Agent::find($id);
+                if ($agent) {
+                    $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
+                    $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
+                } else {
+                    return redirect()->back()->with('error', 'Agent not found.');
+                }
             } else {
-                return redirect()->back()->with('error', 'Agent not found.');
+                $agent = $user->agent;
+                if ($agent) {
+                    $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
+                    $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
+                } else {
+                    return redirect()->back()->with('error', 'Agent not found.');
+                }
             }
         } else {
-            $agent = $user->agent;
-            if ($agent) {
-                $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
-                $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
-            } else {
-                return redirect()->back()->with('error', 'Agent not found.');
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        $tasks = $tasks ?? collect(); // Ensure $tasks is not null
+
+        // dd($tasks, $agent, $agents, $taskCount);
+        return view('tasks.tasksList', compact('tasks', 'agent', 'agents', 'taskCount')); // Pass the tasks and task count to the view
+    }
+
+
+
+    public function show($id)
+
+    {
+        // Retrieve the task with related agent and client data
+        $task = Task::with(['agent', 'client', 'flightDetails'])->find($id);
+
+        // Check if task exists
+        if (!$task) {
+            return response()->json(['error' => 'Task not found'], 404);
+        }
+
+        // Return the task data as JSON for the modal to load dynamically
+        return response()->json(['task' => $task], 200);
+    }
+
+
+
+    // edit and update tasks
+
+    public function edit($id)
+    {
+        // Include both 'agent' and 'client' in the query
+        $task = Task::with(['agent', 'client'])->findOrFail($id);
+        return view('tasks.update', compact('task'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        // Find the task
+        $task = Task::findOrFail($id);
+        // If the request is an AJAX request, handle inline editing
+        if ($request->ajax()) {
+            try {
+                $field = key($request->all()); // Get the field being updated
+                $value = $request->input($field);
+
+                // Update the specific field
+                $task->update([$field => $value]);
+                return 'true';
+                return response()->json(['success' => true], 200);  // Ensure a 200 OK response with JSON format
+            } catch (Exception $e) {
+                return 'true';
+
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500); // Return error response with status 500
+            }
+        } else {
+
+            try {
+                $task->update($request->only(['status', 'type', 'tax', 'surcharge', 'price', 'total', 'client_name', 'agent_id']));
+
+                return response()->json(['success' => true], 200);
+            } catch (Exception $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
         }
-    } else {
-        return redirect()->back()->with('error', 'Unauthorized access.');
     }
 
-    $tasks = $tasks ?? collect(); // Ensure $tasks is not null
 
-    // dd($tasks, $agent, $agents, $taskCount);
-    return view('tasks.tasksList', compact('tasks', 'agent','agents', 'taskCount')); // Pass the tasks and task count to the view
-}
-
-
-
-public function show($id)
-
-{
-    // Retrieve the task with related agent and client data
-    $task = Task::with(['agent', 'client','flightDetails'])->find($id);
-
-    // Check if task exists
-    if (!$task) {
-        return response()->json(['error' => 'Task not found'], 404);
-    }
-
-    // Return the task data as JSON for the modal to load dynamically
-    return response()->json(['task' => $task], 200);
-}
-
-
-
-// edit and update tasks
-
-public function edit($id)
-{
-    // Include both 'agent' and 'client' in the query
-    $task = Task::with(['agent', 'client'])->findOrFail($id);
-    return view('tasks.update', compact('task'));
-}
-
-public function update(Request $request, $id)
-{
-    // Find the task
-    $task = Task::findOrFail($id);
-    // If the request is an AJAX request, handle inline editing
-    if ($request->ajax()) {
-        try {
-            $field = key($request->all()); // Get the field being updated
-            $value = $request->input($field);
-
-            // Update the specific field
-            $task->update([$field => $value]);
-            return 'true';
-            return response()->json(['success' => true], 200);  // Ensure a 200 OK response with JSON format
-        } catch (Exception $e) {
-            return 'true';
-
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500); // Return error response with status 500
-        }
-    } else {
-
-        try{
-            $task->update($request->only(['status', 'type', 'tax','surcharge', 'price', 'total','client_name', 'agent_id']));
-        
-            return response()->json(['success' => true], 200);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-
-    }
-
-}
-
-
-
-   
-
-public function import(Request $request)
+    public function import(Request $request)
     {
+
         $request->validate([
-            'excel_file' => 'required|mimes:xlsx',
+            'task_file' => 'required|mimes:pdf',
         ]);
 
-        Excel::import(new TasksImport, $request->file('excel_file'));
+        ConvertApi::setApiCredentials(config('services.convert-api.secret'));
+
+        $file = $request->file('task_file');
+        $destinationPath = 'uploads';
+        if ($fileUploaded = $file->move($destinationPath, $file->getClientOriginalName())) {
+            $result = ConvertApi::convert('txt', ['File' => $fileUploaded->getPathname()], 'pdf');
+
+            Log::info('File converted successfully: ', $result->getFiles());
+            $response = $result->saveFiles($destinationPath);
+
+            Log::info('File uploaded successfully: ', $response);
+
+            return Redirect::back()->with('success', 'File uploaded successfully');
+        } else {
+            Log::error('File upload failed');
+            return Redirect::back()->with('error', 'File upload failed');
+        }
+
+        // Excel::import(new TasksImport, $request->file('excel_file'));
 
         return redirect()->back()->with('success', 'Tasks imported successfully.');
     }
 
-public function getTaskbyItemId($itemId)
+    public function getTaskbyItemId($itemId)
     {
         $tasks = Task::where('item_id', $itemId)->get();
 
@@ -152,7 +169,7 @@ public function getTaskbyItemId($itemId)
         ], 200);
     }
 
-public function exportCsv()
+    public function exportCsv()
     {
         // Fetch all agents data
         $tasks = Task::with('agent')->get();
@@ -182,6 +199,4 @@ public function exportCsv()
         fclose($handle);
         exit();
     }
-
-
 }

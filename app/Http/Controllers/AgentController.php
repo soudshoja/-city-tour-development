@@ -12,34 +12,36 @@ use App\Models\Client;
 use App\Models\Invoice;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
+use App\Models\Role;
+use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class AgentController extends Controller
 {
-   public function index() 
-{
-    $agentCount = Agent::count();
-    $user = Auth::user();
+    public function index()
+    {
+        $agentCount = Agent::count();
+        $user = Auth::user();
 
-    if ($user->role == 'admin') {
-        // Admin can see all agents
-        $agents = Agent::with('company')->get();
-    } elseif ($user->role == 'company') {
-        // Company can only see their agents
-        $agents = Agent::with('company')
-                        ->where('company_id', $user->company->id) // assuming user belongs to one company
-                        ->get();
+        if ($user->role_id == Role::ADMIN) {
+            // Admin can see all agents
+            $agents = Agent::with('company')->get();
+        } elseif ($user->role_id == Role::COMPANY) {
+            // Company can only see their agents
+            $agents = Agent::with('company')
+                ->where('company_id', $user->company->id) // assuming user belongs to one company
+                ->get();
+        }
+
+        $AgentsData = [
+            'agentsCount' => $agentCount,
+        ];
+
+        // Pass both 'agents' and 'AgentsData' to the view
+        return view('agents.agentsList', compact('agents', 'AgentsData'));
     }
-
-    $AgentsData = [
-        'agentsCount' => $agentCount,
-    ];
-
-    // Pass both 'agents' and 'AgentsData' to the view
-    return view('agents.agentsList', compact('agents', 'AgentsData'));
-}
 
 
     public function new()
@@ -52,21 +54,29 @@ class AgentController extends Controller
 
     public function show($id)
     {
+
         $agent = Agent::with('company', 'tasks', 'invoices', 'clients')->findOrFail($id);
 
         // Paginate all sections when viewing the main page (agentsShow)
-        $tasks = Task::where('agent_email', $agent->email)->paginate(6);
+        $tasks = Task::with('agent')->where('agent_id', $id)->paginate(6);
+
+        foreach ($tasks as $task) {
+            $date = new DateTimeImmutable($task->created_at);
+            $task->created_at = $date->format('d-M-Y');
+        }
+
         $invoices = Invoice::where('agent_id', $id)->paginate(6);
-        $clients = Client::whereHas('tasks', function($query) use ($agent) {
-            $query->where('agent_email', $agent->email);
+
+        $clients = Client::whereHas('tasks', function ($query) use ($agent) {
+            $query->where('agent_id', $agent->id);
         })->paginate(6);
-        
+
         // Return the main view with paginated data
         return view('agents.agentsShow', compact('agent', 'tasks', 'invoices', 'clients'));
     }
-    
-    
-    
+
+
+
 
     public function edit($id)
     {
@@ -78,7 +88,7 @@ class AgentController extends Controller
 
 
     public function update(Request $request, $id)
-    {   
+    {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
@@ -112,7 +122,7 @@ class AgentController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $role = $user->role;
+        $role = $user->role_id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -131,17 +141,17 @@ class AgentController extends Controller
         ]);
 
 
-        if($role == 'admin'){
-        // Create new agent
-        $agent = Agent::create([
-            'user_id' => $user->id,
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone_number' => $request->phone_number,
-            'company_id' => $request->company_id,
-            'type' => $request->type,
-        ]);
-        } else{
+        if ($role == Role::ADMIN) {
+            // Create new agent
+            $agent = Agent::create([
+                'user_id' => $user->id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone_number' => $request->phone_number,
+                'company_id' => $request->company_id,
+                'type' => $request->type,
+            ]);
+        } else {
             $agent = Agent::create([
                 'user_id' => $user->id,
                 'name' => $request->name,
@@ -154,7 +164,7 @@ class AgentController extends Controller
 
 
         return redirect()->route('companiesshow.show', ['id' => $request->company_id])
-        ->with('success', 'Agent registered successfully');
+            ->with('success', 'Agent registered successfully');
     }
     public function getTasks($id)
     {
@@ -248,5 +258,4 @@ class AgentController extends Controller
         fclose($handle);
         exit();
     }
-
 }

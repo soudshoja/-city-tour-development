@@ -53,7 +53,7 @@
                                     @foreach($tasks as $task)
                                     <tr>
                                         <td class="py-4 px-6 border-b">{{ $task->description }}</td>
-                                        <td class="py-4 px-6 border-b">{{ $task->created_at->format('Y-m-d') }}</td>
+                                        <td class="py-4 px-6 border-b">{{ $task->created_at }}</td>
                                         <td class="py-4 px-6 border-b">{{ $task->status }}</td>
                                         <td class="py-4 px-6 border-b">{{ $task->client->name }}</td>
                                         <td class="py-4 px-6 border-b">
@@ -240,7 +240,7 @@
                             @foreach($invoices as $invoice)
                             <tr>
                                 <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
-                                <td class="py-4 px-6 border-b">{{ $invoice->created_at->format('Y-m-d') }}</td>
+                                <td class="py-4 px-6 border-b">{{ $invoice->created_at }}</td>
                                 <td class="py-4 px-6 border-b">{{ $invoice->status }}</td>
                                 <td class="py-4 px-6 border-b">{{ $invoice->client->name }}</td>
                                 <td class="py-4 px-6 border-b">
@@ -313,22 +313,22 @@
 
 
     <script>
-    // edit company details modal
-    function EditAgentDetails() {
-        document.getElementById('editAgentModal').classList.remove('hidden');
-    }
-
-    function closeAgentModal() {
-        // Hide the modal when "Cancel" is clicked
-        document.getElementById('editAgentModal').classList.add('hidden');
-    }
-
-    function closemodalContentAgentIfClickedOutside(event) {
-        // Close the modal if the user clicks outside of the modal content
-        const modalContentAgent = document.querySelector('#editAgentModal > div');
-        if (!modalContentAgent.contains(event.target)) {
-            closeAgentModal();
+        // edit company details modal
+        function EditAgentDetails() {
+            document.getElementById('editAgentModal').classList.remove('hidden');
         }
-    }
+
+        function closeAgentModal() {
+            // Hide the modal when "Cancel" is clicked
+            document.getElementById('editAgentModal').classList.add('hidden');
+        }
+
+        function closemodalContentAgentIfClickedOutside(event) {
+            // Close the modal if the user clicks outside of the modal content
+            const modalContentAgent = document.querySelector('#editAgentModal > div');
+            if (!modalContentAgent.contains(event.target)) {
+                closeAgentModal();
+            }
+        }
     </script>
 </x-app-layout>

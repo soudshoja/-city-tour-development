@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
 use App\Models\Role;
+use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -53,13 +54,21 @@ class AgentController extends Controller
 
     public function show($id)
     {
+
         $agent = Agent::with('company', 'tasks', 'invoices', 'clients')->findOrFail($id);
 
         // Paginate all sections when viewing the main page (agentsShow)
-        $tasks = Task::where('agent_email', $agent->email)->paginate(6);
+        $tasks = Task::with('agent')->where('agent_id', $id)->paginate(6);
+
+        foreach ($tasks as $task) {
+            $date = new DateTimeImmutable($task->created_at);
+            $task->created_at = $date->format('d-M-Y');
+        }
+
         $invoices = Invoice::where('agent_id', $id)->paginate(6);
+
         $clients = Client::whereHas('tasks', function ($query) use ($agent) {
-            $query->where('agent_email', $agent->email);
+            $query->where('agent_id', $agent->id);
         })->paginate(6);
 
         // Return the main view with paginated data

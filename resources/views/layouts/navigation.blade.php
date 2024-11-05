@@ -23,11 +23,8 @@
 
          </a>
      </nav>
-     <!-- Mobile menu-->
-     <!-- Mobile menu ends-->
-     <!-- Sidebar -->
+
      @include('layouts.sidebar')
-     <!-- This includes the sidebar.blade.php -->
 
      <!-- desktop & pads Header -->
      <div :class="sidebarOpen ? 'ml-[260px]' : 'ml-0'" class="flex-1 transition-all duration-300 ease-in-out">
@@ -54,10 +51,6 @@
 
                          </button>
 
-                         <!-- Add this to your CSS file -->
-
-
-                         <!-- Logo and App Name -->
                          <a href="{{ route('dashboard') }}" class="flex items-center ml-2">
                              <img id="logo" src="{{ asset('images/City0logo.svg') }}" alt="City App Logo">
                              <span id="appName"
@@ -65,11 +58,8 @@
                                  App</span>
                          </a>
 
-                         <!-- add Search Bar div here -->
-
                      </div>
 
-                     <!-- Right Side Content -->
                      <div class="flex items-center space-x-4 ml-auto sm:flex sm:space-x-2">
                          <!-- Dark Mode Toggle Button -->
                          <button x-cloak
@@ -484,6 +474,7 @@
                          </div>
 
                      </div>
+
                      <!-- Admins -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"
@@ -540,6 +531,8 @@
                              </div>
                          </div>
                      </div>
+
+                     <!-- Suppliers -->
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"
                              class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
@@ -598,7 +591,7 @@
 
                          </div>
 
-                     </div><!-- ./suppliers -->
+                     </div>
                      @endif
 
                      @if(Auth::user()->role_id === Role::COMPANY || Auth::user()->role_id === Role::ADMIN)
@@ -640,7 +633,7 @@
                                      class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Report</a>
                              </div>
                          </div>
-                     </div><!-- ./company dashboard -->
+                     </div>
 
                      <!-- company tasks -->
                      <div x-data="{ open: false }" x-cloak class="relative">
@@ -680,7 +673,7 @@
                                      List</a>
                              </div>
                          </div>
-                     </div><!-- ./company Tasks -->
+                     </div>
 
                      <!-- company finances -->
                      <div x-data="{ open: false }" x-cloak class="relative">
@@ -725,7 +718,7 @@
                                      Create Invoice</a>
                              </div>
                          </div>
-                     </div><!-- ./company finances -->
+                     </div>
 
                      <!-- users -->
                      <div x-data="{ open: false }" x-cloak class="relative">
@@ -754,8 +747,7 @@
                                      class="fill-current" />
                              </svg>
 
-                             <span
-                                 class="pl-3 text-black pl-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Users</span>
+                             <span class="pl-3 text-black pl-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Users</span>
                              <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
                                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                  <path fill-rule="evenodd"
@@ -838,10 +830,48 @@
 
                          </div>
 
-                     </div><!-- ./users -->
-                     <!-- suppliers -->
+                     </div>
 
                      @endif
+
+                     <!-- manage charges -->
+                     <div x-data="{ open: false }" x-cloak class="relative">
+                         <a @mouseenter="open = true" @mouseleave="open = false"
+                             class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
+                             href="#">
+                             <svg fill="#000000" width="20px" height="20px" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                                 <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                 <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                 <g id="SVGRepo_iconCarrier">
+                                     <path d="M914.882 306.748l-.137-.068.137.068zm-804.149.079l.071-.035-.071.035zM535.3 117.806c-14.144-6.889-30.674-6.889-44.667-.078L140.259 292.131h745.258L535.3 117.806zM472.543 80.98c25.474-12.401 55.229-12.401 80.851.08l379.58 188.941c31.686 15.429 20.713 63.09-14.537 63.09h-811.09c-35.208 0-46.216-47.563-14.642-63.044L472.542 80.98zM911.36 908.763v-40.96H112.64v40.96h798.72zm10.24 40.96H102.4c-16.963 0-30.72-13.757-30.72-30.72v-61.44c0-16.963 13.757-30.72 30.72-30.72h819.2c16.963 0 30.72 13.757 30.72 30.72v61.44c0 16.963-13.757 30.72-30.72 30.72zM627.539 540.439c41.324 14.269 69.619 53.31 69.619 97.746 0 57.103-46.28 103.383-103.383 103.383-38.183 0-72.667-20.854-90.712-53.74-5.441-9.916-17.89-13.544-27.807-8.103s-13.544 17.89-8.103 27.807c25.168 45.868 73.336 74.997 126.622 74.997 79.724 0 144.343-64.619 144.343-144.343 0-62.038-39.497-116.535-97.211-136.463-10.691-3.692-22.351 1.983-26.043 12.674s1.983 22.351 12.674 26.043z"></path>
+                                     <path d="M532.896 505.595c0-57.092-46.291-103.383-103.383-103.383S326.13 448.503 326.13 505.595s46.291 103.383 103.383 103.383 103.383-46.291 103.383-103.383zm40.96 0c0 79.714-64.629 144.343-144.343 144.343S285.17 585.309 285.17 505.595c0-79.714 64.629-144.343 144.343-144.343s144.343 64.629 144.343 144.343zM145.861 312.609v534.712c0 11.311 9.169 20.48 20.48 20.48s20.48-9.169 20.48-20.48V312.609c0-11.311-9.169-20.48-20.48-20.48s-20.48 9.169-20.48 20.48zm692.906 0v534.712c0 11.311 9.169 20.48 20.48 20.48s20.48-9.169 20.48-20.48V312.609c0-11.311-9.169-20.48-20.48-20.48s-20.48 9.169-20.48 20.48z"></path>
+                                 </g>
+                             </svg>
+                             <span class="pl-3 text-black pl-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Charges</span>
+                             <svg class="ml-1 h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-200"
+                                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                 <path fill-rule="evenodd"
+                                     d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                     clip-rule="evenodd" />
+                             </svg>
+                         </a>
+                         <div x-show="open" @mouseenter="open = true" @mouseleave="open = false"
+                             class="absolute z-10 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95">
+                             <div class="py-1">
+                                 <a href="{{ route('charges.index') }}"
+                                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                     Manage Charges
+                                 </a>
+                             </div>
+                         </div>
+                     </div>
+
                      <div x-data="{ open: false }" x-cloak class="relative">
                          <a @mouseenter="open = true" @mouseleave="open = false"
                              class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
@@ -949,8 +979,6 @@
                          </div>
                      </div>
 
-
-
                      @if(Auth()->user()->role === 'agent')
                      <a href="{{ route('invoice.create') }}" class="btn btn-success ml-2">Create Invoice</a>
                      @endif
@@ -958,13 +986,12 @@
              </div>
          </nav>
 
-
-
          <!-- Page Content -->
          <main class="p-4 mobile-m-5 ">
              <!-- Your main content goes here -->
              <div class="p-3">
                  {{ $slot }}
+
                  @if($errors->any())
                  @foreach($errors->all() as $error)
                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
@@ -1000,17 +1027,12 @@
 
          </main>
 
-
-
-         <!-- Footer -->
          @include('layouts.footer')
-
 
      </div>
 
  </div>
 
- <!-- Scripts -->
  <script>
      document.addEventListener('DOMContentLoaded', function() {
          document.getElementById('logo').classList.add('fade-in-loaded');

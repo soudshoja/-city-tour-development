@@ -64,7 +64,7 @@ class TaskController extends Controller
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
 
         // dd($tasks, $agent, $agents, $taskCount);
-        return view('tasks.tasksList', compact('tasks', 'agent', 'agents', 'taskCount')); // Pass the tasks and task count to the view
+        return view('tasks.tasksList', compact('tasks', 'agent','taskCount')); // Pass the tasks and task count to the view
     }
 
     public function show($id)

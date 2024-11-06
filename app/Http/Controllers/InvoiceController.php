@@ -377,6 +377,26 @@ class InvoiceController extends Controller
         return view('invoice.show', compact('invoice', 'invoiceDetails', 'transaction'));
     }
 
+    public function sendInvoice(string $invoiceNumber){
+        
+        // Retrieve the invoice based on the invoice number
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+
+        // Check if the invoice exists
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+
+        // Fetch the invoice details as a list
+        $invoiceDetails = InvoiceDetails::where('invoice_number', $invoiceNumber)->get();
+        // Retrieve the transaction related to the invoice
+        $transaction = Transaction::where('invoice_id', $invoice->id)->first();
+
+        return view('invoice.clientInvoice', compact('invoice', 'invoiceDetails', 'transaction'));
+    }
+
+    
     /**
      * Show the form for editing the specified resource.
      */

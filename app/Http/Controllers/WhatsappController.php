@@ -17,7 +17,7 @@ class WhatsappController extends Controller
         $invoiceNumber = $request->invoiceNumber;
         
         $header = "Your Invoice Is Ready!";
-        $link = route('payment.clients', ['invoiceNumber' => $invoiceNumber], false);
+        $link = 'invoice/send/' . $invoiceNumber;
 
         $reqBody = [
             "messaging_product" => "whatsapp",
@@ -88,4 +88,5 @@ class WhatsappController extends Controller
 
         return Redirect::back()->with('success', 'Message sent successfully');
     }
+    
 }

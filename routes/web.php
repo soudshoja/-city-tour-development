@@ -125,7 +125,6 @@ Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoi
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
-Route::get('/invoice/list/{id}', [InvoiceController::class, 'list'])->name('invoice.list');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 
 
@@ -206,6 +205,7 @@ Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.
 
 // whatsapp
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
+Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
+
 
 require __DIR__ . '/auth.php';
-

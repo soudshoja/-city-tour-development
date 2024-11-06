@@ -112,7 +112,7 @@
 
                                   <!-- Actual Balance -->
                                   <span class="text-gray-500 text-sm editable-cell" contenteditable="true">
-                                      {{$level4liability->actual_balance}}</span>
+                                      {{number_format($level4liability->actual_balance, 2)}}</span>
 
 
                                   <!-- Action Icons -->

@@ -17,6 +17,7 @@ class Account extends Model
        'variance',  
        'parent_id', 
        'company_id', 
+       'reference_id', 
        'code',
     ];
 
@@ -30,5 +31,9 @@ class Account extends Model
         return $this->hasMany(Account::class, 'parent_id');
     }
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id'); 
+    }
 
 }

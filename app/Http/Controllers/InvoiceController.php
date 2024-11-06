@@ -77,7 +77,7 @@ class InvoiceController extends Controller
 
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
         $clients = Client::where('agent_id', $agentId)->get();
-        $tasks = Task::where('status', 'pending')->get();
+        $tasks = Task::where('agent_id', $agentId)->get();
         $suppliers = Supplier::all();
 
 
@@ -95,6 +95,7 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
+
         $tasks = $request->input('tasks');
         $params = $request->input('params');
         $subamount = $request->input('subtotal');
@@ -107,13 +108,44 @@ class InvoiceController extends Controller
         $agent = Agent::where('user_id', Auth::id())->first();
         $agentId = $agent ? $agent->id : null;
         $companyId = $agent ? $agent->company_id : null;
+        Log::info('Company ID:', ['companyId' => $companyId]);
+        
+        $receivableAccount = Account::where('name', 'like', '%Receivable%')
+        ->where('company_id', $companyId)
+        ->first();
 
-        $receivableAccounts = Account::where('name', 'like', '%Receivable%')
+        Log::info('clientId:', ['clientId' => $clientId]);
+
+        if ($receivableAccount) {
+            $filteredReceivableChildAccount = $receivableAccount->children()
+                ->where('reference_id', $clientId) // Filter by child reference_id
+                ->first(); // Get the first matching child account
+                   Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);     
+            $ReceivablechildAccountId = $filteredReceivableChildAccount ? $filteredReceivableChildAccount->id : null;
+        } else {
+            $ReceivablechildAccountId = null; // Handle case when no parent account is found
+        }
+
+        
+        $payableAccount =  Account::where('name', 'like', '%Payable%')
             ->where('company_id', $companyId)
             ->first();
-        $payableAccounts =  Account::where('name', 'like', '%Payable%')
-            ->where('company_id', $companyId)
-            ->first();
+
+        $incomeAccount =  Account::where('name', 'like', '%Income On Sales%')
+        ->where('company_id', $companyId)
+        ->first();
+
+        if ($incomeAccount) {
+            Log::info('incomeAccount', ['incomeAccount' => $incomeAccount]);
+            $filteredIncomeChildAccount = $incomeAccount->children()
+                ->where('reference_id', $agentId) // Filter by child reference_id
+                ->first(); // Get the first matching child account
+                Log::info('filteredIncomeChildAccount', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount]);
+            $IncomechildAccountId = $filteredIncomeChildAccount ? $filteredIncomeChildAccount->id : null;
+        } else {
+            $IncomechildAccountId = null; // Handle case when no parent account is found
+        }
+
 
         try {
 
@@ -157,37 +189,106 @@ class InvoiceController extends Controller
                             'description' => 'Invoice:' . $invoiceNumber . ' Generated',
                         ]);
 
+
+                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
+                        if ($payableAccount) {
+                            $filteredPayableChildAccount = $payableAccount->children()
+                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
+                                ->first(); // Get the first matching child account
+                                Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
+                        } else {
+                            $PayablechildAccountId = null; // Handle case when no parent account is found
+                        }
+    
+
                         // Try to create payable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'account_id' =>  $payableAccounts->id,
+                            'account_id' =>  $PayablechildAccountId,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Accounts Payable for Supplier: ' . $selectedtask->supplier->name,
                             'debit' => 0,
                             'credit' => $selectedtask->total,
-                            'balance' => $payableAccounts->balance + $selectedtask->total,
+                            'balance' => $filteredPayableChildAccount->actual_balance + $selectedtask->total,
 
                         ]);
 
-                        $payableAccounts->balance += $selectedtask->total;
-                        $payableAccounts->save();
+
+                        $filteredPayableChildAccount->actual_balance += $selectedtask->total;
+                        $filteredPayableChildAccount->save();
+                        Log::info('balance', ['filteredPayableChildAccount' => $filteredPayableChildAccount->actual_balance]);
+
+
+                        $parentPayableAccount = $filteredPayableChildAccount->parent; // Get the parent account
+                        if ($parentPayableAccount) {
+                            // Sum all child balances
+
+                            $totalBalance = $parentPayableAccount->children()->sum('actual_balance');
+                            $parentPayableAccount->actual_balance = $totalBalance; // Update the parent's balance
+                            $parentPayableAccount->save(); // Save the parent account
+                        }
+
 
                         // Try to create receivable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'account_id' =>  $receivableAccounts->id,
+                            'account_id' =>  $ReceivablechildAccountId,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Accounts Receivable for Invoice: ' . $invoiceNumber,
                             'debit' => $task['price'],
                             'credit' => 0,
-                            'balance' => $receivableAccounts->balance + $task['price'],
+                            'balance' => $filteredReceivableChildAccount->actual_balance + $task['price'],
 
                         ]);
 
-                        $receivableAccounts->balance += $task['price'];
-                        $receivableAccounts->save();
+                        $filteredReceivableChildAccount->actual_balance += $task['price'];
+                        $filteredReceivableChildAccount->save();
+                        Log::info('filteredReceivableChildAccount', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
+
+                        $parentReceivableAccount = $filteredReceivableChildAccount->parent; // Get the parent account
+                        if ($parentReceivableAccount) {
+                            // Sum all child balances
+                            
+                           Log::info('parentReceivableAccount:', ['parentReceivableAccount' => $parentReceivableAccount]);    
+                            $totalBalance = $parentReceivableAccount->children()->sum('actual_balance');
+                            $parentReceivableAccount->actual_balance = $totalBalance; // Update the parent's balance
+                            $parentReceivableAccount->save(); // Save the parent account
+                        }
+
+                        Log::info('price:', ['price' => $task['price']]); 
+                        Log::info('selectedtask->total:', ['selectedtask->total' => $selectedtask->total]); 
+
+                        $markup = $task['total'] - $selectedtask->total;
+                        // Try to create income
+                        GeneralLedger::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $companyId,
+                            'account_id' => $IncomechildAccountId,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Accounts Receivable for Invoice: ' . $invoiceNumber,
+                            'debit' => 0,
+                            'credit' => $markup,
+                            'balance' => $filteredIncomeChildAccount->actual_balance + $markup,
+
+                        ]);
+
+                        
+                        Log::info('markup:', ['markup' => $markup]); 
+                        Log::info('filteredIncomeChildAccount:', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount->actual_balance]);    
+                        $filteredIncomeChildAccount->actual_balance += $markup;
+                        $filteredIncomeChildAccount->save();
+
+                        $parentIncomeAccount = $filteredIncomeChildAccount->parent; // Get the parent account
+                        if ($parentIncomeAccount) {
+                            // Sum all child balances
+                            $totalBalance = $parentIncomeAccount->children()->sum('actual_balance');
+                            $parentIncomeAccount->actual_balance = $totalBalance; // Update the parent's balance
+                            $parentIncomeAccount->save(); // Save the parent account
+                        }
+
 
 
                         InvoiceDetails::create([
@@ -198,7 +299,7 @@ class InvoiceController extends Controller
                             'task_remark' => $task['remark'],
                             'task_price' => $task['total'],
                             'supplier_price' => $selectedtask->total,
-                            'markup_price' => $task['price'] - $selectedtask->total,
+                            'markup_price' => $task['total'] - $selectedtask->total,
                             'paid' => false,
                         ]);
                     } catch (Exception $e) {

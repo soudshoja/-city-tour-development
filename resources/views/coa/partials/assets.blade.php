@@ -1,59 +1,44 @@
   <!-- Assets Section overview -->
 
-  <div class="main-container flex w-full rounded-lg shadow-sm border border-gray-200">
-      <!-- Left Div (90%) -->
-      <div class="left-div AssetsToggleButton cursor-pointer flex items-center justify-between bg-white p-4 ">
-          <div class="flex items-center space-x-3 ">
 
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path opacity="0.5"
-                      d="M2.5 6.5C2.5 4.29086 4.29086 2.5 6.5 2.5C8.70914 2.5 10.5 4.29086 10.5 6.5V9.16667C10.5 9.47666 10.5 9.63165 10.4659 9.75882C10.3735 10.1039 10.1039 10.3735 9.75882 10.4659C9.63165 10.5 9.47666 10.5 9.16667 10.5H6.5C4.29086 10.5 2.5 8.70914 2.5 6.5Z"
-                      stroke="currentColor" stroke-width="1.5"></path>
-                  <path opacity="0.5"
-                      d="M13.5 14.8333C13.5 14.5233 13.5 14.3683 13.5341 14.2412C13.6265 13.8961 13.8961 13.6265 14.2412 13.5341C14.3683 13.5 14.5233 13.5 14.8333 13.5H17.5C19.7091 13.5 21.5 15.2909 21.5 17.5C21.5 19.7091 19.7091 21.5 17.5 21.5C15.2909 21.5 13.5 19.7091 13.5 17.5V14.8333Z"
-                      stroke="currentColor" stroke-width="1.5"></path>
-                  <path
-                      d="M2.5 17.5C2.5 15.2909 4.29086 13.5 6.5 13.5H8.9C9.46005 13.5 9.74008 13.5 9.95399 13.609C10.1422 13.7049 10.2951 13.8578 10.391 14.046C10.5 14.2599 10.5 14.5399 10.5 15.1V17.5C10.5 19.7091 8.70914 21.5 6.5 21.5C4.29086 21.5 2.5 19.7091 2.5 17.5Z"
-                      stroke="#1A5319" stroke-width="1.5"></path>
-                  <path
-                      d="M13.5 6.5C13.5 4.29086 15.2909 2.5 17.5 2.5C19.7091 2.5 21.5 4.29086 21.5 6.5C21.5 8.70914 19.7091 10.5 17.5 10.5H14.6429C14.5102 10.5 14.4438 10.5 14.388 10.4937C13.9244 10.4415 13.5585 10.0756 13.5063 9.61196C13.5 9.55616 13.5 9.48982 13.5 9.35714V6.5Z"
-                      stroke="#1A5319" stroke-width="1.5"></path>
-              </svg>
-              <h3 class="font-semibold text-lg text-[#1A5319]">Assets</h3>
-          </div>
-          <!-- Status Badge -->
-          <span class="px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full">Code</span>
+  <div
+      class="AssetsToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg shadow-sm border border-gray-200">
+      <div class="flex items-center space-x-3 ">
 
-          <!-- Integration Type -->
-          <span class="text-gray-500 text-sm ">Actual Balance</span>
-
-          <button class="hover:text-gray-700">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
-                      stroke-linejoin="round" />
-                  <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                      stroke-linejoin="round" />
-              </svg>
-          </button>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path opacity="0.5"
+                  d="M2.5 6.5C2.5 4.29086 4.29086 2.5 6.5 2.5C8.70914 2.5 10.5 4.29086 10.5 6.5V9.16667C10.5 9.47666 10.5 9.63165 10.4659 9.75882C10.3735 10.1039 10.1039 10.3735 9.75882 10.4659C9.63165 10.5 9.47666 10.5 9.16667 10.5H6.5C4.29086 10.5 2.5 8.70914 2.5 6.5Z"
+                  stroke="currentColor" stroke-width="1.5"></path>
+              <path opacity="0.5"
+                  d="M13.5 14.8333C13.5 14.5233 13.5 14.3683 13.5341 14.2412C13.6265 13.8961 13.8961 13.6265 14.2412 13.5341C14.3683 13.5 14.5233 13.5 14.8333 13.5H17.5C19.7091 13.5 21.5 15.2909 21.5 17.5C21.5 19.7091 19.7091 21.5 17.5 21.5C15.2909 21.5 13.5 19.7091 13.5 17.5V14.8333Z"
+                  stroke="currentColor" stroke-width="1.5"></path>
+              <path
+                  d="M2.5 17.5C2.5 15.2909 4.29086 13.5 6.5 13.5H8.9C9.46005 13.5 9.74008 13.5 9.95399 13.609C10.1422 13.7049 10.2951 13.8578 10.391 14.046C10.5 14.2599 10.5 14.5399 10.5 15.1V17.5C10.5 19.7091 8.70914 21.5 6.5 21.5C4.29086 21.5 2.5 19.7091 2.5 17.5Z"
+                  stroke="#1A5319" stroke-width="1.5"></path>
+              <path
+                  d="M13.5 6.5C13.5 4.29086 15.2909 2.5 17.5 2.5C19.7091 2.5 21.5 4.29086 21.5 6.5C21.5 8.70914 19.7091 10.5 17.5 10.5H14.6429C14.5102 10.5 14.4438 10.5 14.388 10.4937C13.9244 10.4415 13.5585 10.0756 13.5063 9.61196C13.5 9.55616 13.5 9.48982 13.5 9.35714V6.5Z"
+                  stroke="#1A5319" stroke-width="1.5"></path>
+          </svg>
+          <h3 class="font-semibold text-lg text-[#1A5319]">Assets</h3>
       </div>
+      <!-- Status Badge -->
+      <span class="px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full">Code</span>
 
-      <!-- Right Div (10%) -->
-      <div class="right-div flex justify-center items-center p-4">
-          <!-- Refresh Button with Rotation Animation -->
-          <button id="AssetsRefreshIcon">
-              <svg class="" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M12.0789 3V2.25V3ZM3.67981 11.3333H2.92981H3.67981ZM3.67981 13L3.15157 13.5324C3.44398 13.8225 3.91565 13.8225 4.20805 13.5324L3.67981 13ZM5.88787 11.8657C6.18191 11.574 6.18377 11.0991 5.89203 10.8051C5.60029 10.511 5.12542 10.5092 4.83138 10.8009L5.88787 11.8657ZM2.52824 10.8009C2.2342 10.5092 1.75933 10.511 1.46759 10.8051C1.17585 11.0991 1.17772 11.574 1.47176 11.8657L2.52824 10.8009ZM18.6156 7.39279C18.8325 7.74565 19.2944 7.85585 19.6473 7.63892C20.0001 7.42199 20.1103 6.96007 19.8934 6.60721L18.6156 7.39279ZM12.0789 2.25C7.03155 2.25 2.92981 6.3112 2.92981 11.3333H4.42981C4.42981 7.15072 7.84884 3.75 12.0789 3.75V2.25ZM2.92981 11.3333L2.92981 13H4.42981L4.42981 11.3333H2.92981ZM4.20805 13.5324L5.88787 11.8657L4.83138 10.8009L3.15157 12.4676L4.20805 13.5324ZM4.20805 12.4676L2.52824 10.8009L1.47176 11.8657L3.15157 13.5324L4.20805 12.4676ZM19.8934 6.60721C18.287 3.99427 15.3873 2.25 12.0789 2.25V3.75C14.8484 3.75 17.2727 5.20845 18.6156 7.39279L19.8934 6.60721Z"
-                      fill="#1C274C" />
-                  <path opacity="0.5"
-                      d="M11.8825 21V21.75V21ZM20.3137 12.6667H21.0637H20.3137ZM20.3137 11L20.8409 10.4666C20.5487 10.1778 20.0786 10.1778 19.7864 10.4666L20.3137 11ZM18.1002 12.1333C17.8056 12.4244 17.8028 12.8993 18.094 13.1939C18.3852 13.4885 18.86 13.4913 19.1546 13.2001L18.1002 12.1333ZM21.4727 13.2001C21.7673 13.4913 22.2421 13.4885 22.5333 13.1939C22.8245 12.8993 22.8217 12.4244 22.5271 12.1332L21.4727 13.2001ZM5.31769 16.6061C5.10016 16.2536 4.63806 16.1442 4.28557 16.3618C3.93307 16.5793 3.82366 17.0414 4.0412 17.3939L5.31769 16.6061ZM11.8825 21.75C16.9448 21.75 21.0637 17.6915 21.0637 12.6667H19.5637C19.5637 16.8466 16.133 20.25 11.8825 20.25V21.75ZM21.0637 12.6667V11H19.5637V12.6667H21.0637ZM19.7864 10.4666L18.1002 12.1333L19.1546 13.2001L20.8409 11.5334L19.7864 10.4666ZM19.7864 11.5334L21.4727 13.2001L22.5271 12.1332L20.8409 10.4666L19.7864 11.5334ZM4.0412 17.3939C5.65381 20.007 8.56379 21.75 11.8825 21.75V20.25C9.09999 20.25 6.6656 18.7903 5.31769 16.6061L4.0412 17.3939Z"
-                      fill="#1C274C" />
-              </svg>
-          </button>
-      </div>
+      <!-- Integration Type -->
+      <span class="text-gray-500 text-sm ">Actual Balance</span>
 
+      <button class="hover:text-gray-700">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" />
+          </svg>
+      </button>
   </div>
+
+
+
 
 
 
@@ -144,7 +129,7 @@
                                   <!-- Actual Balance -->
                                   <input type="text" name="actual_balance"
                                       class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full"
-                                      value="{{ $level4asset->actual_balance }}" readonly
+                                      value="{{ number_format($level4asset->actual_balance, 2) }}" readonly
                                       style="pointer-events: none; cursor: default;">
 
 
@@ -186,8 +171,7 @@
 
 
   <script>
-// Get the button and content div
-
+// open and close assets details function
 const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
 const contentAssetsDiv = document.getElementById('AssetsDetails');
 console.log(AssetsToggleButton);
@@ -210,44 +194,7 @@ AssetsToggleButton.forEach(function(button) {
 
 
 
-// Add an event listener to the refresh button
-document.getElementById("refreshAssetsButton").addEventListener("click", function() {
-    const svgIcon = document.querySelector(".AssetsRefreshIcon");
-    svgIcon.classList.toggle("rotate");
-    // Delay to allow the rotation animation to complete before refreshing
-    setTimeout(() => {
-        location.reload();
-    }, 300); // Match this duration with the CSS transition duration
-});
-
-
-// Add an event listener to the refresh button
-document.getElementById('refreshAssetsButton').addEventListener('click', function() {
-    refreshAssetsData();
-});
-
-// Function to refresh assets data
-function refreshAssetsData() {
-    console.log("Fetching new assets data...");
-
-    // Fetch new data from the server
-    fetch('/api/assets') // Replace with your actual API endpoint
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Update your UI with the new data here.
-            console.log("Assets data refreshed:", data);
-            // Example: Update some HTML element with the new data
-            // document.getElementById('assetsInfo').innerText = data.info;
-        })
-        .catch(error => {
-            console.error('Error fetching assets:', error);
-        });
-}
+// update code function
 
 function checkEnter(event, assetId, value) {
     if (event.key === 'Enter') {

@@ -697,7 +697,7 @@
                 item.total = parseFloat(item.total) || 0; // Ensure total is a valid number
                 item.quantity = parseFloat(item.quantity) || 1; // Ensure quantity is at least 1
                 // Update any other logic or overall total here if needed
-                this.updateTotal(this.items); // Update the overall total
+                this.updateTotal(item); // Update the overall total
             },
 
             // updateSubTotal() {

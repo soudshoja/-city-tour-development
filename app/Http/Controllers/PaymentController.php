@@ -287,7 +287,7 @@ class PaymentController extends Controller
                        }
 
                     if ($tapAccount) {
-                    $tapAccount->actual_balance += 0.035; // Add to expenses account
+                    $tapAccount->actual_balance += 0.35; // Add to expenses account
                     $tapAccount->save();
                     }
 

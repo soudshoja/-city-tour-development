@@ -76,7 +76,7 @@ class InvoiceController extends Controller
 
 
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
-        $clients = Client::whereIn('agent_id', $agentId)->get();
+        $clients = Client::where('agent_id', $agentId)->get();
         $tasks = Task::where('status', 'pending')->get();
         $suppliers = Supplier::all();
 

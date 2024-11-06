@@ -23,6 +23,8 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css">
 
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
     <!-- CSS -->
 
     @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css', 'resources/js/app.js'])

@@ -1,25 +1,140 @@
 <x-app-layout>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <div x-data="invoiceModal()">
         <div x-data="invoiceAdd">
             <div class="flex flex-col gap-2.5 xl:flex-row">
                 <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
+                    <!-- company details -->
                     <div class="flex flex-wrap justify-between px-4">
-                        <div class="mb-6 w-full lg:w-1/2">
-                            <div class="flex shrink-0 items-center text-black dark:text-white">
-                                <x-application-logo class="w-14" />
+                        <div class="flex shrink-0 items-center text-black dark:text-white">
+                            <x-application-logo class="custom-logo-size" />
+
+                            <div class="pl-2">
                                 @if($company)
-                                <h3 class="pl-2">{{ $company->name }}</h3>
+                                <h3>{{ $company->name }}</h3>
+                                <p>{{ $company->address }}</p>
                                 @else
                                 <p>No company assigned</p>
                                 @endif
                             </div>
-                            <div class="mt-6 space-y-1 text-gray-500 dark:text-gray-400">
-                                <div>{{ $company->address }}</div>
-                                <div>{{ $company->email }}</div>
-                                <div>{{ $company->phone }}</div>
+
+
+                        </div>
+                        <div class="space-y-1 text-gray-500 dark:text-gray-400">
+                            <div class="flex">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path opacity="0.5"
+                                        d="M14.2 3H9.8C5.65164 3 3.57746 3 2.28873 4.31802C1 5.63604 1 7.75736 1 12C1 16.2426 1 18.364 2.28873 19.682C3.57746 21 5.65164 21 9.8 21H14.2C18.3484 21 20.4225 21 21.7113 19.682C23 18.364 23 16.2426 23 12C23 7.75736 23 5.63604 21.7113 4.31802C20.4225 3 18.3484 3 14.2 3Z"
+                                        fill="#1C274C" />
+                                    <path
+                                        d="M19.1284 8.03302C19.4784 7.74133 19.5257 7.22112 19.234 6.87109C18.9423 6.52106 18.4221 6.47377 18.0721 6.76546L15.6973 8.74444C14.671 9.59966 13.9585 10.1915 13.357 10.5784C12.7747 10.9529 12.3798 11.0786 12.0002 11.0786C11.6206 11.0786 11.2258 10.9529 10.6435 10.5784C10.0419 10.1915 9.32941 9.59966 8.30315 8.74444L5.92837 6.76546C5.57834 6.47377 5.05812 6.52106 4.76643 6.87109C4.47474 7.22112 4.52204 7.74133 4.87206 8.03302L7.28821 10.0465C8.2632 10.859 9.05344 11.5176 9.75091 11.9661C10.4775 12.4334 11.185 12.7286 12.0002 12.7286C12.8154 12.7286 13.523 12.4334 14.2495 11.9661C14.947 11.5176 15.7372 10.859 16.7122 10.0465L19.1284 8.03302Z"
+                                        fill="#1C274C" />
+                                </svg>
+
+                                <p class="pl-1">{{ $company->email }}</p>
+                            </div>
+                            <div class="flex">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M15.5562 14.5477L15.1007 15.0272C15.1007 15.0272 14.0181 16.167 11.0631 13.0559C8.10812 9.94484 9.1907 8.80507 9.1907 8.80507L9.47752 8.50311C10.1841 7.75924 10.2507 6.56497 9.63424 5.6931L8.37326 3.90961C7.61028 2.8305 6.13596 2.68795 5.26145 3.60864L3.69185 5.26114C3.25823 5.71766 2.96765 6.30945 3.00289 6.96594C3.09304 8.64546 3.81071 12.259 7.81536 16.4752C12.0621 20.9462 16.0468 21.1239 17.6763 20.9631C18.1917 20.9122 18.6399 20.6343 19.0011 20.254L20.4217 18.7584C21.3806 17.7489 21.1102 16.0182 19.8833 15.312L17.9728 14.2123C17.1672 13.7486 16.1858 13.8848 15.5562 14.5477Z"
+                                        fill="#1C274C" />
+                                    <path
+                                        d="M13.2595 1.87983C13.3257 1.47094 13.7122 1.19357 14.1211 1.25976C14.1464 1.26461 14.2279 1.27983 14.2705 1.28933C14.3559 1.30834 14.4749 1.33759 14.6233 1.38082C14.9201 1.46726 15.3347 1.60967 15.8323 1.8378C16.8286 2.29456 18.1544 3.09356 19.5302 4.46936C20.906 5.84516 21.705 7.17097 22.1617 8.16725C22.3899 8.66487 22.5323 9.07947 22.6187 9.37625C22.6619 9.52466 22.6912 9.64369 22.7102 9.72901C22.7197 9.77168 22.7267 9.80594 22.7315 9.83125L22.7373 9.86245C22.8034 10.2713 22.5286 10.6739 22.1197 10.7401C21.712 10.8061 21.3279 10.53 21.2601 10.1231C21.258 10.1121 21.2522 10.0828 21.2461 10.0551C21.2337 9.9997 21.2124 9.91188 21.1786 9.79572C21.1109 9.56339 20.9934 9.21806 20.7982 8.79238C20.4084 7.94207 19.7074 6.76789 18.4695 5.53002C17.2317 4.29216 16.0575 3.59117 15.2072 3.20134C14.7815 3.00618 14.4362 2.88865 14.2038 2.82097C14.0877 2.78714 13.9417 2.75363 13.8863 2.7413C13.4793 2.67347 13.1935 2.28755 13.2595 1.87983Z"
+                                        fill="#1C274C" />
+                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                        d="M13.4857 5.3293C13.5995 4.93102 14.0146 4.7004 14.4129 4.81419L14.2069 5.53534C14.4129 4.81419 14.4129 4.81419 14.4129 4.81419L14.4144 4.81461L14.4159 4.81505L14.4192 4.81602L14.427 4.81834L14.4468 4.8245C14.4618 4.82932 14.4807 4.8356 14.5031 4.84357C14.548 4.85951 14.6074 4.88217 14.6802 4.91337C14.8259 4.97581 15.0249 5.07223 15.2695 5.21694C15.7589 5.50662 16.4271 5.9878 17.2121 6.77277C17.9971 7.55775 18.4782 8.22593 18.7679 8.7154C18.9126 8.95991 19.009 9.15897 19.0715 9.30466C19.1027 9.37746 19.1254 9.43682 19.1413 9.48173C19.1493 9.50418 19.1555 9.52301 19.1604 9.53809L19.1665 9.55788L19.1688 9.56563L19.1698 9.56896L19.1702 9.5705C19.1702 9.5705 19.1707 9.57194 18.4495 9.77798L19.1707 9.57194C19.2845 9.97021 19.0538 10.3853 18.6556 10.4991C18.2607 10.6119 17.8492 10.3862 17.7313 9.99413L17.7276 9.98335C17.7223 9.96832 17.7113 9.93874 17.6928 9.89554C17.6558 9.8092 17.5887 9.66797 17.4771 9.47938C17.2541 9.10264 16.8514 8.53339 16.1514 7.83343C15.4515 7.13348 14.8822 6.73078 14.5055 6.50781C14.3169 6.39619 14.1757 6.32909 14.0893 6.29209C14.0461 6.27358 14.0165 6.26254 14.0015 6.25721L13.9907 6.25352C13.5987 6.13564 13.3729 5.72419 13.4857 5.3293Z"
+                                        fill="#1C274C" />
+                                </svg>
+
+                                <p class="pl-1">{{ $company->phone }}</p>
                             </div>
                         </div>
+
+                    </div>
+                    <!-- ./company details -->
+                    <!-- agent detials -->
+                    <!-- 
+                    <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
+                    
+                    <div class="flex flex-wrap justify-between px-4">
+                        <div class="flex shrink-0 items-center text-black dark:text-white">
+                            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="6" r="4" fill="#1C274C" />
+                                <path opacity="0.5"
+                                    d="M20 17.5C20 19.9853 20 22 12 22C4 22 4 19.9853 4 17.5C4 15.0147 7.58172 13 12 13C16.4183 13 20 15.0147 20 17.5Z"
+                                    fill="#1C274C" />
+                            </svg>
+
+                            <div class="pl-2">
+                                <h3>Choose An Agent</h3>
+
+                            </div>
+
+
+                        </div>
+                        <div class="space-y-1 text-gray-500 dark:text-gray-400">
+
+                            <button @click="openAgentModal()"
+                                class="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                                <span
+                                    class="gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                                    Select Agent
+                                </span>
+                            </button>
+                        </div>
+
+                    </div>
+-->
+                    <!-- ./agent details -->
+                    <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
+
+                    <div class="flex flex-wrap justify-between px-4">
+                        <div class="mb-6 w-full lg:w-1/2">
+                            <!-- client details -->
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <div class="text-lg font-semibold">Bill To</div>
+                                    <button @click="openClientModal()"
+                                        class="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                                        <span
+                                            class="gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
+                                                xmlns="http://www.w3.org/2000/svg">
+                                                <circle cx="10" cy="6" r="4" fill="currentColor" />
+                                                <path
+                                                    d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                                    fill="currentColor" />
+                                                <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                            </svg> Select Client
+                                        </span>
+                                    </button>
+
+                                </div>
+                                <div class="mt-4 flex items-center">
+                                    <label for="receiverName" class="mb-0 w-1/3 mr-2 ">Name</label>
+                                    <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
+                                        value="{{ old('client_name', $receiverName ?? '') }}" x-model="receiverName"
+                                        placeholder="Enter Name" />
+                                </div>
+                                <div class="mt-4 flex items-center">
+                                    <label for="receiverEmail" class="mb-0 w-1/3 mr-2 ">Email</label>
+                                    <input id="receiverEmail" type="email" name="receiverEmail"
+                                        class="form-input flex-1"
+                                        value="{{ old('client_email', $receiverEmail ?? '') }}" x-model="receiverEmail"
+                                        placeholder="Enter Email" />
+                                </div>
+
+                                <div class="mt-4 flex items-center">
+                                    <label for="receiverPhone" class="mb-0 w-1/3 mr-2 ">Phone Number</label>
+                                    <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
+                                        value="{{ old('client_phone', $receiverPhone ?? '') }}" x-model="receiverPhone"
+                                        placeholder="Enter Phone Number" />
+                                </div>
+                            </div>
+                            <!-- ./client details -->
+                        </div>
+                        <!-- invoice details -->
                         <div class="w-full lg:w-1/2 lg:max-w-fit">
                             <div class="flex items-center">
                                 <label for="invoiceNumber" class="mb-0 flex-1 mr-2 ">Invoice Number</label>
@@ -43,54 +158,42 @@
                                     x-model="params.dueDate" />
                             </div>
                         </div>
+                        <!-- ./invoice details -->
                     </div>
                     <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-                    <div class="mt-8 px-4">
-                        <div class="flex flex-col justify-between lg:flex-row">
-                            <div class="mb-6 w-full lg:w-1/2 lg:mr-6 ">
-                                <div class="flex items-center justify-between">
-                                    <div class="text-lg font-semibold">Bill To</div>
-                                    <button @click="openClientModal()"
-                                        class="p-2 bg-blue-500 text-white rounded-lg hover:bg-yellow-600 transition-all duration-300 ease-in-out">
-                                        <i class="fas fa-user-plus"></i> Select Client
-                                    </button>
-                                </div>
+                    <!-- add items button-->
 
-                                <div class="mt-5 flex items-center justify-between">
-                                    <div class="text-lg font-semibold">Add Item</div>
-                                    <button @click="openTaskModal()"
-                                        class="ml-4 p-2 bg-blue-500 text-white rounded-lg hover:bg-yellow-600 transition-all duration-300 ease-in-out">
-                                        <i class="fas fa-tasks"></i> Add Item
-                                    </button>
-                                </div>
+                    <div class="flex justify-center items-center px-10">
+                        <button @click="openTaskModal()"
+                            class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                            <span
+                                class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                        d="M17.5 2.75C17.9142 2.75 18.25 3.08579 18.25 3.5V5.75H20.5C20.9142 5.75 21.25 6.08579 21.25 6.5C21.25 6.91421 20.9142 7.25 20.5 7.25H18.25V9.5C18.25 9.91421 17.9142 10.25 17.5 10.25C17.0858 10.25 16.75 9.91421 16.75 9.5V7.25H14.5C14.0858 7.25 13.75 6.91421 13.75 6.5C13.75 6.08579 14.0858 5.75 14.5 5.75H16.75V3.5C16.75 3.08579 17.0858 2.75 17.5 2.75Z"
+                                        fill="currentColor" />
+                                    <path
+                                        d="M2 6.5C2 4.37868 2 3.31802 2.65901 2.65901C3.31802 2 4.37868 2 6.5 2C8.62132 2 9.68198 2 10.341 2.65901C11 3.31802 11 4.37868 11 6.5C11 8.62132 11 9.68198 10.341 10.341C9.68198 11 8.62132 11 6.5 11C4.37868 11 3.31802 11 2.65901 10.341C2 9.68198 2 8.62132 2 6.5Z"
+                                        fill="currentColor" />
+                                    <path
+                                        d="M13 17.5C13 15.3787 13 14.318 13.659 13.659C14.318 13 15.3787 13 17.5 13C19.6213 13 20.682 13 21.341 13.659C22 14.318 22 15.3787 22 17.5C22 19.6213 22 20.682 21.341 21.341C20.682 22 19.6213 22 17.5 22C15.3787 22 14.318 22 13.659 21.341C13 20.682 13 19.6213 13 17.5Z"
+                                        fill="currentColor" />
+                                    <path opacity="0.5"
+                                        d="M2 17.5C2 15.3787 2 14.318 2.65901 13.659C3.31802 13 4.37868 13 6.5 13C8.62132 13 9.68198 13 10.341 13.659C11 14.318 11 15.3787 11 17.5C11 19.6213 11 20.682 10.341 21.341C9.68198 22 8.62132 22 6.5 22C4.37868 22 3.31802 22 2.65901 21.341C2 20.682 2 19.6213 2 17.5Z"
+                                        fill="currentColor" />
+                                </svg>
 
-                            </div>
 
-                            <div class="sm:w-2/5">
-                                <div class="flex items-center justify-between">
-                                    <div>Subtotal</div>
-                                    <span x-text="subtotal">$0.00</span>
-                                </div>
-                                <div class="mt-4 flex items-center justify-between">
-                                    <div>Tax(%)</div>
-                                    <div x-text="params.tax + '%'">0%</div>
-                                </div>
-                                <div class="mt-4 flex items-center justify-between">
-                                    <div>Shipping Rate($)</div>
-                                    <div x-text="params.shippingCharge">$0.00</div>
-                                </div>
-                                <div class="mt-4 flex items-center justify-between">
-                                    <div>Discount(%)</div>
-                                    <div x-text="params.discount + '%'">0%</div>
-                                </div>
-                                <div class="mt-4 flex items-center justify-between font-semibold">
-                                    <div>Total</div>
-                                    <span x-text="total">$0.00</span>
-                                </div>
-                            </div>
-                        </div>
+                                Add Item
+                            </span>
+                        </button>
+
                     </div>
+
+                    <!-- ./add items button-->
                     <div class="mt-8">
+                        <!-- choose items -->
                         <div class="table-responsive">
                             <table>
                                 <thead>
@@ -100,6 +203,7 @@
                                         <th class="w-1">Price</th>
                                         <th>Total</th>
                                         <th class="w-1"></th>
+
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -113,8 +217,7 @@
                                             <td>
                                                 <input type="text" class="form-input min-w-[200px]"
                                                     placeholder="Enter Item Name" x-model="item.description" />
-                                                <textarea class="form-textarea mt-4" placeholder="Enter Description"
-                                                    id="item-name" x-model="item.remark"></textarea>
+
                                             </td>
                                             <td><input type="number" class="form-input w-32" placeholder="Quantity"
                                                     x-model="item.quantity" /></td>
@@ -124,7 +227,7 @@
                                             </td>
                                             <td x-text="`$${(item.total * item.quantity).toFixed(2)}`"></td>
                                             <td>
-                                                <button type="button" @click="removeItem(item)">
+                                                <button type="button" @click="removeItem(item.id)">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                         stroke-width="1.5" stroke-linecap="round"
@@ -133,20 +236,20 @@
                                                         <line x1="6" y1="6" x2="18" y2="18"></line>
                                                     </svg>
                                                 </button>
+
+
                                             </td>
                                         </tr>
                                     </template>
                                 </tbody>
                             </table>
-                        </div>
-                        <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
-                            <div class="mb-6 sm:mb-0">
-
-
-                            </div>
 
                         </div>
+                        <!-- ./choose items -->
+
                     </div>
+                    <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
+
                     <div class="mt-8 px-4">
                         <div>
                             <label for="notes">Notes</label>
@@ -154,6 +257,7 @@
                                 placeholder="Notes...." x-model="params.notes"></textarea>
                         </div>
                     </div>
+
                 </div>
                 <div class="mt-6 w-full xl:mt-0 xl:w-96">
                     <div class="panel mb-5">
@@ -237,7 +341,7 @@
                                 Send Invoice
                             </button>
 
-                            <a href="apps-invoice-preview.html" class="btn btn-primary w-full gap-2">
+                            <a href="#" class="btn btn-primary w-full gap-2">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
                                     <path opacity="0.5"
@@ -263,65 +367,176 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Agents Modal -->
+                    <div x-show="isAgentModalOpen"
+                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75"
+                        style="display: none;">
+                        <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
+                            <!-- Modal Header -->
+                            <div
+                                class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
+                                <h5 class="text-lg font-bold">Choose Agent</h5>
+                                <!-- Close Modal Button -->
+                                <button type="button" class="text-white-dark hover:text-dark"
+                                    @click="closeAgentModal()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- ./Modal Header -->
+                            <div class="m-6 ">
+                                <!-- Search Box -->
+                                <div class="relative mb-2">
+                                    <input type="text" placeholder="Search Client..."
+                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                        x-model="searchClient">
+                                    <button type="button"
+                                        class="btn btn-primary absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1 ">
+                                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
+                                                opacity="0.5"></circle>
+                                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Search Box -->
+
+
+                                <!-- List of Agents -->
+                                <ul
+                                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
+                                    <template x-for="Agent in filteredAgents" :key="Agent.id">
+                                        <li @click="selectAgent(Agent)"
+                                            class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
+                                            <span x-text="Agent.name"></span> - <span x-text="Agent.email"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                                <!-- ./List of Agents -->
+
+                            </div>
+
+                        </div>
+                    </div>
+
                     <!-- Clients Modal -->
                     <div x-show="isClientModalOpen"
                         class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75"
                         style="display: none;">
-                        <div class="bg-white p-4 rounded-lg shadow-lg w-3/4 md:w-1/2">
-                            <p class="text-yellow-500 font-bold mb-4">Choose Client</p>
-
-                            <!-- Search Box -->
-                            <input type="text" placeholder="Search Client..." x-model="searchClient"
-                                class="w-full p-2 mb-4 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring focus:ring-yellow-500" />
-
-                            <!-- List of Clients -->
-                            <ul class="max-h-60 overflow-y-auto">
-                                <template x-for="client in filteredClients" :key="client.id">
-                                    <li @click="selectClient(client)"
-                                        class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
-                                        <span x-text="client.name"></span> - <span x-text="client.email"></span>
-                                    </li>
-                                </template>
-                            </ul>
-
-                            <!-- Close Modal Button -->
-                            <div class="text-right mt-4">
-                                <button @click="closeClientModal()"
-                                    class="bg-blue-500 text-white px-4 py-2 rounded-lg">Close</button>
+                        <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
+                            <!-- Modal Header -->
+                            <div
+                                class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
+                                <h5 class="text-lg font-bold">Choose Client</h5>
+                                <!-- Close Modal Button -->
+                                <button type="button" class="text-white-dark hover:text-dark"
+                                    @click="closeClientModal()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
                             </div>
+                            <!-- ./Modal Header -->
+                            <div class="m-6 ">
+                                <!-- Search Box -->
+                                <div class="relative mb-2">
+                                    <input type="text" placeholder="Search Client..."
+                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                        x-model="searchClient">
+                                    <button type="button"
+                                        class="btn btn-primary absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1 ">
+                                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
+                                                opacity="0.5"></circle>
+                                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Search Box -->
+
+
+                                <!-- List of Clients -->
+                                <ul
+                                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
+                                    <template x-for="client in filteredClients" :key="client.id">
+                                        <li @click="selectClient(client)"
+                                            class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
+                                            <span x-text="client.name"></span> - <span x-text="client.email"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                                <!-- ./List of Clients -->
+
+                            </div>
+
                         </div>
                     </div>
-
 
                     <!-- Tasks Modal -->
                     <div x-show="isTaskModalOpen"
                         class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75"
                         style="display: none;">
-                        <div class="bg-white p-4 rounded-lg shadow-lg w-3/4 md:w-1/2">
-                            <p class="text-yellow-500 font-bold mb-4">Choose Task</p>
-
-                            <!-- Search Box -->
-                            <input type="text" placeholder="Search Task..." x-model="searchTask"
-                                class="w-full p-2 mb-4 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring focus:ring-yellow-500" />
-
-                            <!-- List of Tasks -->
-                            <ul class="max-h-60 overflow-y-auto">
-                                <template x-for="task in filteredTasks" :key="task.id">
-                                    <li @click="selectTask(task)"
-                                        class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
-                                        <span x-text="task.reference"></span>-
-                                        <span x-text="task.type"></span>
-                                        <span x-text="task.additional_info"></span>
-                                        ( <span x-text="task.venue"></span>)
-                                    </li>
-                                </template>
-                            </ul>
-
-                            <!-- Close Modal Button -->
-                            <div class="text-right mt-4">
-                                <button @click="closeTaskModal()"
-                                    class="bg-blue-500 text-white px-4 py-2 rounded-lg">Close</button>
+                        <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
+                            <div
+                                class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
+                                <h5 class="text-lg font-bold">Choose Task</h5>
+                                <!-- Close Modal Button -->
+                                <button type="button" class="text-white-dark hover:text-dark" @click="closeTaskModal()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
                             </div>
+                            <div class="m-6">
+                                <!-- Search Box -->
+                                <div class="relative  mb-10">
+                                    <input type="text" placeholder="Search Task..."
+                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                        x-model="searchTask">
+                                    <button type="button"
+                                        class="btn btn-primary absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1 ">
+                                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
+                                                opacity="0.5"></circle>
+                                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Search Box -->
+                                <!-- List of Tasks -->
+                                <ul class=" border rounded-lg mb-10 max-h-60 overflow-y-auto  custom-scrollbar">
+                                    <template x-for="task in filteredTasks" :key="task.id">
+                                        <li @click="selectTask(task)"
+                                            class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
+                                            <span x-text="task.reference"></span>-
+                                            <span x-text="task.type"></span>
+                                            <span x-text="task.additional_info"></span>
+                                            ( <span x-text="task.venue"></span>)
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+
+
+
+
                         </div>
                     </div>
 
@@ -334,9 +549,11 @@
     </div>
 
     <script>
+    // Invoice Add
     function invoiceModal() {
 
         return {
+            isAgentModalOpen: false,
             isClientModalOpen: false,
             isTaskModalOpen: false,
             searchClient: '',
@@ -381,6 +598,40 @@
                 paymentMethod: '',
                 invoiceNumber: @json($invoiceNumber),
             },
+            removeItem(taskId) {
+                this.items = this.items.filter(item => item.id !== taskId);
+                this.updateTotal(this.items); // Update total if needed
+            },
+
+
+            openAgentModal() {
+                this.isAgentModalOpen = true;
+            },
+
+            closeAgentModal() {
+                this.isAgentModalOpen = false;
+            },
+
+            selectAgent(Agent) {
+                this.selectedAgent = Agent;
+                this.selectedAgentId = Agent.id ?? '';
+                this.receiverName = Agent.name ?? '';
+                this.receiverAddress = Agent.address ?? '';
+                this.receiverPhone = Agent.phone ?? '';
+                this.receiverEmail = Agent.email ?? '';
+                document.getElementById('receiverName').value = Agent.name ?? '';
+                document.getElementById('receiverEmail').value = Agent.email ?? '';
+                const addressField = document.getElementById('receiverAddress');
+                if (addressField) {
+                    addressField.value = Agent.address ? Agent.address : '';
+                }
+
+                const phoneField = document.getElementById('receiverPhone');
+                if (phoneField) {
+                    phoneField.value = Agent.phone ? Agent.phone : '';
+                }
+                this.closeAgentModal();
+            },
 
             openClientModal() {
                 this.isClientModalOpen = true;
@@ -389,6 +640,8 @@
             closeClientModal() {
                 this.isClientModalOpen = false;
             },
+
+
 
             selectClient(client) {
                 this.selectedClient = client;
@@ -561,6 +814,7 @@
                     .filter(task => task.client_id === this.selectedClientId) // Filter by selected client ID
                     .filter(task => task.additional_info.toLowerCase().includes(this.searchTask.toLowerCase()));
             },
+
         }
     };
     </script>

@@ -772,3 +772,12 @@ select:focus {
     .hidden {
         display: none;
     }
+
+
+
+
+/* Custom CSS for the create invoice page */
+
+.custom-logo-size {
+    width: 4.5rem; /* Adjust this size as needed */
+}

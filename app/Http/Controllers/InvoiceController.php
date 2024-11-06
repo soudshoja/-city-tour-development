@@ -261,7 +261,7 @@ class InvoiceController extends Controller
                         Log::info('price:', ['price' => $task['price']]); 
                         Log::info('selectedtask->total:', ['selectedtask->total' => $selectedtask->total]); 
 
-                        $markup = $task['total'] - $selectedtask->total;
+                        $markup = $task['price'] - $selectedtask->total;
                         // Try to create income
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,

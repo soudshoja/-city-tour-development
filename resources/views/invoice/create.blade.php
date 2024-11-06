@@ -754,8 +754,8 @@
                 const csrfToken = "{{ csrf_token() }}";
                 const currency = this.selectedCurrency;
                 const params = this.params;
-                const total = this.total;
-                // const subtotal = this.subtotal;
+                const total = this.subtotal;
+                const subtotal = this.subtotal;
                 const tasks = this.items;
                 const clientId = this.selectedClientId;
 

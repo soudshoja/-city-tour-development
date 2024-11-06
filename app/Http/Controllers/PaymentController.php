@@ -287,7 +287,7 @@ class PaymentController extends Controller
                        }
 
                     if ($tapAccount) {
-                    $tapAccount->actual_balance += 0.035; // Add to expenses account
+                    $tapAccount->actual_balance += 0.35; // Add to expenses account
                     $tapAccount->save();
                     }
 
@@ -358,7 +358,7 @@ class PaymentController extends Controller
             'client_name' => $invoice->client->name,
             'client_email' => $invoice->client->email,
             'invoice_number' => $invoice->invoice_number,
-            'redirect_url' => route('payment.clients.process'),
+            'redirect_url' => route('payment.process'),
             'webhook_url' => route('payment.webhook'),
         ];
         

@@ -77,7 +77,7 @@ class InvoiceController extends Controller
 
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
         $clients = Client::where('agent_id', $agentId)->get();
-        $tasks = Task::where('status', 'pending')->get();
+        $tasks = Task::where('agent_id', $agentId)->get();
         $suppliers = Supplier::all();
 
 
@@ -99,7 +99,7 @@ class InvoiceController extends Controller
         $tasks = $request->input('tasks');
         $params = $request->input('params');
         $subamount = $request->input('subtotal');
-        $amount = $request->input('total');
+        $amount = $request->input('subtotal');
         $clientId = $request->input(key: 'clientId');
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
         $invoiceNumber = data_get($params, 'invoiceNumber');
@@ -261,7 +261,7 @@ class InvoiceController extends Controller
                         Log::info('price:', ['price' => $task['price']]); 
                         Log::info('selectedtask->total:', ['selectedtask->total' => $selectedtask->total]); 
 
-                        $markup = $task['total'] - $selectedtask->total;
+                        $markup = $task['price'] - $selectedtask->total;
                         // Try to create income
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,

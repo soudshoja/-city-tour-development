@@ -1,6 +1,6 @@
 <x-app-layout>
     <script>
-        window.taskCount = @json($taskCount);
+    window.taskCount = @json($taskCount);
     </script>
 
     <!-- Notification Container -->
@@ -61,35 +61,36 @@
 
                 <!-- Upload Task Button -->
                 <div class="relative flex items-center h-12">
-                    <form action="{{ route('tasksupload.import') }}" method="POST" enctype="multipart/form-data" class="inline-flex">
+                    <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
+                        enctype="multipart/form-data" class="inline-flex">
                         @csrf
-                        <input id="pdfInput" type="file" accept=".pdf" class="text" name="task_file" />
-                        <button id="uploadTaskButton"
-                            type="submit"
-                            class="h-full flex items-center px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-700 focus:outline-none">
+                        <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden"
+                            onchange="uploadTask()" />
+
+                        <button id="uploadTaskButton" type="button"
+                            onclick="document.getElementById('pdfInput').click();"
+                            class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-700 focus:outline-none">
                             <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
                             </svg>
                             <span>Upload Task</span>
                         </button>
                     </form>
-
                 </div>
+                <!-- ./Upload Task Button -->
 
-                <!-- Add Task Button -->
-                <a
-                    class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
-                    <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span class="text-white dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Add
-                        Task</span>
-
-                </a>
-
-
+                <script>
+                function uploadTask() {
+                    // Check if a file has been selected
+                    const fileInput = document.getElementById('pdfInput');
+                    if (fileInput.files.length > 0) {
+                        // Submit the form once a file is selected
+                        document.getElementById('uploadTaskForm').submit();
+                    }
+                }
+                </script>
 
             </div>
 

@@ -202,6 +202,7 @@ Route::get('/charges/create', [ChargeController::class, 'create'])->name('charge
 Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.show');
 Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
 Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
+Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.update');
 
 // whatsapp
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');

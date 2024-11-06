@@ -755,12 +755,12 @@
                 const currency = this.selectedCurrency;
                 const params = this.params;
                 const total = this.total;
-                const subtotal = this.subtotal;
+                // const subtotal = this.subtotal;
                 const tasks = this.items;
                 const clientId = this.selectedClientId;
 
                 // Basic validation
-                if (!clientId || !subtotal || !total || !tasks.length) {
+                if (!clientId || !total || !tasks.length) {
                     console.error("Required data is missing.");
                     this.isSaving = false;
                     return;

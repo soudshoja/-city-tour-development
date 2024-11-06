@@ -706,23 +706,23 @@
                 item.total = parseFloat(item.total) || 0; // Ensure total is a valid number
                 item.quantity = parseFloat(item.quantity) || 1; // Ensure quantity is at least 1
                 // Update any other logic or overall total here if needed
-                this.updateTotal(this.items); // Update the overall total
+                this.updateTotal(item); // Update the overall total
             },
 
-            updateSubTotal() {
-                const taxAmount = this.subtotal * (this.params.tax / 100);
-                const discountAmount = this.subtotal * (this.params.discount / 100);
+            // updateSubTotal() {
+            //     const taxAmount = this.subtotal * (this.params.tax / 100);
+            //     const discountAmount = this.subtotal * (this.params.discount / 100);
 
-                // Calculate total
-                this.total = this.subtotal + taxAmount + this.params.shippingCharge - discountAmount;
+            //     // Calculate total
+            //     this.total = this.subtotal + taxAmount + this.params.shippingCharge - discountAmount;
 
-            },
+            // },
 
             updateTotal(items) {
                 const total = items.reduce((sum, item) => sum + (item.total * item.quantity),
                     0); // Calculate total based on price and quantity
                 this.subtotal = total;
-                this.updateSubTotal();
+                // this.updateSubTotal();
             },
             // Method to add task
             addTask() {
@@ -763,13 +763,13 @@
                 const csrfToken = "{{ csrf_token() }}";
                 const currency = this.selectedCurrency;
                 const params = this.params;
-                const total = this.total;
+                const total = this.subtotal;
                 const subtotal = this.subtotal;
                 const tasks = this.items;
                 const clientId = this.selectedClientId;
 
                 // Basic validation
-                if (!clientId || !subtotal || !total || !tasks.length) {
+                if (!clientId || !total || !tasks.length) {
                     console.error("Required data is missing.");
                     this.isSaving = false;
                     return;
@@ -799,7 +799,7 @@
                     const result = await response.json();
 
                     // Generate invoice link after success
-                    this.invoiceLink = `http://127.0.0.1:8000/invoice/` + this.invoiceNumber;
+                    this.invoiceLink = `https://tour.citytravelers.co/invoice/` + this.invoiceNumber;
                     this.isSaved = true;
                 } catch (error) {
                     console.error("Error generating invoice:", error);

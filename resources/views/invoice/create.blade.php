@@ -700,20 +700,20 @@
                 this.updateTotal(this.items); // Update the overall total
             },
 
-            updateSubTotal() {
-                const taxAmount = this.subtotal * (this.params.tax / 100);
-                const discountAmount = this.subtotal * (this.params.discount / 100);
+            // updateSubTotal() {
+            //     const taxAmount = this.subtotal * (this.params.tax / 100);
+            //     const discountAmount = this.subtotal * (this.params.discount / 100);
 
-                // Calculate total
-                this.total = this.subtotal + taxAmount + this.params.shippingCharge - discountAmount;
+            //     // Calculate total
+            //     this.total = this.subtotal + taxAmount + this.params.shippingCharge - discountAmount;
 
-            },
+            // },
 
             updateTotal(items) {
                 const total = items.reduce((sum, item) => sum + (item.total * item.quantity),
                     0); // Calculate total based on price and quantity
                 this.subtotal = total;
-                this.updateSubTotal();
+                // this.updateSubTotal();
             },
             // Method to add task
             addTask() {

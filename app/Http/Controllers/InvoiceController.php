@@ -99,7 +99,7 @@ class InvoiceController extends Controller
         $tasks = $request->input('tasks');
         $params = $request->input('params');
         $subamount = $request->input('subtotal');
-        $amount = $request->input('total');
+        $amount = $request->input('subtotal');
         $clientId = $request->input(key: 'clientId');
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
         $invoiceNumber = data_get($params, 'invoiceNumber');

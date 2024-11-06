@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Item;
 use App\Models\Invoice;
 use App\Models\Task;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,21 @@ class ItemController extends Controller
 
     public function index()
     {
-        $agent = Agent::where('user_id', Auth::id())->first();
+
+        $user = Auth::user();
+
+        if ($user->role_id == Role::ADMIN) {
+            // Admin can see all agents
+            $agent = Agent::with('company')->first();
+        } elseif ($user->role_id == Role::COMPANY) {
+            // Company can only see their agents
+            $agent = Agent::with('company')
+                ->where('company_id', $user->company->id) // assuming user belongs to one company
+                ->first();
+        }else{
+            $agent = Agent::where('user_id', Auth::id())->with('company')->first();
+        }
+
 
         $company = $agent->company;
 

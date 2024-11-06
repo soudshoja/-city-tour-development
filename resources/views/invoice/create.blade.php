@@ -790,7 +790,7 @@
                     const result = await response.json();
 
                     // Generate invoice link after success
-                    this.invoiceLink = `http://127.0.0.1:8000/invoice/` + this.invoiceNumber;
+                    this.invoiceLink = `https://tour.citytravelers.co/invoice/` + this.invoiceNumber;
                     this.isSaved = true;
                 } catch (error) {
                     console.error("Error generating invoice:", error);

@@ -129,7 +129,7 @@
                                   <!-- Actual Balance -->
                                   <input type="text" name="actual_balance"
                                       class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full"
-                                      value="{{ $level4asset->actual_balance }}" readonly
+                                      value="{{ number_format($level4asset->actual_balance, 2) }}" readonly
                                       style="pointer-events: none; cursor: default;">
 
 

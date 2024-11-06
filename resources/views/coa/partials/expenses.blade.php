@@ -112,8 +112,7 @@
 
                                 <!-- Actual Balance -->
                                 <span class="text-gray-500 text-sm editable-cell" contenteditable="true">
-                                    {{$level4expense->actual_balance}}</span>
-
+                                    {{number_format($level4expense->actual_balance, 2) }}</span>
 
                                 <!-- Action Icons -->
                                 <div class="flex items-center space-x-3 text-gray-500">

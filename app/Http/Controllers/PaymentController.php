@@ -132,7 +132,7 @@ class PaymentController extends Controller
             ],
             'description' => 'Payment for order ',
             'metadata' => [
-                'invoice_number' => $data['invoice_number'],
+                'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
             ],
             'redirect' => [
@@ -184,6 +184,7 @@ class PaymentController extends Controller
             return Redirect::route('dashboard')->with('error', 'Payment error');
         }
 
+        
         $clientName = $response['customer']['first_name'];
         $clientEmail = $response['customer']['email'];
         if (isset($response['customer']['phone'])) {
@@ -193,18 +194,19 @@ class PaymentController extends Controller
         $paymentId = $response['metadata']['payment_id'];
         $invoiceNumber = $response['metadata']['invoice_number'];
 
-        foreach ($response['metadata'] as $key => $value) {
-            if (strpos($key, 'selected_item_') !== false) {
-                $selectedItems[] = $value;
-            }
-        }
+        // foreach ($response['metadata'] as $key => $value) {
+        //     if (strpos($key, 'selected_item_') !== false) {
+        //         $selectedItems[] = $value;
+
+        //     }
+        // }
 
 
         // Fetch the invoice to get payment details
         $invoice = Invoice::with('agent.company', 'client')->where('invoice_number', $invoiceNumber)->first();
 
         $invoiceDetails = InvoiceDetails::with('task')
-            ->whereIn('id', $selectedItems)
+            ->where('invoice_number', $invoiceNumber)
             ->get();
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
@@ -285,7 +287,7 @@ class PaymentController extends Controller
                        }
 
                     if ($tapAccount) {
-                    $tapAccount->actual_balance += 0.0035; // Add to expenses account
+                    $tapAccount->actual_balance += 0.035; // Add to expenses account
                     $tapAccount->save();
                     }
 

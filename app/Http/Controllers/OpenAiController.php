@@ -5,18 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Traits\HttpRequestTrait;
 use Illuminate\Http\Request;
 
-class OpenApiController extends Controller
+class OpenAiController extends Controller
 {
     use HttpRequestTrait;
     public function index()
     {
-        return view('ai.openapi.index');
+        return view('ai.openai.index');
     }
 
     public function store(Request $request)
     {
         $prompt = $request->input('prompt');
-        $url = config('services.open-api.url') . '/chat/completions';
+        $url = config('services.open-ai.url') . '/chat/completions';
         $header = [
             'Authorization: Bearer ' . config('services.open-ai.key'),
             'Content-Type: application/json',
@@ -99,6 +99,7 @@ class OpenApiController extends Controller
         curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_CAINFO, base_path('cacert.pem'));
 
         // Execute cURL request
         $response = curl_exec($ch);

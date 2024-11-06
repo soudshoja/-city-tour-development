@@ -145,14 +145,35 @@ class TaskController extends Controller
  
             Log::info('File converted successfully: ', $result->getFiles());
             $response = $result->saveFiles(storage_path('app/public/tasks'));
-    // dd($response);
-    //         $txtFilePath = storage_path('app/public/' . $file);
             
             $textFileProcessor = new TextFileProcessor();
             $data = $textFileProcessor->readAndExtractData($response[0]);
-            dd($data);
+            
+            logger('Data extracted from text file: ', $data);
+        
+            $taskCreation = [
+                'additional_info' => $data['Ticket Number'],
+                'status' => 'Confirmed',
+                'client_name' => $data['Customer Name'],
+                'reference' => $data['Booking Reference'],
+                'agent_id' => 16,
+                'client_id' => 33,
+                'supplier_id' => 8,
+                'type' => 'Flight',
+                'price' => (float)$data['Total Cost'] - (float)$data['Fare'],
+                'surcharge' => 0,
+                'tax' => $data['Fare'],
+                'total' => (float)$data['Total Cost'],
+                'cancellation_policy' => 'No cancellation',
+                'venue' => 'Kuwait International Airport'
+            ];
+            $task = Task::create($taskCreation);
 
-            return Redirect::back()->with('success', 'File uploaded successfully');
+            if($task) {
+                return Redirect::back()->with('success', 'Task created successfully');
+            } else {
+                return Redirect::back()->with('error', 'Task creation failed');
+            }
         } else {
             Log::error('File upload failed');
             return Redirect::back()->with('error', 'File upload failed');

@@ -14,6 +14,7 @@ class Charge extends Model
         'type',
         'description',
         'amount',
+        'company_id',
     ];
 
     public function getAmountAttribute($value)
@@ -25,4 +26,9 @@ class Charge extends Model
     {
         $this->attributes['amount'] = str_replace(',', '', $value);
     }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    } 
 }

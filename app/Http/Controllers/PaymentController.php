@@ -358,7 +358,7 @@ class PaymentController extends Controller
             'client_name' => $invoice->client->name,
             'client_email' => $invoice->client->email,
             'invoice_number' => $invoice->invoice_number,
-            'redirect_url' => route('payment.clients.process'),
+            'redirect_url' => route('payment.process'),
             'webhook_url' => route('payment.webhook'),
         ];
         

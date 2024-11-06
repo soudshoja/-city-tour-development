@@ -17,7 +17,7 @@ class WhatsappController extends Controller
         $invoiceNumber = $request->invoiceNumber;
         
         $header = "Your Invoice Is Ready!";
-        $link = route('payment.clients', ['invoiceNumber' => $invoiceNumber], false);
+        $link = 'payment-clients/'. $invoiceNumber;
 
         $reqBody = [
             "messaging_product" => "whatsapp",

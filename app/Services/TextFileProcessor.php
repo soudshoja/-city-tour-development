@@ -24,7 +24,7 @@ class TextFileProcessor
 
         // Process each line if the file contains multiple lines
         $data = $this->extractData($fileContent);
-        dd($data);
+
         return $data;
     }
 

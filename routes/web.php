@@ -22,7 +22,7 @@ use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
-use App\Http\Controllers\OpenApiController;
+use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
 
@@ -213,9 +213,9 @@ Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 // open api
-Route::get('/open-api', [OpenApiController::class, 'index'])->name('open-api.index');
-Route::post('/open-api', [OpenApiController::class, 'store'])->name('open-api.store');
-Route::get('/test-open-api', [OpenApiController::class, 'test'])->name('open-api.test');
+Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
+Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
+Route::get('/test-open-ai', [OpenAiController::class, 'test'])->name('open-ai.test');
 
 require __DIR__ . '/auth.php';
 

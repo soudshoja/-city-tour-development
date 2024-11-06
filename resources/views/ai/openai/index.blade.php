@@ -21,7 +21,7 @@
     </div>
     <script>
         // // Initialize a new EventSource connection to the streaming route
-        // const eventSource = new EventSource("{{ route('open-api.store') }}");
+        // const eventSource = new EventSource("{{ route('open-ai.store') }}");
 
         // // Handle incoming messages
         // eventSource.onmessage = function(event) {
@@ -45,7 +45,7 @@
 
         async function sendPrompt(prompt) {
             // Send POST request to the server with the prompt
-            const response = await fetch("{{ route('open-api.store') }}", {
+            const response = await fetch("{{ route('open-ai.store') }}", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -1,6 +1,6 @@
 <x-app-layout>
     <script>
-    window.taskCount = @json($taskCount);
+        window.taskCount = @json($taskCount);
     </script>
 
     <!-- Notification Container -->
@@ -82,14 +82,16 @@
                 <!-- ./Upload Task Button -->
 
                 <script>
-                function uploadTask() {
-                    // Check if a file has been selected
-                    const fileInput = document.getElementById('pdfInput');
-                    if (fileInput.files.length > 0) {
-                        // Submit the form once a file is selected
-                        document.getElementById('uploadTaskForm').submit();
+                    function uploadTask() {
+                        console.log(document.getElementById('loadingScreen'));
+                        document.getElementById('loadingScreen').style.display = 'block';
+                        // Check if a file has been selected
+                        const fileInput = document.getElementById('pdfInput');
+                        if (fileInput.files.length > 0) {
+                            // Submit the form once a file is selected
+                            document.getElementById('uploadTaskForm').submit();
+                        }
                     }
-                }
                 </script>
 
             </div>

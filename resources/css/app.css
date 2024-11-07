@@ -781,3 +781,10 @@ select:focus {
 .custom-logo-size {
     width: 4.5rem; /* Adjust this size as needed */
 }
+
+
+/* Custom CSS for the agent dashboard page */
+
+.TextXs{
+    font-size: 0.60rem;
+}

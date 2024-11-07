@@ -94,18 +94,20 @@
                                  class="relative block rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-gray-700"
                                  @click="toggle">
                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                     xmlns="http://www.w3.org/2000/svg">
-                                     <path d="M2 5.5L3.21429 7L7.5 3" stroke="#1C274C" stroke-width="1.5"
+                                     xmlns="http://www.w3.org/2000/svg"
+                                     class="stroke-current text-gray-800 dark:text-gray-200">
+                                     <path d="M2 5.5L3.21429 7L7.5 3" stroke="currentColor" stroke-width="1.5"
                                          stroke-linecap="round" stroke-linejoin="round" />
-                                     <path d="M2 12.5L3.21429 14L7.5 10" stroke="#1C274C" stroke-width="1.5"
+                                     <path d="M2 12.5L3.21429 14L7.5 10" stroke="currentColor" stroke-width="1.5"
                                          stroke-linecap="round" stroke-linejoin="round" />
-                                     <path d="M2 19.5L3.21429 21L7.5 17" stroke="#1C274C" stroke-width="1.5"
+                                     <path d="M2 19.5L3.21429 21L7.5 17" stroke="currentColor" stroke-width="1.5"
                                          stroke-linecap="round" stroke-linejoin="round" />
-                                     <path d="M22 12H17M12 12H13.5" stroke="#1C274C" stroke-width="1.5"
+                                     <path d="M22 12H17M12 12H13.5" stroke="currentColor" stroke-width="1.5"
                                          stroke-linecap="round" />
-                                     <path d="M12 19H17M20.5 19H22" stroke="#1C274C" stroke-width="1.5"
+                                     <path d="M12 19H17M20.5 19H22" stroke="currentColor" stroke-width="1.5"
                                          stroke-linecap="round" />
-                                     <path d="M22 5L12 5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                     <path d="M22 5L12 5" stroke="currentColor" stroke-width="1.5"
+                                         stroke-linecap="round" />
                                  </svg>
                              </a>
                          </div>
@@ -312,7 +314,7 @@
          </nav>
 
          <!-- Page Content -->
-         <main class="p-4 mobile-m-5 ">
+         <main class="p-4 mobile-m-5 min-h-full ">
              <!-- Your main content goes here -->
              <div class="p-3">
                  {{ $slot }}
@@ -349,7 +351,7 @@
                  @endif
              </div>
 
-             <div class="h-24"></div>
+
 
          </main>
 
@@ -358,6 +360,7 @@
      </div>
 
  </div>
+
 
  <script>
 document.addEventListener('DOMContentLoaded', function() {

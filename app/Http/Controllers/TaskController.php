@@ -64,7 +64,7 @@ class TaskController extends Controller
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
 
         // dd($tasks, $agent, $agents, $taskCount);
-        return view('tasks.tasksList', compact('tasks', 'agent','taskCount')); // Pass the tasks and task count to the view
+        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount')); // Pass the tasks and task count to the view
     }
 
     public function show($id)
@@ -131,48 +131,29 @@ class TaskController extends Controller
         $request->validate([
             'task_file' => 'required|mimes:pdf',
         ]);
-        // $filepath = 'C:\Users\User\Documents\GitHub\city-tour\public\storage\HotelVoucher_7e0d9dab-affd-4062-a780-d2372f46046e.txt';
-        // dump(File::exists($filepath));
-        
+
         $file = $request->file('task_file')->store('tasks');
 
         ConvertApi::setApiCredentials(config('services.convert-api.secret'));
 
-        
         if ($file) {
-        
+
             $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $file)], 'pdf');
- 
+
             Log::info('File converted successfully: ', $result->getFiles());
             $response = $result->saveFiles(storage_path('app/public/tasks'));
-            
-            $textFileProcessor = new TextFileProcessor();
-            $data = $textFileProcessor->readAndExtractData($response[0]);
-            
-            logger('Data extracted from text file: ', $data);
-        
-            $taskCreation = [
-                'additional_info' => $data['Ticket Number'],
-                'status' => 'Confirmed',
-                'client_name' => $data['Customer Name'],
-                'reference' => $data['Booking Reference'],
-                'agent_id' => 16,
-                'client_id' => 33,
-                'supplier_id' => 8,
-                'type' => 'Flight',
-                'price' => (float)$data['Total Cost'] - (float)$data['Fare'],
-                'surcharge' => 0,
-                'tax' => $data['Fare'],
-                'total' => (float)$data['Total Cost'],
-                'cancellation_policy' => 'No cancellation',
-                'venue' => 'Kuwait International Airport'
-            ];
-            $task = Task::create($taskCreation);
+            $file = $response[0];
 
-            if($task) {
-                return Redirect::back()->with('success', 'Task created successfully');
+            $contents = file_get_contents($file);
+
+            // Prepare the OpenAI request
+            $openai = new OpenAiController();
+            $response = $openai->extractFileData($contents);
+
+            if ($response == 'success') {
+                return redirect()->back()->with('success', 'Tasks imported successfully.');
             } else {
-                return Redirect::back()->with('error', 'Task creation failed');
+                return redirect()->back()->with('error', 'Tasks import failed.');
             }
         } else {
             Log::error('File upload failed');
@@ -230,7 +211,5 @@ class TaskController extends Controller
         exit();
     }
 
-    public function fileToTask(){
-
-    }
+    public function fileToTask() {}
 }

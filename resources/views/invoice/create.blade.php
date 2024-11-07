@@ -329,14 +329,7 @@
                                 <span x-show="isSaved" id="button-saved">Saved</span>
                             </button>
 
-                            <form action="{{ route('whatsapp.send') }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="client" value='{{ $invoice->client }}'>
-                                <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number}}'>
-                                <button type="submit" class="btn btn-primary">
-                                    Send Invoice To Client
-                                </button>
-                            </form>
+                            <!-- add form here-->
 
                             <button type="button" class="btn btn-info w-full gap-2">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"

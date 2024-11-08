@@ -26,8 +26,13 @@ class BranchController extends Controller
         } else {
 
             $branches = Branch::all();
-            $branchesCount = Branch::count();
+            foreach ($branches as $key => $branch) {
+                // dump($branch->user);
+            }
 
+
+            $branchesCount = Branch::count();
+            // dd($branches);
             return view('branches.list', compact('branches', 'branchesCount'));
         }
     }

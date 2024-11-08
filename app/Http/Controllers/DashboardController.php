@@ -51,7 +51,7 @@ class DashboardController extends Controller
 
         $company = $agent->company;
 
-        $agentsCount = $company->agents->count();
+        $agentsCount = $agents->count();
         // Count total tasks, pending tasks, and completed tasks for all agents
         $totalTaskCount = $agent->tasks()->count();
 
@@ -112,33 +112,37 @@ class DashboardController extends Controller
     public function companyDashboard()
     {
         // Retrieve the company for the authenticated user with agents
-        $company = Company::where('user_id', Auth::id())->with('agents')->first();
+        $company = Company::where('user_id', Auth::id())->with('branches.agents')->first();
+        // dd($company);
         // Get all agents under the company
-        $agents = $company->agents;
-        $agentsCount = $company->agents->count();
+        $agents = $company->branches->flatMap(function ($branch) {
+            return $branch->agents;
+        });
+        // dd($agents);
+        $agentsCount = $agents->count();
         // Count total tasks, pending tasks, and completed tasks for all agents
-        $totalTaskCount = $company->agents->sum(function ($agent) {
+        $totalTaskCount = $agents->sum(function ($agent) {
             return $agent->tasks()->count(); // Count all tasks for each agent
         });
 
-        $pendingTaskCount = $company->agents->sum(function ($agent) {
+        $pendingTaskCount = $agents->sum(function ($agent) {
             return $agent->tasks()->where('status', 'pending')->count(); // Count pending tasks for each agent
         });
 
-        $completedTaskCount = $company->agents->sum(function ($agent) {
+        $completedTaskCount = $agents->sum(function ($agent) {
             return $agent->tasks()->where('status', 'completed')->count(); // Count completed tasks for each agent
         });
 
         // Count total invoices, paid invoices, and unpaid invoices for all agents
-        $totalInvoices = $company->agents->sum(function ($agent) {
+        $totalInvoices = $agents->sum(function ($agent) {
             return $agent->invoices()->count(); // Count all invoices for each agent
         });
 
-        $totalInvoiceAmount = $company->agents->sum(function ($agent) {
+        $totalInvoiceAmount = $agents->sum(function ($agent) {
             return $agent->invoices()->sum('amount'); // Sum the 'amount' field for all invoices of each agent
         });
 
-        $totalPaidAmount = $company->agents->sum(function ($agent) {
+        $totalPaidAmount = $agents->sum(function ($agent) {
             return $agent->invoices()->where('status', 'paid')->sum('amount'); // Sum the 'amount' field for all invoices of each agent
         });
         $totalPaidAmountChart = Invoice::where('status', 'paid')
@@ -150,22 +154,22 @@ class DashboardController extends Controller
             ->groupBy('month')
             ->get();
 
-        $totalUnpaidAmount = $company->agents->sum(function ($agent) {
+        $totalUnpaidAmount = $agents->sum(function ($agent) {
             return $agent->invoices()->where('status', 'unpaid')->sum('amount'); // Sum the 'amount' field for all invoices of each agent
         });
 
-        $paidInvoices = $company->agents->sum(function ($agent) {
+        $paidInvoices = $agents->sum(function ($agent) {
             return $agent->invoices()->where('status', 'paid')->count(); // Count paid invoices for each agent
         });
 
-        $unpaidInvoices = $company->agents->sum(function ($agent) {
+        $unpaidInvoices = $agents->sum(function ($agent) {
             return $agent->invoices()->where('status', 'unpaid')->count(); // Count unpaid invoices for each agent
         });
 
         // Get clients under those agents
         $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
         // Count clients associated with all agents
-        $clientsCount = Client::whereIn('agent_id', $company->agents->pluck('id'))->count();
+        $clientsCount = Client::whereIn('agent_id', $agents->pluck('id'))->count();
 
         // Prepare clients with task count and invoice count
         $clientsWithDetails = $clients->map(function ($client) {

@@ -46,7 +46,7 @@ class CompanyController extends Controller
         // $transactions = DB::table('invoice_transaction_view')
         // ->where('agent_id', operator: $agentId)
         // ->get();
-    
+
         if ($transactions->isEmpty()) {
             return response()->json(['message' => 'No transactions found for this agent.'], 404);
         }
@@ -57,126 +57,6 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function dashboard()
-    {
-        // Retrieve the company for the authenticated user with agents
-        $company = Company::where('user_id', Auth::id())->with('agents')->first();
-        // Get all agents under the company
-        $agents = $company->agents;
-        $agentsCount = $company->agents->count();
-        // Count total tasks, pending tasks, and completed tasks for all agents
-        $totalTaskCount = $company->agents->sum(function ($agent) {
-            return $agent->tasks()->count(); // Count all tasks for each agent
-        });
-    
-        $pendingTaskCount = $company->agents->sum(function ($agent) {
-            return $agent->tasks()->where('status', 'pending')->count(); // Count pending tasks for each agent
-        });
-    
-        $completedTaskCount = $company->agents->sum(function ($agent) {
-            return $agent->tasks()->where('status', 'completed')->count(); // Count completed tasks for each agent
-        });
-    
-        // Count total invoices, paid invoices, and unpaid invoices for all agents
-        $totalInvoices = $company->agents->sum(function ($agent) {
-            return $agent->invoices()->count(); // Count all invoices for each agent
-        });
-
-        $totalInvoiceAmount = $company->agents->sum(function ($agent) {
-            return $agent->invoices()->sum('amount'); // Sum the 'amount' field for all invoices of each agent
-        });
-
-        $totalPaidAmount = $company->agents->sum(function ($agent) {
-            return $agent->invoices()->where('status', 'paid')->sum('amount'); // Sum the 'amount' field for all invoices of each agent
-        });
-       $totalPaidAmountChart =Invoice::where('status', 'paid')
-            ->selectRaw('SUM(amount) as total, DATE_FORMAT(created_at, "%Y-%m") as month')
-            ->groupBy('month')
-            ->get();
-        $totalUnpaidAmountChart =Invoice::where('status', 'unpaid')
-            ->selectRaw('SUM(amount) as total, DATE_FORMAT(created_at, "%Y-%m") as month')
-            ->groupBy('month')
-            ->get();
-
-        $totalUnpaidAmount = $company->agents->sum(function ($agent) {
-            return $agent->invoices()->where('status', 'unpaid')->sum('amount'); // Sum the 'amount' field for all invoices of each agent
-        });
-    
-        $paidInvoices = $company->agents->sum(function ($agent) {
-            return $agent->invoices()->where('status', 'paid')->count(); // Count paid invoices for each agent
-        });
-    
-        $unpaidInvoices = $company->agents->sum(function ($agent) {
-            return $agent->invoices()->where('status', 'unpaid')->count(); // Count unpaid invoices for each agent
-        });
-    
-        // Get clients under those agents
-        $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
-        // Count clients associated with all agents
-        $clientsCount = Client::whereIn('agent_id', $company->agents->pluck('id'))->count();
-
-        // Prepare clients with task count and invoice count
-        $clientsWithDetails = $clients->map(function ($client) {
-        // Count the number of tasks related to this client
-        $taskCount = Task::where('client_id', $client->id)->count();
-
-        // Count the total number of invoices related to this client
-        $totalInvoices = Invoice::where('client_id', $client->id)->count();
-          // Count the unpaid invoices for this client
-        $unpaidInvoices = Invoice::where('client_id', $client->id)
-        ->where('status', 'unpaid')
-        ->count();
-
-        return [
-            'name' => $client->name,
-            'taskCount' => $taskCount,
-            'totalInvoices' => $totalInvoices,
-            'unpaidInvoices' => $unpaidInvoices,
-        ];
-    });
-
-        // Prepare agents with task count and invoice count
-        $agentsWithDetails = $agents->map(function ($agent) {
-            // Count the number of tasks related to this client
-            $taskCount = Task::where('agent_id', $agent->id)->count();
-            $pendingTasks = Task::where('agent_id', $agent->id)
-            ->where('status', 'pending')
-            ->count();
-            // Count the total number of invoices related to this client
-            $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
-    
-            return [
-                'name' => $agent->name,
-                'taskCount' => $taskCount,
-                'totalInvoices' => $totalInvoices,
-                'pendingTasks' => $pendingTasks,
-            ];
-        });
-
-
-        // Prepare the data array
-        $dashboardData = [
-            'totalTasks' => $totalTaskCount,
-            'pendingTasks' => $pendingTaskCount,
-            'completedTasks' => $completedTaskCount,
-            'totalInvoices' => $totalInvoices,
-            'totalInvoiceAmount' => $totalInvoiceAmount,
-            'totalPaidAmount' => $totalPaidAmount,
-            'totalUnpaidAmount' => $totalUnpaidAmount,
-            'totalPaidAmountChart' => $totalPaidAmountChart,
-            'totalUnpaidAmountChart' => $totalUnpaidAmountChart,
-            'paidInvoices' => $paidInvoices,
-            'unpaidInvoices' => $unpaidInvoices,
-            'clientsCount'=> $clientsCount,
-            'agentsCount' => $agentsCount,
-            'agents' => $agentsWithDetails,
-            'clients' => $clientsWithDetails,
-        ];
-
-        return view('companies.index', compact('company', 'dashboardData'));
-    }
-    
-    
     public function new()
     {
         $companies = Company::all();
@@ -186,23 +66,23 @@ class CompanyController extends Controller
     public function show($id)
     {
         // Fetch the specific company with its agents, tasks, clients, invoices, and items    
-       $companies = Company::all();
+        $companies = Company::all();
         $company = Company::with([
             'agents.tasks.client',
             'agents.invoices',
             'agents.tasks.item'
         ])->findOrFail($id);
-    
+
         // Return the view, passing the specific company to it
-        return view('companies.companiesShow', compact('company' , 'companies'));
+        return view('companies.companiesShow', compact('company', 'companies'));
     }
-    
+
 
     public function edit($id)
     {
         $company = Company::findOrFail($id);
         $companies = Company::all();
-        
+
         return view('companies.companiesEdit', compact('company', 'companies'));
     }
 
@@ -274,49 +154,47 @@ class CompanyController extends Controller
         Excel::import(new companiesImport, $request->file('excel_file'));
 
         return redirect()->back()->with('success', 'Companies imported successfully.');
-            }
-            public function toggleStatus(Request $request, $companyId)
-        {
-            $company = Company::findOrFail($companyId);
+    }
+    public function toggleStatus(Request $request, $companyId)
+    {
+        $company = Company::findOrFail($companyId);
 
-            // Update the status based on the request input
-            $company->status = $request->status;
-            $company->save();
+        // Update the status based on the request input
+        $company->status = $request->status;
+        $company->save();
 
-            return response()->json(['success' => true]);
+        return response()->json(['success' => true]);
+    }
+
+    public function exportCsv()
+    {
+        // Fetch all company data
+        $companies = Company::all();
+
+        // Create a CSV file in memory
+        $csvFileName = 'companies.csv';
+        $handle = fopen('php://output', 'w');
+
+        // Set headers for the response
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $csvFileName . '"');
+
+        // Add CSV header
+        fputcsv($handle, ['Company Name', 'Company Code', 'Email', 'Country', 'Contact', 'Address']);
+
+        // Add company data to CSV
+        foreach ($companies as $company) {
+            fputcsv($handle, [
+                $company->name,
+                $company->code,
+                $company->email,
+                $company->nationality,
+                $company->phone,
+                $company->address,
+            ]);
         }
 
-        public function exportCsv()
-        {
-            // Fetch all company data
-            $companies = Company::all();
-    
-            // Create a CSV file in memory
-            $csvFileName = 'companies.csv';
-            $handle = fopen('php://output', 'w');
-    
-            // Set headers for the response
-            header('Content-Type: text/csv');
-            header('Content-Disposition: attachment; filename="' . $csvFileName . '"');
-    
-            // Add CSV header
-            fputcsv($handle, ['Company Name', 'Company Code', 'Email', 'Country', 'Contact', 'Address']);
-    
-            // Add company data to CSV
-            foreach ($companies as $company) {
-                fputcsv($handle, [
-                    $company->name,
-                    $company->code,
-                    $company->email,
-                    $company->nationality,
-                    $company->phone,
-                    $company->address,
-                ]);
-            }
-    
-            fclose($handle);
-            exit();
-        }
-
-        
+        fclose($handle);
+        exit();
+    }
 }

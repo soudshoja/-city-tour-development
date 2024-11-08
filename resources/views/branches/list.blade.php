@@ -227,27 +227,27 @@
 
 
     <script>
-    // BSZ95 New code
-    document.addEventListener("DOMContentLoaded", function() {
-        // Access the data passed from the controller
-        const companiesCount = @json($branchesCount);
-        document.getElementById("totalBranches").innerText = companiesCount;
-    });
+        // BSZ95 New code
+        document.addEventListener("DOMContentLoaded", function() {
+            // Access the data passed from the controller
+            const companiesCount = @json($branchesCount);
+            document.getElementById("totalBranches").innerText = companiesCount;
+        });
 
-    // Add Company Modal
-    function addBranch() {
-        document.getElementById("addBranchModal").classList.remove("hidden");
-    }
+        // Add Company Modal
+        function addBranch() {
+            document.getElementById("addBranchModal").classList.remove("hidden");
+        }
 
-    function closeaddBranchModal() {
-        document.getElementById("addBranchModal").classList.add("hidden");
-    }
-
-    function closeModalIbg(event) {
-        if (event.target.id === "addBranchModal") {
+        function closeaddBranchModal() {
             document.getElementById("addBranchModal").classList.add("hidden");
         }
-    }
+
+        function closeModalIbg(event) {
+            if (event.target.id === "addBranchModal") {
+                document.getElementById("addBranchModal").classList.add("hidden");
+            }
+        }
     </script>
 
 </x-app-layout>

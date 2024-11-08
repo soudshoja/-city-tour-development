@@ -22,6 +22,7 @@ use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
 
@@ -99,12 +100,16 @@ Route::post('/company/{company}/toggle-status', [CompanyController::class, 'togg
 Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
 
 // task routes
-Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
-Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
-Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
-Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
-Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+Route::group([
+    'middleware' => ['auth'],
+], function () {
+    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
+    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
+    Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
+    Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+});
 
 // ITEMS
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
@@ -207,5 +212,9 @@ Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
 
+// open api
+Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
+Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
+Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
 
 require __DIR__ . '/auth.php';

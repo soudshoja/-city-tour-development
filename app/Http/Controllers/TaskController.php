@@ -10,13 +10,16 @@ use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
 use App\Models\Role;
+use App\Services\TextFileProcessor;
 use ConvertApi\ConvertApi;
 use Exception;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
@@ -61,10 +64,8 @@ class TaskController extends Controller
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
 
         // dd($tasks, $agent, $agents, $taskCount);
-        return view('tasks.tasksList', compact('tasks', 'agent','taskCount')); // Pass the tasks and task count to the view
+        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount')); // Pass the tasks and task count to the view
     }
-
-
 
     public function show($id)
 
@@ -131,19 +132,29 @@ class TaskController extends Controller
             'task_file' => 'required|mimes:pdf',
         ]);
 
+        $file = $request->file('task_file')->store('tasks');
+
         ConvertApi::setApiCredentials(config('services.convert-api.secret'));
 
-        $file = $request->file('task_file');
-        $destinationPath = 'uploads';
-        if ($fileUploaded = $file->move($destinationPath, $file->getClientOriginalName())) {
-            $result = ConvertApi::convert('txt', ['File' => $fileUploaded->getPathname()], 'pdf');
+        if ($file) {
+
+            $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $file)], 'pdf');
 
             Log::info('File converted successfully: ', $result->getFiles());
-            $response = $result->saveFiles($destinationPath);
+            $response = $result->saveFiles(storage_path('app/public/tasks'));
+            $file = $response[0];
 
-            Log::info('File uploaded successfully: ', $response);
+            $contents = file_get_contents($file);
 
-            return Redirect::back()->with('success', 'File uploaded successfully');
+            // Prepare the OpenAI request
+            $openai = new OpenAiController();
+            $response = $openai->extractFileData($contents);
+
+            if ($response == 'success') {
+                return redirect()->back()->with('success', 'Tasks imported successfully.');
+            } else {
+                return redirect()->back()->with('error', 'Tasks import failed.');
+            }
         } else {
             Log::error('File upload failed');
             return Redirect::back()->with('error', 'File upload failed');
@@ -199,4 +210,6 @@ class TaskController extends Controller
         fclose($handle);
         exit();
     }
+
+    public function fileToTask() {}
 }

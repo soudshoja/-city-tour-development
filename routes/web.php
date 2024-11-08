@@ -102,7 +102,7 @@ Route::get('/supplierslist', [SupplierController::class, 'index'])->name('suppli
 // task routes
 Route::group([
     'middleware' => ['auth'],
-], function(){
+], function () {
     Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
@@ -215,7 +215,6 @@ Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name(
 // open api
 Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
 Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
-Route::get('/test-open-ai', [OpenAiController::class, 'test'])->name('open-ai.test');
+Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
 
 require __DIR__ . '/auth.php';
-

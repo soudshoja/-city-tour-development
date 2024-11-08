@@ -148,7 +148,7 @@ class OpenAiController extends Controller
 
     function saveTasks($data)
     {
-
+        logger('Data: ', $data);
         $task = $data['tasks'];
         $client = Client::where('name', 'like', '%' . $task['client_name'] . '%')->first();
 
@@ -167,10 +167,10 @@ class OpenAiController extends Controller
             'additional_info' => $task['additional_info'] ?? null,
             'status' => $task['status'] ?? null,
             'client_name' => $task['client_name'] ?? null,
-            'price' => isset($task['price']) ?? (float)$task['price'] ?? null,
-            'surcharge' => isset($task['surcharge']) ?? (float)$task['surcharge'] ?? null,
-            'total' => isset($task['total']) ?? (float)$task['total'] ?? null,
-            'tax' => isset($task['tax']) ?? (float)$task['tax'] ?? null,
+            'price' => isset($task['price']) ? $task['price'] : null,
+            'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,
+            'total' => isset($task['total']) ? $task['total'] : null,
+            'tax' => isset($task['tax']) ? $task['tax'] : null,
             'reference' => $task['reference'] ?? null,
             'type' => strtoupper($task['type']) ?? null,
             'agent_id' => $agent->id ?? 16,
@@ -180,7 +180,7 @@ class OpenAiController extends Controller
             'venue' => $task['venue'] ?? null,
         ];
         $taskCreated = Task::create($taskData);
-
+        logger('Task created: ', $taskCreated->toArray());
         // Save flight details if available
         // if (isset($data['task_flight_details'])) {
         //     $data = $data['task_flight_details'];
@@ -208,5 +208,10 @@ class OpenAiController extends Controller
         //}
 
         return 'success';
+    }
+
+    public function fineTuningView()
+    {
+        return view('ai.openai.fine-tuning');
     }
 }

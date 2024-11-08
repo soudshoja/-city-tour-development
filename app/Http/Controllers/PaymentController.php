@@ -53,7 +53,7 @@ class PaymentController extends Controller
             'payment_method' => 'required|string'
         ]);
 
-        $invoice = Invoice::with('agent.company', 'client')->where('invoice_number', $invoiceNumber)->first();
+        $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
 
         $data = [
             'invoice' => $invoice,
@@ -68,11 +68,11 @@ class PaymentController extends Controller
         ];
 
 
-        if($clientMiddleName = $request->client_middle_name){
+        if ($clientMiddleName = $request->client_middle_name) {
             $data['client_middle_name'] = $clientMiddleName;
         }
 
-        if($clientLastName = $request->client_last_name){
+        if ($clientLastName = $request->client_last_name) {
             $data['client_last_name'] = $clientLastName;
         }
 
@@ -89,11 +89,12 @@ class PaymentController extends Controller
         if (isset($response['error'])) {
             return redirect()->back()->with('error', $response['error']);
         }
-        
+
         return redirect($response['url']);
     }
 
-    public function initiatePayment($data){
+    public function initiatePayment($data)
+    {
 
         $invoice = $data['invoice'];
 
@@ -184,7 +185,7 @@ class PaymentController extends Controller
             return Redirect::route('dashboard')->with('error', 'Payment error');
         }
 
-        
+
         $clientName = $response['customer']['first_name'];
         $clientEmail = $response['customer']['email'];
         if (isset($response['customer']['phone'])) {
@@ -203,7 +204,7 @@ class PaymentController extends Controller
 
 
         // Fetch the invoice to get payment details
-        $invoice = Invoice::with('agent.company', 'client')->where('invoice_number', $invoiceNumber)->first();
+        $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
 
         $invoiceDetails = InvoiceDetails::with('task')
             ->where('invoice_number', $invoiceNumber)
@@ -213,28 +214,28 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->company->id)
             ->first();
 
-            Log::info('company_id:', ['company_id' => $invoice->agent->company->id]);
+        Log::info('company_id:', ['company_id' => $invoice->agent->company->id]);
 
         if ($receivableAccount) {
             $filteredReceivableChildAccount = $receivableAccount->children()
                 ->where('reference_id', $invoice->client->id) // Filter by child reference_id
                 ->first(); // Get the first matching child account
-                    Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);     
+            Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
             $ReceivablechildAccountId = $filteredReceivableChildAccount ? $filteredReceivableChildAccount->id : null;
         } else {
             $ReceivablechildAccountId = null; // Handle case when no parent account is found
         }
 
-            
+
         $bankAccount = Account::where('name', 'Invoice Payments') // or bank account
             ->where('company_id', $invoice->agent->company->id)
             ->first();
 
-            
+
 
         $tapAccount = Account::where('name', 'Tap Charges') // or bank account
-        ->where('company_id', $invoice->agent->company->id)
-        ->first();
+            ->where('company_id', $invoice->agent->company->id)
+            ->first();
 
 
         if (!$invoice) {
@@ -284,13 +285,12 @@ class PaymentController extends Controller
                     if ($bankAccount) {
                         $bankAccount->actual_balance += $invoicedetail['task_price']; // Add to cash/bank account
                         $bankAccount->save();
-                       }
-
-                    if ($tapAccount) {
-                    $tapAccount->actual_balance += 0.35; // Add to expenses account
-                    $tapAccount->save();
                     }
 
+                    if ($tapAccount) {
+                        $tapAccount->actual_balance += 0.35; // Add to expenses account
+                        $tapAccount->save();
+                    }
                 } catch (Exception $e) {
                     // Log the error if something goes wrong with a specific task
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
@@ -361,17 +361,18 @@ class PaymentController extends Controller
             'redirect_url' => route('payment.process'),
             'webhook_url' => route('payment.webhook'),
         ];
-        
+
         $response = json_decode($this->initiatePayment($data)->content(), true);
-       
-        if(isset($response['error'])){
+
+        if (isset($response['error'])) {
             return Redirect::route('payment.error', ['invoiceNumber' => $invoiceNumber]);
         }
 
         return redirect($response['url']);
     }
 
-    public function paymentClientProcess(Request $request){
+    public function paymentClientProcess(Request $request)
+    {
         $tap = new Tap();
 
         $tap_id = $request->tap_id;

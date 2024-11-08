@@ -28,13 +28,13 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
-            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
             $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
-            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
-            $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
+            $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->paginate(6);
         }
 
         $clientsNo = $clientsCount;

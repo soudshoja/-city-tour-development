@@ -30,20 +30,20 @@ class TaskController extends Controller
         $taskCount = 0;
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = Task::with('agent.company', 'client')->get(); // Retrieve all tasks for admin
+            $tasks = Task::with('agent.branch', 'client')->get(); // Retrieve all tasks for admin
             $taskCount = Task::count(); // Total task count for admin
         } elseif ($user->role_id == Role::COMPANY) {
             $agents = Agent::all();
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $tasks = Task::with('agent.branch', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
             $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
         } elseif ($user->role_id == Role::AGENT) {
             if ($id) {
                 $agent = Agent::find($id);
                 if ($agent) {
-                    $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
+                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
                     $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
                 } else {
                     return redirect()->back()->with('error', 'Agent not found.');
@@ -51,7 +51,7 @@ class TaskController extends Controller
             } else {
                 $agent = $user->agent;
                 if ($agent) {
-                    $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
+                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
                     $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
                 } else {
                     return redirect()->back()->with('error', 'Agent not found.');

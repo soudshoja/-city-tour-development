@@ -1,7 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
-  use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\Log;
 
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -34,12 +35,12 @@ class CoaController extends Controller
         $agentIds = $agents->pluck('id')->toArray();
 
         // Fetch invoices and clients related to the agents
-        $invoices = Invoice::with('agent.company', 'client')
+        $invoices = Invoice::with('agent.branch', 'client')
             ->whereIn('agent_id', $agentIds)
             ->get();
 
         $clients = Client::whereIn('agent_id', $agentIds)
-            ->with('agent.company')
+            ->with('agent.branch')
             ->get();
 
         // Fetch all suppliers
@@ -51,7 +52,7 @@ class CoaController extends Controller
         $incomes = $this->getIncome();
         $expenses = $this->getExpenses();
 
-        return view('coa.index', compact('assets',  'liabilities', 'incomes' , 'expenses','invoices', 'clients', 'suppliers'));
+        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'invoices', 'clients', 'suppliers'));
     }
 
     private function getAssets()
@@ -73,25 +74,23 @@ class CoaController extends Controller
                     // Fetch level 4 for each level 3
                     $level3asset->level4assets = Account::where('parent_id', $level3asset->id)->get();
 
-                             foreach ($level3asset->level4assets as $level4asset) {
-                            // Fetch actual_balance and budget_balance attributes
-                            $actualBalanceAssets = $level4asset->actual_balance ?? 0; // Default to 0 if not set
-                            $budgetBalanceAssets = $level4asset->budget_balance ?? 0; // Default to 0 if not set
+                    foreach ($level3asset->level4assets as $level4asset) {
+                        // Fetch actual_balance and budget_balance attributes
+                        $actualBalanceAssets = $level4asset->actual_balance ?? 0; // Default to 0 if not set
+                        $budgetBalanceAssets = $level4asset->budget_balance ?? 0; // Default to 0 if not set
 
-                            // Optional: Store the values in an array for later use if needed
-                            $balancesAssets[] = [
-                                'actual_balance' => $actualBalanceAssets,
-                                'budget_balance' => $budgetBalanceAssets,
-                            ];
-                          
-                  }
-
+                        // Optional: Store the values in an array for later use if needed
+                        $balancesAssets[] = [
+                            'actual_balance' => $actualBalanceAssets,
+                            'budget_balance' => $budgetBalanceAssets,
+                        ];
+                    }
                 }
             }
         }
 
 
-        
+
         return $assets;
     }
 
@@ -118,12 +117,11 @@ class CoaController extends Controller
                         // Assuming level4liability has actual_balance and budget_balance attributes
                         $actualBalanceLiabilities = $level4liability->actual_balance; // Replace with the actual field name
                         $budgetBalanceLiabilities = $level4liability->budget_balance; // Replace with the actual field name
-                              // Optional: Store the values in an array for later use if needed
-                            $balancesLiabilities[] = [
-                                'actual_balance' => $actualBalanceLiabilities,
-                                'budget_balance' => $budgetBalanceLiabilities,
-                            ];
-            
+                        // Optional: Store the values in an array for later use if needed
+                        $balancesLiabilities[] = [
+                            'actual_balance' => $actualBalanceLiabilities,
+                            'budget_balance' => $budgetBalanceLiabilities,
+                        ];
                     }
                 }
             }
@@ -156,10 +154,10 @@ class CoaController extends Controller
                         $budgetBalanceIncome = $level4income->budget_balance; // Replace with the actual field name
 
                         // Optional: Store the values in an array for later use if needed
-                            $balancesIncome[] = [
-                                'actual_balance' => $actualBalanceIncome,
-                                'budget_balance' => $budgetBalanceIncome,
-                            ];
+                        $balancesIncome[] = [
+                            'actual_balance' => $actualBalanceIncome,
+                            'budget_balance' => $budgetBalanceIncome,
+                        ];
                     }
                 }
             }
@@ -167,7 +165,7 @@ class CoaController extends Controller
 
         return $incomes;
     }
-    
+
     private function getExpenses()
     {
         // Expenses Account
@@ -199,8 +197,6 @@ class CoaController extends Controller
                             'budget_balance' => $budgetBalanceExpenses,
                         ];
                     }
-
-                   
                 }
             }
         }
@@ -209,161 +205,159 @@ class CoaController extends Controller
     }
 
 
-    
+
     // create accounts
-public function createAccounts(Request $request)
-{
-    // Allowed account types in lowercase for validation
-    $allowedTypes = ['assets', 'liabilities', 'income', 'expenses'];
-
-    // Validate the incoming request, allowing case-insensitive matching for 'type'
-    $request->validate([
-        'accountName' => 'required|string|max:255',
-        'type' => ['required', 'string', function ($attribute, $value, $fail) use ($allowedTypes) {
-            if (!in_array(strtolower($value), $allowedTypes)) {
-                $fail('The selected type is invalid.');
-            }
-        }],
-    ]);
-
-    // Get the authenticated user
-    $user = Auth::user();
-
-    // Retrieve the company associated with the user
-    $company = Company::where('user_id', $user->id)->first();
-
-    if (!$company) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Company not found.',
-        ], 404);
-    }
-
-    // Convert 'type' to capitalize the first letter (e.g., 'assets' -> 'Assets')
-    $type = ucfirst(strtolower($request->type));
-
-    // Find the parent account ID based on the type and company
-    $parentAccount = Account::where('name', $type)
-                            ->where('company_id', $company->id)
-                            ->first();
-
-    if (!$parentAccount) {
-        return response()->json([
-            'success' => false,
-            'message' => "{$type} account not found for this company.",
-        ], 404);
-    }
-
-    // Create the new account under the correct parent_id
-    $newAccount = Account::create([
-        'name' => $request->accountName,
-        'parent_id' => $parentAccount->id,
-        'company_id' => $company->id,
-        'level' => 2,
-        'actual_balance' => 0,
-        'budget_balance' => 0,
-        'variance' => 0,
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'message' => "New {$type} account created successfully with parent ID {$parentAccount->id}.",
-        'account' => $newAccount,
-    ], 201);
-}
-
-
-    
-    public function dstry($id)
-    
+    public function createAccounts(Request $request)
     {
-                $account = Account::find($id);
+        // Allowed account types in lowercase for validation
+        $allowedTypes = ['assets', 'liabilities', 'income', 'expenses'];
 
-                if ($account) {
-                    $account->delete();
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Account deleted successfully.',
-                    ], 200);
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Account not found.',
-                    ], 404);
+        // Validate the incoming request, allowing case-insensitive matching for 'type'
+        $request->validate([
+            'accountName' => 'required|string|max:255',
+            'type' => ['required', 'string', function ($attribute, $value, $fail) use ($allowedTypes) {
+                if (!in_array(strtolower($value), $allowedTypes)) {
+                    $fail('The selected type is invalid.');
                 }
+            }],
+        ]);
+
+        // Get the authenticated user
+        $user = Auth::user();
+
+        // Retrieve the company associated with the user
+        $company = Company::where('user_id', $user->id)->first();
+
+        if (!$company) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found.',
+            ], 404);
         }
 
-public function updateCode(Request $request, $id)
-{
-    // Validate the incoming request to ensure a code is provided
-    $request->validate([
-        'code' => 'required|string|max:255',
-    ]);
+        // Convert 'type' to capitalize the first letter (e.g., 'assets' -> 'Assets')
+        $type = ucfirst(strtolower($request->type));
 
-    // Find the asset and liability by ID
-    $asset = Account::find($id);
-    $liability = Account::find($id); // Assuming liabilities are also stored in the Account model
+        // Find the parent account ID based on the type and company
+        $parentAccount = Account::where('name', $type)
+            ->where('company_id', $company->id)
+            ->first();
 
-    if (!$asset) {
+        if (!$parentAccount) {
+            return response()->json([
+                'success' => false,
+                'message' => "{$type} account not found for this company.",
+            ], 404);
+        }
+
+        // Create the new account under the correct parent_id
+        $newAccount = Account::create([
+            'name' => $request->accountName,
+            'parent_id' => $parentAccount->id,
+            'company_id' => $company->id,
+            'level' => 2,
+            'actual_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+        ]);
+
         return response()->json([
-            'success' => false,
-            'message' => 'Asset not found.',
-        ], 404);
+            'success' => true,
+            'message' => "New {$type} account created successfully with parent ID {$parentAccount->id}.",
+            'account' => $newAccount,
+        ], 201);
     }
 
-    if (!$liability) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Liability not found.',
-        ], 404);
-    }
-
-    // Update the asset's code
-    $asset->code = $request->code;
-    $asset->save();
-
-    // Update the liability's code
-    $liability->code = $request->code; // Assuming the same code update for liability
-    $liability->save();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Code updated successfully ',
-    ]);
-}
 
 
+    public function dstry($id)
 
-public function store(Request $request)
-{
-    $request->validate([
-        'account_name' => 'required|string|max:100',
-        'account_description' => 'required|string'
-    ]);
+    {
+        $account = Account::find($id);
 
-    $parent = Account::where('id', $request->parent_id)->first();
-
-    $account = Account::create([
-        'name' => $request->account_name,
-        'level' => $parent->level + 1,
-        'parent_id' => $request->parent_id, 
-        'company_id' => $parent->company_id, 
-        'description' => $request->account_description,
-        'balance' => $request->balance,
-    ]);
-
-
-    if ($request->hasFile('documents')) {
-        foreach ($request->file('documents') as $file) {
-            $path = $file->store('documents', 'public'); // Store in storage/app/public/documents
-            // Save the path to the database as needed
+        if ($account) {
+            $account->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Account deleted successfully.',
+            ], 200);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Account not found.',
+            ], 404);
         }
     }
 
-    // Handle the creation of the account, transaction, and document upload...
+    public function updateCode(Request $request, $id)
+    {
+        // Validate the incoming request to ensure a code is provided
+        $request->validate([
+            'code' => 'required|string|max:255',
+        ]);
 
-    return redirect()->back()->with('success', 'Item added successfully!');
-}
+        // Find the asset and liability by ID
+        $asset = Account::find($id);
+        $liability = Account::find($id); // Assuming liabilities are also stored in the Account model
+
+        if (!$asset) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Asset not found.',
+            ], 404);
+        }
+
+        if (!$liability) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Liability not found.',
+            ], 404);
+        }
+
+        // Update the asset's code
+        $asset->code = $request->code;
+        $asset->save();
+
+        // Update the liability's code
+        $liability->code = $request->code; // Assuming the same code update for liability
+        $liability->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Code updated successfully ',
+        ]);
+    }
 
 
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'account_name' => 'required|string|max:100',
+            'account_description' => 'required|string'
+        ]);
+
+        $parent = Account::where('id', $request->parent_id)->first();
+
+        $account = Account::create([
+            'name' => $request->account_name,
+            'level' => $parent->level + 1,
+            'parent_id' => $request->parent_id,
+            'company_id' => $parent->company_id,
+            'description' => $request->account_description,
+            'balance' => $request->balance,
+        ]);
+
+
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+                $path = $file->store('documents', 'public'); // Store in storage/app/public/documents
+                // Save the path to the database as needed
+            }
+        }
+
+        // Handle the creation of the account, transaction, and document upload...
+
+        return redirect()->back()->with('success', 'Item added successfully!');
+    }
 }

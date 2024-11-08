@@ -37,14 +37,14 @@ class InvoiceController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             // Admin can see all trips and tasks
-            $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
+            $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
             $agents = Agent::where('company_id', $user->company->id)->pluck('id');
-            $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $id)->paginate(6);
+            $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             // Agent can see their tasks
-            $invoices = Invoice::with('agent.company', 'client')->where('agent_id', $user->agent->id)->paginate(6);
+            $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $user->agent->id)->paginate(6);
         }
 
         return view('invoice.index', compact('invoices', 'agent'));
@@ -109,10 +109,10 @@ class InvoiceController extends Controller
         $agentId = $agent ? $agent->id : null;
         $companyId = $agent ? $agent->company_id : null;
         Log::info('Company ID:', ['companyId' => $companyId]);
-        
+
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
-        ->where('company_id', $companyId)
-        ->first();
+            ->where('company_id', $companyId)
+            ->first();
 
         Log::info('clientId:', ['clientId' => $clientId]);
 
@@ -120,27 +120,27 @@ class InvoiceController extends Controller
             $filteredReceivableChildAccount = $receivableAccount->children()
                 ->where('reference_id', $clientId) // Filter by child reference_id
                 ->first(); // Get the first matching child account
-                   Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);     
+            Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
             $ReceivablechildAccountId = $filteredReceivableChildAccount ? $filteredReceivableChildAccount->id : null;
         } else {
             $ReceivablechildAccountId = null; // Handle case when no parent account is found
         }
 
-        
+
         $payableAccount =  Account::where('name', 'like', '%Payable%')
             ->where('company_id', $companyId)
             ->first();
 
         $incomeAccount =  Account::where('name', 'like', '%Income On Sales%')
-        ->where('company_id', $companyId)
-        ->first();
+            ->where('company_id', $companyId)
+            ->first();
 
         if ($incomeAccount) {
             Log::info('incomeAccount', ['incomeAccount' => $incomeAccount]);
             $filteredIncomeChildAccount = $incomeAccount->children()
                 ->where('reference_id', $agentId) // Filter by child reference_id
                 ->first(); // Get the first matching child account
-                Log::info('filteredIncomeChildAccount', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount]);
+            Log::info('filteredIncomeChildAccount', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount]);
             $IncomechildAccountId = $filteredIncomeChildAccount ? $filteredIncomeChildAccount->id : null;
         } else {
             $IncomechildAccountId = null; // Handle case when no parent account is found
@@ -195,12 +195,12 @@ class InvoiceController extends Controller
                             $filteredPayableChildAccount = $payableAccount->children()
                                 ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
                                 ->first(); // Get the first matching child account
-                                Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
                             $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
                         } else {
                             $PayablechildAccountId = null; // Handle case when no parent account is found
                         }
-    
+
 
                         // Try to create payable account
                         GeneralLedger::create([
@@ -251,15 +251,15 @@ class InvoiceController extends Controller
                         $parentReceivableAccount = $filteredReceivableChildAccount->parent; // Get the parent account
                         if ($parentReceivableAccount) {
                             // Sum all child balances
-                            
-                           Log::info('parentReceivableAccount:', ['parentReceivableAccount' => $parentReceivableAccount]);    
+
+                            Log::info('parentReceivableAccount:', ['parentReceivableAccount' => $parentReceivableAccount]);
                             $totalBalance = $parentReceivableAccount->children()->sum('actual_balance');
                             $parentReceivableAccount->actual_balance = $totalBalance; // Update the parent's balance
                             $parentReceivableAccount->save(); // Save the parent account
                         }
 
-                        Log::info('price:', ['price' => $task['price']]); 
-                        Log::info('selectedtask->total:', ['selectedtask->total' => $selectedtask->total]); 
+                        Log::info('price:', ['price' => $task['price']]);
+                        Log::info('selectedtask->total:', ['selectedtask->total' => $selectedtask->total]);
 
                         $markup = $task['price'] - $selectedtask->total;
                         // Try to create income
@@ -275,9 +275,9 @@ class InvoiceController extends Controller
 
                         ]);
 
-                        
-                        Log::info('markup:', ['markup' => $markup]); 
-                        Log::info('filteredIncomeChildAccount:', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount->actual_balance]);    
+
+                        Log::info('markup:', ['markup' => $markup]);
+                        Log::info('filteredIncomeChildAccount:', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount->actual_balance]);
                         $filteredIncomeChildAccount->actual_balance += $markup;
                         $filteredIncomeChildAccount->save();
 
@@ -337,7 +337,7 @@ class InvoiceController extends Controller
         $agents = Agent::where('company_id', $user->company->id)->pluck('id');
 
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.company', 'client')->whereIn('agent_id', $agents)->paginate(10);
+        $invoices = Invoice::with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agents)->get();
@@ -377,8 +377,9 @@ class InvoiceController extends Controller
         return view('invoice.show', compact('invoice', 'invoiceDetails', 'transaction'));
     }
 
-    public function sendInvoice(string $invoiceNumber){
-        
+    public function sendInvoice(string $invoiceNumber)
+    {
+
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
 
@@ -396,7 +397,7 @@ class InvoiceController extends Controller
         return view('invoice.clientInvoice', compact('invoice', 'invoiceDetails', 'transaction'));
     }
 
-    
+
     /**
      * Show the form for editing the specified resource.
      */

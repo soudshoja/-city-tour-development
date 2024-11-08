@@ -123,17 +123,21 @@
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
                         @foreach ($branches as $branch)
-                        <tr>
+                        <tr class="relative">
                             <td class="px-4 py-2">
                                 <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                             </td>
                             <td class="px-4 py-2">{{ $branch->name }}</td>
                             <td class="px-4 py-2">{{ $branch->email }}</td>
-                            <td class="px-4 py-2">{{ $branch->phone }}</td>
-
-
-
+                            <td class="px-4 py-2 relative">{{ $branch->phone }}</td>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute z-50 right-10 top-10">
+                                <path d="M12 17V11" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                <circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="#1C274C" />
+                                <path d="M7 3.33782 C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
                         </tr>
+
+
                         @endforeach
                     </tbody>
                 </table>

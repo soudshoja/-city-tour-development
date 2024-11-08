@@ -1,143 +1,106 @@
+// Agent badhboard js 
 
+  document.addEventListener("alpine:init", () => {
+                Alpine.data("revenueChart", () => ({
+                    chart: null,
+                    init() {
+                        const ctx = this.$refs.revenueChartCanvas.getContext('2d');
+                        const isDark = document.documentElement.classList.contains(
+                            'dark');
 
-var colors = ["#3073F1", "#0acf97"];
-var dataColors = document.querySelector("#crm-project-statistics").dataset.colors;
+                        const data = {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                            ],
+                            datasets: [{
+                                    label: 'Total Income',
+                                    data: [12000, 16800, 15500, 17800,
+                                        15500, 17000, 19000, 16000,
+                                        15000, 17000, 14000, 17000
+                                    ],
+                                    borderColor: isDark ? '#2196f3' : '#1b55e2',
+                                    backgroundColor: null, // Remove background color
+                                    fill: false, // Disable fill
+                                    tension: 0.4
+                                },
+                                {
+                                    label: 'Paid Amount',
+                                    data: [11000, 17500, 16200, 17300,
+                                        16000, 19500, 16000, 17000,
+                                        16000, 19000, 18000, 19000
+                                    ],
+                                    borderColor: '#4caf50',
+                                    backgroundColor: null, // Remove background color
+                                    fill: false, // Disable fill
+                                    tension: 0.4
+                                },
+                                {
+                                    label: 'Unpaid Amount',
+                                    data: [5000, 7000, 8000, 5000, 12000,
+                                        6000, 4000, 8000, 9000, 7000,
+                                        5700, 11000
+                                    ],
+                                    borderColor: '#e7515a',
+                                    backgroundColor: null, // Remove background color
+                                    fill: false, // Disable fill
+                                    tension: 0.4
+                                }
+                            ]
+                        };
 
-if (dataColors) {
-    colors = dataColors.split(",");
-}
+                        const options = {
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                },
+                                y: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value / 1000 + 'K';
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'bottom',
+                                    labels: {
+                                        usePointStyle: true
+                                    }
+                                },
 
-var options = {
-    chart: {
-        height: 350,
-        type: 'bar',
-        toolbar: {
-            show: false
-        }
-    },
-    plotOptions: {
-        bar: {
-            horizontal: false,
-            endingShape: 'rounded',
-            columnWidth: '25%',
-        },
-    },
-    dataLabels: {
-        enabled: false
-    },
-    stroke: {
-        show: true,
-        width: 3,
-        colors: ['transparent']
-    },
-    colors: colors,
-    series: [{
-        name: 'Projects',
-        data: [56, 38, 85, 72, 28, 69, 55, 52, 69]
-    }, {
-        name: 'Working Hours',
-        data: [176, 185, 256, 240, 187, 205, 191, 114, 194]
-    }],
-    xaxis: {
-        categories: ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
-    },
-    legend: {
-        offsetY: 7,
-    },
-    fill: {
-        opacity: 1
+                                tooltip: {
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(tooltipItem) {
+                                            return tooltipItem.dataset
+                                                .label + ': ' + tooltipItem
+                                                .raw / 1000 + 'K';
+                                        }
+                                    }
+                                }
+                            }
+                        };
 
-    },
-    grid: {
-        row: {
-            colors: ['transparent', 'transparent'], // takes an array which will be repeated on columns
-            opacity: 0.2
-        },
-        borderColor: '#9ca3af20',
-        padding: {
-            bottom: 5,
-        }
-    }
-}
-
-var chart = new ApexCharts(
-    document.querySelector("#crm-project-statistics"),
-    options
-);
-
-chart.render();
-
-
-
-//
-var colors = ["#3073F1", "#0acf97"];
-var dataColors = document.querySelector("#monthly-target").dataset.colors;
-
-if (dataColors) {
-    colors = dataColors.split(",");
-}
-
-var options = {
-    chart: {
-        height: 280,
-        type: 'donut',
-    },
-    legend: {
-        show: false
-    },
-    stroke: {
-        colors: ['transparent']
-    },
-    series: [82, 37],
-    labels: ["Done Projects", "Pending Projects"],
-    colors: colors,
-    responsive: [{
-        breakpoint: 480,
-        options: {
-            chart: {
-                width: 200
-            },
-            legend: {
-                position: 'bottom'
-            }
-        }
-    }]
-}
-
-var chart = new ApexCharts(
-    document.querySelector("#monthly-target"),
-    options
-);
-
-chart.render();
-
-
-//
-var colors = ["#3073F1", "#0acf97", "#fa5c7c", "#ffbc00"];
-var dataColors = document.querySelector("#project-overview-chart").dataset.colors;
-if (dataColors) {
-    colors = dataColors.split(",");
-}
-var options = {
-    chart: {
-        height: 350,
-        type: 'radialBar'
-    },
-    colors: colors,
-    series: [85, 70, 80, 65],
-    labels: ['Product Design', 'Web Development', 'Illustration Design', 'UI/UX Design'],
-    plotOptions: {
-        radialBar: {
-            track: {
-                margin: 5,
-            }
-        }
-    }
-}
-
-var chart = new ApexCharts(
-    document.querySelector("#project-overview-chart"),
-    options
-);
-
-chart.render();
+                        this.chart = new Chart(ctx, {
+                            type: 'line',
+                            data: data,
+                            options: options
+                        });
+                    },
+                    updateChart() {
+                        if (this.chart) {
+                            this.chart.update();
+                        }
+                    }
+                }));
+  });
+            
+  

@@ -30,7 +30,7 @@
                                         stroke="#FFFFFF" stroke-width="1.5" />
                                 </svg>
                             </div>
-                            <div class="flex flex-col items-center justify-center w-2/3 p-4">
+                            <div class="flex gap-2 items-center justify-center w-2/3 p-4">
                                 <p class="text-3xl font-bold" id="totalTasks"></p>
                                 <p class="text-sm">Total Tasks</p>
                             </div>
@@ -48,7 +48,7 @@
                                     <path d="M10 18.5H14" />
                                 </svg>
                             </div>
-                            <div class="flex flex-col items-center justify-center w-2/3 p-4">
+                            <div class="flex gap-2 items-center justify-center w-2/3 p-4">
                                 <p class="text-3xl font-bold" id="pendingTasks"></p>
                                 <p class="text-sm">Pending Tasks</p>
                             </div>
@@ -66,7 +66,7 @@
                                         stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
                             </div>
-                            <div class="flex flex-col items-center justify-center w-2/3 p-4">
+                            <div class="flex gap-2 items-center justify-center w-2/3 p-4">
                                 <p class="text-3xl font-bold" id="completedTasks"></p>
                                 <p class="text-sm">Completed Tasks</p>
                             </div>
@@ -104,112 +104,7 @@
                                 <canvas x-ref="revenueChartCanvas" class="w-full max-h-[290px]"></canvas>
                             </div>
 
-                            <script>
-                            document.addEventListener("alpine:init", () => {
-                                Alpine.data("revenueChart", () => ({
-                                    chart: null,
-                                    init() {
-                                        const ctx = this.$refs.revenueChartCanvas.getContext('2d');
-                                        const isDark = document.documentElement.classList.contains(
-                                            'dark');
 
-                                        const data = {
-                                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-                                            ],
-                                            datasets: [{
-                                                    label: 'Total Income',
-                                                    data: [12000, 16800, 15500, 17800,
-                                                        15500, 17000, 19000, 16000,
-                                                        15000, 17000, 14000, 17000
-                                                    ],
-                                                    borderColor: isDark ? '#2196f3' :
-                                                        '#1b55e2',
-                                                    backgroundColor: null, // Remove background color
-                                                    fill: false, // Disable fill
-                                                    tension: 0.4
-                                                },
-                                                {
-                                                    label: 'Paid Amount',
-                                                    data: [11000, 17500, 16200, 17300,
-                                                        16000, 19500, 16000, 17000,
-                                                        16000, 19000, 18000, 19000
-                                                    ],
-                                                    borderColor: '#4caf50',
-                                                    backgroundColor: null, // Remove background color
-                                                    fill: false, // Disable fill
-                                                    tension: 0.4
-                                                },
-                                                {
-                                                    label: 'Unpaid Amount',
-                                                    data: [5000, 7000, 8000, 5000, 12000,
-                                                        6000, 4000, 8000, 9000, 7000,
-                                                        5700, 11000
-                                                    ],
-                                                    borderColor: '#e7515a',
-                                                    backgroundColor: null, // Remove background color
-                                                    fill: false, // Disable fill
-                                                    tension: 0.4
-                                                }
-                                            ]
-                                        };
-
-                                        const options = {
-                                            responsive: true,
-                                            scales: {
-                                                x: {
-                                                    grid: {
-                                                        display: false
-                                                    }
-                                                },
-                                                y: {
-                                                    grid: {
-                                                        display: false
-                                                    },
-                                                    ticks: {
-                                                        callback: function(value) {
-                                                            return value / 1000 + 'K';
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                            plugins: {
-                                                legend: {
-                                                    display: true,
-                                                    position: 'top',
-                                                    labels: {
-                                                        font: {
-                                                            size: 14
-                                                        }
-                                                    }
-                                                },
-                                                tooltip: {
-                                                    enabled: true,
-                                                    callbacks: {
-                                                        label: function(tooltipItem) {
-                                                            return tooltipItem.dataset
-                                                                .label + ': ' + tooltipItem
-                                                                .raw / 1000 + 'K';
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        };
-
-                                        this.chart = new Chart(ctx, {
-                                            type: 'line',
-                                            data: data,
-                                            options: options
-                                        });
-                                    },
-                                    updateChart() {
-                                        if (this.chart) {
-                                            this.chart.update();
-                                        }
-                                    }
-                                }));
-                            });
-                            </script>
 
 
 
@@ -254,8 +149,8 @@
                                 <span class="TextXs">70.0%</span>
                             </div>
                         </div>
-                        <span class="text-xs text-gray-500 dark:text-gray-400 my-2">vs prev. $501,641.73 Jun 1 - Aug 31,
-                            2023</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 my-2">Last update - Oct 31,
+                            2024</span>
                     </div>
                     <!-- ./quick income overview -->
 
@@ -283,40 +178,44 @@
                         <!-- Client -->
                         <div
                             class="bg-white flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 shadow-md rounded-md ">
-                            <button
+
+                            <a href="{{ route('clients.create') }}" target="_blank"
                                 class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
                                 <span
                                     class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Add New
-                                    Client
+                                    Add New Client
                                 </span>
-                            </button>
+                            </a>
                         </div>
 
                         <!-- Invoices -->
                         <div
                             class="bg-white flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 shadow-md rounded-md ">
-                            <button
+                            <a href="{{ route('invoice.create') }}" target="_blank"
                                 class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
                                 <span
                                     class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Create New
-                                    Invoice
+                                    Create New Invoice
                                 </span>
-                            </button>
+                            </a>
                         </div>
 
                         <!-- Tasks -->
                         <div
                             class="bg-white flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 shadow-md rounded-md ">
-                            <button
+                            <a href="javascript:void(0);" onclick="document.getElementById('pdfInput').click();"
                                 class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
                                 <span
                                     class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Upload New
-                                    Task
+                                    Upload New Task
                                 </span>
-                            </button>
+                            </a>
+                            <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
+                                enctype="multipart/form-data" class="hidden">
+                                @csrf
+                                <input id="pdfInput" type="file" accept=".pdf" name="task_file"
+                                    onchange="uploadTask()" />
+                            </form>
                         </div>
                     </div>
 
@@ -326,5 +225,24 @@
                 </div>
 
             </div>
+
+
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const AgentDashboarddata = @json($dashboardData);
+
+                // Total Tasks
+                document.getElementById('totalTasks').innerText = AgentDashboarddata
+                    .totalTasks; // Corrected key
+
+                // Pending Tasks
+                document.getElementById('pendingTasks').innerText = AgentDashboarddata.pendingTasks;
+
+                // Completed Tasks
+                document.getElementById('completedTasks').innerText = AgentDashboarddata
+                    .completedTasks; // Corrected key
+            });
+            </script>
+
 
         </x-app-layout>

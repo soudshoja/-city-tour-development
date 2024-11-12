@@ -12,7 +12,9 @@ use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Account;
 use App\Models\Supplier;
-use App\Models\Task;
+use App\Models\GeneralLedger;
+use App\Models\Payment;
+use App\Models\Sequence;
 use Illuminate\Support\Facades\Auth;
 
 class CoaController extends Controller
@@ -360,4 +362,252 @@ class CoaController extends Controller
 
         return redirect()->back()->with('success', 'Item added successfully!');
     }
+
+    public function payment(Request $request)
+    {
+        $user = Auth::user();
+
+        // Retrieve the company associated with the user
+        $company = Company::where('user_id', $user->id)->first();
+
+        // Ensure the company exists before proceeding
+        if (!$company) {
+            return redirect()->route('some.route')->with('error', 'Company not found.');
+        }
+        
+            $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
+
+            if (!$voucherSequence) {
+                $voucherSequence = Sequence::create(['current_sequence' => 1]);
+            }
+
+            $currentSequence = $voucherSequence->current_sequence;
+            $voucherNumber = $this->generateVoucherNumber($currentSequence);
+
+            $voucherSequence->current_sequence++;
+            $voucherSequence->save();
+
+
+        return view('coa.payment', compact('company', 'voucherNumber'));
+    }
+
+
+    private function generateVoucherNumber($sequence)
+    {
+        $year = now()->year;
+        return sprintf('VOU-%s-%05d', $year, $sequence);
+    }
+
+    
+    public function getLevel1Accounts(Request $request)
+    {
+
+        $user = Auth::user();
+        $company = Company::where('user_id', $user->id)->first();
+    
+        // Ensure the company exists
+        if (!$company) {
+            return response()->json(['error' => 'Company not found.'], 404);
+        }
+
+        
+        // Fetch Level 1 accounts, assuming 'level' field defines the hierarchy level
+        $accounts = Account::where('level', 1)
+                        ->whereNull('parent_id')
+                        ->where('company_id', $company->id) 
+                        ->get(['id', 'name']); // Return only necessary fields (id, name)
+        
+        return response()->json($accounts);
+    }
+
+    // Get child accounts (Level 2) based on Level 1 selection
+    public function getLevel2Accounts($level1Id)
+    {
+
+        $user = Auth::user();
+        $company = Company::where('user_id', $user->id)->first();
+    
+        // Ensure the company exists
+        if (!$company) {
+            return response()->json(['error' => 'Company not found.'], 404);
+        }
+
+        
+        // Fetch child accounts for Level 1 selection
+        $accounts = Account::where('parent_id', $level1Id)
+                        ->where('company_id', $company->id) 
+                        ->get(['id', 'name']);
+        
+        return response()->json($accounts);
+    }
+
+    // Get child accounts (Level 3) based on Level 2 selection
+    public function getLevel3Accounts($level2Id)
+    {
+
+        $user = Auth::user();
+        $company = Company::where('user_id', $user->id)->first();
+    
+        // Ensure the company exists
+        if (!$company) {
+            return response()->json(['error' => 'Company not found.'], 404);
+        }
+
+        
+        // Fetch child accounts for Level 2 selection
+        $accounts = Account::where('parent_id', $level2Id)
+                        ->where('company_id', $company->id) 
+                        ->get(['id', 'name']);
+        
+        return response()->json($accounts);
+    }
+
+    public function getLevel4Accounts($level3Id)
+    {
+
+        $user = Auth::user();
+        $company = Company::where('user_id', $user->id)->first();
+    
+        // Ensure the company exists
+        if (!$company) {
+            return response()->json(['error' => 'Company not found.'], 404);
+        }
+
+        
+        $accounts = Account::where('parent_id', $level3Id)
+                           ->where('company_id', $company->id) 
+                           ->get(['id', 'name', 'actual_balance']);
+        
+        return response()->json($accounts);
+    }
+
+    public function getTransactionsByLevel4(Request $request)
+    {
+        $user = Auth::user();
+        $company = Company::where('user_id', $user->id)->first();
+    
+        // Ensure the company exists
+        if (!$company) {
+            return response()->json(['error' => 'Company not found.'], 404);
+        }
+
+        $level4Id = $request->query('level4_id');
+
+        // Fetch transactions where account_id matches the selected Level 4 ID
+        $transactions = GeneralLedger::where('account_id', $level4Id)->get();
+
+        return response()->json($transactions);
+    }
+
+
+    public function submitVoucher(Request $request)
+    {
+        Log::info('request', ['request' => $request]);
+        $user = Auth::user();
+        $company = Company::where('user_id', $user->id)->first();
+        Log::info('company', ['company' => $company]);
+        // Ensure the company exists
+        if (!$company) {
+            return response()->json(['error' => 'Company not found.'], 404);
+        }
+        
+        $data = $request->validate([
+            'voucher_no' => 'required|string|max:255',
+            'voucher_date' => 'required|date',
+            'payment_method' => 'string|max:255',
+            'pay_to' => 'string|max:255',
+            'entries' => 'required|array',
+            'entries.*.account_id' => 'required|exists:accounts,id',
+            'entries.*.particulars' => 'string|max:255',
+            'entries.*.debit' => 'nullable|numeric',
+            'entries.*.credit' => 'nullable|numeric',
+        ]);
+
+       $voucherNo = $data['voucher_no'];
+       $voucherDate = $data['voucher_date'];
+       $paymentMethod = $data['payment_method'];
+       $payTo =  $data['pay_to'];
+
+        Log::info('data', ['data' => $data]);
+        // Create General Ledger entries
+        foreach ($data['entries'] as $entry) {
+
+            $account = Account::find($entry['account_id']);
+            Log::info('account_id', ['account_id' => $entry['account_id']]);
+
+            $amount = $entry['debit'] ?? $entry['credit'];
+            $type = $entry['debit'] ? 'debit' : 'credit';
+
+            $payment = Payment::create([
+                'voucher_number' => $voucherNo,
+                'from' => $company->name,
+                'pay_to' => $payTo,
+                'account_id' => $entry['account_id'],
+                'currency' => 'KWD',
+                'payment_date' => $voucherDate,
+                'amount' => $amount,
+                'payment_method' => $paymentMethod,
+                'status' => 'paid',
+                'account_number' => NULL,
+                'bank_name' => NULL,
+                'swift_no'=> NULL,
+                'iban_no'=> NULL,
+                'country'=> NULL,
+                'tax'=> NULL,
+                'discount' => NULL,
+                'shipping' => NULL,
+                'payment_reference' => $voucherNo,
+                'type' => $type,
+            ]);
+
+            $newBalance = $this->calculateNewBalance($account->actual_balance, $entry['debit'], $entry['credit']);
+            Log::info('newBalance', ['newBalance' => $newBalance]);
+            GeneralLedger::create([
+                'transaction_id' => $payment->id, 
+                'company_id' => $company->id,
+                'account_id' => $entry['account_id'],
+                'transaction_date' => $data['voucher_date'],
+                'voucher_number' => $voucherNo,
+                'description' => $entry['particulars'],
+                'debit' => $entry['debit'] ?? 0,
+                'credit' => $entry['credit'] ?? 0,
+                'balance' => $newBalance
+            ]);
+            
+            // Update the actual_balance of the Level 4 account
+
+            $account->actual_balance = $newBalance;
+            $account->save();
+        }
+
+        return response()->json(['message' => 'Voucher submitted successfully']);
+    }
+
+    private function calculateNewBalance($currentBalance, $debit, $credit)
+    {
+        // Implement your logic for updating the balance
+        return $currentBalance + ($debit - $credit);
+    }
+
+
+    public function transaction(Request $request)
+    {
+        $user = Auth::user();
+
+        // Retrieve the company associated with the user
+        $company = Company::where('user_id', $user->id)->first();
+
+        // Ensure the company exists before proceeding
+        if (!$company) {
+            return redirect()->route('some.route')->with('error', 'Company not found.');
+        }
+        
+        $level3Id = $request->input('level3Id');
+        $level4Id = $request->input('level4Id');
+        $transactions = GeneralLedger::all();
+
+        return view('coa.transaction', compact('company','transactions', 'level4Id', 'level3Id'));
+    }
+
+
 }

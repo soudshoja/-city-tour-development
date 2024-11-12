@@ -108,7 +108,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');
     Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
     Route::post('/updateCode/{id}', [CoaController::class, 'updateCode']);
+    Route::get('/coa/payment-voucher', [CoaController::class, 'payment'])->name('coa.payment');
 
+    Route::get('/get-level1-accounts', [CoaController::class, 'getLevel1Accounts']);
+    Route::get('/get-level2-accounts/{level1Id}', [CoaController::class, 'getLevel2Accounts']);
+    Route::get('/get-level3-accounts/{level2Id}', [CoaController::class, 'getLevel3Accounts']);
+    Route::get('/get-level4-accounts/{level3Id}', [CoaController::class, 'getLevel4Accounts']);
+    Route::get('/get-account', [CoaController::class, 'getTransactionsByLevel4']);
+    Route::post('/submit-voucher', [CoaController::class, 'submitVoucher']);
+    Route::get('/coa/transactions', [CoaController::class, 'transaction'])->name('coa.transaction');
 
     // Branches routes
     Route::group([

@@ -127,16 +127,24 @@
 
 
                                   <!-- Actual Balance -->
+                                   <div @click="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
                                   <input type="text" name="actual_balance"
                                       class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full"
                                       value="{{ number_format($level4asset->actual_balance, 2) }}" readonly
                                       style="pointer-events: none; cursor: default;">
-
+                                   </div>
 
 
 
                                   <!-- Action Icons -->
                                   <div class="flex items-center space-x-3 text-gray-500">
+
+                                         <button class="hover:text-blue-500" onclick="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" fill="blue"/>
+                                            </svg>
+                                        </button>
+
                                       <!-- Icon  (Delete) -->
                                       <button class="hover:text-red-500">
                                           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"

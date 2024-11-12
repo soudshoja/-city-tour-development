@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetails;
 use App\Models\GeneralLedger;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Agent;
+use App\Models\Sequence;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
@@ -93,8 +93,29 @@ class PaymentController extends Controller
         return redirect($response['url']);
     }
 
+    private function generateVoucherNumber($sequence)
+    {
+        $year = now()->year;
+        return sprintf('VOU-%s-%05d', $year, $sequence);
+    }
+
+
+
     public function initiatePayment($data)
     {
+
+                    
+        $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
+
+        if (!$voucherSequence) {
+            $voucherSequence = Sequence::create(['current_sequence' => 1]);
+        }
+
+        $currentSequence = $voucherSequence->current_sequence;
+        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+
+        $voucherSequence->current_sequence++;
+        $voucherSequence->save();
 
         $invoice = $data['invoice'];
 
@@ -110,14 +131,15 @@ class PaymentController extends Controller
 
 
         $payment = Payment::create([
-            'client_id' => $invoice->client->id,
-            'invoice_id' => $invoice->id,
-            'transaction_id' => $transaction->id,
-            'agent_id' => $invoice->agent->id,
-            'payment_date' => Carbon::now(),
-            'amount' => $data['total_amount'],
+            'voucher_number' => $voucherNumber,
+            'from' => $invoice->client->name,
+            'pay_to' => $invoice->agent->company->name,
+            'currency' => 'KWD',
+            'payment_date' =>  Carbon::now(),
+            'amount' =>  $data['total_amount'],
             'payment_method' => $data['payment_method'],
             'status'  => 'pending',
+            'payment_reference' => $invoice->id,
         ]);
 
         $requestTap = [
@@ -195,13 +217,6 @@ class PaymentController extends Controller
         $paymentId = $response['metadata']['payment_id'];
         $invoiceNumber = $response['metadata']['invoice_number'];
 
-        // foreach ($response['metadata'] as $key => $value) {
-        //     if (strpos($key, 'selected_item_') !== false) {
-        //         $selectedItems[] = $value;
-
-        //     }
-        // }
-
 
         // Fetch the invoice to get payment details
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
@@ -261,33 +276,61 @@ class PaymentController extends Controller
 
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
-                    $payment->transaction_id = $transaction->id;
+                    $payment->account_id = $filteredReceivableChildAccount->id;
                     $payment->save();
 
                     // Update the accounts receivable entry
                     GeneralLedger::create([
-                        'transaction_id' => $payment->transaction_id,
+                        'transaction_id' => $payment->id,
                         'company_id' => $invoice->agent->company->id,
                         'account_id' =>  $filteredReceivableChildAccount->id,
+                        'invoice_id' =>  $invoice->id,
+                        'voucher_number' => $payment->voucher_number,
                         'transaction_date' => Carbon::now(),
-                        'description' => 'Payment Received for Invoice: ' . $invoiceNumber,
+                        'description' => ' Client:'.$filteredReceivableChildAccount->name,
                         'debit' => 0,
                         'credit' => $invoicedetail['task_price'],
                         'balance' => $filteredReceivableChildAccount->actual_balance - $invoicedetail['task_price'],
-
                     ]);
 
                     // Update the receivable account balance
                     $filteredReceivableChildAccount->actual_balance -= $invoicedetail['task_price'];
                     $filteredReceivableChildAccount->save();
 
+
                     // Update Cash/Bank Account
                     if ($bankAccount) {
+                        GeneralLedger::create([
+                            'transaction_id' => $payment->id,
+                            'company_id' => $invoice->agent->company->id,
+                            'account_id' =>  $bankAccount->id,
+                            'invoice_id' =>  $invoice->id,
+                            'voucher_number' => $payment->voucher_number,
+                            'transaction_date' => Carbon::now(),
+                            'description' => ' For:'.$bankAccount->name,
+                            'debit' => $invoicedetail['task_price'],
+                            'credit' => 0,
+                            'balance' => $bankAccount->actual_balance += $invoicedetail['task_price'],
+                        ]);
+
                         $bankAccount->actual_balance += $invoicedetail['task_price']; // Add to cash/bank account
                         $bankAccount->save();
                     }
 
                     if ($tapAccount) {
+                        GeneralLedger::create([
+                            'transaction_id' => $payment->id,
+                            'company_id' => $invoice->agent->company->id,
+                            'account_id' =>  $tapAccount->id,
+                            'invoice_id' =>  $invoice->id,
+                            'voucher_number' => $payment->voucher_number,
+                            'transaction_date' => Carbon::now(),
+                            'description' => ' For:'. $tapAccount->name,
+                            'debit' => $invoicedetail['task_price'],
+                            'credit' => 0,
+                            'balance' => $tapAccount->actual_balance += 0.35,
+                        ]);
+
                         $tapAccount->actual_balance += 0.35; // Add to expenses account
                         $tapAccount->save();
                     }
@@ -300,7 +343,7 @@ class PaymentController extends Controller
         }
 
         // Update the invoice status based on the payment received
-        $totalPaid = Payment::where('invoice_id', $invoice->id)->sum('amount');
+        $totalPaid = Payment::where('payment_reference', $invoice->id)->sum('amount');
         if ($totalPaid >= $invoice->amount) {
             $invoice->status = 'paid';
         } else {

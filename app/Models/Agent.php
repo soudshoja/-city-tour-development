@@ -12,13 +12,18 @@ class Agent extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'email', 'user_id', 'type', 'branch_id', 'phone_number', 'description'];
+    protected $fillable = ['name', 'email', 'user_id', 'type', 'branch_id',  'company_id', 'phone_number', 'description'];
 
     public function branch()
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    } 
+    
     public function tasks()
     {
         return $this->hasMany(Task::class);

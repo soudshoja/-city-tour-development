@@ -10,15 +10,24 @@ class Payment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'transaction_id',
-        'invoice_id',
-        'client_id',
-        'agent_id',
-        'payment_reference',
+        'voucher_number',
+        'from',
+        'pay_to',
+        'account_id',
+        'currency',
         'payment_date',
         'amount',
         'payment_method',
-        'status'
+        'status',
+        'account_number',
+        'bank_name',
+        'swift_no',
+        'iban_no',
+        'country',
+        'tax',
+        'discount',
+        'shipping',
+        'payment_reference',
     ];
     public function client()
     {

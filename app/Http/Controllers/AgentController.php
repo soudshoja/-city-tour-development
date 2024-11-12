@@ -48,8 +48,9 @@ class AgentController extends Controller
     {
         $agents = Agent::all();
         $companies = Company::all();
+        $admin = Role::ADMIN;
 
-        return view('agents.agentsNew', compact('agents', 'companies'));
+        return view('agents.agentsNew', compact('agents', 'companies','admin'));
     }
 
     public function show($id)

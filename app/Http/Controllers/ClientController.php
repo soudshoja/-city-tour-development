@@ -10,7 +10,9 @@ use Exception;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
+use App\Models\Branch;
 use App\Models\Role;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
@@ -30,7 +32,8 @@ class ClientController extends Controller
             $agentIds = Agent::all()->pluck('id')->toArray();
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
-            $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
@@ -93,6 +96,8 @@ class ClientController extends Controller
     // Show the form for editing a client
     public function edit($id)
     {
+        Gate::authorize('edit', [Auth::user(), Client::with('agent.branch.company')->findOrFail($id)]);
+
         $client = Client::findOrFail($id);
         return view('clients.edit', compact('client')); // Ensure the view exists
     }
@@ -100,7 +105,7 @@ class ClientController extends Controller
     // Update the client in the database
     public function update(Request $request, $id)
     {
-
+        Gate::authorize('update', Client::class);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',

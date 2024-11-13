@@ -19,7 +19,7 @@ class ClientPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+    return true;
     }
 
     public function view(User $user): bool
@@ -32,9 +32,14 @@ class ClientPolicy
         return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
     }
 
-    public function update(User $user): bool
+    public function edit(User $user, Client $client): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+    return true;
+    }
+
+    public function update(User $user, Client $client): bool
+    {
+    return true;
     }
 
     public function delete(User $user): bool

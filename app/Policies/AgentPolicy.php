@@ -14,7 +14,7 @@ class AgentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return  $user->role_id === Role::COMPANY;
+    return true;
     }
 
     /**
@@ -37,8 +37,8 @@ class AgentPolicy
      * Determine whether the user can update the model.
      */
     public function update(User $user, Agent $agent): bool
-    {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
+    { 
+        return $user->role_id === Role::ADMIN || ( $user->role_id === Role::COMPANY && $user->company_id === $agent->branch()->company()->id);
     }
 
     /**

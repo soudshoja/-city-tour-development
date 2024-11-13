@@ -14,7 +14,7 @@ class BranchPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
+        return true;
     }
 
     /**

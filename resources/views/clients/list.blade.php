@@ -3,25 +3,27 @@
 
 
     <style>
-    .mt07 {
-        margin-top: 0.7rem !important;
-    }
-
-    @media screen and (min-width: 1024px) {
         .mt07 {
-            margin-top: 0 !important;
+            margin-top: 0.7rem !important;
         }
 
-    }
+        @media screen and (min-width: 1024px) {
+            .mt07 {
+                margin-top: 0 !important;
+            }
+
+        }
     </style>
 
 
     <div>
+        @php use App\Models\Client @endphp
         <!-- Breadcrumbs -->
         <x-breadcrumbs :breadcrumbs="[
-    ['label' => 'Dashboard', 'url' => route('dashboard')],
-    ['label' => 'Clients List']
-]" />
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Clients List']
+        ]" 
+        />
 
         <!-- ./Breadcrumbs -->
         <!-- session status -->
@@ -254,6 +256,7 @@
                                             fill="#1C274C" class="dark:fill-current dark:text-white" />
                                     </svg>
                                 </a>
+                                @can('edit', Client::class)
                                 <a href="{{ route('clients.edit', ['id' => $client->id]) }}">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg" class="dark:fill-current dark:text-white">
@@ -275,120 +278,120 @@
 
 
     <script>
-    // BSZ95 New code
-    document.addEventListener("DOMContentLoaded", function() {
-        // Access the data passed from the controller
-        const clientsNo = @json($clientsNo);
-        document.getElementById("totalClients").innerText = clientsNo;
-    });
-
-    // Sorting functionality
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const nameHeader = document.getElementById("nameHeader");
-        const tableBody = document.querySelector(".AgentTable tbody");
-        let sortAscending = true;
-
-        nameHeader.addEventListener("click", function() {
-            const rows = Array.from(tableBody.querySelectorAll("tr"));
-
-            rows.sort((a, b) => {
-                const nameA = a.querySelector("td:nth-child(2)").innerText.toLowerCase();
-                const nameB = b.querySelector("td:nth-child(2)").innerText.toLowerCase();
-
-                if (nameA < nameB) {
-                    return sortAscending ? -1 : 1;
-                } else if (nameA > nameB) {
-                    return sortAscending ? 1 : -1;
-                } else {
-                    return 0;
-                }
-            });
-
-            // Append the sorted rows back to the table body
-            rows.forEach(row => tableBody.appendChild(row));
-
-            // Toggle the sort order for next click
-            sortAscending = !sortAscending;
-
-            // Update the sort icon
-            document.getElementById("sortIcon").innerText = sortAscending ? "⬆" : "⬇";
+        // BSZ95 New code
+        document.addEventListener("DOMContentLoaded", function() {
+            // Access the data passed from the controller
+            const clientsNo = @json($clientsNo);
+            document.getElementById("totalClients").innerText = clientsNo;
         });
-    });
 
+        // Sorting functionality
 
-    // search functionality
-    document.addEventListener("DOMContentLoaded", function() {
-        const searchInput = document.getElementById("searchInput");
-        const tableRows = document.querySelectorAll(".CityMobileTable tbody tr");
+        document.addEventListener("DOMContentLoaded", function() {
+            const nameHeader = document.getElementById("nameHeader");
+            const tableBody = document.querySelector(".AgentTable tbody");
+            let sortAscending = true;
 
-        searchInput.addEventListener("input", function() {
-            const query = searchInput.value.toLowerCase();
+            nameHeader.addEventListener("click", function() {
+                const rows = Array.from(tableBody.querySelectorAll("tr"));
 
-            tableRows.forEach(row => {
-                const cells = row.querySelectorAll("td");
-                let rowContainsQuery = false;
+                rows.sort((a, b) => {
+                    const nameA = a.querySelector("td:nth-child(2)").innerText.toLowerCase();
+                    const nameB = b.querySelector("td:nth-child(2)").innerText.toLowerCase();
 
-                cells.forEach(cell => {
-                    if (cell.innerText.toLowerCase().includes(query)) {
-                        rowContainsQuery = true;
+                    if (nameA < nameB) {
+                        return sortAscending ? -1 : 1;
+                    } else if (nameA > nameB) {
+                        return sortAscending ? 1 : -1;
+                    } else {
+                        return 0;
                     }
                 });
 
-                if (rowContainsQuery) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
+                // Append the sorted rows back to the table body
+                rows.forEach(row => tableBody.appendChild(row));
+
+                // Toggle the sort order for next click
+                sortAscending = !sortAscending;
+
+                // Update the sort icon
+                document.getElementById("sortIcon").innerText = sortAscending ? "⬆" : "⬇";
             });
         });
-    });
-    document.addEventListener("DOMContentLoaded", function() {
-        const selectAllSVG = document.getElementById("selectAllSVG");
-        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
 
-        // Toggle "Select All" functionality with the SVG
-        selectAllSVG.addEventListener("click", function() {
-            const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+
+        // search functionality
+        document.addEventListener("DOMContentLoaded", function() {
+            const searchInput = document.getElementById("searchInput");
+            const tableRows = document.querySelectorAll(".CityMobileTable tbody tr");
+
+            searchInput.addEventListener("input", function() {
+                const query = searchInput.value.toLowerCase();
+
+                tableRows.forEach(row => {
+                    const cells = row.querySelectorAll("td");
+                    let rowContainsQuery = false;
+
+                    cells.forEach(cell => {
+                        if (cell.innerText.toLowerCase().includes(query)) {
+                            rowContainsQuery = true;
+                        }
+                    });
+
+                    if (rowContainsQuery) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                });
+            });
+        });
+        document.addEventListener("DOMContentLoaded", function() {
+            const selectAllSVG = document.getElementById("selectAllSVG");
+            const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+
+            // Toggle "Select All" functionality with the SVG
+            selectAllSVG.addEventListener("click", function() {
+                const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+                rowCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = !allChecked;
+                });
+            });
+
+            // Optional: Update the SVG color or style if all checkboxes are selected/deselected
             rowCheckboxes.forEach(function(checkbox) {
-                checkbox.checked = !allChecked;
+                checkbox.addEventListener("change", function() {
+                    const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                    if (allChecked) {
+                        selectAllSVG.style.fill = "#4fd1c5"; // Example color when all are selected
+                    } else {
+                        selectAllSVG.style.fill = "#1C274C"; // Reset to original color
+                    }
+                });
             });
         });
-
-        // Optional: Update the SVG color or style if all checkboxes are selected/deselected
-        rowCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener("change", function() {
-                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-                if (allChecked) {
-                    selectAllSVG.style.fill = "#4fd1c5"; // Example color when all are selected
-                } else {
-                    selectAllSVG.style.fill = "#1C274C"; // Reset to original color
-                }
-            });
-        });
-    });
     </script>
 
 
 
     <script>
-    function addClient() {
+        function addClient() {
 
-        document.getElementById('addClientModal').classList.remove('hidden');
-    }
-
-    function closeAddClientModal() {
-        // Hide the modal when "Cancel" is clicked
-        document.getElementById('addClientModal').classList.add('hidden');
-    }
-
-    function closeModalIbgC(event) {
-        // Close the modal if the user clicks outside of the modal content
-        const modalContent = document.querySelector('#addClientModal > div');
-        if (!modalContent.contains(event.target)) {
-            closeAddClientModal();
+            document.getElementById('addClientModal').classList.remove('hidden');
         }
-    }
+
+        function closeAddClientModal() {
+            // Hide the modal when "Cancel" is clicked
+            document.getElementById('addClientModal').classList.add('hidden');
+        }
+
+        function closeModalIbgC(event) {
+            // Close the modal if the user clicks outside of the modal content
+            const modalContent = document.querySelector('#addClientModal > div');
+            if (!modalContent.contains(event.target)) {
+                closeAddClientModal();
+            }
+        }
     </script>
 
 </x-app-layout>

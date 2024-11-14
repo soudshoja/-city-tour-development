@@ -333,7 +333,7 @@
 
                  @if(session('success'))
                  <div
-                     class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
+                     class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg z-50">
                      {{ session('success') }}
                      <button type="button" class="close text-white ml-2" aria-label="Close"
                          onclick="this.parentElement.style.display='none';">

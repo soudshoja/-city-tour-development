@@ -18,6 +18,7 @@ class Client extends Model
         'agent_id', 
         'status',
         'address',
+        'passport_file',
         'passport_no',
         'phone', 
              ];

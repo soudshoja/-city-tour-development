@@ -12,8 +12,12 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
 use App\Models\Branch;
 use App\Models\Role;
+use ConvertApi\ConvertApi;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use PhpParser\Node\Expr\Throw_;
 
 class ClientController extends Controller
 {
@@ -96,37 +100,109 @@ class ClientController extends Controller
     // Show the form for editing a client
     public function edit($id)
     {
-        Gate::authorize('edit', [Auth::user(), Client::with('agent.branch.company')->findOrFail($id)]);
+        Gate::authorize('edit', [Client::class, Client::findOrFail($id)]);
+
+        $agents = [];
+        if(Gate::allows('clientAgent', Client::class)) {
+            $agents = Agent::with('company')->get();
+        }
 
         $client = Client::findOrFail($id);
-        return view('clients.edit', compact('client')); // Ensure the view exists
+        return view('clients.edit', compact('client','agents')); // Ensure the view exists
     }
 
     // Update the client in the database
     public function update(Request $request, $id)
     {
-        Gate::authorize('update', Client::class);
-
+        Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
+        // dd($request->all());
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:clients,email,' . $id,
-            'status' => 'required',   // Optional status field
-            'phone' => 'nullable|string|max:15',    // Optional phone field
+            'name' => 'string|max:255',
+            'email' => 'email|unique:clients,email,' . $id,
+            'status' => 'nullable',   // Optional status field
+            'phone' => 'string|max:15',    // Optional phone field
+            'file' => 'nullable|mimes:pdf,jpeg',    // Optional passport file field
         ]);
 
         // Find the client and update it
         try {
-            $client = Client::findOrFail($id);
-            $client->update([
-                'name' => $request->get('name'),
-                'email' => $request->get('email'),
-                'status_id' => intval($request->get('status')),
-                'phone' => $request->get('phone'),
-            ]);
+            
+            if ($request->has('name') && $request->name !== $client->name) {
+                $client->name = $request->get('name');
+            }
 
+            if ($request->has('email') && $request->email !== $client->email) {
+                $client->email = $request->get('email');
+            }
+
+            if ($request->has('status') && $request->status !== $client->status) {
+                $client->status = $request->get('status');
+            }
+
+            if ($request->has('phone') && $request->phone !== $client->phone) {
+                $client->phone = $request->get('phone');
+            }
+
+            if ($request->has('address') && $request->address !== $client->address) {
+                $client->address = $request->get('address');
+            }
+
+            if ($request->has('file') && $request->file !== null) {
+                $file = $request->file('file');
+
+                $fileName = $file->getClientOriginalName();
+                if (Storage::exists('passports/' . $fileName)) {
+                    // ConvertApi::setApiCredentials(config('services.convert-api.secret'));
+                    
+                    $filePath = 'passports/' . $fileName;                 
+                    
+                } else {
+                    // $filePath = $file->store('passports');
+                    $filePath = $file->storeAs('passports', $fileName);
+                }
+
+                
+                $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+                $txtFileName = $fileNameWithoutExtension . '.txt';
+                $txtFilePath = 'passports/' . $txtFileName;
+                Storage::exists($txtFilePath) ? $txtFile =  $txtFilePath : $txtFile = null;
+                if(isset($txtFile))
+                {
+                    $txtFile = storage_path('app/public/' . $txtFile);
+                    $txtFileContent = file_get_contents($txtFile);
+                } else {
+                    ConvertApi::setApiCredentials(config('services.convert-api.secret'));
+
+                    if($file->getClientOriginalExtension() == 'pdf') {
+                        $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $filePath)], 'pdf');
+                    } elseif($file->getClientOriginalExtension() == 'jpeg') {
+                        $result = ConvertApi::convert('pdf', ['File' => storage_path('app/public/' . $filePath)], 'jpeg');
+
+                        $saveFiles = $result->saveFiles(storage_path('app/public/passports'));
+
+                        $pdfFilePath = $saveFiles[0];
+
+                        $result = ConvertApi::convert('txt', ['File' => $pdfFilePath], 'pdf');
+                        $txtFile = $result->saveFiles(storage_path('app/public/passports'));
+                    } else {
+                        throw new Exception('Invalid file format');
+                    }
+                }
+                $txtFileContent = file_get_contents($txtFile);
+                try {
+                    $openai = new OpenAiController();
+                    $openai->extractPassport($txtFileContent);
+                } catch (Exception $e) {
+                    return redirect()->back()->withInput()->with('error', $e->getMessage());
+                }
+                
+                $client->passport_file = $filePath;
+            }
+            
+            $client->save();
 
             // Redirect to the clients list with a success message
-            return redirect()->route('clients.list')->with('success', 'Client updated successfully!');
+            return Redirect::back()->with('success', 'Client updated successfully!');
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }

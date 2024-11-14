@@ -1,13 +1,10 @@
 <x-app-layout>
-
-
-
     <div>
         <!-- Breadcrumbs -->
         <x-breadcrumbs :breadcrumbs="[
-    ['label' => 'Dashboard', 'url' => route('dashboard')],
-    ['label' => 'Branches List']
-]" />
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Branches List']
+        ]" />
 
         <!-- ./Breadcrumbs -->
 
@@ -77,15 +74,20 @@
                     Add Branch
                 </button>
             </div>
-
-
-
         </div>
         <!-- ./Controls Section -->
 
 
+        <div class="bg-white rounded-md shadow-md p-2 flex justify-start gap-2 my-2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="">
+                <path d="M12 17V11" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                <circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="#1C274C" />
+                <path d="M7 3.33782 C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            User with this icon is a new user and has not logged in yet. Please inform the user to login and change the password.
+        </div>
         <!-- Table Section -->
-        <div class="mt-5 overflow-x-auto bg-white shadow rounded-lg">
+        <div class=" overflow-x-auto bg-white shadow rounded-lg">
             <div class="max-h-96 overflow-y-auto custom-scrollbar">
                 <table class="AgentTable CityMobileTable w-full">
                     <thead class="sticky top-0">
@@ -123,18 +125,22 @@
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
                         @foreach ($branches as $branch)
-                        <tr class="relative">
+                        <tr class="">
                             <td class="px-4 py-2">
                                 <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                             </td>
                             <td class="px-4 py-2">{{ $branch->name }}</td>
                             <td class="px-4 py-2">{{ $branch->email }}</td>
-                            <td class="px-4 py-2 relative">{{ $branch->phone }}</td>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute z-50 right-10 top-10">
-                                <path d="M12 17V11" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                <circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="#1C274C" />
-                                <path d="M7 3.33782 C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                            </svg>
+                            <td class="px-4 py-2 inline-flex justify-between w-full">
+                                {{ $branch->phone }}
+                                @if($branch->user->first_login)
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="">
+                                    <path d="M12 17V11" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                    <circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="#1C274C" />
+                                    <path d="M7 3.33782 C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                                @endif
+                            </td>
                         </tr>
 
 
@@ -154,7 +160,7 @@
         <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
 
             <!-- Close Button (Top Right) -->
-            <button onclick="closeaddBranchModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+            <button onclick="closeAddBranchModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
                     stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -243,7 +249,7 @@
             document.getElementById("addBranchModal").classList.remove("hidden");
         }
 
-        function closeaddBranchModal() {
+        function closeAddBranchModal() {
             document.getElementById("addBranchModal").classList.add("hidden");
         }
 

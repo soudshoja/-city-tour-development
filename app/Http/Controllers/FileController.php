@@ -13,6 +13,19 @@ class FileController extends Controller
         $this->fileProcessor = $fileProcessor;
     }
 
+    public function saveFile($file)
+    {
+        try {
+            // Save the file to the storage disk
+            $filePath = $file->store('files');
+
+            return $filePath;
+            // Process the file
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function processFile($filePath)
     {
         try {

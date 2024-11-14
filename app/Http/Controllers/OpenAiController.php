@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\OpenAiRequest;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Client;
 use App\Models\Task;
@@ -47,6 +48,100 @@ class OpenAiController extends Controller
         $response =  $this->postRequest($url, $header, json_encode($data));
 
         return response()->json($response);
+    }
+
+    public function chatCompletion(array $message)
+    {
+        $url = config('services.open-ai.url') . '/chat/completions';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+        $data = [
+            'model' => 'gpt-4o-mini',
+            'messages' => $message,
+        ];
+        $response =  $this->postRequest($url, $header, json_encode($data));
+
+        logger('chat completion response: ', $response);
+        return response()->json($response);
+    }
+
+    public function chatCompletionImage($prompt, $image)
+    {
+        $url = config('services.open-ai.url') . '/chat/completions';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+        $data = [
+            'model' => 'gpt-4o-mini',
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => $prompt,
+                        ],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => 'C:\Users\User\Documents\GitHub\city-tour\storage\app\public\passports\passportClient.jpeg',
+                            ]
+                        ],
+                    ]
+                ],
+            ],
+        ];
+
+        $response =  $this->postRequest($url, $header, json_encode($data));
+        logger('chat completion image response: ', $response);
+        return response()->json($response);
+    }
+
+    public function extractPassport($content){
+        $prompt = "
+        You are an assistant for a travel agency. You need to extract passport details from the uploaded content. The passport details should include the following fields:
+        
+        - `passport_no`: Passport number or Passport No.
+        - `civil_no`: Civil number or Civil No.
+        - `name`: Full name as per the passport.
+        - `nationality`: Nationality
+        - `date_of_birth`: Date of birth
+        - `date_of_issue`: Date of issue
+        - `date_of_expiry`: Date of expiry
+        - `place_of_birth`: Place of birth
+        - `place_of_issue`: Place of issue
+        ";
+
+        $response = $this->chatCompletion([
+            [
+                'role' => 'user',
+                'content' => $prompt,
+            ],
+            [
+                'role' => 'user',
+                'content' => $content,
+            ],
+        ]);
+                
+        if(isset($response['choices'][0]['message']['content'])){
+            $message = $response['choices'][0]['message']['content'];
+
+            return [
+                'status' => 'success',
+                'message' => 'Data extracted successfully',
+            ];
+        }else{
+            $message = $response;
+
+            return [
+                'status' => 'error',
+                'message' => 'Data extraction failed',
+            ];
+        }
+
     }
 
     public function extractFileData($content)

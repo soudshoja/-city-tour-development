@@ -22,8 +22,10 @@
                 </select>
                 @endcan
                 <textarea name="address" id="address" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" placeholder="Address">{{ $client->address }}</textarea>
-                <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" name="passport_no" id="passport_no" value="{{ $client->passport_file ?? 'N\A'}}" disabled>
+                <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" name="passport_no" id="passport_no" value="{{ $client->passport_no ?? 'N\A'}}" disabled>
+                <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" name="civil_no" id="civil_no" value="{{ $client->civil_no ?? 'N\A'}}" disabled>
                 <div
+                    id="file-container"
                     class="border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
                     ondrop="dropHandler(event);"
                     ondragover="dragOverHandler(event);">
@@ -53,6 +55,13 @@
         const fileName = document.getElementById('file-name');
         file.addEventListener('change', (e) => {
             fileName.textContent = e.target.files[0].name;
+            file.innerHTML = '';
+            let img = document.createElement('img');
+            img.src = URL.createObjectURL(e.target.files[0]);
+            console.log(img.src);  
+            img.width = 100;
+            img.height = 100;
+            file.appendChild(img);
         });
 
         dropHandler = (e) => {

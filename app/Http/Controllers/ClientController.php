@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Alimranahmed\LaraOCR\Facades\OCR;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Agent;
@@ -15,9 +16,11 @@ use App\Models\Role;
 use ConvertApi\ConvertApi;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use PhpParser\Node\Expr\Throw_;
+use thiagoalessio\TesseractOCR\TesseractOCR;
 
 class ClientController extends Controller
 {
@@ -121,93 +124,74 @@ class ClientController extends Controller
             'email' => 'email|unique:clients,email,' . $id,
             'status' => 'nullable',   // Optional status field
             'phone' => 'string|max:15',    // Optional phone field
-            'file' => 'nullable|mimes:pdf,jpeg',    // Optional passport file field
+            'file' => 'nullable|mimes:pdf,jpeg,jpg,png',    // Optional passport file field
         ]);
 
         // Find the client and update it
         try {
-            
-            if ($request->has('name') && $request->name !== $client->name) {
-                $client->name = $request->get('name');
-            }
-
-            if ($request->has('email') && $request->email !== $client->email) {
-                $client->email = $request->get('email');
-            }
-
-            if ($request->has('status') && $request->status !== $client->status) {
-                $client->status = $request->get('status');
-            }
-
-            if ($request->has('phone') && $request->phone !== $client->phone) {
-                $client->phone = $request->get('phone');
-            }
-
-            if ($request->has('address') && $request->address !== $client->address) {
-                $client->address = $request->get('address');
-            }
-
-            if ($request->has('file') && $request->file !== null) {
+            $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
+            if ($request->hasFile('file')) {
                 $file = $request->file('file');
+                if($file->getClientOriginalExtension() == 'pdf') {
 
-                $fileName = $file->getClientOriginalName();
-                if (Storage::exists('passports/' . $fileName)) {
-                    // ConvertApi::setApiCredentials(config('services.convert-api.secret'));
-                    
-                    $filePath = 'passports/' . $fileName;                 
-                    
-                } else {
-                    // $filePath = $file->store('passports');
-                    $filePath = $file->storeAs('passports', $fileName);
+                    $file = $this->convertPdfToImage($file);
                 }
+                $ocr = new TesseractOCR();
+                $ocr->image($file->getRealPath());
+                $text = $ocr->run();
+                dd($text);
+                // $fileName = $file->getClientOriginalName();
+                // if (Storage::exists('passports/' . $fileName)) {
+                //     $file = File::get('passports/' . $fileName);
+                // } else {
+                //     // $filePath = $file->store('passports');
+                //     $filePath = $file->storeAs('passports', $fileName);
+                // }
+                // $path = $request->file('file')->store('public/passports');
 
-                
-                $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
-                $txtFileName = $fileNameWithoutExtension . '.txt';
-                $txtFilePath = 'passports/' . $txtFileName;
-                Storage::exists($txtFilePath) ? $txtFile =  $txtFilePath : $txtFile = null;
-                if(isset($txtFile))
-                {
-                    $txtFile = storage_path('app/public/' . $txtFile);
-                    $txtFileContent = file_get_contents($txtFile);
-                } else {
-                    ConvertApi::setApiCredentials(config('services.convert-api.secret'));
-
-                    if($file->getClientOriginalExtension() == 'pdf') {
-                        $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $filePath)], 'pdf');
-                    } elseif($file->getClientOriginalExtension() == 'jpeg') {
-                        $result = ConvertApi::convert('pdf', ['File' => storage_path('app/public/' . $filePath)], 'jpeg');
-
-                        $saveFiles = $result->saveFiles(storage_path('app/public/passports'));
-
-                        $pdfFilePath = $saveFiles[0];
-
-                        $result = ConvertApi::convert('txt', ['File' => $pdfFilePath], 'pdf');
-                        $txtFile = $result->saveFiles(storage_path('app/public/passports'));
-                    } else {
-                        throw new Exception('Invalid file format');
-                    }
-                }
-                $txtFileContent = file_get_contents($txtFile);
                 try {
                     $openai = new OpenAiController();
-                    $openai->extractPassport($txtFileContent);
+                    $response =  $openai->extractPassport($text);
+                    $responseData = json_decode($response['data'], true);
+                    
+                    $this->updateClientPassport($client, $responseData);
                 } catch (Exception $e) {
                     return redirect()->back()->withInput()->with('error', $e->getMessage());
                 }
-                
-                $client->passport_file = $filePath;
             }
-            
-            $client->save();
-
             // Redirect to the clients list with a success message
-            return Redirect::back()->with('success', 'Client updated successfully!');
+            return Redirect::back()->with(
+            [
+                'error' => 'test',
+                'success' => 'Client updated successfully!',
+            ]
+            );
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
 
+    public function updateClientPassport($client, $data)
+    {
+        $client->passport_no = $data['passport_no'];
+        $client->civil_no = $data['civil_no'];
+        // $client->passport_expiry = $data['passport_expiry'];
+        // $client->passport_country = $data['passport_country'];
+        $client->save();
+    }
+
+    public function convertPdfToImage($file)
+    {
+        $pdf = new ConvertApi();
+        $pdf->setSecret('5Z2Z2Q1Z2Q1Z2Q1Z');
+        $pdf->setFile($file->getRealPath());
+        $pdf->to('jpg');
+        $pdf->save('storage/app/public/passports');
+        $pdf->download('passport.jpg');
+        $pdf->delete();
+        $file = new File('storage/app/public/passports/passport.jpg');
+        return $file;
+    }
     public function upload()
     {
         $clients = Client::with('agent')->get();

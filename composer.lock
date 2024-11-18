@@ -4,8 +4,66 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f12c9032fdd403d4e66b2388a361fb5e",
+    "content-hash": "94c864b5c7b822a2329a387e24479fcd",
     "packages": [
+        {
+            "name": "alimranahmed/laraocr",
+            "version": "1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/alimranahmed/LaraOCR.git",
+                "reference": "0ee3fea72d36f1ecba912dfb92a7864ca2a8ed0d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/alimranahmed/LaraOCR/zipball/0ee3fea72d36f1ecba912dfb92a7864ca2a8ed0d",
+                "reference": "0ee3fea72d36f1ecba912dfb92a7864ca2a8ed0d",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.5"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Alimranahmed\\LaraOCR\\LaraOCRServiceProvider"
+                    ],
+                    "aliases": {
+                        "OCR": "Alimranahmed\\LaraOCR\\Facades\\OCR"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Alimranahmed\\LaraOCR\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Al Imran Ahmed",
+                    "email": "al.imran.cse@gmail.com"
+                }
+            ],
+            "description": "Laravel Optical Character Reader(OCR) package using different OCR engines like Tesseract",
+            "keywords": [
+                "OCR",
+                "data",
+                "image"
+            ],
+            "support": {
+                "issues": "https://github.com/alimranahmed/LaraOCR/issues",
+                "source": "https://github.com/alimranahmed/LaraOCR/tree/1.2.0"
+            },
+            "time": "2021-09-11T21:24:47+00:00"
+        },
         {
             "name": "bacon/bacon-qr-code",
             "version": "v3.0.0",
@@ -7053,6 +7111,55 @@
                 }
             ],
             "time": "2024-07-26T12:41:01+00:00"
+        },
+        {
+            "name": "thiagoalessio/tesseract_ocr",
+            "version": "2.13.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thiagoalessio/tesseract-ocr-for-php.git",
+                "reference": "232a8cb9d571992f9bd1e263f2f6909cf6c173a1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thiagoalessio/tesseract-ocr-for-php/zipball/232a8cb9d571992f9bd1e263f2f6909cf6c173a1",
+                "reference": "232a8cb9d571992f9bd1e263f2f6909cf6c173a1",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^5.3 || ^7.0 || ^8.0"
+            },
+            "require-dev": {
+                "phpunit/php-code-coverage": "^2.2.4 || ^9.0.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "thiagoalessio\\TesseractOCR\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "thiagoalessio",
+                    "email": "thiagoalessio@me.com"
+                }
+            ],
+            "description": "A wrapper to work with Tesseract OCR inside PHP.",
+            "keywords": [
+                "OCR",
+                "Tesseract",
+                "text recognition"
+            ],
+            "support": {
+                "irc": "irc://irc.freenode.net/tesseract-ocr-for-php",
+                "issues": "https://github.com/thiagoalessio/tesseract-ocr-for-php/issues",
+                "source": "https://github.com/thiagoalessio/tesseract-ocr-for-php"
+            },
+            "time": "2023-10-05T21:14:48+00:00"
         },
         {
             "name": "tijsverkoyen/css-to-inline-styles",

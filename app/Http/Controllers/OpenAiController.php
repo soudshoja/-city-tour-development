@@ -64,7 +64,7 @@ class OpenAiController extends Controller
         $response =  $this->postRequest($url, $header, json_encode($data));
 
         logger('chat completion response: ', $response);
-        return response()->json($response);
+        return $response;
     }
 
     public function chatCompletionImage($prompt, $image)
@@ -102,7 +102,7 @@ class OpenAiController extends Controller
 
     public function extractPassport($content){
         $prompt = "
-        You are an assistant for a travel agency. You need to extract passport details from the uploaded content. The passport details should include the following fields:
+        You are an assistant for a travel agency. You need to extract passport details from the uploaded content. This passport is extracted by tesseract-OCR. The details you need might be nearby the words or sentences. The passport details should include the following fields:
         
         - `passport_no`: Passport number or Passport No.
         - `civil_no`: Civil number or Civil No.
@@ -113,6 +113,8 @@ class OpenAiController extends Controller
         - `date_of_expiry`: Date of expiry
         - `place_of_birth`: Place of birth
         - `place_of_issue`: Place of issue
+
+        only passed me the data extracted from in JSON format.
         ";
 
         $response = $this->chatCompletion([
@@ -125,13 +127,15 @@ class OpenAiController extends Controller
                 'content' => $content,
             ],
         ]);
-                
+        
         if(isset($response['choices'][0]['message']['content'])){
             $message = $response['choices'][0]['message']['content'];
-
+            $message = $this->cleanJsonResponse($message);
+            
             return [
                 'status' => 'success',
                 'message' => 'Data extracted successfully',
+                'data' => $message,
             ];
         }else{
             $message = $response;

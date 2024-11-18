@@ -6,6 +6,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "alimranahmed/laraocr": "^1.2",
         "bacon/bacon-qr-code": "^3.0",
         "convertapi/convertapi-php": "^3.0",
         "google/cloud-vision": "^1.10",
@@ -14,7 +15,8 @@
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "pragmarx/google2fa-laravel": "^2.2",
-        "pragmarx/google2fa-qrcode": "^3.0"
+        "pragmarx/google2fa-qrcode": "^3.0",
+        "thiagoalessio/tesseract_ocr": "^2.13"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

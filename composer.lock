@@ -4,66 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "94c864b5c7b822a2329a387e24479fcd",
+    "content-hash": "1eb9fde9d06ed33adebbf5d0b02f34ba",
     "packages": [
-        {
-            "name": "alimranahmed/laraocr",
-            "version": "1.2.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/alimranahmed/LaraOCR.git",
-                "reference": "0ee3fea72d36f1ecba912dfb92a7864ca2a8ed0d"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/alimranahmed/LaraOCR/zipball/0ee3fea72d36f1ecba912dfb92a7864ca2a8ed0d",
-                "reference": "0ee3fea72d36f1ecba912dfb92a7864ca2a8ed0d",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^7.0|^8.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^9.5"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Alimranahmed\\LaraOCR\\LaraOCRServiceProvider"
-                    ],
-                    "aliases": {
-                        "OCR": "Alimranahmed\\LaraOCR\\Facades\\OCR"
-                    }
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Alimranahmed\\LaraOCR\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "Apache-2.0"
-            ],
-            "authors": [
-                {
-                    "name": "Al Imran Ahmed",
-                    "email": "al.imran.cse@gmail.com"
-                }
-            ],
-            "description": "Laravel Optical Character Reader(OCR) package using different OCR engines like Tesseract",
-            "keywords": [
-                "OCR",
-                "data",
-                "image"
-            ],
-            "support": {
-                "issues": "https://github.com/alimranahmed/LaraOCR/issues",
-                "source": "https://github.com/alimranahmed/LaraOCR/tree/1.2.0"
-            },
-            "time": "2021-09-11T21:24:47+00:00"
-        },
         {
             "name": "bacon/bacon-qr-code",
             "version": "v3.0.0",

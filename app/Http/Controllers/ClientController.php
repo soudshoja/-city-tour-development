@@ -132,29 +132,23 @@ class ClientController extends Controller
             $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
-                if($file->getClientOriginalExtension() == 'pdf') {
 
+                if($file->getClientOriginalExtension() == 'pdf') {
                     $file = $this->convertPdfToImage($file);
                 }
+
                 $ocr = new TesseractOCR();
                 $ocr->image($file->getRealPath());
                 $text = $ocr->run();
-                dd($text);
-                // $fileName = $file->getClientOriginalName();
-                // if (Storage::exists('passports/' . $fileName)) {
-                //     $file = File::get('passports/' . $fileName);
-                // } else {
-                //     // $filePath = $file->store('passports');
-                //     $filePath = $file->storeAs('passports', $fileName);
-                // }
-                // $path = $request->file('file')->store('public/passports');
 
                 try {
+
                     $openai = new OpenAiController();
                     $response =  $openai->extractPassport($text);
                     $responseData = json_decode($response['data'], true);
                     
                     $this->updateClientPassport($client, $responseData);
+                    
                 } catch (Exception $e) {
                     return redirect()->back()->withInput()->with('error', $e->getMessage());
                 }
@@ -182,14 +176,6 @@ class ClientController extends Controller
 
     public function convertPdfToImage($file)
     {
-        $pdf = new ConvertApi();
-        $pdf->setSecret('5Z2Z2Q1Z2Q1Z2Q1Z');
-        $pdf->setFile($file->getRealPath());
-        $pdf->to('jpg');
-        $pdf->save('storage/app/public/passports');
-        $pdf->download('passport.jpg');
-        $pdf->delete();
-        $file = new File('storage/app/public/passports/passport.jpg');
         return $file;
     }
     public function upload()

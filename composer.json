@@ -6,7 +6,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "alimranahmed/laraocr": "^1.2",
         "bacon/bacon-qr-code": "^3.0",
         "convertapi/convertapi-php": "^3.0",
         "google/cloud-vision": "^1.10",

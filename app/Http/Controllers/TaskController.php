@@ -138,10 +138,10 @@ class TaskController extends Controller
 
         if ($file) {
 
-            $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $file)], 'pdf');
+            $result = ConvertApi::convert('txt', ['File' => storage_path('app/' . $file)], 'pdf');
 
             Log::info('File converted successfully: ', $result->getFiles());
-            $response = $result->saveFiles(storage_path('app/public/tasks'));
+            $response = $result->saveFiles(storage_path('app/tasks'));
             $file = $response[0];
 
             $contents = file_get_contents($file);

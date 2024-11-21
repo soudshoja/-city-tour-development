@@ -33,9 +33,9 @@ class Task extends Model
     }
 
 
-    public function invoices()
+    public function invoicedetail()
     {
-        return $this->belongsToMany(Invoice::class);
+        return $this->hasOne(InvoiceDetail::class, 'task_id');
     }
 
     public function agent()

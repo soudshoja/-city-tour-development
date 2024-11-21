@@ -10,7 +10,7 @@ use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\Company;
 use App\Models\GeneralLedger;
-use App\Models\InvoiceDetails;
+use App\Models\InvoiceDetail;
 use App\Models\Task;
 use Exception;
 use Illuminate\Http\Request;
@@ -114,6 +114,7 @@ class InvoiceController extends Controller
             'suppliers', 
             'invoiceNumber', 
             'selectedTasks', 
+            'selectedAgent',
             'selectedClient'
         ));
     }
@@ -201,6 +202,19 @@ class InvoiceController extends Controller
                         $client = Client::where('id', operator: $task['client_id'])->first();
                         $agent = Agent::where('id', operator: $task['agent_id'])->first();
                         // Create a transaction record first
+
+                        $invoiceDetail =  InvoiceDetail::create([
+                            'invoice_id' => $invoice->id,
+                            'invoice_number' => $invoiceNumber,
+                            'task_id' => $task['id'],
+                            'task_description' => $task['description'],
+                            'task_remark' => $task['remark'],
+                            'task_price' =>  $task['invprice'],
+                            'supplier_price' => $selectedtask->total,
+                            'markup_price' => $task['invprice'] - $selectedtask->total,
+                            'paid' => false,
+                        ]);
+
                         $transaction = Transaction::create([
                             'entity_id' => $companyId,
                             'entity_type' => 'company',
@@ -231,6 +245,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                             'account_id' =>  $PayablechildAccountId,
                             'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be made to: ' . $supplier->name,
                             'debit' => $selectedtask->total,
@@ -261,6 +276,7 @@ class InvoiceController extends Controller
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
                             'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $ReceivablechildAccountId,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be received from: ' . $client->name,
@@ -295,6 +311,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                             'account_id' => $IncomechildAccountId,
                             'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Price markup by Agent: ' . $agent->name,
                             'debit' => 0,
@@ -317,18 +334,10 @@ class InvoiceController extends Controller
                             $parentIncomeAccount->actual_balance = $totalBalance; // Update the parent's balance
                             $parentIncomeAccount->save(); // Save the parent account
                         }
+                       
+                        $selectedtask->status = 'Assigned';
+                        $selectedtask->save();
 
-                        InvoiceDetails::create([
-                            'invoice_id' => $invoice->id,
-                            'invoice_number' => $invoiceNumber,
-                            'task_id' => $task['id'],
-                            'task_description' => $task['description'],
-                            'task_remark' => $task['remark'],
-                            'task_price' =>  $task['invprice'],
-                            'supplier_price' => $selectedtask->total,
-                            'markup_price' => $task['invprice'] - $selectedtask->total,
-                            'paid' => false,
-                        ]);
                     } catch (Exception $e) {
                         Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                         return response()->json('Failed to create InvoiceDetails for task: ' . $task['description']);
@@ -443,7 +452,7 @@ class InvoiceController extends Controller
 
 
         // Fetch the invoice details as a list
-        $invoiceDetails = InvoiceDetails::where('invoice_number', $invoiceNumber)->get();
+        $invoiceDetails = InvoiceDetail::where('invoice_number', $invoiceNumber)->get();
         // Retrieve the transaction related to the invoice
         $transaction = Transaction::where('invoice_id', $invoice->id)->first();
 

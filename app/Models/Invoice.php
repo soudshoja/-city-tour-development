@@ -42,11 +42,6 @@ class Invoice extends Model
         return $this->belongsTo(Agent::class, 'agent_id');
     }
 
-    public function tasks()
-    {
-        return $this->belongsToMany(Task::class);
-    }
-
     public function payment()
     {
         return $this->hasMany(Payment::class);
@@ -54,7 +49,7 @@ class Invoice extends Model
 
     public function invoiceDetails()
     {
-        return $this->hasMany(InvoiceDetails::class);
+        return $this->hasMany(InvoiceDetail::class);
     }
 
 

@@ -14,6 +14,7 @@ class GeneralLedger extends Model
         'company_id',
         'account_id',
         'invoice_id',
+        'invoiceDetail_id',
         'transaction_date',
         'description',
         'debit',
@@ -35,6 +36,12 @@ class GeneralLedger extends Model
     {
         return $this->belongsTo(Invoice::class,'invoice_id');
     }
+
+    public function invoiceDetail()
+    {
+        return $this->belongsTo(InvoiceDetail::class,'invoiceDetail_id');
+    }
+
 
     public function transaction()
     {

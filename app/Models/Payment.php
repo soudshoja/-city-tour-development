@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
@@ -39,8 +40,8 @@ class Payment extends Model
         return $this->belongsTo(Agent::class, 'agent_id');
     }
 
-    public function transaction()
+    public function transactions(): MorphMany
     {
-        return $this->belongsTo(Transaction::class, 'transaction_id');
+        return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');
     }
 }

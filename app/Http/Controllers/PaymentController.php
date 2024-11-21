@@ -8,6 +8,9 @@ use App\Models\InvoiceDetails;
 use App\Models\GeneralLedger;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Sequence;
+use App\Models\Supplier;
+use App\Models\Client;
+use App\Models\Agent;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
@@ -118,16 +121,6 @@ class PaymentController extends Controller
         $voucherSequence->save();
 
         $invoice = $data['invoice'];
-
-        $transaction = Transaction::create([
-            'invoice_id' => $invoice->id,
-            'company_id'  =>  $invoice->agent->company->id,
-            'client_id' =>  $invoice->client->id,
-            'transaction_date' => Carbon::now(),
-            'amount' =>  $data['total_amount'],
-            'status'  => 'completed',
-            'description' => 'pay to Invoice:' . $invoice->invoice_number,
-        ]);
 
 
         $payment = Payment::create([
@@ -263,15 +256,19 @@ class PaymentController extends Controller
                 try {
 
                     $selectedtask = Task::where('id', $invoicedetail['task_id'])->first();
+                    $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
+                    $client = Client::where('id', operator: $selectedtask->client_id)->first();
+                    $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
                     // Create a transaction record first
                     $transaction = Transaction::create([
-                        'invoice_id' => $invoice->id,
-                        'company_id'  =>  $invoice->agent->company->id,
-                        'client_id' =>  $invoice->client->id,
-                        'transaction_date' => Carbon::now(),
-                        'amount' => $invoicedetail['task_price'],
-                        'status'  => 'completed',
-                        'description' => 'pay to Invoice:' . $invoiceNumber,
+                        'entity_id' =>  $invoice->agent->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount'=> $invoicedetail['task_price'],
+                        'date'=> Carbon::now(),
+                        'description'=> 'pay to Invoice:' . $invoiceNumber,
+                        'invoice_id'=> $invoice->id,
+                        'reference_type' =>'Invoice', 
                     ]);
 
                     $payment = Payment::find($paymentId);
@@ -279,19 +276,21 @@ class PaymentController extends Controller
                     $payment->account_id = $filteredReceivableChildAccount->id;
                     $payment->save();
 
-                    // Update the accounts receivable entry
-                    GeneralLedger::create([
-                        'transaction_id' => $payment->id,
-                        'company_id' => $invoice->agent->company->id,
-                        'account_id' =>  $filteredReceivableChildAccount->id,
-                        'invoice_id' =>  $invoice->id,
-                        'voucher_number' => $payment->voucher_number,
-                        'transaction_date' => Carbon::now(),
-                        'description' => ' Client:'.$filteredReceivableChildAccount->name,
-                        'debit' => 0,
-                        'credit' => $invoicedetail['task_price'],
-                        'balance' => $filteredReceivableChildAccount->actual_balance - $invoicedetail['task_price'],
-                    ]);
+                    // // Update the accounts receivable entry
+                    // GeneralLedger::create([
+                    //     'transaction_id' => $transaction->id,
+                    //     'company_id' => $invoice->agent->company->id,
+                    //     'account_id' =>  $filteredReceivableChildAccount->id,
+                    //     'invoice_id' =>  $invoice->id,
+                    //     'transaction_date' => Carbon::now(),
+                    //     'description' => 'Payment received from: ' . $client->name,
+                    //     'debit' => $invoicedetail['task_price'],
+                    //     'credit' =>0,
+                    //     'balance' => $invoicedetail['task_price'],
+                    //     'name' =>  $client->name,
+                    //     'type' => 'receivable',
+                    //     'voucher_number' => $payment->voucher_number,
+                    // ]);
 
                     // Update the receivable account balance
                     $filteredReceivableChildAccount->actual_balance -= $invoicedetail['task_price'];
@@ -301,16 +300,18 @@ class PaymentController extends Controller
                     // Update Cash/Bank Account
                     if ($bankAccount) {
                         GeneralLedger::create([
-                            'transaction_id' => $payment->id,
+                            'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->company->id,
                             'account_id' =>  $bankAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
-                            'description' => ' For:'.$bankAccount->name,
+                            'description' => 'Payment transfered to: ' . $bankAccount->name,
                             'debit' => $invoicedetail['task_price'],
-                            'credit' => 0,
-                            'balance' => $bankAccount->actual_balance += $invoicedetail['task_price'],
+                            'credit' =>0,
+                            'balance' => $invoicedetail['task_price'],
+                            'name' =>  $bankAccount->name,
+                            'type' => 'bank',
+                            'voucher_number' => $payment->voucher_number,
                         ]);
 
                         $bankAccount->actual_balance += $invoicedetail['task_price']; // Add to cash/bank account
@@ -325,10 +326,12 @@ class PaymentController extends Controller
                             'invoice_id' =>  $invoice->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
-                            'description' => ' For:'. $tapAccount->name,
-                            'debit' => $invoicedetail['task_price'],
-                            'credit' => 0,
+                            'description' => 'Payment Charged For:'. $tapAccount->name,
+                            'debit' => 0,
+                            'credit' => 0.35,
                             'balance' => $tapAccount->actual_balance += 0.35,
+                            'name' =>  $tapAccount->name,
+                            'type' => 'charges',
                         ]);
 
                         $tapAccount->actual_balance += 0.35; // Add to expenses account

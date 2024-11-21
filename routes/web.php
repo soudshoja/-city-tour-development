@@ -10,7 +10,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\ItemController;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
@@ -118,6 +118,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/submit-voucher', [CoaController::class, 'submitVoucher']);
     Route::get('/coa/transactions', [CoaController::class, 'transaction'])->name('coa.transaction');
 
+//    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
+    Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
+
+
     // Branches routes
     Route::group([
         'as' => 'branches.',
@@ -163,7 +167,7 @@ Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
-
+Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 
 // PAYMENT
 Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');

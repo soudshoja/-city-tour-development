@@ -20,6 +20,8 @@ class GeneralLedger extends Model
         'credit',
         'balance',
         'voucher_number',
+        'name',
+        'type',
     ];
 
     // Define the relationship to the Invoice model

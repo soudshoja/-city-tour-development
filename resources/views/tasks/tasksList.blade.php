@@ -47,6 +47,11 @@
 
             <!-- right side -->
             <div class="flex items-center gap-3 space-y-3 md:space-y-0 md:space-x-2">
+
+            <button id="createInvoiceBtn" class="badge bg-success shadow-md dark:group-hover:bg-transparent whitespace-nowrap">
+                Create Invoice for Selected Tasks
+            </button>
+
                 <!-- Search Box -->
                 <div class="mt07 relative flex items-center h-12">
                     <input id="searchInput" type="text" placeholder="Search"
@@ -160,7 +165,7 @@
                         @foreach($tasks as $task)
                         <tr>
                             <td class="px-4 py-2">
-                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
+                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}">
                             </td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
                                 data-field="status">
@@ -203,7 +208,7 @@
                             </td>
                             <td class="px-4 py-2">
                                 <!-- payment link -->
-                                <a href="{{ route('invoice.create', ['task_id' => $task->id]) }}">
+                                <a href="{{ route('invoice.create', ['task_ids' => $task->id]) }}">
                                     <span
                                         class="badge bg-success shadow-md dark:group-hover:bg-transparent whitespace-nowrap">Create
                                         Invoice
@@ -223,4 +228,52 @@
     <!-- Task Modal -->
     @include('tasks.singleTask')
 
+    <script>
+        const selectAllCheckbox = document.getElementById("selectAll");
+    const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+    const createInvoiceBtn = document.getElementById("createInvoiceBtn");
+
+  // Select/Deselect all checkboxes
+  selectAllCheckbox.addEventListener("change", function () {
+        rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+        toggleCreateInvoiceButton(); // Update button state
+    });
+
+    // Toggle "Create Invoice" button based on selected checkboxes
+    const toggleCreateInvoiceButton = () => {
+        const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
+        createInvoiceBtn.disabled = !isAnySelected;
+    };
+
+    // Add change event to each row checkbox
+    rowCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", function () {
+            // Update the "Select All" checkbox state
+            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+
+            // Update button state
+            toggleCreateInvoiceButton();
+        });
+    });
+
+    // Initialize button state on page load
+    toggleCreateInvoiceButton();
+
+    // Gather selected task IDs and submit them
+    createInvoiceBtn.addEventListener("click", function () {
+        const selectedTaskIds = Array.from(rowCheckboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+
+        if (selectedTaskIds.length === 0) {
+            alert("No tasks selected!");
+            return;
+        }
+
+        // Example: Redirect to the batch invoice creation route
+        const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
+        window.location.href = url;
+    });
+    </script>
 </x-app-layout>

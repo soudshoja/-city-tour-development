@@ -81,19 +81,19 @@
                                 <div class="mt-4 flex items-center">
                                     <label for="receiverName" class="mb-0 w-1/3 mr-2 ">Name</label>
                                     <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
-                                      placeholder="Enter Name" />
+                                      placeholder="Enter Name"  disabled/>
                                 </div>
                                 <div class="mt-4 flex items-center">
                                     <label for="receiverEmail" class="mb-0 w-1/3 mr-2 ">Email</label>
                                     <input id="receiverEmail" type="email" name="receiverEmail"
                                         class="form-input flex-1"
-                                        placeholder="Enter Email" />
+                                        placeholder="Enter Email" disabled/>
                                 </div>
 
                                 <div class="mt-4 flex items-center">
                                     <label for="receiverPhone" class="mb-0 w-1/3 mr-2 ">Phone Number</label>
                                     <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
-                                        placeholder="Enter Phone Number" />
+                                        placeholder="Enter Phone Number" disabled/>
                                 </div>
                             </div>
                             <!-- ./client details -->
@@ -184,19 +184,15 @@
                         </div>
                         <div class="mt-4">
                             <div>
-                                <label for="shipping-charge">Shipping Charge($) </label>
-                                <input id="shipping-charge" type="number" name="shipping-charge" class="form-input"
-                                     placeholder="Shipping Charge" />
+                                <label for="agentName">Agent Name</label>
+                                <input id="agentName" type="text" name="agentName" class="form-input"
+                                     placeholder="Agent Name" disabled />
                             </div>
                         </div>
                         <div class="mt-4">
-                            <label for="payment-method">Accept Payment Via</label>
-                            <select id="payment-method" name="payment-method" class="form-select">
-                                <option value="">Select Payment</option>
-                                <option value="bank">Bank Account</option>
-                                <option value="paypal">Paypal</option>
-                                <option value="upi">UPI Transfer</option>
-                            </select>
+                            <label for="agentEmail">Agent Email</label>
+                            <input id="agentEmail" type="text" name="agentEmail" class="form-input"
+                            placeholder="Agent Email"  disabled/>
                         </div>
                     </div>
                     <div class="panel">
@@ -449,7 +445,7 @@
             let tasks = @json($tasks);
             let clients = @json($clients);
             let selectedClient = @json($selectedClient);
-
+            let selectedAgent = @json($selectedAgent);
 
             document.getElementById("openClientModalButton").onclick = openClientModal;
             document.getElementById("closeClientModalButton").onclick = closeClientModal;
@@ -636,7 +632,7 @@
             renderClientList(clients);
             renderTaskList(tasks);
 
-            function updateFormFields(client) {
+            function updateFormFields(client, agent) {
     // Update hidden fields
                 document.getElementById('receiverId').value = client.id;
                 
@@ -644,10 +640,13 @@
                 document.getElementById('receiverName').value = client.name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
+
+                document.getElementById('agentName').value = agent.name;
+                document.getElementById('agentEmail').value = agent.email;
             }
 
             // Call the function with the selectedClient object
-            updateFormFields(selectedClient);
+            updateFormFields(selectedClient, selectedAgent);
 
                         
                         // Handle Tab Switching

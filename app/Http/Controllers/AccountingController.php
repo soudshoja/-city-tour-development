@@ -130,6 +130,8 @@ class AccountingController extends Controller
             ->first();
 
             $accounts = Account::all(['id', 'name']);
+
+            $generalLedgers = GeneralLedger::where('company_id', $company->id)->get();
         // Process summary for branches, agents, clients, and invoices
         $companySummary = $company->branches->map(function ($branch) {
             $branch->total_credits = 0;
@@ -172,7 +174,7 @@ class AccountingController extends Controller
             return $branch;
         });
     
-        return view('accounting.summary', compact('company', 'accounts', 'companySummary'));
+        return view('accounting.summary', compact('company', 'accounts', 'generalLedgers', 'companySummary'));
     }
     
     

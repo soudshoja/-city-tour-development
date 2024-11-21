@@ -23,7 +23,7 @@ use App\Models\InvoiceSequence;
 use Illuminate\Support\Facades\Log;
 use App\Models\Invoice;
 use App\Models\Transaction;
-use App\Models\InvoiceDetails;
+use App\Models\InvoiceDetail;
 use Exception;
 
 class MobileController extends Controller
@@ -195,7 +195,7 @@ class MobileController extends Controller
                 foreach ($tasks as $task) {
                     try {
                         // Try to create each invoice detail
-                        InvoiceDetails::create([
+                        InvoiceDetail::create([
                             'invoice_id' => $invoice->id,
                             'invoice_number' => $invoiceNumber,
                             'task_id' => $task['taskId'],

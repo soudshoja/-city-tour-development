@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
-use App\Models\InvoiceDetails;
+use App\Models\InvoiceDetail;
 use App\Models\GeneralLedger;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Sequence;
@@ -37,7 +37,7 @@ class PaymentController extends Controller
 
 
         // Fetch the invoice details as a list
-        $invoiceDetails = InvoiceDetails::where('invoice_number', $invoiceNumber)->get();
+        $invoiceDetails = InvoiceDetail::where('invoice_number', $invoiceNumber)->get();
         // Retrieve the transaction related to the invoice
         $transaction = Transaction::where('invoice_id', $invoice->id)->first();
 
@@ -214,7 +214,7 @@ class PaymentController extends Controller
         // Fetch the invoice to get payment details
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
 
-        $invoiceDetails = InvoiceDetails::with('task')
+        $invoiceDetails = InvoiceDetail::with('task')
             ->where('invoice_number', $invoiceNumber)
             ->get();
 
@@ -304,6 +304,7 @@ class PaymentController extends Controller
                             'company_id' => $invoice->agent->company->id,
                             'account_id' =>  $bankAccount->id,
                             'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoicedetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment transfered to: ' . $bankAccount->name,
                             'debit' => $invoicedetail['task_price'],
@@ -324,6 +325,7 @@ class PaymentController extends Controller
                             'company_id' => $invoice->agent->company->id,
                             'account_id' =>  $tapAccount->id,
                             'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoicedetail->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment Charged For:'. $tapAccount->name,
@@ -337,6 +339,11 @@ class PaymentController extends Controller
                         $tapAccount->actual_balance += 0.35; // Add to expenses account
                         $tapAccount->save();
                     }
+
+
+                    $selectedtask->status = 'Completed';
+                    $selectedtask->save();
+
                 } catch (Exception $e) {
                     // Log the error if something goes wrong with a specific task
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());

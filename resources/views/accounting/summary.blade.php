@@ -159,32 +159,34 @@
                                                                 <div class="invoice bg-gray-50 p-4 rounded-lg mb-4">
                                                                     <h6 class="font-semibold text-blue-600">Invoice #{{ $invoice->invoice_number }}</h6>
                                                                     <div class="text-sm text-gray-700 flex space-x-4">
-                                                                        <p>Credits: <span class="font-semibold text-green-500">${{ number_format($invoice->total_credits, 2) }}</span></p>
-                                                                        <p>Debits: <span class="font-semibold text-red-500">${{ number_format($invoice->total_debits, 2) }}</span></p>
-                                                                        <p>Balance: <span class="font-semibold text-blue-500">${{ number_format($invoice->balance, 2) }}</span></p>
+                                                                        <p>Date: <span class="font-semibold text-green-500">{{$invoice->invoice_date}}</span></p>
+                                                                        <p>Amount: <span class="font-semibold text-red-500">${{$invoice->amount }}</span></p>
+                                                                        <p>Status: <span class="font-semibold text-blue-500">{{ $invoice->status }}</span></p>
                                                                     </div>
 
                                                                     <!-- General Ledgers Table grouped by invoice -->
                                                                     <table class="table-auto w-full text-sm bg-gray-50 border rounded-lg mt-3">
                                                                         <thead>
                                                                             <tr class="bg-gray-200 text-gray-600">
-                                                                                <th class="px-4 py-2 text-left">Date</th>
                                                                                 <th class="px-4 py-2 text-left">Description</th>
-                                                                                <th class="px-4 py-2 text-left">Debit</th>
-                                                                                <th class="px-4 py-2 text-left">Credit</th>
+                                                                                <th class="px-4 py-2 text-left">Type</th>
+                                                                                <th class="px-4 py-2 text-left">Task Price</th>
+                                                                                <th class="px-4 py-2 text-left">Invoice Price</th>
                                                                             </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                            @foreach ($invoice->generalLedgers as $ledger)
-                                                                            <tr class="border-b text-gray-600 cursor-pointer hover:bg-gray-100 transition duration-200 ease-in-out"
-                                                                                        onclick="showLedgerDetails({{ $ledger->id }}, '{{ $ledger->description }}', {{ $ledger->debit }}, {{ $ledger->credit }}, '{{ $ledger->name }}', '{{ $ledger->type }}')"
+                                                                            @foreach ($invoice->invoiceDetails as $invoiceDetail)
+                                                                                @if ($invoiceDetail->task)
+                                                                                    <tr class="border-b text-gray-600 cursor-pointer hover:bg-gray-100 transition duration-200 ease-in-out"
+                                                                                        onclick="showLedgerDetails({{ $invoiceDetail->id }})"
                                                                                         onmousedown="this.classList.add('bg-blue-100')" 
                                                                                         onmouseup="setTimeout(() => this.classList.remove('bg-blue-100'), 150)">
-                                                                                    <td class="px-4 py-2">{{ $ledger->transaction_date }}</td>
-                                                                                    <td class="px-4 py-2">{{ $ledger->description }}</td>
-                                                                                    <td class="px-4 py-2 text-right">${{ number_format($ledger->debit, 2) }}</td>
-                                                                                    <td class="px-4 py-2 text-right">${{ number_format($ledger->credit, 2) }}</td>
-                                                                                </tr>
+                                                                                        <td class="px-4 py-2">{{ $invoiceDetail->task->reference }} - {{ $invoiceDetail->task->type }} {{ $invoiceDetail->task->additional_info }} ({{ $invoiceDetail->task->venue }})</td>
+                                                                                        <td class="px-4 py-2">{{ $invoiceDetail->task->type }}</td>
+                                                                                        <td class="px-4 py-2 text-right">${{ number_format($invoiceDetail->task->total, 2) }}</td>
+                                                                                        <td class="px-4 py-2 text-right">${{ number_format($invoiceDetail->task_price, 2) }}</td>
+                                                                                    </tr>
+                                                                                @endif
                                                                             @endforeach
                                                                         </tbody>
                                                                     </table>
@@ -208,58 +210,88 @@
         <!-- Payable Details Section -->
         <div class="col-span-6 bg-gray-100 p-4 rounded-md shadow-md">
             <!-- Vendor Details -->
-              <div id="paymentVoucherPanel" class="col-span-6 bg-gray-100 p-4 rounded-md shadow-md text-sm" style="display: none;">
-                <h2 class="text-base font-semibold mb-2"> Voucher</h2>
+               <div id="paymentVoucherPanel" style="display: none;">
+                    <div  class="col-span-6 bg-gray-100 p-4 rounded-md shadow-md text-sm">
+                        <h2 class="text-base font-semibold mb-2"> Account Payable</h2>
 
-                <!-- Selected Ledger Details -->
-                <div id="selectedLedgerDetails" class="mb-4">
-                    <div>
-                        <label class="block text-xs">Account Type:</label>
-                        <input type="text" class="w-full p-2 border rounded-md text-xs" id="accountTypeInput" disabled>
+
+                        <!-- Items Section -->
+                        <h3 class="text-base font-semibold mb-2">Items</h3>
+                        <table id="itemsTable" class="table-auto w-full text-xs bg-gray-50 border rounded-lg mt-3">
+                            <thead>
+                                <tr class="bg-gray-200 text-gray-600">
+                                    <th class="px-2 py-1">Account Name</th>
+                                    <th class="px-2 py-1">Description</th>
+                                    <th class="px-2 py-1">Credit</th>
+                                    <th class="px-2 py-1">Debit</th>
+                                    <th class="px-2 py-1">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payableTableBody">
+                                <!-- Rows will be added here dynamically -->
+                            </tbody>
+                        </table>
+
+                        <button class="bg-blue-500 text-white px-4 py-2 rounded-md mt-4 text-xs" onclick="addItemRow()">Add Item</button>
+
+                        <button class="bg-green-500 text-white px-4 py-2 rounded-md mt-4 text-xs">Save/Submit Voucher</button>
                     </div>
-                    <!-- Pay To Field -->
-                    <div id="payToField" style="display: none;">
-                        <label class="block text-xs">Pay To:</label>
-                        <input type="text" class="w-full p-2 border rounded-md text-xs" id="payTo" disabled>
-                    </div>
 
-                    <!-- Received From Field -->
-                    <div id="receivedFromField" style="display: none;">
-                        <label class="block text-xs">Received From:</label>
-                        <input type="text" class="w-full p-2 border rounded-md text-xs" id="receivedFrom" disabled>
-                    </div>
-                    <div>
-                        <label class="block text-xs">Amount:</label>
-                        <input type="text" class="w-full p-2 border rounded-md text-xs" id="accountBalanceInput" disabled>
-                    </div>
-                </div>
+                    <div  class="col-span-6 bg-gray-100 p-4 rounded-md shadow-md text-sm">
+                        <h2 class="text-base font-semibold mb-2"> Account Receivable</h2>
 
-                <!-- Items Section -->
-                <h3 class="text-base font-semibold mb-2">Items</h3>
-                <table id="itemsTable" class="table-auto w-full text-xs bg-gray-50 border rounded-lg mt-3">
-                    <thead>
-                        <tr class="bg-gray-200 text-gray-600">
-                            <th class="px-2 py-1">Account Name</th>
-                            <th class="px-2 py-1">Description</th>
-                            <th class="px-2 py-1">Credit</th>
-                            <th class="px-2 py-1">Debit</th>
-                            <th class="px-2 py-1">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="itemsTableBody">
-                        <!-- Rows will be added here dynamically -->
-                    </tbody>
-                </table>
+                        <!-- Selected Ledger Details -->
+                        <!-- <div id="selectedLedgerDetails" class="mb-4">
+                            <div>
+                                <label class="block text-xs">Account Type:</label>
+                                <input type="text" class="w-full p-2 border rounded-md text-xs" id="accountTypeInput" disabled>
+                            </div>
 
-                <button class="bg-blue-500 text-white px-4 py-2 rounded-md mt-4 text-xs" onclick="addItemRow()">Add Item</button>
+                            <div id="payToField" style="display: none;">
+                                <label class="block text-xs">Pay To:</label>
+                                <input type="text" class="w-full p-2 border rounded-md text-xs" id="payTo" disabled>
+                            </div>
 
-                <button class="bg-green-500 text-white px-4 py-2 rounded-md mt-4 text-xs">Save/Submit Voucher</button>
-            </div>
+
+                            <div id="receivedFromField" style="display: none;">
+                                <label class="block text-xs">Received From:</label>
+                                <input type="text" class="w-full p-2 border rounded-md text-xs" id="receivedFrom" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-xs">Amount:</label>
+                                <input type="text" class="w-full p-2 border rounded-md text-xs" id="accountBalanceInput" disabled>
+                            </div>
+                        </div> -->
+
+                        <!-- Items Section -->
+                        <h3 class="text-base font-semibold mb-2">Items</h3>
+                        <table id="itemsTable" class="table-auto w-full text-xs bg-gray-50 border rounded-lg mt-3">
+                            <thead>
+                                <tr class="bg-gray-200 text-gray-600">
+                                    <th class="px-2 py-1">Account Name</th>
+                                    <th class="px-2 py-1">Description</th>
+                                    <th class="px-2 py-1">Credit</th>
+                                    <th class="px-2 py-1">Debit</th>
+                                    <th class="px-2 py-1">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="receivableTableBody">
+                                <!-- Rows will be added here dynamically -->
+                            </tbody>
+                           </table>
+
+                            <button class="bg-blue-500 text-white px-4 py-2 rounded-md mt-4 text-xs" onclick="addItemRow()">Add Item</button>
+
+                            <button class="bg-green-500 text-white px-4 py-2 rounded-md mt-4 text-xs">Save/Submit Voucher</button>
+                      </div>
+
+                     </div>
+
 
                 </div>
             </div>
         </div>
-</div>
+    </div>
 
     <script>
            const accounts = @json($accounts);
@@ -286,37 +318,33 @@
 
         let totalAmount = 0; // To store the total amount of all items
 
-        function showLedgerDetails(id, description, debit, credit, name, type) {
-    // Calculate balance (credit - debit)
-    const balance = credit - debit;
+    function showLedgerDetails(id) {
 
-    // Set account type and balance
-    const accountTypeInput = document.getElementById('accountTypeInput');
-    const accountBalanceInput = document.getElementById('accountBalanceInput');
+        const generalLedgers = @json($generalLedgers);
+        const ledgers = generalLedgers.filter(ledger => ledger.invoiceDetail_id === id);
 
-    accountTypeInput.value = type;
-    accountBalanceInput.value = balance;
+                    // Get the table body elements for payable and receivable
+            const payableTableBody = document.getElementById('payableTableBody');
+            const receivableTableBody = document.getElementById('receivableTableBody');
 
-    // Show or hide fields based on account type
-    const receivedFromField = document.getElementById('receivedFromField');
-    const payToField = document.getElementById('payToField');
+        ledgers.forEach(ledger => {
+            if (ledger.type === 'payable') {
+                // Add to payable table
+                addLedgerToTable(payableTableBody, ledger.name, ledger.description, ledger.credit, ledger.debit);
+            } else if (ledger.type === 'receivable') {
+                // Add to receivable table
+                addLedgerToTable(receivableTableBody, ledger.name, ledger.description, ledger.credit, ledger.debit);
+            }
+        });
 
-    const payTo = document.getElementById('payTo');
-    const receivedFrom = document.getElementById('receivedFrom');
 
-    if (accountTypeInput.value === 'receivable') {
-        receivedFromField.style.display = 'block';
-        payToField.style.display = 'none';
-        receivedFrom.value = name;
-    } else {
-        payToField.style.display = 'block';
-        receivedFromField.style.display = 'none';
-        payTo.value = name;
+            // Show the payment voucher panel
+            document.getElementById('paymentVoucherPanel').style.display = 'block';
     }
 
-    // Populate the first row of items table with ledger details
-    const tableBody = document.getElementById('itemsTableBody');
 
+    // Function to add ledger to the respective table
+   function addLedgerToTable(tableBody, name, description, credit, debit) {
     // If the table is empty, create the first row
     if (!tableBody.hasChildNodes() || !tableBody.firstElementChild) {
         const newRow = document.createElement('tr');
@@ -336,23 +364,21 @@
                 <input type="number" class="w-full p-2 border rounded-md text-xs" placeholder="Debit" value="${debit}" oninput="updateTotalAmount()">
             </td>
             <td class="px-4 py-2 w-1/6">
-
+                <!-- Add actions if needed -->
             </td>
         `;
 
         tableBody.appendChild(newRow);
-        } else {
-            // If the table already has rows, update the first row
-            const firstRow = tableBody.firstElementChild;
-            firstRow.querySelector('input[placeholder="Account Name"]').value = name;
-            firstRow.querySelector('input[placeholder="Description"]').value = description;
-            firstRow.querySelector('input[placeholder="Credit"]').value = credit;
-            firstRow.querySelector('input[placeholder="Debit"]').value = debit;
-        }
-
-        // Show the payment voucher panel
-        document.getElementById('paymentVoucherPanel').style.display = 'block';
+    } else {
+        // If the table already has rows, update the first row
+        const firstRow = tableBody.firstElementChild;
+        firstRow.querySelector('input[placeholder="Account Name"]').value = name;
+        firstRow.querySelector('input[placeholder="Description"]').value = description;
+        firstRow.querySelector('input[placeholder="Credit"]').value = credit;
+        firstRow.querySelector('input[placeholder="Debit"]').value = debit;
     }
+}
+
 
 // Function to add a new item row to the payment voucher
 function addItemRow() {

@@ -4,82 +4,86 @@
 
         <div class="bg-white shadow-lg rounded-lg p-6">
             <h3 class="text-2xl font-semibold text-blue-600 mb-4">{{ $company->name }} (Company)</h3>
-            <div class="container mx-auto p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Level 1 Selection (Branch) -->
-                    <div>
-                        <label for="level1" class="block text-lg font-semibold mb-2 text-gray-700">Branch:</label>
-                        <select id="level1" onchange="updateLevel2Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Select Branch</option>
-                            @foreach ($branches as $branch)
-                                <option value="{{ $branch['id'] }}">{{ $branch['name'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Level 2 Selection (Agent) -->
-                    <div>
-                        <label for="level2" class="block text-lg font-semibold mb-2 text-gray-700">Agent:</label>
-                        <select id="level2" onchange="updateLevel3Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Select Agent</option>
-                        </select>
-                    </div>
-
-                    <!-- Level 3 Selection (Client) -->
-                    <div>
-                        <label for="level3" class="block text-lg font-semibold mb-2 text-gray-700">Client:</label>
-                        <select id="level3" onchange="updateLevel4Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Select Client</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Level 4 Selection (Invoice) -->
-                <div>
-                    <label for="level4" class="block text-lg font-semibold mb-2 text-gray-700">Invoice:</label>
-                    <select id="level4" onchange="updateLevel5Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Invoice</option>
-                    </select>
-                </div>
-
-                <!-- Level 5 Selection (General Ledger) -->
-                <div>
-                    <label for="level5" class="block text-lg font-semibold mb-2 text-gray-700">General Ledger:</label>
-                    <select id="level5" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select General Ledger</option>
-                    </select>
-                </div>
-            </div>
+         
 
             <!-- General Ledger Table -->
-            <div class="space-y-6">
+                <div class="space-y-6">
+                     <!-- Table for Receivables -->
                 <div class="overflow-x-auto bg-white shadow rounded-lg">
-                    <table id="generalLedgersTable" class="min-w-full table-auto border-collapse">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Receivables</h3>
+                    <table id="receivablesTable" class="min-w-full table-auto border-collapse">
                         <thead class="bg-gray-100 text-gray-600">
                             <tr>
+                                <th class="px-4 py-2 text-left">Invoice Number</th> 
+                                <th class="px-4 py-2 text-left">Status</th> 
                                 <th class="px-4 py-2 text-left">Transaction Date</th>
                                 <th class="px-4 py-2 text-left">Description</th>
                                 <th class="px-4 py-2 text-left">Agent</th>
+                                <th class="px-4 py-2 text-left">Client</th>
                                 <th class="px-4 py-2 text-left">Credit</th>
                                 <th class="px-4 py-2 text-left">Debit</th>
                                 <th class="px-4 py-2 text-left">Balance</th>
                             </tr>
                         </thead>
-                        <tbody id="generalLedgersBody" class="text-gray-800">
+                        <tbody id="receivablesBody" class="text-gray-800">
                             @foreach ($generalLedgers as $generalLedger)
-                            <tr class="general-ledger-row hover:bg-gray-50" data-level5="{{ $generalLedger['generalLedger_id'] }}">
-                                <td class="px-4 py-2 border-b">{{ $generalLedger['transaction_date'] }}</td>
-                                <td class="px-4 py-2 border-b">{{ $generalLedger['description'] }}</td>
-                                <td class="px-4 py-2 border-b">{{ $generalLedger['agent_name'] }}</td>
-                                <td class="px-4 py-2 border-b text-right">{{ $generalLedger['credit'] }}</td>
-                                <td class="px-4 py-2 border-b text-right">{{ $generalLedger['debit'] }}</td>
-                                <td class="px-4 py-2 border-b text-right">{{ $generalLedger['balance'] }}</td>
+                                @if($generalLedger['type'] == 'receivable')
+                                <tr class="general-ledger-row hover:bg-gray-50 {{ $generalLedger['status'] == 'unpaid' ? 'bg-red-200' : '' }}">
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['invoice_number'] }}</td> 
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['status'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['transaction_date'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['description'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['agent_name'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['generalLedger_name'] }}</td>
+                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['credit'] }}</td>
+                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['debit'] }}</td>
+                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['balance'] }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table for Payables -->
+                <div class="overflow-x-auto bg-white shadow rounded-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Payables</h3>
+                    <table id="payablesTable" class="min-w-full table-auto border-collapse">
+                        <thead class="bg-gray-100 text-gray-600">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Invoice Number</th> 
+                                <th class="px-4 py-2 text-left">Status</th> 
+                                <th class="px-4 py-2 text-left">Transaction Date</th>
+                                <th class="px-4 py-2 text-left">Description</th>
+                                <th class="px-4 py-2 text-left">Agent</th>
+                                <th class="px-4 py-2 text-left">Supplier</th>
+                                <th class="px-4 py-2 text-left">Credit</th>
+                                <th class="px-4 py-2 text-left">Debit</th>
+                                <th class="px-4 py-2 text-left">Balance</th>
                             </tr>
+                        </thead>
+                        <tbody id="payablesBody" class="text-gray-800">
+                            @foreach ($generalLedgers as $generalLedger)
+                                @if($generalLedger['type'] == 'payable')
+                                <tr class="general-ledger-row hover:bg-gray-50 {{ $generalLedger['status'] == 'unpaid' ? 'bg-red-200' : '' }}">
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['invoice_number'] }}</td> 
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['status'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['transaction_date'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['description'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['agent_name'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['generalLedger_name'] }}</td>
+                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['credit'] }}</td>
+                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['debit'] }}</td>
+                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['balance'] }}</td>
+                                    </tr>
+                                @endif
                             @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
+
+
         </div>
     </div>
 

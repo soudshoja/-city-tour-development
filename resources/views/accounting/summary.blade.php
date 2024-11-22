@@ -321,7 +321,7 @@
     function showLedgerDetails(id) {
 
         const generalLedgers = @json($generalLedgers);
-        const ledgers = generalLedgers.filter(ledger => ledger.invoiceDetail_id === id);
+        const ledgers = generalLedgers.filter(ledger => ledger.invoice_detail_id === id);
 
                     // Get the table body elements for payable and receivable
             const payableTableBody = document.getElementById('payableTableBody');

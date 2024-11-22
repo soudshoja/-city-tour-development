@@ -271,6 +271,9 @@
                         @endforeach
                     </tbody>
                 </table>
+                <div class="mt-4">
+                {{ $clients->links() }}
+            </div>
             </div>
         </div>
     </div>

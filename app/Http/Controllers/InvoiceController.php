@@ -104,7 +104,9 @@ class InvoiceController extends Controller
         $clients = $agentId ? Client::where('agent_id', $agentId)->get() : collect();
         $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
         $suppliers = Supplier::all();
-    
+
+        $todayDate = Carbon::now()->format('Y-m-d');
+
         return view('invoice.create', compact(
             'clients', 
             'agentId', 
@@ -115,7 +117,8 @@ class InvoiceController extends Controller
             'invoiceNumber', 
             'selectedTasks', 
             'selectedAgent',
-            'selectedClient'
+            'selectedClient',
+            'todayDate'
         ));
     }
     

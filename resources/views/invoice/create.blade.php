@@ -470,9 +470,7 @@
             if (Array.isArray(selectedTasks)) {
                     // Iterate over the array and select each task
                     selectedTasks.forEach(task => selectTask(task));
-                    console.log('one',selectedTasks);
                 } else  {
-                    console.log('tow',selectedTasks);
                     // If it's a single task object, select it directly
                     selectTask(selectedTasks);
                 }
@@ -491,14 +489,12 @@
 
                 // Call a function to update the total, passing the current items array
               //  updateTotal(items);
-                console.log('doo', items);
                 closeTaskModal();
             }
 
             const itemsBody = document.getElementById('items-body');
            
             function renderItems() {
-                console.log('amma', items);
                     itemsBody.innerHTML = ''; // Clear existing rows
 
                     if (items.length === 0) {
@@ -573,7 +569,6 @@
                 const filteredClients = clients.filter(client =>
                     client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
                 );
-                console.log(filteredClients);
                 renderClientList(filteredClients);
             }
 
@@ -731,12 +726,10 @@
 
         // Generate invoice
         async function generateInvoice() {
-           console.log('generate');
-
 
             const invoiceUrl = "{{ route('invoice.store') }}";
             const csrfToken = "{{ csrf_token() }}";
-            console.log(invoiceUrl); 
+
             const currency = document.getElementById('currency').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
             const invdate = document.getElementById('invdate').value;
@@ -781,8 +774,8 @@
                 }
 
                 const result = await response.json();
-                //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
-                const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
+                const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
+                //const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
 
                             // Invoice link elements
                 const invoiceLinkContainer = document.getElementById("invoice-link-container");

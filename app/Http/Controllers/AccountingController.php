@@ -74,24 +74,34 @@ class AccountingController extends Controller
     
         // Prepare data for generalLedgers (to replace transactions)
         $generalLedgers = [];
+        $groupedGeneralLedgers = [];
+
         foreach ($company->branches as $branch) {
             foreach ($branch->agents as $agent) {
                 foreach ($agent->clients as $client) {
                     foreach ($client->invoices as $invoice) {
                         foreach ($invoice->invoiceDetails as $invoiceDetail) {
+                            // Retrieve the task associated with this invoiceDetail
+                            $task = $invoiceDetail->task; // assuming each invoiceDetail has a related task
+                            $taskName = $task ? $task->reference .'-'. $task->additional_info .'-'. $task->venue .'-'. $task->type : null;
                             foreach ($invoiceDetail->generalLedgers as $generalLedger) {
-                                $generalLedgers[] = [
+                                $groupedGeneralLedgers[$taskName][]  = [
                                     'generalLedger_id' => $generalLedger->id,
                                     'generalLedger_name' => $generalLedger->name,
+                                    'client_name' => $client->name,
+                                    'supplier_name' => $task->supplier->name,
                                     'credit' => $generalLedger->credit,
                                     'debit' => $generalLedger->debit,
                                     'balance' => $generalLedger->balance,
                                     'transaction_date' => $generalLedger->created_at,
                                     'description' => $generalLedger->description,
+                                    'branch_name' => $branch->name,
                                     'agent_name' => $agent->name,
                                     'type' => $generalLedger->type,
                                     'invoice_number' => $invoice->invoice_number,
-                                    'status'=>$invoice->status
+                                    'status' => $invoice->status,
+                                    'task_name' => $taskName,
+                                  
                                 ];
                             }
                         }
@@ -99,9 +109,11 @@ class AccountingController extends Controller
                 }
             }
         }
+        
     
         // Pass the data to the view
         return view('accounting.index', [
+            'groupedGeneralLedgers' => $groupedGeneralLedgers,
             'company' => $company,
             'branches' => $branches, // Used for dropdown population
             'generalLedgers' => $generalLedgers, // To display in the table

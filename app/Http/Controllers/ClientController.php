@@ -124,7 +124,7 @@ class ClientController extends Controller
             'email' => 'email|unique:clients,email,' . $id,
             'status' => 'nullable',   // Optional status field
             'phone' => 'string|max:15',    // Optional phone field
-            'file' => 'nullable|mimes:pdf,jpeg,jpg,png',    // Optional passport file field
+            'file' => 'nullable|mimes:jpeg,jpg,png',    // Optional passport file field
         ]);
 
         // Find the client and update it
@@ -133,9 +133,12 @@ class ClientController extends Controller
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
 
-                if($file->getClientOriginalExtension() == 'pdf') {
-                    $file = $this->convertPdfToImage($file);
-                }
+                // if($file->getClientOriginalExtension() == 'pdf') {
+
+                //     $fileController = new FileController();
+                //     $file = $fileController->convertPdfToImage($file);
+
+                // }
 
                 $ocr = new TesseractOCR();
                 $ocr->image($file->getRealPath());
@@ -174,10 +177,6 @@ class ClientController extends Controller
         $client->save();
     }
 
-    public function convertPdfToImage($file)
-    {
-        return $file;
-    }
     public function upload()
     {
         $clients = Client::with('agent')->get();

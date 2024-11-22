@@ -212,4 +212,14 @@ class TaskController extends Controller
     }
 
     public function fileToTask() {}
+
+    /**
+     * Get all tasks for a specific agent
+     * @param $agentId
+     * @return array
+     */
+    public function getAgentTask($agentId){
+        $tasks = Task::where('agent_id', $agentId)->get();
+        return response()->json($tasks);
+    }
 }

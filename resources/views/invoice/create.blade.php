@@ -60,23 +60,39 @@
                         <div>
                             <div class="flex items-center justify-between">
                                 <div class="text-lg font-semibold">Bill To</div>
+
+                                @can('pickAgent', App\Models\Invoice::class)
+                                <button 
+                                    id="select-agent" 
+                                    type="button"
+                                    onclick="openAgentModal()"
+                                    class="inline-flex justify-center gap-2 hover:bg-blue-500 hover:text-white rounded-lg p-2 text-sm font-medium dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="currentColor" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="currentColor" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                    </svg> Select Agent
+                                </button>
+                                @endcan
+
                                 <button type="button" id="openClientModalButton"
-                                    class="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                                    <span
-                                        class="gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="10" cy="6" r="4" fill="currentColor" />
-                                            <path
-                                                d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                                fill="currentColor" />
-                                            <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                        </svg> Select Client
-                                    </span>
+                                    class="inline-flex justify-center p-2 overflow-hidden text-sm font-medium rounded-lg group hover:bg-blue-500 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="currentColor" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="currentColor" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                    </svg> Select Client
                                 </button>
                                 <input id="receiverId" type="hidden" name="receiverId" />
-                                <input id="agentId" type="hidden" name="agentId" value="{{$agentId}}" />
+                                <input id="agentId" type="hidden" name="agentId" value="" />
                             </div>
                             <div class="mt-4 flex items-center">
                                 <label for="receiverName" class="mb-0 w-1/3 mr-2 ">Name</label>
@@ -256,6 +272,48 @@
             </div>
         </div>
 
+        <!-- Agents Modal -->
+        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden">
+            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
+                <!-- Modal Header -->
+                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                    <h5 class="text-lg font-bold">Agent Management</h5>
+                    <button 
+                        type="button" 
+                        onclick="closeAgentModal()"
+                        class="text-white-dark hover:text-dark" id="closeAgentModalButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                            class="h-6 w-6">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <!-- ./Modal Header -->
+
+                <!-- Search Box -->
+            <div class="relative mb-4 px-4">
+                    <input type="text" placeholder="Search Agent..."
+                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                        id="agentSearchInput">
+                </div>
+                <!-- ./Search Box -->
+
+                <!-- List of Agents -->
+                <ul id="agentList"
+                class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
+                    <!-- Dynamic list items go here -->
+                     @foreach ($agents as $agent)
+                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent({{$agent->id}})">
+                            {{$agent->name}}
+                        </li>
+                     @endforeach
+                </ul>
+                <!-- ./List of Agents -->
+            </div>
+        </div>
+        <!-- End Agents Modal -->
         <!-- Clients Modal -->
         <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden">
             <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
@@ -503,6 +561,22 @@
             renderItems(); // Re-render the table after removal
         }
 
+        function chooseTasksAgent(agentId) {
+           //TODO: clear selected tasks of other agents 
+            document.getElementById('agentName').value = agentId;
+            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
+            url = url.replace('_agentId_', agentId);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    tasks = data;
+                    renderTaskList(tasks);
+                })
+                .catch(error => console.error(error));
+                
+            closeAgentModal();
+        }
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
         const addTabButton = document.getElementById('addTabButton');
@@ -580,7 +654,16 @@
             modal.classList.add("hidden");
         }
 
+        function openAgentModal() {
+            const modal = document.getElementById("agentModal");
+            modal.classList.remove("hidden");
+        }
 
+        // Close Agent Modal
+        function closeAgentModal() {
+            const modal = document.getElementById("agentModal");
+            modal.classList.add("hidden");
+        }
         function filterClients() {
             const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
             const filteredClients = clients.filter(client =>
@@ -638,173 +721,177 @@
                 taskList.appendChild(li);
             });
         }
- function updateFormFields(client, agent) {
-                // Update hidden fields
-                document.getElementById('receiverId').value = client.id;
 
-                // Update input fields
-                document.getElementById('receiverName').value = client.name;
-                document.getElementById('receiverEmail').value = client.email;
-                document.getElementById('receiverPhone').value = client.phone;
 
-                document.getElementById('agentName').value = agent.name;
-                document.getElementById('agentEmail').value = agent.email;
-            }
-
-            let selectedClient = @json($selectedClient);
-            // Call the function with the selectedClient object
+        let selectedAgent = @json($selectedAgent);
+        let selectedClient = @json($selectedClient);
+        // Call the function with the selectedClient object
+        if (selectedClient && selectedAgent)
             updateFormFields(selectedClient, selectedAgent);
-            
-            const generateInvoiceButton = document.getElementById('generate-invoice-btn');
-            const buttonText = document.getElementById('button-text');
-            const buttonLoading = document.getElementById('button-loading');
-            const buttonSaved = document.getElementById('button-saved');
 
-            // Set initial states
-            let isSaving = false;
-            let isSaved = false;
+        function updateFormFields(client, agent) {
+            // Update hidden fields
+            document.getElementById('receiverId').value = client.id;
 
-            generateInvoiceButton.addEventListener('click', async function(event) {
+            // Update input fields
+            document.getElementById('receiverName').value = client.name;
+            document.getElementById('receiverEmail').value = client.email;
+            document.getElementById('receiverPhone').value = client.phone;
 
-                event.preventDefault(); // Prevent form submission or default action
-                if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
+            document.getElementById('agentName').value = agent.name;
+            document.getElementById('agentEmail').value = agent.email;
+        }
 
-                // Start saving
-                isSaving = true;
+        const generateInvoiceButton = document.getElementById('generate-invoice-btn');
+        const buttonText = document.getElementById('button-text');
+        const buttonLoading = document.getElementById('button-loading');
+        const buttonSaved = document.getElementById('button-saved');
+
+        // Set initial states
+        let isSaving = false;
+        let isSaved = false;
+
+        generateInvoiceButton.addEventListener('click', async function(event) {
+
+            event.preventDefault(); // Prevent form submission or default action
+            if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
+
+            // Start saving
+            isSaving = true;
+            updateButtonState();
+
+            try {
+                // Simulate invoice generation (replace with your actual API call)
+                await generateInvoice();
+                isSaved = true; // Mark as saved after generating
+                updateButtonState();
+            } catch (error) {
+                console.error("Error generating invoice:", error);
+                isSaving = false; // Reset saving state
                 updateButtonState();
 
-                try {
-                    // Simulate invoice generation (replace with your actual API call)
-                    await generateInvoice();
-                    isSaved = true; // Mark as saved after generating
-                    updateButtonState();
-                } catch (error) {
-                    console.error("Error generating invoice:", error);
-                    isSaving = false; // Reset saving state
-                    updateButtonState();
+            }
+        });
 
-                }
-            });
+        // Function to update button state (text, loading spinner, disabled state)
+        function updateButtonState() {
+            if (isSaving) {
+                buttonText.style.display = 'none';
+                buttonLoading.style.display = 'inline-block';
+                buttonSaved.style.display = 'none';
+                generateInvoiceButton.disabled = true; // Disable button during saving
+            } else if (isSaved) {
+                buttonText.style.display = 'none';
+                buttonLoading.style.display = 'none';
+                buttonSaved.style.display = 'inline-block';
+                generateInvoiceButton.disabled = false; // Re-enable button after saved
+            } else {
+                buttonText.style.display = 'inline-block';
+                buttonLoading.style.display = 'none';
+                buttonSaved.style.display = 'none';
+                generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
+            }
+        }
 
-            // Function to update button state (text, loading spinner, disabled state)
-            function updateButtonState() {
-                if (isSaving) {
-                    buttonText.style.display = 'none';
-                    buttonLoading.style.display = 'inline-block';
-                    buttonSaved.style.display = 'none';
-                    generateInvoiceButton.disabled = true; // Disable button during saving
-                } else if (isSaved) {
-                    buttonText.style.display = 'none';
-                    buttonLoading.style.display = 'none';
-                    buttonSaved.style.display = 'inline-block';
-                    generateInvoiceButton.disabled = false; // Re-enable button after saved
-                } else {
-                    buttonText.style.display = 'inline-block';
-                    buttonLoading.style.display = 'none';
-                    buttonSaved.style.display = 'none';
-                    generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
-                }
+        // Generate invoice
+        async function generateInvoice() {
+            console.log('generate');
+
+
+            const invoiceUrl = "{{ route('invoice.store') }}";
+            const csrfToken = "{{ csrf_token() }}";
+            console.log(invoiceUrl);
+            const currency = document.getElementById('currency').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const invdate = document.getElementById('invdate').value;
+            const duedate = document.getElementById('duedate').value;
+            const subTotal = document.getElementById('subTotal').value;
+            const tasks = items;
+            const clientId = document.getElementById('receiverId').value;
+            const agentId = document.getElementById('agentId').value;
+
+            // Show loading state
+            buttonText.style.display = "none";
+            buttonLoading.style.display = "inline";
+
+            if (!clientId || !agentId || !tasks.length) {
+                console.error("Required data is missing.");
+                resetButtonState();
+                return;
             }
 
-            // Generate invoice
-            async function generateInvoice() {
-                console.log('generate');
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        agentId,
+                        tasks,
+                        subTotal,
+                        invoiceNumber,
+                        currency,
+                        invdate,
+                        duedate
 
+                    })
+                });
 
-                const invoiceUrl = "{{ route('invoice.store') }}";
-                const csrfToken = "{{ csrf_token() }}";
-                console.log(invoiceUrl);
-                const currency = document.getElementById('currency').value;
-                const invoiceNumber = document.getElementById('invoiceNumber').value;
-                const invdate = document.getElementById('invdate').value;
-                const duedate = document.getElementById('duedate').value;
-                const subTotal = document.getElementById('subTotal').value;
-                const tasks = items;
-                const clientId = document.getElementById('receiverId').value;
-                const agentId = document.getElementById('agentId').value;
-
-                // Show loading state
-                buttonText.style.display = "none";
-                buttonLoading.style.display = "inline";
-
-                if (!clientId || !agentId || !tasks.length) {
-                    console.error("Required data is missing.");
-                    resetButtonState();
-                    return;
+                if (!response.ok) {
+                    throw new Error("Failed to reach the invoice controller.");
                 }
 
-                try {
-                    const response = await fetch(invoiceUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            agentId,
-                            tasks,
-                            subTotal,
-                            invoiceNumber,
-                            currency,
-                            invdate,
-                            duedate
+                const result = await response.json();
+                //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
+                const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
 
-                        })
-                    });
+                // Invoice link elements
+                const invoiceLinkContainer = document.getElementById("invoice-link-container");
+                const invoiceLink = document.getElementById("invoice-link");
 
-                    if (!response.ok) {
-                        throw new Error("Failed to reach the invoice controller.");
-                    }
+                // Update and show the invoice link
+                invoiceLink.href = generatedLink;
+                invoiceLink.textContent = generatedLink;
+                invoiceLinkContainer.style.display = "block";
 
-                    const result = await response.json();
-                    //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
-                    const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
-
-                    // Invoice link elements
-                    const invoiceLinkContainer = document.getElementById("invoice-link-container");
-                    const invoiceLink = document.getElementById("invoice-link");
-
-                    // Update and show the invoice link
-                    invoiceLink.href = generatedLink;
-                    invoiceLink.textContent = generatedLink;
-                    invoiceLinkContainer.style.display = "block";
-
-                    // Show success state
-                    buttonSaved.style.display = "inline";
-                } catch (error) {
-                    console.error("Error generating invoice:", error);
-                } finally {
-                    // Reset button states
-                    buttonLoading.style.display = "none";
-                    setTimeout(() => {
-                        buttonSaved.style.display = "none";
-                        buttonText.style.display = "inline";
-                    }, 1000);
-                }
-            };
-
-            function resetButtonState() {
-                isSaving = false;
-                isSaved = false;
-                updateButtonState();
+                // Show success state
+                buttonSaved.style.display = "inline";
+            } catch (error) {
+                console.error("Error generating invoice:", error);
+            } finally {
+                // Reset button states
+                buttonLoading.style.display = "none";
+                setTimeout(() => {
+                    buttonSaved.style.display = "none";
+                    buttonText.style.display = "inline";
+                }, 1000);
             }
+        };
 
-            let selectedAgent = @json($selectedAgent);
+        function resetButtonState() {
+            isSaving = false;
+            isSaved = false;
+            updateButtonState();
+        }
 
-            document.getElementById("openClientModalButton").onclick = openClientModal;
-            document.getElementById("closeClientModalButton").onclick = closeClientModal;
-            document.getElementById('clientSearchInput').addEventListener('input', filterClients);
+
+        document.getElementById("openClientModalButton").onclick = openClientModal;
+        document.getElementById("closeClientModalButton").onclick = closeClientModal;
+        document.getElementById('clientSearchInput').addEventListener('input', filterClients);
 
 
-            document.getElementById("openTaskModalButton").onclick = openTaskModal;
-            document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
-            document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
+        document.getElementById("openTaskModalButton").onclick = openTaskModal;
+        document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
+        document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
+
         document.addEventListener("DOMContentLoaded", function() {
 
             let tasks = @json($tasks);
             let clients = @json($clients);
-      
+
 
             // Initial rendering of items
             renderItems();
@@ -814,7 +901,7 @@
             renderClientList(clients);
             renderTaskList(tasks);
 
-           
+
 
         });
     </script>

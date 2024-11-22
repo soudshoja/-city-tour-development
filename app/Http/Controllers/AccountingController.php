@@ -24,98 +24,87 @@ class AccountingController extends Controller
     public function index()
     {
         $user = Auth::user();
-
-        // Retrieve the company associated with the user, along with necessary relationships
+    
+        // Retrieve the company associated with the user, including the necessary relationships
         $company = Company::where('user_id', $user->id)->with([
-            'branches.agents.clients.invoices' => function ($query) {
-                // Summing credits and debits
-                $query->withSum('transactions as total_credits', 'credit')
-                      ->withSum('transactions as total_debits', 'debit');
+            'branches.agents.clients.invoices.invoiceDetails.generalLedgers' => function ($query) {
+                // You can apply any specific queries here, if needed
             }
         ])->first();
-
-        // Initialize the company summary data structure
-        $companySummary = [];
-
-        foreach ($company->branches as $branch) {
-            // Calculate branch-level totals
-            $branchCredits = 0;
-            $branchDebits = 0;
-            $branchBalance = 0;
-            $branchData = [
-                'branch_name' => $branch->name,
-                'agents' => [],
-                'total_credits' => 0,
-                'total_debits' => 0,
-                'balance' => 0,
-            ];
-
-            foreach ($branch->agents as $agent) {
-                // Calculate agent-level totals
-                $agentCredits = 0;
-                $agentDebits = 0;
-                $agentBalance = 0;
-                $agentData = [
-                    'agent_name' => $agent->name,
-                    'clients' => [],
-                    'total_credits' => 0,
-                    'total_debits' => 0,
-                    'balance' => 0,
-                ];
-
-                foreach ($agent->clients as $client) {
-                    // Calculate client-level totals based on transactions within invoices
-                    $clientCredits = $client->invoices->sum(fn($invoice) => $invoice->transactions->where('transaction_type', 'credit')->sum('amount'));
-                    $clientDebits = $client->invoices->sum(fn($invoice) => $invoice->transactions->where('transaction_type', 'debit')->sum('amount'));
-                    $clientBalance = $clientCredits - $clientDebits;
-
-                    // Prepare client data with transactions
-                    $clientData = [
-                        'client_name' => $client->name,
-                        'total_credits' => $clientCredits,
-                        'total_debits' => $clientDebits,
-                        'balance' => $clientBalance,
-                        'transactions' => $client->invoices->flatMap(fn($invoice) => $invoice->transactions),
+    
+        // Prepare data for dropdowns (branches -> agents -> clients -> invoices -> invoiceDetails -> generalLedgers)
+        $branches = $company->branches->map(function ($branch) {
+            return [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'agents' => $branch->agents->map(function ($agent) {
+                    return [
+                        'id' => $agent->id,
+                        'name' => $agent->name,
+                        'clients' => $agent->clients->map(function ($client) {
+                            return [
+                                'id' => $client->id,
+                                'name' => $client->name,
+                                'invoices' => $client->invoices->map(function ($invoice) {
+                                    return [
+                                        'id' => $invoice->id,
+                                        'description' => $invoice->description,
+                                        'invoiceDetails' => $invoice->invoiceDetails->map(function ($invoiceDetail) {
+                                            return [
+                                                'id' => $invoiceDetail->id,
+                                                'generalLedgers' => $invoiceDetail->generalLedgers->map(function ($generalLedger) {
+                                                    return [
+                                                        'id' => $generalLedger->id,
+                                                        'name' => $generalLedger->name, // Adjust field as necessary
+                                                        'credit' => $generalLedger->credit, // Assuming these fields exist
+                                                        'debit' => $generalLedger->debit, // Adjust as needed
+                                                        'balance' => $generalLedger->balance, // Assuming balance exists
+                                                    ];
+                                                })
+                                            ];
+                                        })
+                                    ];
+                                })
+                            ];
+                        }),
                     ];
-
-                    // Append client data to the agent
-                    $agentData['clients'][] = $clientData;
-
-                    // Update agent totals
-                    $agentCredits += $clientCredits;
-                    $agentDebits += $clientDebits;
-                    $agentBalance += $clientBalance;
+                }),
+            ];
+        });
+    
+        // Prepare data for generalLedgers (to replace transactions)
+        $generalLedgers = [];
+        foreach ($company->branches as $branch) {
+            foreach ($branch->agents as $agent) {
+                foreach ($agent->clients as $client) {
+                    foreach ($client->invoices as $invoice) {
+                        foreach ($invoice->invoiceDetails as $invoiceDetail) {
+                            foreach ($invoiceDetail->generalLedgers as $generalLedger) {
+                                $generalLedgers[] = [
+                                    'generalLedger_id' => $generalLedger->id,
+                                    'generalLedger_name' => $generalLedger->name,
+                                    'credit' => $generalLedger->credit,
+                                    'debit' => $generalLedger->debit,
+                                    'balance' => $generalLedger->balance,
+                                    'transaction_date' => $generalLedger->created_at,
+                                    'description' => $generalLedger->description,
+                                    'agent_name' => $agent->name,
+                                ];
+                            }
+                        }
+                    }
                 }
-
-                // Update agent totals in the data structure
-                $agentData['total_credits'] = $agentCredits;
-                $agentData['total_debits'] = $agentDebits;
-                $agentData['balance'] = $agentBalance;
-
-                // Append agent data to the branch
-                $branchData['agents'][] = $agentData;
-
-                // Update branch totals
-                $branchCredits += $agentCredits;
-                $branchDebits += $agentDebits;
-                $branchBalance += $agentBalance;
             }
-
-            // Update branch totals in the data structure
-            $branchData['total_credits'] = $branchCredits;
-            $branchData['total_debits'] = $branchDebits;
-            $branchData['balance'] = $branchBalance;
-
-            // Append branch data to the company summary
-            $companySummary[] = $branchData;
         }
-
-        // Pass data to the view
+    
+        // Pass the data to the view
         return view('accounting.summary', [
             'company' => $company,
-            'companySummary' => $companySummary,
+            'branches' => $branches, // Used for dropdown population
+            'generalLedgers' => $generalLedgers, // To display in the table
         ]);
     }
+    
 
 
     public function showCompanySummary()

@@ -105,8 +105,7 @@ class MobileController extends Controller
 
         public function getTasksByAgentId($agentId)
     {
-        $tasks = DB::table('task_item_agent_view')
-            ->where('task_agent_id', $agentId)
+        $tasks = Task::where('agent_id', $agentId)
             ->get();
 
         return response()->json($tasks, 200);

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Services\TextFileProcessor;
+use Exception;
+use Spatie\PdfToImage\Pdf;
 
 class FileController extends Controller
 {
     protected $fileProcessor;
 
-    public function __construct(TextFileProcessor $fileProcessor)
+    public function __construct()
     {
-        $this->fileProcessor = $fileProcessor;
     }
 
     public function saveFile($file)
@@ -26,16 +27,20 @@ class FileController extends Controller
         }
     }
 
-    public function processFile($filePath)
+    public function convertPdfToImage($file) 
     {
         try {
+            // Convert the PDF file to an image
+            $image = new Pdf($file->getRealPath());
 
-            // Call the service to process the file
-            $data = $this->fileProcessor->readAndExtractData($filePath);
+            $image->saveImage('app/public/images');
 
-            // Return the processed data as JSON or handle it further as needed
-            return response()->json($data);
-        } catch (\Exception $e) {
+            dd($image);
+
+
+            return $image;
+        } catch(Exception $e)
+        {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

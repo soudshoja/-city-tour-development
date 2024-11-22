@@ -120,7 +120,7 @@ Route::middleware(['auth'])->group(function () {
 
 //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
-
+    Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
 
     // Branches routes
     Route::group([

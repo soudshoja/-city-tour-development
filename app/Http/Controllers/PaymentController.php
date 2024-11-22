@@ -133,6 +133,7 @@ class PaymentController extends Controller
             'payment_method' => $data['payment_method'],
             'status'  => 'pending',
             'payment_reference' => $invoice->id,
+            'invoice_id' => $invoice->id,
         ]);
 
         $requestTap = [
@@ -235,7 +236,7 @@ class PaymentController extends Controller
         }
 
 
-        $bankAccount = Account::where('name', 'Invoice Payments') // or bank account
+        $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
             ->where('company_id', $invoice->agent->company->id)
             ->first();
 
@@ -353,7 +354,7 @@ class PaymentController extends Controller
         }
 
         // Update the invoice status based on the payment received
-        $totalPaid = Payment::where('payment_reference', $invoice->id)->sum('amount');
+        $totalPaid = Payment::where('invoice_id', $invoice->id)->sum('amount');
         if ($totalPaid >= $invoice->amount) {
             $invoice->status = 'paid';
         } else {

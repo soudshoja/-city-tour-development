@@ -11,72 +11,79 @@
                      <!-- Table for Receivables -->
                 <div class="overflow-x-auto bg-white shadow rounded-lg">
                     <h3 class="text-xl font-semibold text-gray-700 mb-4">Receivables</h3>
-                    <table id="receivablesTable" class="min-w-full table-auto border-collapse">
-                        <thead class="bg-gray-100 text-gray-600">
+                    <table id="payablesTable" class="min-w-full table-auto border-collapse">
+                        <thead class="bg-gray-100 text-gray-600 text-xs">
                             <tr>
                                 <th class="px-4 py-2 text-left">Invoice Number</th> 
-                                <th class="px-4 py-2 text-left">Status</th> 
+                                <th class="px-4 py-2 text-left">Invoice Status</th> 
                                 <th class="px-4 py-2 text-left">Transaction Date</th>
                                 <th class="px-4 py-2 text-left">Description</th>
+                                <th class="px-4 py-2 text-left">Branch</th>
                                 <th class="px-4 py-2 text-left">Agent</th>
-                                <th class="px-4 py-2 text-left">Client</th>
-                                <th class="px-4 py-2 text-left">Credit</th>
-                                <th class="px-4 py-2 text-left">Debit</th>
-                                <th class="px-4 py-2 text-left">Balance</th>
+                                <th class="px-4 py-2 text-left">Supplier</th>
+                                <th class="px-4 py-2 text-left">Amount</th>
                             </tr>
                         </thead>
-                        <tbody id="receivablesBody" class="text-gray-800">
-                            @foreach ($generalLedgers as $generalLedger)
-                                @if($generalLedger['type'] == 'receivable')
-                                <tr class="general-ledger-row hover:bg-gray-50 {{ $generalLedger['status'] == 'unpaid' ? 'bg-red-200' : '' }}">
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['invoice_number'] }}</td> 
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['status'] }}</td>
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['transaction_date'] }}</td>
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['description'] }}</td>
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['agent_name'] }}</td>
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['generalLedger_name'] }}</td>
-                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['credit'] }}</td>
-                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['debit'] }}</td>
-                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['balance'] }}</td>
-                                    </tr>
-                                @endif
+                        <tbody id="payablesBody" class="text-gray-800">
+                            @foreach ($groupedGeneralLedgers as $taskName => $ledgers)
+                                <tr class="task-row bg-gray-200 font-bold">
+                                    <td colspan="9" class="px-4 py-2 border-b">{{ $taskName }}</td>
+                                </tr>
+
+                                @foreach ($ledgers as $generalLedger)
+                                    @if($generalLedger['type'] == 'receivable' || $generalLedger['type'] == 'bank')
+                                        <tr class="general-ledger-row hover:bg-gray-50 text-xs {{ $generalLedger['status'] == 'unpaid' ? 'bg-red-200' : 'bg-green-200' }}">
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['invoice_number'] }}</td> 
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['status'] }}</td>
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['transaction_date'] }}</td>
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['description'] }}</td>
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['branch_name'] }}</td>
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['agent_name'] }}</td>
+                                            <td class="px-4 py-2 border-b">{{ $generalLedger['supplier_name'] }}</td>
+                                            <td class="px-4 py-2 border-b text-right">{{ $generalLedger['balance'] }}</td>
+                                        </tr>
+                                    @endif
+                                @endforeach
                             @endforeach
                         </tbody>
                     </table>
+
                 </div>
 
                 <!-- Table for Payables -->
                 <div class="overflow-x-auto bg-white shadow rounded-lg">
                     <h3 class="text-xl font-semibold text-gray-700 mb-4">Payables</h3>
                     <table id="payablesTable" class="min-w-full table-auto border-collapse">
-                        <thead class="bg-gray-100 text-gray-600">
+                        <thead class="bg-gray-100 text-gray-600 text-xs">
                             <tr>
                                 <th class="px-4 py-2 text-left">Invoice Number</th> 
-                                <th class="px-4 py-2 text-left">Status</th> 
+                                <th class="px-4 py-2 text-left">Invoice Status</th> 
                                 <th class="px-4 py-2 text-left">Transaction Date</th>
+                                <th class="px-4 py-2 text-left">Task Name</th>
                                 <th class="px-4 py-2 text-left">Description</th>
+                                <th class="px-4 py-2 text-left">Branch</th>
                                 <th class="px-4 py-2 text-left">Agent</th>
                                 <th class="px-4 py-2 text-left">Supplier</th>
-                                <th class="px-4 py-2 text-left">Credit</th>
-                                <th class="px-4 py-2 text-left">Debit</th>
-                                <th class="px-4 py-2 text-left">Balance</th>
+                                <th class="px-4 py-2 text-left">Amount</th>
                             </tr>
                         </thead>
                         <tbody id="payablesBody" class="text-gray-800">
-                            @foreach ($generalLedgers as $generalLedger)
+                        @foreach ($groupedGeneralLedgers as $taskName => $ledgers)
+                            @foreach ($ledgers as $generalLedger)
                                 @if($generalLedger['type'] == 'payable')
-                                <tr class="general-ledger-row hover:bg-gray-50 {{ $generalLedger['status'] == 'unpaid' ? 'bg-red-200' : '' }}">
+                                <tr class="general-ledger-row hover:bg-gray-50 text-xs {{ $generalLedger['status'] == 'unpaid' ? 'bg-red-200' : 'bg-red-200' }}">
                                         <td class="px-4 py-2 border-b">{{ $generalLedger['invoice_number'] }}</td> 
                                         <td class="px-4 py-2 border-b">{{ $generalLedger['status'] }}</td>
                                         <td class="px-4 py-2 border-b">{{ $generalLedger['transaction_date'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['task_name'] }}</td>
                                         <td class="px-4 py-2 border-b">{{ $generalLedger['description'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['branch_name'] }}</td>
                                         <td class="px-4 py-2 border-b">{{ $generalLedger['agent_name'] }}</td>
-                                        <td class="px-4 py-2 border-b">{{ $generalLedger['generalLedger_name'] }}</td>
-                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['credit'] }}</td>
-                                        <td class="px-4 py-2 border-b text-right">{{ $generalLedger['debit'] }}</td>
+                                        <td class="px-4 py-2 border-b">{{ $generalLedger['supplier_name'] }}</td>
                                         <td class="px-4 py-2 border-b text-right">{{ $generalLedger['balance'] }}</td>
                                     </tr>
                                 @endif
+                            @endforeach
                             @endforeach
                         </tbody>
                     </table>

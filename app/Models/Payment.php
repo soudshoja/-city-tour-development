@@ -29,6 +29,7 @@ class Payment extends Model
         'discount',
         'shipping',
         'payment_reference',
+        'invoice_id',
     ];
     public function client()
     {
@@ -40,6 +41,11 @@ class Payment extends Model
         return $this->belongsTo(Agent::class, 'agent_id');
     }
 
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+    
     public function transactions(): MorphMany
     {
         return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');

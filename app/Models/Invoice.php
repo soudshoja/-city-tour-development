@@ -44,7 +44,7 @@ class Invoice extends Model
 
     public function payment()
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasOne(Payment::class);
     }
 
     public function invoiceDetails()
@@ -62,7 +62,6 @@ class Invoice extends Model
     {
         return $this->hasMany(Transaction::class);
     }
-
 
 
 }

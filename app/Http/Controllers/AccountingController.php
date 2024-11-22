@@ -48,7 +48,7 @@ class AccountingController extends Controller
                                 'invoices' => $client->invoices->map(function ($invoice) {
                                     return [
                                         'id' => $invoice->id,
-                                        'description' => $invoice->description,
+                                        'description' => $invoice->invoice_number,
                                         'invoiceDetails' => $invoice->invoiceDetails->map(function ($invoiceDetail) {
                                             return [
                                                 'id' => $invoiceDetail->id,
@@ -89,6 +89,9 @@ class AccountingController extends Controller
                                     'transaction_date' => $generalLedger->created_at,
                                     'description' => $generalLedger->description,
                                     'agent_name' => $agent->name,
+                                    'type' => $generalLedger->type,
+                                    'invoice_number' => $invoice->invoice_number,
+                                    'status'=>$invoice->status
                                 ];
                             }
                         }
@@ -98,7 +101,7 @@ class AccountingController extends Controller
         }
     
         // Pass the data to the view
-        return view('accounting.summary', [
+        return view('accounting.index', [
             'company' => $company,
             'branches' => $branches, // Used for dropdown population
             'generalLedgers' => $generalLedgers, // To display in the table

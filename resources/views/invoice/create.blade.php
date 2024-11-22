@@ -774,8 +774,8 @@
                 }
 
                 const result = await response.json();
-                const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
-                //const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
+                //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
+                const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
 
                             // Invoice link elements
                 const invoiceLinkContainer = document.getElementById("invoice-link-container");

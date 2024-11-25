@@ -100,10 +100,11 @@ class OpenAiController extends Controller
         return response()->json($response);
     }
 
-    public function extractPassport($content){
+    public function extractPassport($content)
+    {
         $prompt = "
         You are an assistant for a travel agency. You need to extract passport details from the uploaded content. This passport is extracted by tesseract-OCR. The details you need might be nearby the words or sentences. The passport details should include the following fields:
-        
+    
         - `passport_no`: Passport number or Passport No.
         - `civil_no`: Civil number or Civil No.
         - `name`: Full name as per the passport.
@@ -113,10 +114,11 @@ class OpenAiController extends Controller
         - `date_of_expiry`: Date of expiry
         - `place_of_birth`: Place of birth
         - `place_of_issue`: Place of issue
-
-        only passed me the data extracted from in JSON format.
+    
+        only pass me the data extracted in JSON format.
         ";
-
+    
+        // Make the request to the OpenAI API
         $response = $this->chatCompletion([
             [
                 'role' => 'user',
@@ -127,26 +129,50 @@ class OpenAiController extends Controller
                 'content' => $content,
             ],
         ]);
-        
-        if(isset($response['choices'][0]['message']['content'])){
+    
+        // Check if response contains the expected structure
+        if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
-            $message = $this->cleanJsonResponse($message);
-            
-            return [
-                'status' => 'success',
-                'message' => 'Data extracted successfully',
-                'data' => $message,
-            ];
-        }else{
-            $message = $response;
-
+    
+            // Check if the response is already a valid JSON string
+            $decodedResponse = json_decode($message, true);
+    
+            // If it's already a valid array, use it directly
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return [
+                    'status' => 'success',
+                    'message' => 'Data extracted successfully',
+                    'data' => $decodedResponse,
+                ];
+            } else {
+                // If the message is not valid JSON, attempt to clean the response
+                $cleanedResponse = $this->cleanJsonResponse($message);
+    
+                // Attempt decoding the cleaned response
+                $data = json_decode($cleanedResponse, true);
+    
+                // Check if the cleaned response is a valid JSON
+                if (json_last_error() === JSON_ERROR_NONE && isset($data['passport_no'])) {
+                    return [
+                        'status' => 'success',
+                        'message' => 'Data extracted successfully',
+                        'data' => $data,
+                    ];
+                } else {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to parse JSON or missing required fields.',
+                    ];
+                }
+            }
+        } else {
             return [
                 'status' => 'error',
-                'message' => 'Data extraction failed',
+                'message' => 'Data extraction failed. No content returned from OpenAI.',
             ];
         }
-
     }
+
 
     public function extractFileData($content)
     {

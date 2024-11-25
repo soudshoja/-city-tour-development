@@ -53,10 +53,9 @@ class InvoiceController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
-        $agents = null;
+    
         if ($user->role_id == Role::COMPANY) {
             $company = $user->company;          
-            $agents = Agent::where('company_id', $company->id)->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = Company::find($agent->company_id);
@@ -97,31 +96,17 @@ class InvoiceController extends Controller
             $selectedAgent =null;
         }
     
-        $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
-            return $agent['id'];
-        }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
-    
+
+
+        $agentId =  $selectedAgent ? $selectedAgent->id : null;
         // Prepare additional data
         $clientId = $selectedClient ? $selectedClient->id : null;
-
-        $clients = $agentId ? Client::whereIn('agent_id', $agentId)->get() : collect();
-        $tasks = null; 
-        if ($user->role_id == Role::AGENT) {
-            $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
-        }
+        $clients = $agentId ? Client::where('agent_id', $agentId)->get() : collect();
+        $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
         $suppliers = Supplier::all();
-        
-        $todayDate = Carbon::now()->format('Y-m-d');
-        // dump($agents); 
-        
-        // foreach($agents as $agent) 
-        // {
-        //     dump($agent);
-        // }
-        // dd('agent end');
+    
         return view('invoice.create', compact(
             'clients', 
-            'agents',
             'agentId', 
             'clientId', 
             'tasks', 
@@ -130,8 +115,7 @@ class InvoiceController extends Controller
             'invoiceNumber', 
             'selectedTasks', 
             'selectedAgent',
-            'selectedClient',
-            'todayDate'
+            'selectedClient'
         ));
     }
     
@@ -261,7 +245,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                             'account_id' =>  $PayablechildAccountId,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be made to: ' . $supplier->name,
                             'debit' => $selectedtask->total,
@@ -292,7 +276,7 @@ class InvoiceController extends Controller
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $ReceivablechildAccountId,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be received from: ' . $client->name,
@@ -327,7 +311,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                             'account_id' => $IncomechildAccountId,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Price markup by Agent: ' . $agent->name,
                             'debit' => 0,

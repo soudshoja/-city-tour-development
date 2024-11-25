@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use PhpParser\Node\Expr\Throw_;
 use thiagoalessio\TesseractOCR\TesseractOCR;
+use GuzzleHttp\Client as GuzzleClient;
 
 class ClientController extends Controller
 {
@@ -118,55 +119,114 @@ class ClientController extends Controller
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-        // dd($request->all());
+        
+        // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',
             'email' => 'email|unique:clients,email,' . $id,
-            'status' => 'nullable',   // Optional status field
-            'phone' => 'string|max:15',    // Optional phone field
-            'file' => 'nullable|mimes:jpeg,jpg,png',    // Optional passport file field
+            'status' => 'nullable',
+            'phone' => 'string|max:15',
+            'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
         ]);
-
-        // Find the client and update it
+        
         try {
+            // Update the client data
             $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
+            
+            // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {
-                $file = $request->file('file');
-
-                // if($file->getClientOriginalExtension() == 'pdf') {
-
-                //     $fileController = new FileController();
-                //     $file = $fileController->convertPdfToImage($file);
-
-                // }
-
-                $ocr = new TesseractOCR();
-                $ocr->image($file->getRealPath());
-                $text = $ocr->run();
-
                 try {
-
-                    $openai = new OpenAiController();
-                    $response =  $openai->extractPassport($text);
-                    $responseData = json_decode($response['data'], true);
+                    // Process the image using OCR
+                    $ocrResponse = $this->processImage($request);  // Get the response from processImage
                     
-                    $this->updateClientPassport($client, $responseData);
+                    // Now $ocrResponse is already an array, so no need to decode it
+                    if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                        $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
+    
+                        // You can now use the parsed text (e.g., for passport extraction)
+                        $openai = new OpenAiController();
+                        $response = $openai->extractPassport($parsedText); // Pass the parsed text to OpenAI
+                        
+                        // Since extractPassport already returns the parsed data (not a JSON string), 
+                        // we can use it directly as an array
+                        if (isset($response['data'])) {
+                            $this->updateClientPassport($client, $response['data']);
+                        } else {
+                            // Handle case where 'data' is not available
+                            return redirect()->back()->withInput()->with('error', 'OCR processing failed or no data returned.');
+                        }
+                    } else {
+                        return redirect()->back()->withInput()->with('error', 'No text found in OCR response.');
+                    }
                     
                 } catch (Exception $e) {
                     return redirect()->back()->withInput()->with('error', $e->getMessage());
                 }
             }
-            // Redirect to the clients list with a success message
-            return Redirect::back()->with(
-            [
-                'error' => 'test',
-                'success' => 'Client updated successfully!',
-            ]
-            );
+    
+            // Redirect back with success message
+            return Redirect::back()->with('success', 'Client updated successfully!');
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
+
+
+
+
+      public function processImage(Request $request)
+        {
+            // Get the API key from the .env file
+            $apiKey = env('OCR_SPACE_API_KEY');
+            
+            // Make sure the API key exists
+            if (!$apiKey) {
+                return response()->json(['error' => 'API key is missing.'], 400);
+            }
+        
+            // Check if the request has a file
+            if ($request->hasFile('file')) {
+                $imagePath = $request->file('file')->getRealPath();
+            
+                // Use GuzzleClient instead of Client to avoid conflict
+                $client = new GuzzleClient();
+                $url = 'https://api.ocr.space/parse/image';
+            
+                try {
+                    // Send the POST request to OCR.space
+                    $response = $client->post($url, [
+                        'headers' => [
+                            'apikey' => $apiKey,  // Use the API key from .env
+                        ],
+                        'multipart' => [
+                            [
+                                'name' => 'file',
+                                'contents' => fopen($imagePath, 'r'),
+                                'filename' => 'image.jpg',
+                            ],
+                        ]
+                    ]);
+            
+                    // Get the response body as an array
+                    $result = json_decode($response->getBody()->getContents(), true);
+                    
+                    // Check if OCR was successful and parsed text is available
+                    if (isset($result['ParsedResults'][0]['ParsedText'])) {
+                        return $result; // return the entire response array to be used later
+                    }
+            
+                    return response()->json(['error' => 'OCR processing failed.'], 500);
+            
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'OCR processing failed: ' . $e->getMessage()], 500);
+                }
+            } else {
+                return response()->json(['error' => 'No file provided.'], 400);
+            }
+        }
+
+
+
 
     public function updateClientPassport($client, $data)
     {

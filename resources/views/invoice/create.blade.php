@@ -742,6 +742,15 @@
         function renderTaskList(taskData) {
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = '';
+           if(taskData.length == 0) 
+           {
+            const p = document.createElement('p');
+            p.className = 'text-center text-gray-500';
+            p.innerText = 'No Task Available';
+            taskList.appendChild(p);
+
+            return;
+           }
             taskData.forEach(task => {
                 const li = document.createElement('li');
                 li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
@@ -838,7 +847,7 @@
                 let errorNotification = document.createElement('div');
                 errorNotification.innerHTML = ` 
                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                        Choose A Task To Saved 
+                       Please Fill In All Required Data 
                      <button type="button" class="close text-white ml-2" aria-label="Close"
                          onclick="this.parentElement.style.display='none';">
                          <span aria-hidden="true">&times;</span>

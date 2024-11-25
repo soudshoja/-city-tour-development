@@ -305,7 +305,7 @@
                 class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                     <!-- Dynamic list items go here -->
                      @foreach ($agents as $agent)
-                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent({{$agent->id}})">
+                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
                             {{$agent->name}}
                         </li>
                      @endforeach
@@ -561,9 +561,16 @@
             renderItems(); // Re-render the table after removal
         }
 
-        function chooseTasksAgent(agentId) {
-           //TODO: clear selected tasks of other agents 
-            document.getElementById('agentName').value = agentId;
+        function chooseTasksAgent(agent) {
+            
+            agent = JSON.parse(agent);
+            const agentId = agent.id;
+            const agentName = agent.name;
+            const agentEmail = agent.email; 
+            
+            itemsBody.innerHTML = '';
+            document.getElementById('agentName').value = agentName;
+            document.getElementById('agentEmail').value = agentEmail;
             let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
             url = url.replace('_agentId_', agentId);
 
@@ -574,7 +581,7 @@
                     renderTaskList(tasks);
                 })
                 .catch(error => console.error(error));
-                
+            
             closeAgentModal();
         }
         // Handle Tab Switching
@@ -816,6 +823,17 @@
 
             if (!clientId || !agentId || !tasks.length) {
                 console.error("Required data is missing.");
+                let errorNotification = document.createElement('div');
+                errorNotification.innerHTML = ` 
+                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                        Choose A Task To Saved 
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+                 `
+                document.body.appendChild(errorNotification);
                 resetButtonState();
                 return;
             }

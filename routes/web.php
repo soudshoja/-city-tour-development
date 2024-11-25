@@ -22,6 +22,7 @@ use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Models\Role;
@@ -222,5 +223,17 @@ Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.sh
 Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
 Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
 Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.update');
+
+// NOIFICATIONS
+Route::group([
+    'middleware' => ['auth'],
+    'prefix' => 'notifications',
+    'as' => 'notifications.',
+], function () {
+    Route::get('/', [NotificationController::class, 'index'])->name('index');
+    Route::get('/{id}', [NotificationController::class, 'show'])->name('show');
+    Route::post('/{id}', [NotificationController::class, 'update'])->name('update');
+    Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
+});
 
 require __DIR__ . '/auth.php';

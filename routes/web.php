@@ -88,7 +88,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
     Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
-
+    Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
 
     // verdors routes
     Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');

@@ -40,7 +40,12 @@ class InvoiceController extends Controller
             $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
-            $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+            dd('invoice');
+            $agents = Agent::with(['branch' => function($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->pluck('id');
+
+            dd($agents);
             $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             // Agent can see their tasks
@@ -55,8 +60,12 @@ class InvoiceController extends Controller
         $user = Auth::user();
         $agents = null;
         if ($user->role_id == Role::COMPANY) {
-            $company = $user->company;          
-            $agents = Agent::where('company_id', $company->id)->get();
+            $company = $user->company;
+            
+            $agents = Agent::with(['branch' => function($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->get();
+
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = Company::find($agent->company_id);
@@ -84,7 +93,6 @@ class InvoiceController extends Controller
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
             $agentIds =  $selectedTasks->pluck('agent_id')->unique();
-
             $selectedAgent = Agent::find($agentIds->first());
             
             if ($clientIds->count() >= 1) {
@@ -96,15 +104,17 @@ class InvoiceController extends Controller
             $selectedClient = null; // No tasks selected
             $selectedAgent =null;
         }
-    
         $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
             return $agent['id'];
         }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
-    
         // Prepare additional data
+        
         $clientId = $selectedClient ? $selectedClient->id : null;
+        
+        $clients = Client::with(['agent.branch' => function ($query) use ($user) {
+            $query->where('company_id', $user->company->id);
+        }])->get();
 
-        $clients = $agentId ? Client::whereIn('agent_id', $agentId)->get() : collect();
         $tasks = null; 
         if ($user->role_id == Role::AGENT) {
             $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
@@ -416,7 +426,9 @@ class InvoiceController extends Controller
         }
 
         // Get all agents under the company
-        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+        $agents = Agent::with(['branch' => function($query) use ($user) {
+            $query->where('company_id', $user->company->id);
+        }])->pluck('id');
 
         // Get invoices related to those agents
         $invoices = Invoice::with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);

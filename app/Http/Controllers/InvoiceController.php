@@ -129,6 +129,7 @@ class InvoiceController extends Controller
     
         return view('invoice.create', compact(
             'clients', 
+            'agents',
             'agentId', 
             'clientId', 
             'tasks', 
@@ -137,7 +138,8 @@ class InvoiceController extends Controller
             'invoiceNumber', 
             'selectedTasks', 
             'selectedAgent',
-            'selectedClient'
+            'selectedClient',
+            'todayDate'
         ));
     }
     

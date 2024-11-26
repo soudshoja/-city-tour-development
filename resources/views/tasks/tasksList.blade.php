@@ -146,7 +146,8 @@
                                     <span>Tasks Name</span>
                                 </div>
                             </th>
-
+                            <th class="px-4 py-2">Invoice</th>
+                            <th class="px-4 py-2">Invoice Status</th>
                             <th class="px-4 py-2">Client Name</th>
                             <th class="px-4 py-2">Type</th>
                             <th class="px-4 py-2">Net Price</th>
@@ -165,13 +166,15 @@
                         @foreach($tasks as $task)
                         <tr>
                             <td class="px-4 py-2">
-                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}">
+                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
                             </td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
                                 data-field="status">
                                 {{ $task->status }}
                             </td>
                             <td class="px-4 py-2">{{ $task->additional_info }} - {{ $task->venue }}</td>
+                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->invoice_number : 'N\A'}}</td>
+                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->status : 'N\A'}}</td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
                                 data-field="client_name">{{ $task->client_name }}</td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"

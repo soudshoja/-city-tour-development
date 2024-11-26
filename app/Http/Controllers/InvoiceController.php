@@ -19,6 +19,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Redirect;
 
 class InvoiceController extends Controller
 {
@@ -40,12 +41,10 @@ class InvoiceController extends Controller
             $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
-            dd('invoice');
             $agents = Agent::with(['branch' => function($query) use ($user) {
                 $query->where('company_id', $user->company->id);
             }])->pluck('id');
 
-            dd($agents);
             $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             // Agent can see their tasks
@@ -57,6 +56,15 @@ class InvoiceController extends Controller
 
     public function create(Request $request)
     {
+        $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
+        $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+        $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
+
+        foreach($selectedTasks as $task) {
+            if ($task->invoiceDetail) {
+                return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
+            }
+        }
         $user = Auth::user();
         $agents = null;
         if ($user->role_id == Role::COMPANY) {
@@ -83,12 +91,9 @@ class InvoiceController extends Controller
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
     
-        $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
-        $taskIdsArray = explode(',', $taskIds); // Multiple tasks
 
    
         // Fetch tasks
-        $selectedTasks = Task::whereIn('id', $taskIdsArray)->get();
         // Handle client association
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
@@ -523,5 +528,23 @@ class InvoiceController extends Controller
         $invoice->save();
 
         return redirect()->route('invoice.index')->with('status', 'Invoice status updated successfully!');
+
+    }
+
+    public function getTaskInvoiceStatus($taskId)
+    {
+        $task = Task::find($taskId);
+
+        if (!$task) {
+            return response()->json(['error' => 'Task not found!'], 404);
+        }
+
+        $invoiceDetail = InvoiceDetail::where('task_id', $taskId)->first();
+
+        if (!$invoiceDetail) {
+            return response()->json(['error' => 'Invoice detail not found!'], 404);
+        }
+
+        return response()->json(['status' => $invoiceDetail->paid]);
     }
 }

@@ -219,7 +219,9 @@ class TaskController extends Controller
      * @return array
      */
     public function getAgentTask($agentId){
-        $tasks = Task::where('agent_id', $agentId)->get();
+        // get tasks that doesnt have invoice only
+        $tasks = Task::whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
+
         return response()->json($tasks);
     }
 }

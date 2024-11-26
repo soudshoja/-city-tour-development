@@ -30,14 +30,14 @@ class TaskController extends Controller
         $taskCount = 0;
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = Task::with('agent.branch', 'client')->get(); // Retrieve all tasks for admin
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get(); // Retrieve all tasks for admin
             $taskCount = Task::count(); // Total task count for admin
         } elseif ($user->role_id == Role::COMPANY) {
             $agents = Agent::all();
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.branch', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $tasks = Task::with('agent.branch', 'client','invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
             $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
         } elseif ($user->role_id == Role::AGENT) {
             if ($id) {
@@ -219,7 +219,9 @@ class TaskController extends Controller
      * @return array
      */
     public function getAgentTask($agentId){
-        $tasks = Task::where('agent_id', $agentId)->get();
+        // get tasks that doesnt have invoice only
+        $tasks = Task::whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
+
         return response()->json($tasks);
     }
 }

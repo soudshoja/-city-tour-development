@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\Invoice;
 use App\Models\Company;
 use App\Models\Client;
+use App\Models\Notification;
 use App\Models\Role;
 use App\Models\Task;
 use Illuminate\Support\Facades\Auth;
@@ -92,6 +93,7 @@ class DashboardController extends Controller
             ];
         });
 
+        $notifications = Notification::with('user.agent.branch.company')->get();
         // Prepare the data array
         $dashboardData = [
             'totalTasks' => $totalTaskCount,
@@ -105,6 +107,7 @@ class DashboardController extends Controller
             'clients' => $clientsWithDetails,
             'totalTrips' => $tripsCount,
             'invoices' => $invoices,
+            'notifications' => $notifications,
         ];
         return view('items.index', compact('company', 'agent', 'dashboardData'));
     }
@@ -209,6 +212,7 @@ class DashboardController extends Controller
             ];
         });
 
+        $notifications = Notification::with('user.agent.branch.company')->orderBy('created_at', 'desc')->get();
 
         // Prepare the data array
         $dashboardData = [
@@ -227,8 +231,9 @@ class DashboardController extends Controller
             'agentsCount' => $agentsCount,
             'agents' => $agentsWithDetails,
             'clients' => $clientsWithDetails,
+            'notifications' => $notifications,
         ];
-
+        
         return view('companies.index', compact('company', 'dashboardData'));
     }
 

@@ -175,8 +175,8 @@
                             </div>
                         </div>
                     </div>
-                    <!-- user activity -->
-                    <div class="mt-5 h-full">
+                    <!-- user activity / notifications-->
+                    <!-- <div class="mt-5 h-full">
                         <div
                             class="-mx-5 mb-5 flex items-start justify-between border-y border-[#e0e6ed] p-5 pt-0 dark:border-[#1b2e4b] dark:text-white-light">
                             <h5 class="pt-5 text-lg font-semibold"><span class="text-primary">Users</span> Activity</h5>
@@ -334,7 +334,9 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
+                    
+                    @include('notifications.partials.dashboard', ['notifications' => $dashboardData['notifications']])
                     <!-- user activity done -->
                 </div>
 
@@ -352,241 +354,238 @@
 
 
     <script>
-    // JavaScript to toggle the visibility of the content
-    function setupToggle(iconId, contentId) {
-        const toggleIcon = document.getElementById(iconId);
-        const toggleContent = document.getElementById(contentId);
+        // JavaScript to toggle the visibility of the content
+        function setupToggle(iconId, contentId) {
+            const toggleIcon = document.getElementById(iconId);
+            const toggleContent = document.getElementById(contentId);
 
-        toggleIcon.addEventListener('click', () => {
-            // Toggle the 'hidden' class to show/hide the content
-            toggleContent.classList.toggle('hidden');
+            toggleIcon.addEventListener('click', () => {
+                // Toggle the 'hidden' class to show/hide the content
+                toggleContent.classList.toggle('hidden');
 
-            // Change the icon from up to down depending on the content visibility
-            if (toggleContent.classList.contains('hidden')) {
-                toggleIcon.classList.remove('fa-chevron-up');
-                toggleIcon.classList.add('fa-chevron-down');
-            } else {
-                toggleIcon.classList.remove('fa-chevron-down');
-                toggleIcon.classList.add('fa-chevron-up');
-            }
-        });
-    }
+                // Change the icon from up to down depending on the content visibility
+                if (toggleContent.classList.contains('hidden')) {
+                    toggleIcon.classList.remove('fa-chevron-up');
+                    toggleIcon.classList.add('fa-chevron-down');
+                } else {
+                    toggleIcon.classList.remove('fa-chevron-down');
+                    toggleIcon.classList.add('fa-chevron-up');
+                }
+            });
+        }
 
-    // Call the setupToggle function for each toggle pair
-    document.addEventListener('DOMContentLoaded', () => {
-        setupToggle('Income-icon', 'Income-content');
-        setupToggle('toggle-icon', 'toggle-content');
-    });
-    </script>
-
-
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Example data (replace with your actual data)
-        const dashboardData = @json($dashboardData);
-
-        const formattedInvoiceAmount = new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'MYR'
-        }).format(dashboardData.totalInvoiceAmount);
-
-        document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
-        document.getElementById("totalAgents").innerText = dashboardData.agentsCount;
-        document.getElementById("totalClients").innerText = dashboardData.clientsCount;
-        document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
-        document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
-        document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
-        document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
-        document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
-
-
-        // chart data
-
-        var incomeData = dashboardData.totalPaidAmountChart;
-        var expensesData = dashboardData.totalUnpaidAmountChart;
-
-        // Define all 12 months in an array
-        const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        // Create arrays with 12 elements initialized to 0 for income and expenses
-        let incomeDataMapped = new Array(12).fill(0);
-        let expensesDataMapped = new Array(12).fill(0);
-
-        // Populate incomeDataMapped and expensesDataMapped based on the data from incomeData and expensesData
-        incomeData.forEach(item => {
-            const [year, month] = item.month.split('-'); // Splitting "YYYY-MM"
-            incomeDataMapped[parseInt(month) - 1] = item
-                .total; // Set the corresponding month (0-indexed)
+        // Call the setupToggle function for each toggle pair
+        document.addEventListener('DOMContentLoaded', () => {
+            setupToggle('Income-icon', 'Income-content');
+            setupToggle('toggle-icon', 'toggle-content');
         });
 
-        expensesData.forEach(item => {
-            const [year, month] = item.month.split('-'); // Splitting "YYYY-MM"
-            expensesDataMapped[parseInt(month) - 1] = item
-                .total; // Set the corresponding month (0-indexed)
-        });
+        document.addEventListener("DOMContentLoaded", function() {
+            // Example data (replace with your actual data)
+            const dashboardData = @json($dashboardData);
 
-        // ApexCharts configuration
-        const options = {
-            series: [{
-                    name: 'Piad',
-                    data: incomeDataMapped
-                },
-                {
-                    name: 'Unpaid',
-                    data: expensesDataMapped
-                },
+            const formattedInvoiceAmount = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'MYR'
+            }).format(dashboardData.totalInvoiceAmount);
 
-            ],
-            chart: {
-                height: 325,
-                type: 'area',
-                fontFamily: 'Nunito, sans-serif',
-                zoom: {
-                    enabled: false,
-                },
-                toolbar: {
-                    show: false,
-                },
-            },
-            dataLabels: {
-                enabled: false,
-            },
-            stroke: {
-                show: true,
-                curve: 'smooth',
-                width: 2,
-                lineCap: 'square',
-            },
-            dropShadow: {
-                enabled: true,
-                opacity: 0.2,
-                blur: 10,
-                left: -7,
-                top: 22,
-            },
-            colors: ['#1b55e2', '#e7515a'],
-            markers: {
-                size: 0, // Hide markers for zero values by default
-                colors: ['#ffffff'],
-                strokeColors: ['#1b55e2', '#e7515a'],
-                strokeWidth: 3,
-                hover: {
-                    size: 8,
-                },
-                discrete: [
-                    ...incomeDataMapped.map((value, index) => (
-                        value > 0 ? {
-                            seriesIndex: 0,
-                            dataPointIndex: index,
-                            fillColor: '#1b55e2',
-                            strokeColor: 'transparent',
-                            size: 7,
-                        } : null
-                    )).filter(Boolean),
-                    ...expensesDataMapped.map((value, index) => (
-                        value > 0 ? {
-                            seriesIndex: 1,
-                            dataPointIndex: index,
-                            fillColor: '#e7515a',
-                            strokeColor: 'transparent',
-                            size: 7,
-                        } : null
-                    )).filter(Boolean),
+            document.getElementById("totalInvoiceAmount").innerText = formattedInvoiceAmount;
+            document.getElementById("totalAgents").innerText = dashboardData.agentsCount;
+            document.getElementById("totalClients").innerText = dashboardData.clientsCount;
+            document.getElementById("totalTasks").innerText = dashboardData.totalTasks;
+            document.getElementById("pendingTasks").innerText = dashboardData.pendingTasks;
+            document.getElementById("completedTasks").innerText = dashboardData.completedTasks;
+            document.getElementById("paidInvoices").innerText = dashboardData.paidInvoices;
+            document.getElementById("unpaidInvoices").innerText = dashboardData.unpaidInvoices;
+
+
+            // chart data
+
+            var incomeData = dashboardData.totalPaidAmountChart;
+            var expensesData = dashboardData.totalUnpaidAmountChart;
+
+            // Define all 12 months in an array
+            const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            // Create arrays with 12 elements initialized to 0 for income and expenses
+            let incomeDataMapped = new Array(12).fill(0);
+            let expensesDataMapped = new Array(12).fill(0);
+
+            // Populate incomeDataMapped and expensesDataMapped based on the data from incomeData and expensesData
+            incomeData.forEach(item => {
+                const [year, month] = item.month.split('-'); // Splitting "YYYY-MM"
+                incomeDataMapped[parseInt(month) - 1] = item
+                    .total; // Set the corresponding month (0-indexed)
+            });
+
+            expensesData.forEach(item => {
+                const [year, month] = item.month.split('-'); // Splitting "YYYY-MM"
+                expensesDataMapped[parseInt(month) - 1] = item
+                    .total; // Set the corresponding month (0-indexed)
+            });
+
+            // ApexCharts configuration
+            const options = {
+                series: [{
+                        name: 'Piad',
+                        data: incomeDataMapped
+                    },
+                    {
+                        name: 'Unpaid',
+                        data: expensesDataMapped
+                    },
+
                 ],
-            },
-            xaxis: {
-                categories: allMonths,
-                axisBorder: {
-                    show: false,
-                },
-                axisTicks: {
-                    show: false,
-                },
-                crosshairs: {
-                    show: true,
-                },
-                labels: {
-                    offsetX: 0,
-                    offsetY: 5,
-                    style: {
-                        fontSize: '12px',
-                        cssClass: 'apexcharts-xaxis-title',
+                chart: {
+                    height: 325,
+                    type: 'area',
+                    fontFamily: 'Nunito, sans-serif',
+                    zoom: {
+                        enabled: false,
                     },
-                },
-            },
-            yaxis: {
-                tickAmount: 7,
-                labels: {
-                    formatter: (value) => {
-                        return value / 1000 + 'K';
-                    },
-                    offsetX: -10,
-                    offsetY: 0,
-                    style: {
-                        fontSize: '12px',
-                        cssClass: 'apexcharts-yaxis-title',
-                    },
-                },
-                opposite: false,
-            },
-            grid: {
-                borderColor: '#e0e6ed',
-                strokeDashArray: 5,
-                xaxis: {
-                    lines: {
-                        show: true,
-                    },
-                },
-                yaxis: {
-                    lines: {
+                    toolbar: {
                         show: false,
                     },
                 },
-                padding: {
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    left: 0,
+                dataLabels: {
+                    enabled: false,
                 },
-            },
-            legend: {
-                position: 'top',
-                horizontalAlign: 'right',
-                fontSize: '16px',
-                markers: {
-                    width: 10,
-                    height: 10,
-                    offsetX: -2,
-                },
-                itemMargin: {
-                    horizontal: 10,
-                    vertical: 5,
-                },
-            },
-            tooltip: {
-                marker: {
+                stroke: {
                     show: true,
+                    curve: 'smooth',
+                    width: 2,
+                    lineCap: 'square',
                 },
-                x: {
-                    show: false,
+                dropShadow: {
+                    enabled: true,
+                    opacity: 0.2,
+                    blur: 10,
+                    left: -7,
+                    top: 22,
                 },
-            },
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    inverseColors: false,
-                    opacityFrom: 0.28,
-                    opacityTo: 0.05,
-                    stops: [45, 100],
+                colors: ['#1b55e2', '#e7515a'],
+                markers: {
+                    size: 0, // Hide markers for zero values by default
+                    colors: ['#ffffff'],
+                    strokeColors: ['#1b55e2', '#e7515a'],
+                    strokeWidth: 3,
+                    hover: {
+                        size: 8,
+                    },
+                    discrete: [
+                        ...incomeDataMapped.map((value, index) => (
+                            value > 0 ? {
+                                seriesIndex: 0,
+                                dataPointIndex: index,
+                                fillColor: '#1b55e2',
+                                strokeColor: 'transparent',
+                                size: 7,
+                            } : null
+                        )).filter(Boolean),
+                        ...expensesDataMapped.map((value, index) => (
+                            value > 0 ? {
+                                seriesIndex: 1,
+                                dataPointIndex: index,
+                                fillColor: '#e7515a',
+                                strokeColor: 'transparent',
+                                size: 7,
+                            } : null
+                        )).filter(Boolean),
+                    ],
                 },
-            },
-        };
+                xaxis: {
+                    categories: allMonths,
+                    axisBorder: {
+                        show: false,
+                    },
+                    axisTicks: {
+                        show: false,
+                    },
+                    crosshairs: {
+                        show: true,
+                    },
+                    labels: {
+                        offsetX: 0,
+                        offsetY: 5,
+                        style: {
+                            fontSize: '12px',
+                            cssClass: 'apexcharts-xaxis-title',
+                        },
+                    },
+                },
+                yaxis: {
+                    tickAmount: 7,
+                    labels: {
+                        formatter: (value) => {
+                            return value / 1000 + 'K';
+                        },
+                        offsetX: -10,
+                        offsetY: 0,
+                        style: {
+                            fontSize: '12px',
+                            cssClass: 'apexcharts-yaxis-title',
+                        },
+                    },
+                    opposite: false,
+                },
+                grid: {
+                    borderColor: '#e0e6ed',
+                    strokeDashArray: 5,
+                    xaxis: {
+                        lines: {
+                            show: true,
+                        },
+                    },
+                    yaxis: {
+                        lines: {
+                            show: false,
+                        },
+                    },
+                    padding: {
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        left: 0,
+                    },
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'right',
+                    fontSize: '16px',
+                    markers: {
+                        width: 10,
+                        height: 10,
+                        offsetX: -2,
+                    },
+                    itemMargin: {
+                        horizontal: 10,
+                        vertical: 5,
+                    },
+                },
+                tooltip: {
+                    marker: {
+                        show: true,
+                    },
+                    x: {
+                        show: false,
+                    },
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        inverseColors: false,
+                        opacityFrom: 0.28,
+                        opacityTo: 0.05,
+                        stops: [45, 100],
+                    },
+                },
+            };
 
-        // Create and render the chart
-        const chart = new ApexCharts(document.querySelector("#revenueChart"), options);
-        chart.render();
-    });
+            // Create and render the chart
+            const chart = new ApexCharts(document.querySelector("#revenueChart"), options);
+            chart.render();
+        });
     </script>
 
 

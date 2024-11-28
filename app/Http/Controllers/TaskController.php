@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\Notification;
 use Illuminate\Http\Request;
 use App\Models\Task;
 use App\Models\Item;
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\Storage;
 //// tset
 class TaskController extends Controller
 {
+    use Notification;
+
     public function index($id = null)
     {
         $user = Auth::user();
@@ -39,7 +42,9 @@ class TaskController extends Controller
             $agentIds = $agents->pluck('id'); // Get all agents for this company
             $tasks = Task::with('agent.branch', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
             $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
+
         } elseif ($user->role_id == Role::AGENT) {
+            
             if ($id) {
                 $agent = Agent::find($id);
                 if ($agent) {
@@ -57,6 +62,7 @@ class TaskController extends Controller
                     return redirect()->back()->with('error', 'Agent not found.');
                 }
             }
+
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
@@ -68,7 +74,6 @@ class TaskController extends Controller
     }
 
     public function show($id)
-
     {
         // Retrieve the task with related agent and client data
         $task = Task::with(['agent', 'client', 'flightDetails'])->find($id);
@@ -81,11 +86,8 @@ class TaskController extends Controller
         // Return the task data as JSON for the modal to load dynamically
         return response()->json(['task' => $task], 200);
     }
-
-
-
+    
     // edit and update tasks
-
     public function edit($id)
     {
         // Include both 'agent' and 'client' in the query
@@ -105,10 +107,9 @@ class TaskController extends Controller
 
                 // Update the specific field
                 $task->update([$field => $value]);
-                return 'true';
+
                 return response()->json(['success' => true], 200);  // Ensure a 200 OK response with JSON format
             } catch (Exception $e) {
-                return 'true';
 
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500); // Return error response with status 500
             }
@@ -151,6 +152,7 @@ class TaskController extends Controller
             $response = $openai->extractFileData($contents);
 
             if ($response == 'success') {
+
                 return redirect()->back()->with('success', 'Tasks imported successfully.');
             } else {
                 return redirect()->back()->with('error', 'Tasks import failed.');

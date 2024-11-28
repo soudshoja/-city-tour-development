@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\Notification;
 use App\Models\Account;
 use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,7 @@ use Carbon\Carbon;
 
 class InvoiceController extends Controller
 {
+    use Notification;
 
     public function index($id = null)
     {
@@ -73,7 +75,13 @@ class InvoiceController extends Controller
     
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
-    
+        
+        $this->storeNotification([
+            'user_id' => $user->id,
+            'title' => 'Invoice Created',
+            'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
+        ]);
+
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
         $taskIdsArray = explode(',', $taskIds); // Multiple tasks
 

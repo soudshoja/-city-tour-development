@@ -126,7 +126,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->name,
-            'pay_to' => $invoice->agent->company->name,
+            'pay_to' => $invoice->agent->branch->company->name,
             'currency' => 'KWD',
             'payment_date' =>  Carbon::now(),
             'amount' =>  $data['total_amount'],

@@ -1,8 +1,4 @@
 <x-app-layout>
-
-
-
-
     <div>
         <!-- Breadcrumbs -->
         <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
@@ -114,8 +110,12 @@
                             <h5 class="text-base ml-auto">{{ $agent->phone_number }}</h5>
                         </div>
                         <div class="mt-2 flex items-center justify-between text-white">
+                            <p class="text-lg">Branch</p>
+                            <h5 class="text-base ml-auto">{{ $agent->branch->name }}</h5>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Company</p>
-                            <h5 class="text-base ml-auto">{{ $agent->company->name }}</h5>
+                            <h5 class="text-base ml-auto">{{ $agent->branch->company->name }}</h5>
                         </div>
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Type</p>

@@ -62,8 +62,8 @@
                                 <div class="text-lg font-semibold">Bill To</div>
 
                                 @can('pickAgent', App\Models\Invoice::class)
-                                <button 
-                                    id="select-agent" 
+                                <button
+                                    id="select-agent"
                                     type="button"
                                     onclick="openAgentModal()"
                                     class="inline-flex justify-center gap-2 hover:bg-blue-500 hover:text-white rounded-lg p-2 text-sm font-medium dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
@@ -92,7 +92,7 @@
                                     </svg> Select Client
                                 </button>
                                 <input id="receiverId" type="hidden" name="receiverId" />
-                                <input id="agentId" type="hidden" name="agentId" value="" />
+                                <input id="agentId" type="hidden" name="agentId" value="{{$agentId ?? ''}}" />
                             </div>
                             <div class="mt-4 flex items-center">
                                 <label for="receiverName" class="mb-0 w-1/3 mr-2 ">Name</label>
@@ -278,8 +278,8 @@
                 <!-- Modal Header -->
                 <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
                     <h5 class="text-lg font-bold">Agent Management</h5>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onclick="closeAgentModal()"
                         class="text-white-dark hover:text-dark" id="closeAgentModalButton">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
@@ -293,7 +293,7 @@
                 <!-- ./Modal Header -->
 
                 <!-- Search Box -->
-            <div class="relative mb-4 px-4">
+                <div class="relative mb-4 px-4">
                     <input type="text" placeholder="Search Agent..."
                         class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
                         id="agentSearchInput">
@@ -302,13 +302,13 @@
 
                 <!-- List of Agents -->
                 <ul id="agentList"
-                class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
+                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                     <!-- Dynamic list items go here -->
-                     @foreach ($agents as $agent)
-                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
-                            {{$agent->name}}
-                        </li>
-                     @endforeach
+                    @foreach ($agents as $agent)
+                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
+                        {{$agent->name}}
+                    </li>
+                    @endforeach
                 </ul>
                 <!-- ./List of Agents -->
             </div>
@@ -476,6 +476,7 @@
         let selectedTasks = @json($selectedTasks);
         let items = [];
         const itemsBody = document.getElementById('items-body');
+        const appUrl = @json($appUrl);
 
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -589,12 +590,12 @@
         }
 
         function chooseTasksAgent(agent) {
-            
+
             agent = JSON.parse(agent);
             const agentId = agent.id;
             const agentName = agent.name;
-            const agentEmail = agent.email; 
-            
+            const agentEmail = agent.email;
+
             itemsBody.innerHTML = '';
             document.getElementById('agentId').value = agentId;
             document.getElementById('agentName').value = agentName;
@@ -609,7 +610,7 @@
                     renderTaskList(tasks);
                 })
                 .catch(error => console.error(error));
-            
+
             closeAgentModal();
         }
         // Show Select Client Tab
@@ -693,6 +694,7 @@
             const modal = document.getElementById("agentModal");
             modal.classList.add("hidden");
         }
+
         function filterClients() {
             const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
             const filteredClients = clients.filter(client =>
@@ -742,15 +744,14 @@
         function renderTaskList(taskData) {
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = '';
-           if(taskData.length == 0) 
-           {
-            const p = document.createElement('p');
-            p.className = 'text-center text-gray-500';
-            p.innerText = 'No Task Available';
-            taskList.appendChild(p);
+            if (taskData.length == 0) {
+                const p = document.createElement('p');
+                p.className = 'text-center text-gray-500';
+                p.innerText = 'No Task Available';
+                taskList.appendChild(p);
 
-            return;
-           }
+                return;
+            }
             taskData.forEach(task => {
                 const li = document.createElement('li');
                 li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
@@ -761,11 +762,10 @@
         }
 
         // Call the function with the selectedClient object
-        if (selectedClient && selectedAgent)
-        {
+        if (selectedClient && selectedAgent) {
             updateFormFields(selectedClient, selectedAgent);
         }
- 
+
         function updateFormFields(client, agent) {
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
@@ -878,14 +878,14 @@
 
                     })
                 });
-
                 if (!response.ok) {
                     throw new Error("Failed to reach the invoice controller.");
                 }
 
                 const result = await response.json();
                 //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
-                const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
+                // const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
+                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
 
                 // Invoice link elements
                 const invoiceLinkContainer = document.getElementById("invoice-link-container");
@@ -901,8 +901,18 @@
                 updateButtonState();
 
             } catch (error) {
-                console.error("Error generating invoice:", error);
-
+                console.error('Error generating invoice:', error);
+                let alert = document.createElement('div');
+                alert.innerHTML = ` 
+                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                       Error Generating Invoice: make sure all fields are filled correctly
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+                 `
+                document.body.appendChild(alert); 
                 resetButtonState();
             } finally {
                 // Reset button states

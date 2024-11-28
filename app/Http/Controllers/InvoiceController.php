@@ -59,7 +59,7 @@ class InvoiceController extends Controller
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
         $taskIdsArray = explode(',', $taskIds); // Multiple tasks
         $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
-
+   
         foreach($selectedTasks as $task) {
             if ($task->invoiceDetail) {
                 return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
@@ -92,14 +92,13 @@ class InvoiceController extends Controller
         $invoiceSequence->save();
     
 
-   
         // Fetch tasks
         // Handle client association
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
             $agentIds =  $selectedTasks->pluck('agent_id')->unique();
             $selectedAgent = Agent::find($agentIds->first());
-            
+
             if ($clientIds->count() >= 1) {
                 $selectedClient = Client::find($clientIds->first());
             } else {
@@ -114,7 +113,7 @@ class InvoiceController extends Controller
         $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
             return $agent['id'];
         }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
-        
+
         $clientId = $selectedClient ? $selectedClient->id : null;
         
         $clients = Client::with(['agent.branch' => function ($query) use ($user) {
@@ -129,6 +128,8 @@ class InvoiceController extends Controller
    
         $todayDate = Carbon::now()->format('Y-m-d');
 
+        $appUrl = config('app.url');
+
         return view('invoice.create', compact(
             'clients', 
             'agents',
@@ -141,7 +142,8 @@ class InvoiceController extends Controller
             'selectedTasks', 
             'selectedAgent',
             'selectedClient',
-            'todayDate'
+            'todayDate',
+            'appUrl'
         ));
     }
     
@@ -152,6 +154,24 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'tasks' => 'required|array',
+            'tasks.*.id' => 'required|integer',
+            'tasks.*.description' => 'required|string',
+            'tasks.*.remark' => 'nullable|string',
+            'tasks.*.invprice' => 'required|numeric',
+            'tasks.*.supplier_id' => 'required|integer',
+            'tasks.*.client_id' => 'required|integer',
+            'tasks.*.agent_id' => 'required|integer',
+            'invdate' => 'required|date',
+            'duedate' => 'required|date',
+            'subTotal' => 'required|numeric',
+            'clientId' => 'required|integer',
+            'agentId' => 'required|integer',
+            'invoiceNumber' => 'required|string',
+            'currency' => 'required|string',
+        ]);
+
 
         $tasks = $request->input('tasks');
         $duedate = $request->input('duedate');

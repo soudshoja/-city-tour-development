@@ -94,11 +94,13 @@ class ClientController extends Controller
     public function show($id)
     {
         $client = Client::findOrFail($id);
-        $agents = Agent::with('company')->get();
-        $invoices = Invoice::where('client_id', $id)->get();
+        $agents = Agent::with('branch')->get();
+        $invoices = Invoice::with('invoiceDetails')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
-
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks')); // Ensure the view exists
+        $paid = $invoices->where('status', 'paid')->sum('amount');
+        $unpaid = $invoices->where('status','<>' ,'paid')->sum('amount');
+        
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks','paid', 'unpaid')); // Ensure the view exists
     }
 
     // Show the form for editing a client

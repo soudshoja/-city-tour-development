@@ -31,9 +31,9 @@ class AgentController extends Controller
             $agents = Agent::with('company')->get();
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see their agents
-            $agents = Agent::with('company')
-                ->where('company_id', $user->company->id) // assuming user belongs to one company
-                ->get();
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('id', $user->company_id);
+            }])->get();
         }
 
         $AgentsData = [
@@ -56,8 +56,8 @@ class AgentController extends Controller
 
     public function show($id)
     {
-        $agent = Agent::with('company', 'tasks', 'invoices', 'clients')->findOrFail($id);
-
+        $agent = Agent::with('branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
+        
         // Paginate all sections when viewing the main page (agentsShow)
         $tasks = Task::with('agent')->where('agent_id', $id)->paginate(6);
 

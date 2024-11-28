@@ -59,7 +59,7 @@ class AgentController extends Controller
         $agent = Agent::with('branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
         
         // Paginate all sections when viewing the main page (agentsShow)
-        $tasks = Task::with('agent', 'invoiceDetail')->where('agent_id', $id)->paginate(3, ['*'], 'tasks');
+        $tasks = Task::with('agent', 'invoiceDetail')->where('agent_id', $id)->paginate(6, ['*'], 'tasks');
 
         $taskInvoiced = Task::where('agent_id', $id)->whereHas('invoiceDetail')->count();
         $taskNotInvoiced = Task::where('agent_id', $id)->whereDoesntHave('invoiceDetail')->count();
@@ -69,15 +69,28 @@ class AgentController extends Controller
             $task->created_at = $date->format('d-M-Y');
         }
 
-        $invoices = Invoice::where('agent_id', $id)->paginate(3, ['*'], 'invoices');
-
-        $clients = Client::whereHas('tasks', function ($query) use ($agent) {
+        $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->paginate(4, ['*'], 'invoices');
+        foreach($invoices as $invoice) {
+            $cost = 0;
+            foreach($invoice->invoiceDetails as $detail) {
+                $cost += $detail->supplier_price;
+                $cost = number_format($cost, 2);
+            }
+            $invoice->cost = (string)$cost;
+        }
+        
+        $clients = Client::with('invoices')->whereHas('tasks', function ($query) use ($agent) {
             $query->where('agent_id', $agent->id);
         })->paginate(3, ['*'], 'clients');
-
+        
+        foreach($clients as $client) {
+            $client->paid = number_format($client->invoices->where('status', 'paid')->sum('amount'), 2 );
+            $client->unpaid = number_format($client->invoices->where('status', '<>', 'paid')->sum('amount'), 2 ); 
+        }
+        
         $paid = Invoice::where('status', 'paid')->where('agent_id', $id)->sum('amount');
         $unpaid = Invoice::where('status','<>','paid')->where('agent_id', $id)->sum('amount');
-
+        // dd(Task::with('invoiceDetail', 'client')->where('agent_id', $id)->get());
         // Return the main view with paginated data
         return view('agents.agentsShow', compact(
             'agent',

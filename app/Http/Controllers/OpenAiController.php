@@ -182,10 +182,10 @@ class OpenAiController extends Controller
         1. `tasks` model with the following fields:
             - `additional_info`: Additional information but make sure to only include relevant data and below 10 words, summarize it.
             - `status`: Current status of the task.
-            - `price`: Price of the task.
-            - `surcharge`: Any surcharge applied.
-            - `total`: Total amount for the task.
-            - `tax`: Total tax amount.
+            - `price`: Price of the task in float type.
+            - `surcharge`: Any surcharge applied in float type.
+            - `total`: Total amount for the task in float type.
+            - `tax`: Total tax amount in float type.
             - `reference`: Reference code for the task.
             - `type`: Type of task (e.g., flight).
             - `agent_name`: name of the agent handling the task.
@@ -216,6 +216,8 @@ class OpenAiController extends Controller
         Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
 
         this is the content: $content
+
+        only pass me the data extracted in JSON format.
         ";
 
         $url = config('services.open-ai.url') . '/chat/completions';

@@ -59,21 +59,36 @@ class AgentController extends Controller
         $agent = Agent::with('branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
         
         // Paginate all sections when viewing the main page (agentsShow)
-        $tasks = Task::with('agent')->where('agent_id', $id)->paginate(6);
+        $tasks = Task::with('agent', 'invoiceDetail')->where('agent_id', $id)->paginate(3, ['*'], 'tasks');
+
+        $taskInvoiced = Task::where('agent_id', $id)->whereHas('invoiceDetail')->count();
+        $taskNotInvoiced = Task::where('agent_id', $id)->whereDoesntHave('invoiceDetail')->count();
 
         foreach ($tasks as $task) {
             $date = new DateTimeImmutable($task->created_at);
             $task->created_at = $date->format('d-M-Y');
         }
 
-        $invoices = Invoice::where('agent_id', $id)->paginate(6);
+        $invoices = Invoice::where('agent_id', $id)->paginate(3, ['*'], 'invoices');
 
         $clients = Client::whereHas('tasks', function ($query) use ($agent) {
             $query->where('agent_id', $agent->id);
-        })->paginate(6);
+        })->paginate(3, ['*'], 'clients');
+
+        $paid = Invoice::where('status', 'paid')->where('agent_id', $id)->sum('amount');
+        $unpaid = Invoice::where('status','<>','paid')->where('agent_id', $id)->sum('amount');
 
         // Return the main view with paginated data
-        return view('agents.agentsShow', compact('agent', 'tasks', 'invoices', 'clients'));
+        return view('agents.agentsShow', compact(
+            'agent',
+            'tasks',
+            'invoices',
+            'clients',
+            'paid',
+            'unpaid',
+            'taskInvoiced',
+            'taskNotInvoiced'
+        ));
     }
 
 

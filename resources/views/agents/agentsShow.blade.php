@@ -23,6 +23,20 @@
                     <h5 class="text-lg font-semibold dark:text-white-light">
                         <span class="customBlueColor">Tasks</span> List
                     </h5>
+                    <div class="flex gap-2 w-96">
+                        <x-paid class="relative group">
+                            {{$taskInvoiced}} Task{{$taskInvoiced > 1 ? 's' : ''}}
+                            <div class="absolute right-0 -top-11 bg-gray-900 border-black rounded-md p-2 invisible group-hover:visible">
+                                <p class="font-normal">Task that invoiced</p>
+                            </div>
+                        </x-paid>
+                        <x-unpaid class="relative group">
+                            {{$taskNotInvoiced}} Task{{$taskNotInvoiced > 1 ? 's' : ''}}
+                            <div class="absolute right-0 -top-11 bg-gray-900 border-black rounded-md p-2 invisible group-hover:visible w-60 z-10">
+                                <p class="font-normal ">Task that not invoiced yet</p>
+                            </div>
+                        </x-unpaid>
+                    </div>
                     <!-- add an icon here -->
                 </div>
                 <!-- tasks Section -->
@@ -47,7 +61,7 @@
                                 </thead>
                                 <tbody>
                                     @foreach($tasks as $task)
-                                    <tr>
+                                    <tr class="{{ $task->invoiceDetail !== null ? 'bg-green-300' : 'bg-red-300' }}">
                                         <td class="py-4 px-6 border-b"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
                                         <td class="py-4 px-6 border-b">{{ $task->created_at }}</td>
                                         <td class="py-4 px-6 border-b">{{ $task->status }}</td>
@@ -120,6 +134,10 @@
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Type</p>
                             <h5 class="text-base ml-auto">{{ $agent->type }}</h5>
+                        </div>
+                        <div class="flex justify-evenly gap-2 w-full mt-2">
+                            <x-paid>{{$paid}} KWD</x-paid>
+                            <x-unpaid>{{$unpaid}} KWD</x-unpaid>
                         </div>
                     </div>
                 </div>
@@ -241,7 +259,17 @@
                             <tr>
                                 <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
                                 <td class="py-4 px-6 border-b">{{ $invoice->created_at }}</td>
-                                <td class="py-4 px-6 border-b">{{ $invoice->status }}</td>
+                                <td class="py-4 px-6 border-b">
+                                    @if($invoice->status == 'paid')
+                                    <x-paid>
+                                        {{ $invoice->status }}
+                                    </x-paid>
+                                    @else
+                                    <x-unpaid>
+                                        {{ $invoice->status }}
+                                    </x-unpaid>
+                                    @endif
+                                </td>
                                 <td class="py-4 px-6 border-b">{{ $invoice->client->name }}</td>
                                 <td class="py-4 px-6 border-b">
                                     <a href="#" class="text-indigo-500">View</a>

@@ -33,7 +33,7 @@ class Task extends Model
     }
 
 
-    public function invoicedetail()
+    public function invoiceDetail()
     {
         return $this->hasOne(InvoiceDetail::class, 'task_id');
     }

@@ -101,12 +101,8 @@
                         </div>
                     </div>
                     <div class="invoice-status flex gap-2 mt-2">
-                        <div class="bg-green-200 border-2 border-green-500 rounded-md p-2 w-full">
-                            <p class="text-center">{{$paid}} KWD</p>
-                        </div>
-                        <div class="bg-red-200 border-2 border-red-500 rounded-md p-2 w-full">
-                           <p class="text-center">{{$unpaid}} KWD</p> 
-                        </div>
+                        <x-paid>{{ $paid }} KWD</x-paid>
+                        <x-unpaid>{{ $unpaid }} KWD</x-unpaid>
                     </div>
                 </div>
 

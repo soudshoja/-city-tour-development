@@ -83,7 +83,6 @@
                         </button>
                     </div>
                     <div>
-
                         <div class="flex items-center justify-between text-white">
                             <p class="text-lg">Email</p>
                             <h5 class="text-base ml-auto">{{ $client->email }}</h5>
@@ -100,6 +99,10 @@
                             <p class="text-lg">Agent</p>
                             <h5 class="text-base ml-auto">{{ $client->agent->name }}</h5>
                         </div>
+                    </div>
+                    <div class="invoice-status flex gap-2 mt-2">
+                        <x-paid>{{ $paid }} KWD</x-paid>
+                        <x-unpaid>{{ $unpaid }} KWD</x-unpaid>
                     </div>
                 </div>
 

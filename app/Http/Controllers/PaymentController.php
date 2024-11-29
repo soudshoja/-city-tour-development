@@ -126,7 +126,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->name,
-            'pay_to' => $invoice->agent->company->name,
+            'pay_to' => $invoice->agent->branch->company->name,
             'currency' => 'KWD',
             'payment_date' =>  Carbon::now(),
             'amount' =>  $data['total_amount'],
@@ -253,10 +253,10 @@ class PaymentController extends Controller
         // dd($invoiceDetails);
         if (!empty($invoiceDetails)) {
             // dd($invoiceDetails);
-            foreach ($invoiceDetails as $invoicedetail) {
+            foreach ($invoiceDetails as $invoiceDetail) {
                 try {
 
-                    $selectedtask = Task::where('id', $invoicedetail['task_id'])->first();
+                    $selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
                     $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
@@ -265,7 +265,7 @@ class PaymentController extends Controller
                         'entity_id' =>  $invoice->agent->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
-                        'amount'=> $invoicedetail['task_price'],
+                        'amount'=> $invoiceDetail['task_price'],
                         'date'=> Carbon::now(),
                         'description'=> 'pay to Invoice:' . $invoiceNumber,
                         'invoice_id'=> $invoice->id,
@@ -285,16 +285,16 @@ class PaymentController extends Controller
                     //     'invoice_id' =>  $invoice->id,
                     //     'transaction_date' => Carbon::now(),
                     //     'description' => 'Payment received from: ' . $client->name,
-                    //     'debit' => $invoicedetail['task_price'],
+                    //     'debit' => $invoiceDetail['task_price'],
                     //     'credit' =>0,
-                    //     'balance' => $invoicedetail['task_price'],
+                    //     'balance' => $invoiceDetail['task_price'],
                     //     'name' =>  $client->name,
                     //     'type' => 'receivable',
                     //     'voucher_number' => $payment->voucher_number,
                     // ]);
 
                     // Update the receivable account balance
-                    $filteredReceivableChildAccount->actual_balance -= $invoicedetail['task_price'];
+                    $filteredReceivableChildAccount->actual_balance -= $invoiceDetail['task_price'];
                     $filteredReceivableChildAccount->save();
 
 
@@ -305,18 +305,18 @@ class PaymentController extends Controller
                             'company_id' => $invoice->agent->company->id,
                             'account_id' =>  $bankAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoicedetail->id,
+                            'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment transfered to: ' . $bankAccount->name,
-                            'debit' => $invoicedetail['task_price'],
+                            'debit' => $invoiceDetail['task_price'],
                             'credit' =>0,
-                            'balance' => $invoicedetail['task_price'],
+                            'balance' => $invoiceDetail['task_price'],
                             'name' =>  $bankAccount->name,
                             'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,
                         ]);
 
-                        $bankAccount->actual_balance += $invoicedetail['task_price']; // Add to cash/bank account
+                        $bankAccount->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
                         $bankAccount->save();
                     }
 
@@ -326,7 +326,7 @@ class PaymentController extends Controller
                             'company_id' => $invoice->agent->company->id,
                             'account_id' =>  $tapAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoicedetail->id,
+                            'invoice_detail_id' =>  $invoiceDetail->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment Charged For:'. $tapAccount->name,
@@ -348,7 +348,7 @@ class PaymentController extends Controller
                 } catch (Exception $e) {
                     // Log the error if something goes wrong with a specific task
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                    return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoicedetail['task_description']], 500);
+                    return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
                 }
             }
         }

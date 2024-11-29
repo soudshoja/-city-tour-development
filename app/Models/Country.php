@@ -12,8 +12,8 @@ class Country extends Model
 
     protected $fillable = ['name', 'iso_code'];
 
-    public function companies()
-    {
-        return $this->hasMany(Company::class, 'nationality');
-    }
+    // public function companies()
+    // {
+    //     return $this->hasMany(Company::class, 'nationality_id');
+    // }
 }

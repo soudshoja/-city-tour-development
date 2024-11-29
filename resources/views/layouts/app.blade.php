@@ -50,7 +50,7 @@
 
             <!-- Header -->
             @include('layouts.navigation')
-
+            @include('notifications.partials.dashboard')
         </div>
     </div>
     <x-loading />

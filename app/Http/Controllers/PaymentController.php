@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Traits\Notification;
+use App\Http\Traits\NotificationTrait;
 use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetail;
@@ -25,7 +25,7 @@ use App\Support\PaymentGateway\Tap;
 
 class PaymentController extends Controller
 {
-    use Notification;
+    use NotificationTrait;
 
     public function index(string $invoiceNumber)
     {
@@ -245,10 +245,10 @@ class PaymentController extends Controller
             ->get();
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
-            ->where('company_id', $invoice->agent->company->id)
+            ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-        Log::info('company_id:', ['company_id' => $invoice->agent->company->id]);
+        Log::info('company_id:', ['company_id' => $invoice->agent->branch->company->id]);
 
         if ($receivableAccount) {
             $filteredReceivableChildAccount = $receivableAccount->children()
@@ -262,13 +262,13 @@ class PaymentController extends Controller
 
 
         $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
-            ->where('company_id', $invoice->agent->company->id)
+            ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
 
 
         $tapAccount = Account::where('name', 'Tap Charges') // or bank account
-            ->where('company_id', $invoice->agent->company->id)
+            ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
 
@@ -287,7 +287,7 @@ class PaymentController extends Controller
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
                     // Create a transaction record first
                     $transaction = Transaction::create([
-                        'entity_id' =>  $invoice->agent->company->id,
+                        'entity_id' =>  $invoice->agent->branch->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
                         'amount'=> $invoiceDetail['task_price'],
@@ -327,7 +327,7 @@ class PaymentController extends Controller
                     if ($bankAccount) {
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
-                            'company_id' => $invoice->agent->company->id,
+                            'company_id' => $invoice->agent->branch->company->id,
                             'account_id' =>  $bankAccount->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
@@ -348,7 +348,7 @@ class PaymentController extends Controller
                     if ($tapAccount) {
                         GeneralLedger::create([
                             'transaction_id' => $payment->id,
-                            'company_id' => $invoice->agent->company->id,
+                            'company_id' => $invoice->agent->branch->company->id,
                             'account_id' =>  $tapAccount->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,

@@ -20,7 +20,14 @@ class NotificationController extends Controller
         }
         return $notifications;
     }
-    public function create(){
+    public function store($data){
+
+        $notification = new Notification();
+        $notification->user_id = $data['user_id'];
+        $notification->title = $data['title'];
+        $notification->message = $data['message'];
+        $notification->save();
+        return $notification;
 
     }
     

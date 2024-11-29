@@ -1,8 +1,8 @@
 <?php
 
 namespace App\Http\Traits;
-
-trait Notification
+use App\Models\Notification;
+trait NotificationTrait
 {
    public function storeNotification($data){
         $notification = new Notification();

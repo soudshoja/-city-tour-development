@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Traits\Notification;
+use App\Http\Traits\NotificationTrait;
 use App\Models\Account;
 use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Redirect;
 
 class InvoiceController extends Controller
 {
-    use Notification;
+    use NotificationTrait;
 
     public function index($id = null)
     {

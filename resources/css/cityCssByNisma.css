@@ -1,0 +1,83 @@
+/* auth pages */
+
+/* CSS */
+.custom-rounded-left {
+    border-radius: 0.5rem;
+    /* Default for mobile: fully rounded */
+}
+
+.custom-rounded-right {
+    border-radius: 0.5rem;
+    /* Default for mobile: fully rounded */
+}
+
+@media (min-width: 1024px) {
+    .custom-rounded-left {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-top-left-radius: 1rem;
+        /* Custom large rounding for left side */
+        border-bottom-left-radius: 1rem;
+        /* Custom large rounding for left side */
+    }
+
+    .custom-rounded-right {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        border-top-right-radius: 1rem;
+        /* Custom large rounding for left side */
+        border-bottom-right-radius: 1rem;
+        /* Custom large rounding for left side */
+    }
+}
+
+.City-me-2 {
+    margin-inline-end: -0.5rem;
+}
+/* auth pages CSS ends */
+
+/* company dashboard CSS */
+
+#chartOfTopAgents {
+    margin: 0 !important; /* Remove all margins */
+    padding: 0 !important; /* Remove all paddings */
+    width: 100% !important; /* Fill entire container width */
+    height: auto !important; /* Adjust height to maintain aspect ratio */
+    box-sizing: border-box; /* Include padding/border in width and height calculations */
+    display: block; /* Block level element to fill container */
+}
+
+/* Adjust the chart container for mobile devices */
+.chart-container {
+    width: 100%;
+    height: 100%;
+    margin: 0; /* Remove container margin */
+    padding: 0; /* Remove container padding */
+    box-sizing: border-box; /* Ensures consistent sizing */
+}
+
+/* Media Query for Mobile Devices */
+@media (max-width: 768px) {
+    #chartOfTopAgents {
+        width: 80% !important; /* Make the chart a bit smaller on mobile */
+        height: 200px !important; /* Adjust height for mobile screens */
+    }
+
+    .chart-container {
+        height: 250px; /* Set a consistent container height on mobile */
+    }
+}
+
+/* Media Query for Tablet Devices */
+@media (max-width: 1024px) and (min-width: 769px) {
+    #chartOfTopAgents {
+        width: 90% !important; /* Adjust width for tablets */
+        height: 300px !important; /* Adjust height for tablets */
+    }
+
+    .chart-container {
+        height: 350px; /* Set a consistent container height for tablets */
+    }
+}
+
+/* company dashboard CSS ends */

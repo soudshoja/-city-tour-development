@@ -20,7 +20,7 @@ class Company extends Model
         'email',
         'address',
         'phone',
-        'nationality'
+        'nationality_id'
     ];
 
     public function branches()

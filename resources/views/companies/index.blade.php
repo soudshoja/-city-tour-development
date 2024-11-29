@@ -7,7 +7,7 @@
             <!-- card 1 (Customers) -->
             <div class="p-4 bg-green-100/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-green-800">580<span class="text-green-500">K</span></h1>
+                    <h1 class="text-2xl font-bold text-green-800">{{$dashboardData['clientsCount']}}<span class="text-green-500"></span></h1>
                     <p class="text-xs text-gray-500 mt-1">Total Customers</p>
                 </div>
                 <div class="mt-4 w-full text-center">
@@ -26,7 +26,7 @@
             <!-- card 2 (Agents) -->
             <div class="p-4 bg-blue-100/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-blue-800">430<span class="text-blue-500">K</span></h1>
+                    <h1 class="text-2xl font-bold text-blue-800">{{$dashboardData['agentsCount']}}<span class="text-blue-500"></span></h1>
                     <p class="text-xs text-gray-500 mt-1">Total Agents</p>
                 </div>
                 <div class="mt-4 w-full text-center">
@@ -45,8 +45,8 @@
             <!-- card 3 (Items) -->
             <div class="p-4 bg-red-100/50  rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-red-800">120<span class="text-red-500">Kwd</span></h1>
-                    <p class="text-xs text-gray-500 mt-1">Total Items</p>
+                    <h1 class="text-2xl font-bold text-red-800">{{$dashboardData['totalTasks']}}<span class="text-red-500"></span></h1>
+                    <p class="text-xs text-gray-500 mt-1">Total Tasks</p>
                 </div>
                 <div class="mt-4 w-full text-center">
                     <svg
@@ -64,7 +64,7 @@
             <!-- card 4 (Branches) -->
             <div class="p-4 bg-yellow-100/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-yellow-800">35<span class="text-yellow-500">K</span></h1>
+                    <h1 class="text-2xl font-bold text-yellow-800">{{$dashboardData['totalBranches']}}<span class="text-yellow-500"></span></h1>
                     <p class="text-xs text-gray-500 mt-1">Total Branches</p>
                 </div>
                 <div class="mt-4 w-full text-center">
@@ -262,27 +262,21 @@
     <script>
         const ctx = document.getElementById('earningsChart').getContext('2d');
 
-        // Helper function to generate random numbers
-        const generateRandomNumbers = (count, min, max) => {
-            return Array.from({
-                    length: count
-                }, () =>
-                Math.floor(Math.random() * (max - min + 1) + min)
-            );
-        };
-
         // Labels for the chart
         const labels = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
         ];
 
+        const paidAmounts = @json($dashboardData['paidAmounts']); // Real paid data
+        const unpaidAmounts = @json($dashboardData['unpaidAmounts']); // Real unpaid data
+
         // Data for the chart
         const data = {
             labels: labels,
             datasets: [{
                     label: 'Paid Amounts - Invoices',
-                    data: generateRandomNumbers(12, -100, 100),
+                    data: paidAmounts,
                     borderColor: 'rgb(34 197 94)',
                     backgroundColor: 'rgb(34 197 94)',
                     borderWidth: 3,
@@ -293,7 +287,7 @@
                 },
                 {
                     label: 'unpaid Amounts - Invoices',
-                    data: generateRandomNumbers(12, -100, 100),
+                    data: unpaidAmounts,
                     borderColor: 'rgb(239 68 68)',
                     backgroundColor: 'rgb(239 68 68)',
                     borderWidth: 3,
@@ -389,15 +383,15 @@
         const earningsChart = new Chart(ctx, config);
 
         // Actions (e.g., randomize data)
-        const actions = [{
-            name: 'Randomize',
-            handler(chart) {
-                chart.data.datasets.forEach((dataset) => {
-                    dataset.data = generateRandomNumbers(12, -100, 100);
-                });
-                chart.update();
-            },
-        }, ];
+        // const actions = [{
+        //     name: 'Randomize',
+        //     handler(chart) {
+        //         chart.data.datasets.forEach((dataset) => {
+        //             dataset.data = generateRandomNumbers(12, -100, 100);
+        //         });
+        //         chart.update();
+        //     },
+        // }, ];
     </script>
 
     <!-- ./income chart -->
@@ -405,8 +399,8 @@
     <!-- top branches chart -->
     <script>
         // Labels and data for "Top Branches" chart
-        const chartOfTopBranchesLabels = ['Branch A', 'Branch B', 'Branch C', 'Branch D'];
-        const chartOfTopBranchesDataValues = [40, 25, 60, 75, 50, 35]; // Fake percentage values for each branch
+        const chartOfTopBranchesLabels = @json($dashboardData['chartBranchData']->pluck('name'));
+        const chartOfTopBranchesDataValues = @json($dashboardData['chartBranchData']->pluck('percentage'));
 
         // Container to hold all branch cards with charts
         const branchCardsContainer = document.getElementById('branchCardsContainer');
@@ -504,9 +498,11 @@
 
     <!--  top agent chart -->
     <script>
+        const agentsData = @json($dashboardData['agentsData']);
+
         // Labels and data for "Top Agents" chart
-        const chartOfTopAgentsLabels = ['Agent X', 'Agent Y', 'Agent Z', 'Agent W'];
-        const chartOfTopAgentsDataValues = [20, 20, 10, 50]; // Percentage values for each category
+        const chartOfTopAgentsLabels = agentsData.map(agent => agent.name);
+        const chartOfTopAgentsDataValues = agentsData.map(agent => agent.percentage);
 
         // Data for the donut chart
         const chartOfTopAgentsData = {
@@ -589,40 +585,35 @@
 
         // Create the Donut Chart with central text
         const Agentsctx = document.getElementById('chartOfTopAgents').getContext('2d');
+       // Create the chart with updated data
         new Chart(Agentsctx, {
             type: 'doughnut',
             data: chartOfTopAgentsData,
             options: chartOfTopAgentsOptions,
-            plugins: [centralTextPlugin], // Custom plugin for central text
+            plugins: [centralTextPlugin],
         });
 
-        // Generate agent cards dynamically based on chart data
-        const agentCardsContainer = document.getElementById('agentCardsContainer');
-
-        chartOfTopAgentsLabels.forEach((label, index) => {
-            const percentage = chartOfTopAgentsDataValues[index];
-            const bgColor = chartOfTopAgentsData.datasets[0].backgroundColor[index];
-            const textColor = chartOfTopAgentsData.datasets[0].DarkColor[index];
+        // Generate agent cards dynamically
+        agentsData.forEach((agent, index) => {
+            const bgColor = chartOfTopAgentsData.datasets[0].backgroundColor[index % 4]; // Rotate colors
+            const textColor = chartOfTopAgentsData.datasets[0].DarkColor[index % 4];
 
             const card = document.createElement('div');
             card.className = 'flex items-center justify-between p-4 rounded-lg shadow-md w-full';
             card.style.backgroundColor = bgColor;
 
             card.innerHTML = `
-            <div class="w-full flex flex-col space-y-3">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 flex items-center justify-center rounded-full" style="background-color: ${textColor}">
-                        <span class="text-white font-bold text-sm">${label.split(' ')[1]}</span>
+                <div class="w-full flex flex-col space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 flex items-center justify-center rounded-full" style="background-color: ${textColor}">
+                            <span class="text-white font-bold text-sm">${agent.name.charAt(0)}</span>
+                        </div>
+                        <div class="flex w-full items-center justify-between">
+                            <span class="text-sm font-semibold">${agent.name}</span>
+                            <span class="text-sm font-semibold">${agent.percentage.toFixed(2)}%</span>
+                        </div>
                     </div>
-                    <div class="flex w-full items-center justify-between ">
-                        <span class="text-sm font-semibold">${label}</span>
-                        <span class="text-sm font-semibold">${percentage}%</span>
-                    </div>
-                   
-                </div>
-               
-            </div>`;
-
+                </div>`;
             agentCardsContainer.appendChild(card);
         });
     </script>

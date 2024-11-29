@@ -1,38 +1,5 @@
 <x-guest-layout>
 
-    <style>
-    /* CSS */
-    .custom-rounded-left {
-        border-radius: 0.5rem;
-        /* Default for mobile: fully rounded */
-    }
-
-    .custom-rounded-right {
-        border-radius: 0.5rem;
-        /* Default for mobile: fully rounded */
-    }
-
-    @media (min-width: 1024px) {
-        .custom-rounded-left {
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
-            border-top-left-radius: 1rem;
-            /* Custom large rounding for left side */
-            border-bottom-left-radius: 1rem;
-            /* Custom large rounding for left side */
-        }
-
-        .custom-rounded-right {
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-            border-top-right-radius: 1rem;
-            /* Custom large rounding for left side */
-            border-bottom-right-radius: 1rem;
-            /* Custom large rounding for left side */
-        }
-    }
-    </style>
-
     <div class="bg-slate-400 h-screen flex items-center justify-center">
         <div class="rounded-lg flex items-stretch w-[80%] justify-center">
             <!-- Left Side - Login Form -->
@@ -131,13 +98,16 @@
                     <!-- Sign In Button -->
                     <div class="mb-4 w-3/4 max-w-sm flex">
                         <button type="submit"
-                            class="justify-center text-center text-gray-700 bg-[#F7BE38] hover:bg-[#F7BE38]/90 focus:ring-4 focus:outline-none focus:ring-[#F7BE38]/50 font-medium rounded-lg px-5 py-2.5 text-center inline-flex items-center dark:focus:ring-[#F7BE38]/50 me-2 mb-2 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
+                            class="justify-center text-center text-gray-700 bg-[#F7BE38] hover:bg-[#F7BE38]/90 focus:ring-4 focus:outline-none focus:ring-[#F7BE38]/50 font-medium rounded-lg px-5 py-2.5 text-center inline-flex items-center dark:focus:ring-[#F7BE38]/50 City-me-2 mb-2 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
 
                             {{ __('Login') }}
                         </button>
                     </div>
 
                 </form>
+
+                <p class="text-center text-sm mb-8 text-left w-3/4 max-w-sm">need an account? <a href="{{ route('register') }}" class="text-[#F7BE38] underline pl-1">Register Here</a></p>
+
             </div>
 
             <!-- Right Side - Image/Illustration -->
@@ -151,19 +121,19 @@
     </div>
 
     <script>
-    function togglePasswordVisibility() {
-        const passwordField = document.getElementById('password');
-        const eyeIcon = document.getElementById('eyeIcon');
+        function togglePasswordVisibility() {
+            const passwordField = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
 
-        if (passwordField.type === 'password') {
-            passwordField.type = 'text';
-            eyeIcon.classList.add('feather-eye-off');
-            eyeIcon.classList.remove('feather-eye');
-        } else {
-            passwordField.type = 'password';
-            eyeIcon.classList.add('feather-eye');
-            eyeIcon.classList.remove('feather-eye-off');
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                eyeIcon.classList.add('feather-eye-off');
+                eyeIcon.classList.remove('feather-eye');
+            } else {
+                passwordField.type = 'password';
+                eyeIcon.classList.add('feather-eye');
+                eyeIcon.classList.remove('feather-eye-off');
+            }
         }
-    }
     </script>
 </x-guest-layout>

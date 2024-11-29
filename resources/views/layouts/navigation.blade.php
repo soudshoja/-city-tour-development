@@ -1,12 +1,12 @@
  <style>
-.fade-in {
-    opacity: 0;
-    transition: opacity 0.3s ease-in;
-}
+     .fade-in {
+         opacity: 0;
+         transition: opacity 0.3s ease-in;
+     }
 
-.fade-in-loaded {
-    opacity: 1;
-}
+     .fade-in-loaded {
+         opacity: 1;
+     }
  </style>
  @php
  use App\Models\Role;
@@ -298,11 +298,11 @@
                      @include('layouts.menus.admin')
                      @endif
                      <!-- company menu -->
-                     @if(Auth::user()->role_id === Role::COMPANY || Auth::user()->role_id === Role::ADMIN)
+                     @if(Auth::user()->role_id === Role::COMPANY )
                      @include('layouts.menus.company')
                      @endif
                      <!-- agent menu -->
-                     @if(Auth()->user()->role === Role::AGENT || Auth::user()->role_id === Role::AGENT)
+                     @if(Auth()->user()->role === Role::AGENT )
                      @include('layouts.menus.agent')
                      @endif
 
@@ -363,8 +363,8 @@
 
 
  <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('logo').classList.add('fade-in-loaded');
-    document.getElementById('appName').classList.add('fade-in-loaded');
-});
+     document.addEventListener('DOMContentLoaded', function() {
+         document.getElementById('logo').classList.add('fade-in-loaded');
+         document.getElementById('appName').classList.add('fade-in-loaded');
+     });
  </script>

@@ -1,97 +1,122 @@
 <x-app-layout>
+    <!-- Breadcrumbs -->
+    <x-breadcrumbs :breadcrumbs="[
+    ['label' => 'Dashboard', 'url' => route('dashboard')],
+    ['label' => 'Add Client'] ]" />
+    <!-- ./Breadcrumbs -->
 
-    @if (session('success') || session('error'))
-    <div id="flash-message" class="alert 
-                @if (session('success')) alert-success 
-                @elseif (session('error')) alert-danger 
-                @endif
-                fixed-top-right">
-        {{ session('success') ?? session('error') }}
-    </div>
-    @endif
-    <!-- Second Section: Form -->
-    <div class="flex justify-center items-center mt-10 px-4 md:px-0 mb-5">
-        <div class="flex flex-col w-full max-w-6xl bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 md:p-8">
-            <h2 class="text-2xl md:text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">
-                Register New Client
-            </h2>
 
-            <form method="POST" action="{{ route('clients.store') }}">
-                @csrf
+    <div class="grid grid-cols-3 gap-4">
+        <!--  client details -->
+        <div class="col-span-2 panel p-3">
+            <div x-data="{ Form: false }">
+                <a href="javascript:void(0);" @click.prevent="Form = ! Form"
+                    class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                    <span
+                        class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                        Entering client details
+                    </span>
+                </a>
 
-                <!-- Name Field -->
-                <div class="mb-4">
-                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                    <input id="name" name="name" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Client Name" />
+                <div x-show="Form" class="my-5 px-5">
+                    <form action="{{ route('clients.store') }}" method="POST">
+                        @csrf
+                        <!-- Name field -->
+                        <div class="flex flex-col sm:flex-row">
+                            <label for="name" class="mb-0  sm:w-1/4 sm:mr-2">Name</label>
+                            <input id="name" name="name" type="text" required placeholder="Enter name"
+                                class="form-input flex-1">
+                        </div>
+                        <!-- ./Name field -->
+
+                        <!-- Email field -->
+                        <div class="flex flex-col sm:flex-row mt-5">
+                            <label for="email" class="mb-0  sm:w-1/4 sm:mr-2">Email</label>
+                            <input id="email" name="email" type="email" required placeholder="Enter Email"
+                                class="form-input flex-1">
+                        </div>
+                        <!-- ./Email field -->
+
+                        <!-- passport number field -->
+                        <div class="flex flex-col sm:flex-row mt-5">
+                            <label for="passport_no" class="mb-0  sm:w-1/4 sm:mr-2">Passport Number</label>
+                            <input id="passport_no" name="passport_no" type="text" required
+                                placeholder="Enter Passport Number" class="form-input flex-1">
+                        </div>
+
+                        <!-- ./passport number field -->
+
+
+                        <!-- Address field -->
+                        <div class="flex flex-col sm:flex-row mt-5">
+                            <label for="address" class="mb-0  sm:w-1/4 sm:mr-2">Address</label>
+                            <input id="address" name="address" type="text" required placeholder="Enter Address"
+                                class="form-input flex-1">
+                        </div>
+
+                        <!-- ./Address field -->
+
+
+                        <!-- Status field -->
+                        <div class="flex flex-col sm:flex-row mt-5">
+                            <label class=" sm:w-1/4 sm:mr-2">Choose Status</label>
+                            <div class="flex-1">
+                                <div class="mb-2">
+                                    <label class="inline-flex cursor-pointer">
+                                        <input type="radio" name="status" value="active"
+                                            class="peer form-radio outline-success">
+                                        <span class="peer-checked:text-success pl-2">Active</span>
+                                    </label>
+
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="inline-flex cursor-pointer">
+                                        <input type="radio" name="status" value="inactive"
+                                            class="peer form-radio outline-danger">
+                                        <span class="peer-checked:text-danger pl-2">Inactive</span>
+                                    </label>
+                                </div>
+
+                            </div>
+                        </div>
+                        <!-- ./Status field -->
+
+
+                        <!-- submit button -->
+                        <div class="mt-5 flex justify-center">
+                            <button
+                                class="w-[80%] inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                                <span
+                                    class="w-full px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                                    Submit
+                                </span>
+                            </button>
+                        </div>
+
+
+                        <!-- ./submit button -->
+
+                    </form>
+
                 </div>
+            </div>
 
-                <!-- Email Field -->
-                <div class="mb-4">
-                    <label for="email"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                    <input id="email" name="email" type="email" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Client Email" />
-                </div>
-
-                <!-- Phone Field -->
-                <div class="mb-4">
-                    <label for="phone"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                    <input id="phone" name="phone" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Client Phone" />
-                </div>
-
-                <!-- Address Field -->
-                <div class="mb-4">
-                    <label for="address"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                    <input id="address" name="address" type="text"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Client Address" />
-                </div>
-
-                <!-- Address Field -->
-                <div class="mb-4">
-                    <label for="passport_no"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                    <input id="passport_no" name="passport_no" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Passport Number" />
-                </div>
-
-               <!-- Email Field -->
-                 <div class="mb-4">
-                    <label for="agent_email"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
-                    <input id="agent_email" name="agent_email" type="email" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Agent Email" />
-                </div>
-
-                <!-- Status Field -->
-                <div class="mb-4">
-                    <label for="status"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Status</label>
-                    <select id="status" name="status"
-                        class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="1">Active</option>
-                        <option value="2">Inactive</option>
-                    </select>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="flex items-center justify-center">
-                    <button type="submit"
-                        class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
-                        Register Client
-                    </button>
-                </div>
-            </form>
         </div>
+        <!-- ./client details -->
+
+        <!--  upload client -->
+        <div class="panel p-3">
+            <a href=""
+                class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
+                <span
+                    class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                    Upload Client
+                </span>
+            </a>
+        </div>
+        <!-- ./upload client -->
+
     </div>
 
 </x-app-layout>

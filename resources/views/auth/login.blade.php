@@ -106,8 +106,6 @@
 
                 </form>
 
-                <p class="text-center text-sm mb-8 text-left w-3/4 max-w-sm">need an account? <a href="{{ route('register') }}" class="text-[#F7BE38] underline pl-1">Register Here</a></p>
-
             </div>
 
             <!-- Right Side - Image/Illustration -->

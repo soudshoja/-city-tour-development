@@ -12,7 +12,7 @@ class Company extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'user_id', 'status', 'code', 'email', 'address', 'phone', 'nationality_id'];
+    protected $fillable = ['id', 'name', 'user_id', 'status', 'code', 'email', 'address', 'phone', 'nationality_id'];
 
     public function agents()
     {
@@ -22,5 +22,10 @@ class Company extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function branches()
+    {
+        return $this->hasMany(Branch::class);
     }
 }

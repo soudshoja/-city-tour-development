@@ -10,6 +10,5 @@ class Branch extends Model
     use HasFactory;
 
 
-    protected $fillable = ['name', 'email', 'phone', 'address'];
-
+    protected $fillable = ['user_id', 'name', 'email', 'phone', 'address', 'company_id'];
 }

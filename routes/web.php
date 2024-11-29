@@ -85,6 +85,16 @@ Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
 Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
 Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
 
+
+// Routes for creating new records
+Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
+Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
+Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
+Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');
+Route::post('/companies/create-client', [CompanyController::class, 'createClient'])->name('companies.createClient');
+
+
+
 Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
 Route::get('/companiesnew', [CompanyController::class, 'new'])->name('companiesnew.new');
 Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');

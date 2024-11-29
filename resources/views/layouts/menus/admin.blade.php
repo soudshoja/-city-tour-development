@@ -64,6 +64,10 @@
          x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-75"
          x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
          <div class="py-1">
+             <a href="#"
+                 class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                 Add New
+             </a>
              <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" class="relative">
                  <a href="{{ route('companies.index') }}"
                      class="flex justify-between items-center block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">

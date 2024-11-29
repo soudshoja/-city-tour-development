@@ -3,7 +3,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Traits\Notification;
+use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Models\Agent;
 use App\Models\User;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AgentController extends Controller
 {
-    use Notification;
+    use NotificationTrait;
 
     public function index()
     {

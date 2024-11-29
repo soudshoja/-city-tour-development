@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Traits\Notification;
+use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Models\Task;
 use App\Models\Item;
@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Storage;
 //// tset
 class TaskController extends Controller
 {
-    use Notification;
+    use NotificationTrait;
 
     public function index($id = null)
     {

@@ -32,46 +32,48 @@ class AccountingController extends Controller
             }
         ])->first();
     
-        // Prepare data for dropdowns (branches -> agents -> clients -> invoices -> invoiceDetails -> generalLedgers)
-        $branches = $company->branches->map(function ($branch) {
-            return [
-                'id' => $branch->id,
-                'name' => $branch->name,
-                'agents' => $branch->agents->map(function ($agent) {
+
+        $accounts = Account::where('company_id', $company->id)
+                   ->select(['id', 'name'])
+                   ->get();
+
+         $accountsArray = $accounts->map(function ($account) {
                     return [
-                        'id' => $agent->id,
-                        'name' => $agent->name,
-                        'clients' => $agent->clients->map(function ($client) {
-                            return [
-                                'id' => $client->id,
-                                'name' => $client->name,
-                                'invoices' => $client->invoices->map(function ($invoice) {
-                                    return [
-                                        'id' => $invoice->id,
-                                        'description' => $invoice->invoice_number,
-                                        'invoiceDetails' => $invoice->invoiceDetails->map(function ($invoiceDetail) {
-                                            return [
-                                                'id' => $invoiceDetail->id,
-                                                'generalLedgers' => $invoiceDetail->generalLedgers->map(function ($generalLedger) {
-                                                    return [
-                                                        'id' => $generalLedger->id,
-                                                        'name' => $generalLedger->name, // Adjust field as necessary
-                                                        'credit' => $generalLedger->credit, // Assuming these fields exist
-                                                        'debit' => $generalLedger->debit, // Adjust as needed
-                                                        'balance' => $generalLedger->balance, // Assuming balance exists
-                                                    ];
-                                                })
-                                            ];
-                                        })
-                                    ];
-                                })
-                            ];
-                        }),
+                        'id' => $account->id,
+                        'name' => $account->name,
                     ];
-                }),
-            ];
-        });
-    
+                })->toArray(); // Convert the collection to an array
+
+            foreach ($accounts as $account) {
+                if ($account->name === 'receivable') {
+                    foreach ($company->agents->clients as $client) {
+                        $accountsArray[] = [
+                            'id' => $account->id,
+                            'name' => 'Client: ' . $client,
+                        ];
+                    }
+                } elseif ($account->name === 'payable') {
+                    foreach ($company->agents->clients->invoices->invoiceDetails->tasks->suppliers as $supplier) {
+                        $accountsArray[] = [
+                            'id' => $account->id,
+                            'name' => 'Supplier: ' . $supplier,
+                        ];
+                    }
+                } elseif ($account->name === 'income') {
+                    foreach ($company->agents as $agent) {
+                        $accountsArray[] = [
+                            'id' => $account->id,
+                            'name' => 'Agent: ' . $agent,
+                        ];
+                    }
+                }else {
+        // For other account names, you can keep them simple
+                    $accountsArray[] = [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                ];
+              }
+            }
         // Prepare data for generalLedgers (to replace transactions)
         $generalLedgers = [];
         $groupedGeneralLedgers = [];
@@ -115,7 +117,8 @@ class AccountingController extends Controller
         return view('accounting.index', [
             'groupedGeneralLedgers' => $groupedGeneralLedgers,
             'company' => $company,
-            'branches' => $branches, // Used for dropdown population
+            'accounts' => $accountsArray,
+            'branches' => $company->branches, 
             'generalLedgers' => $generalLedgers, // To display in the table
         ]);
     }

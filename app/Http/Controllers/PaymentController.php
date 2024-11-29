@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\Notification;
 use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetail;
@@ -24,6 +25,7 @@ use App\Support\PaymentGateway\Tap;
 
 class PaymentController extends Controller
 {
+    use Notification;
 
     public function index(string $invoiceNumber)
     {
@@ -92,6 +94,12 @@ class PaymentController extends Controller
         if (isset($response['error'])) {
             return redirect()->back()->with('error', $response['error']);
         }
+
+        $this->storeNotification([
+            'user_id' => Auth::id(),
+            'title' => 'Payment Initiated',
+            'message' => 'Payment has been initiated for invoice: ' . $invoiceNumber,
+        ]);
 
         return redirect($response['url']);
     }
@@ -194,13 +202,25 @@ class PaymentController extends Controller
 
         if (isset($response['errors'])) {
 
+            $this->storeNotification([
+                'user_id' => Auth::id(),
+                'title' => 'Payment Failed',
+                'message' => 'Payment failed: ' . $response['errors'][0]['description'],
+            ]);
+
             return Redirect::route('dashboard')->with('error', $response['errors'][0]['description']);
         }
 
         if ($response['status'] != 'CAPTURED') {
+
+            $this->storeNotification([
+                'user_id' => Auth::id(),
+                'title' => 'Payment Failed',
+                'message' => 'Payment failed: ' . $response['status'],
+            ]);
+
             return Redirect::route('dashboard')->with('error', 'Payment error');
         }
-
 
         $clientName = $response['customer']['first_name'];
         $clientEmail = $response['customer']['email'];
@@ -211,6 +231,11 @@ class PaymentController extends Controller
         $paymentId = $response['metadata']['payment_id'];
         $invoiceNumber = $response['metadata']['invoice_number'];
 
+        $this->storeNotification([
+            'user_id' => Auth::id(),
+            'title' => 'Payment Successful',
+            'message' => 'Payment successful for invoice: ' . $invoiceNumber,
+        ]);
 
         // Fetch the invoice to get payment details
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();

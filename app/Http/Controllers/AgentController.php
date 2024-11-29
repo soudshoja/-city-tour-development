@@ -3,6 +3,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\Notification;
 use Illuminate\Http\Request;
 use App\Models\Agent;
 use App\Models\User;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Hash;
 
 class AgentController extends Controller
 {
+    use Notification;
+
     public function index()
     {
         $agentCount = Agent::count();
@@ -51,7 +54,7 @@ class AgentController extends Controller
         $companies = Company::all();
         $admin = Role::ADMIN;
 
-        return view('agents.agentsNew', compact('agents', 'companies','admin'));
+        return view('agents.agentsNew', compact('agents', 'companies', 'admin'));
     }
 
     public function show($id)
@@ -104,13 +107,10 @@ class AgentController extends Controller
         ));
     }
 
-
-
-
     public function edit($id)
-   {
+    {
         $agent = Agent::find($id);
-    
+
         return view('agents.agentsEdit', compact('agent', 'companies'));
     }
 
@@ -190,6 +190,11 @@ class AgentController extends Controller
             ]);
         }
 
+        $this->storeNotification([
+            'user_id' => $user->id,
+            'title' => 'Agent Registration',
+            'message' => 'You have been registered as an agent.'
+        ]);
 
         return redirect()->route('companiesshow.show', ['id' => $request->company_id])
             ->with('success', 'Agent registered successfully');
@@ -248,6 +253,12 @@ class AgentController extends Controller
                 'phone_number' => $request->phone_number,
                 'company_id' => $request->company_id, // You might need to handle this differently
                 'type' => $request->type, // You might need to handle this differently
+            ]);
+
+            $this->storeNotification([
+                'user_id' => $user->id,
+                'title' => 'Agent Profile Created',
+                'message' => $user->name . ' agent profile has been created successfully.'
             ]);
 
             return redirect()->back()->with('success', 'Agent profile created successfully.');

@@ -85,7 +85,7 @@ Route::middleware(['auth'])->group(function () {
     // task routes
     Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-    Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::put('/tasks-update/{id}', [TaskController::class, 'update'])->name('tasks.update');
     Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
     Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
@@ -144,8 +144,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
 });
 
-Route::middleware('auth')->group(function () {});
-
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
 // ITEMS
@@ -167,25 +165,30 @@ Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoi
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
+Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 
 // PAYMENT
-Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
-Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
-Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
-Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
-Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
-Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
-Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
-Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
-Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
-Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
-Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
-Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
-Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
+Route::group([
+    'middleware' => ['auth'],
+], function () {
 
+    Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
+    Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
+    Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
+    Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
+    Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
+    Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
+    Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
+    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
+    Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
+    Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
+    Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
+    Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
+    Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
+    Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
+});
 
 // REPORTS
 Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

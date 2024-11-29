@@ -155,7 +155,6 @@ class InvoiceController extends Controller
     }
     
 
-
     /**
      * Store a newly created resource in storage.
      */
@@ -405,7 +404,6 @@ class InvoiceController extends Controller
         }
     }
 
-
     public function clientAdd(Request $request)
     {
         $validated = $request->validate([
@@ -528,7 +526,21 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $invoice = Invoice::find($id);
+
+        if (!$invoice) {
+            return response()->json(['error' => 'Invoice not found!'], 404);
+        }
+
+        try{
+            $invoice->update($request->all());
+
+            return redirect()->back()->with('status', 'Invoice updated successfully!');
+        }catch(Exception $error){
+            logger('Failed to update invoice: ' . $error->getMessage());
+            return redirect()->back()->with('error', 'Failed to update invoice!');
+        }
+
     }
 
     /**

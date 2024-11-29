@@ -38,16 +38,30 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
-            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
+
+            // retrieve client that has the latest task
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
+                Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
+            )->paginate(6);
+
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
+
+            // retrieve client that has the latest task
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
+                Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
+            )->paginate(6);
+
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
-            $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->paginate(6);
-        }
 
+            // retrieve client that has the latest task
+            $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->orderByDesc(
+                Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
+            )->paginate(6);
+        }
+        
         $clientsNo = $clientsCount;
 
         return view('clients.list', compact('clients', 'clientsNo'));
@@ -95,7 +109,7 @@ class ClientController extends Controller
     {
         $client = Client::findOrFail($id);
         $agents = Agent::with('branch')->get();
-        $invoices = Invoice::with('invoiceDetails')->where('client_id', $id)->get();
+        $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
         $paid = $invoices->where('status', 'paid')->sum('amount');
         $unpaid = $invoices->where('status','<>' ,'paid')->sum('amount');

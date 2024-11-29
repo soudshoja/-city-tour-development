@@ -116,11 +116,11 @@ class TaskController extends Controller
         } else {
 
             try {
-                $task->update($request->only(['status', 'type', 'tax', 'surcharge', 'price', 'total', 'client_name', 'agent_id']));
+                $task->update($request->only(['reference', 'additional_info', 'venue', 'status']));
 
-                return response()->json(['success' => true], 200);
+                return redirect()->back()->with('success', 'Task updated successfully.');
             } catch (Exception $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                return redirect()->back()->with('error', 'Task update failed.');
             }
         }
     }

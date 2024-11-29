@@ -12,12 +12,12 @@ class Agent extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'email', 'user_id', 'type', 'company_id', 'phone_number', 'description'];
+    protected $fillable = ['name', 'email', 'user_id', 'type', 'company_id', 'phone_number', 'branch_id'];
 
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id');
-    } 
+    }
 
     public function tasks()
     {

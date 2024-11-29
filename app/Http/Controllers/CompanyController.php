@@ -11,11 +11,19 @@ use App\Models\Client;
 use App\Models\Task;
 use App\Models\Agent;
 use App\Models\User;
+use App\Models\Branch;
+use App\Models\Role;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
 use App\Imports\companiesImport;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+
+
+
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CompanyController extends Controller
@@ -59,6 +67,7 @@ class CompanyController extends Controller
 
     public function dashboard()
     {
+
         // Retrieve the company for the authenticated user with agents
         $company = Company::where('user_id', Auth::id())->with('agents')->first();
         // Get all agents under the company
@@ -175,7 +184,6 @@ class CompanyController extends Controller
 
         return view('companies.index', compact('company', 'dashboardData'));
     }
-
 
 
 
@@ -323,5 +331,179 @@ class CompanyController extends Controller
 
         fclose($handle);
         exit();
+    }
+
+    public function showCreateOptions()
+    {
+        // Fetch branches belonging to the logged-in company
+        $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+
+        return view('companies.addNewToCompany', compact('branches'));
+    }
+
+    public function createBranch(Request $request)
+    {
+
+
+        $company = Company::where('user_id', Auth::id())->first();
+
+        if (!$company) {
+            dd('No company found for the logged-in user.');
+        }
+
+        // Retrieve the company ID
+        $companyID = $company->id;
+
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:15',
+        ]);
+        // Add the company_id to the validated data
+        $validatedData = array_merge($validatedData, [
+            'company_id' => $companyID,
+        ]);
+
+        // Create the branch user
+        $user = User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'password' => bcrypt(Str::random(10)), // Generate a random password
+            'role_id' => Role::BRANCH,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
+        // Create the branch record
+        Branch::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'phone' => $validatedData['phone'] ?? null,
+            'company_id' => $validatedData['company_id'], // Use the company ID from the form
+            'user_id' => $user->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Branch created successfully.');
+    }
+
+    public function createAgent(Request $request)
+    {
+
+        $company = Company::where('user_id', Auth::id())->first();
+
+        if (!$company) {
+            dd('No company found for the logged-in user.');
+        }
+
+        // Retrieve the company ID
+        $companyID = $company->id;
+
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8',
+            'phone' => 'nullable|string|max:15',
+            'type' => 'required|string|max:255',
+            'branch_id' => [
+                'required',
+                'exists:branches,id', // Validate the branch exists
+                function ($attribute, $value, $fail) use ($companyID) {
+                    // Ensure the branch belongs to the company
+                    if (!Branch::where('id', $value)->where('company_id', $companyID)->exists()) {
+                        $fail('The selected branch is invalid for this company.');
+                    }
+                },
+            ],
+        ]);
+
+        // Add the company_id to the validated data
+        $validatedData = array_merge($validatedData, [
+            'company_id' => $companyID,
+        ]);
+
+
+
+        // Create the branch user
+        $user = User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'type' => $validatedData['type'],
+            'password' => Hash::make($validatedData['password']), // Hash the password
+            'role_id' => Role::AGENT,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
+        // Create the Agent record
+        Agent::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'phone_number' => $validatedData['phone'] ?? null,
+            'type' => $validatedData['type'],
+            'branch_id' => $validatedData['branch_id'],   // Assign to the selected branch
+            'company_id' => $validatedData['company_id'], // Use the company ID from the form
+            'user_id' => $user->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Agent created successfully.');
+    }
+
+
+
+
+
+    public function createAccountant(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:15',
+        ]);
+
+        // Create the accountant user
+        User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'password' => bcrypt(Str::random(10)), // Generate a random password
+            'role_id' => Role::ACCOUNTANT,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
+        return redirect()->back()->with('success', 'Accountant created successfully.');
+    }
+
+    public function createClient(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:15',
+        ]);
+
+        // Create the client user
+        $user = User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'password' => bcrypt(Str::random(10)), // Generate a random password
+            'role_id' => Role::CLIENT,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
+        // Create the client record
+        Client::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'phone' => $validatedData['phone'] ?? null,
+            'agent_id' => null, // Associate with an agent if needed
+            'status' => 'active',
+            'address' => null,
+            'passport_no' => null,
+        ]);
+
+        return redirect()->back()->with('success', 'Client created successfully.');
     }
 }

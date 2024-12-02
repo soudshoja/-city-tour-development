@@ -9,14 +9,28 @@
     </div>
     <!--./Notification Container -->
 
-
-    <div>
+    <div x-data ='{importModal : true }'>
         <!-- Breadcrumbs -->
         <x-breadcrumbs :breadcrumbs="[
-    ['label' => 'Dashboard', 'url' => route('dashboard')],
-    ['label' => 'Tasks List']
-]" />
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Tasks List']
+        ]" />
+        @if($importedTask  = session('importedTask'))
+            <div 
+                x-show="importModal"
+                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                <div 
+                @click.away = "importModal = false"     
+                class="bg-white rounded-md border-2 inline-flex flex-col gap-2 justify-center align-middles p-4 w-80">
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->reference }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->supplier->name }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->price }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->type }}" readonly>
 
+                </div>
+            </div>
+        @endif
         <!-- ./Breadcrumbs -->
         <!-- Controls Section -->
         <div

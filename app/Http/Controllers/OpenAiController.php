@@ -67,39 +67,6 @@ class OpenAiController extends Controller
         return $response;
     }
 
-    public function chatCompletionImage($prompt, $image)
-    {
-        $url = config('services.open-ai.url') . '/chat/completions';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-        ];
-        $data = [
-            'model' => 'gpt-4o-mini',
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => [
-                        [
-                            'type' => 'text',
-                            'text' => $prompt,
-                        ],
-                        [
-                            'type' => 'image_url',
-                            'image_url' => [
-                                'url' => 'C:\Users\User\Documents\GitHub\city-tour\storage\app\public\passports\passportClient.jpeg',
-                            ]
-                        ],
-                    ]
-                ],
-            ],
-        ];
-
-        $response =  $this->postRequest($url, $header, json_encode($data));
-        logger('chat completion image response: ', $response);
-        return response()->json($response);
-    }
-
     public function extractPassport($content)
     {
         $prompt = "
@@ -173,8 +140,49 @@ class OpenAiController extends Controller
         }
     }
 
+    /**
+     * @param string $content
+     * 
+     * @return string
+     */
+    public function flightOrHotel($content)
+    {
+        $prompt = " Check if this document is for a flight or hotel booking. 
+                    The document might contain information like booking reference, passenger name, flight details, hotel details, etc. 
+                    Suggest if it's a flight or hotel booking. 
+                    sample answer: 'flight' or 'hotel'
+                    ";
+        
+        $response = $this->chatCompletion([
+            [
+                'role' => 'user',
+                'content' => $prompt,
+            ],
+            [
+                'role' => 'user',
+                'content' => $content,
+            ],
+        ]);
 
-    public function extractFileData($content)
+        if(isset($response['choices'][0]['message']['content'])) {
+           $type = $response['choices'][0]['message']['content'];
+           
+           if($type !== 'flight' && $type !== 'hotel') {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid response. Please provide a valid response: flight or hotel'
+                ];
+           }
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Document type identified successfully',
+            'data' => $type,
+        ];
+    } 
+
+    public function extractFlightData($content)
     {
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
@@ -190,7 +198,7 @@ class OpenAiController extends Controller
             - `type`: Type of task (e.g., flight).
             - `agent_name`: name of the agent handling the task.
             - `client_name`: name of the client associated with the task.
-            - `supplier_name`: name of the supplier for the task.
+            - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
             - `client_name`: Name of the client.
             - `cancellation_policy`: Cancellation policy details.
             - `venue`: Venue or location associated with the task.
@@ -218,39 +226,194 @@ class OpenAiController extends Controller
         this is the content: $content
 
         only pass me the data extracted in JSON format.
+
+        example answer = 
+        {
+            'additional_info': 'additional info',
+            'status': 'status',
+            'price': 100.00,
+            'surcharge': 10.00,
+            'total': 110.00,
+            'tax': 5.00,
+            'reference': 'reference',
+            'type': 'flight',
+            'agent_name': 'agent name',
+            'client_name': 'client name',
+            'supplier_name': 'supplier name',
+            'cancellation_policy': 'cancellation policy',
+            'venue': 'venue',
+            'task_flight_details': {
+                'farebase': 'farebase',
+                'departure_time': 'departure time',
+                'departure_from': 'departure from',
+                'airport_from': 'airport from',
+                'arrival_time': 'arrival time',
+                'terminal_to': 'terminal to',
+                'arrive_to': 'arrive to',
+                'airport_to': 'airport to',
+                'terminal_from': 'terminal from',
+                'airline_name': 'airline name',
+                'flight_number': 'flight number',
+                'class_type': 'class type',
+                'baggage_allowed': 'baggage allowed',
+                'equipment': 'equipment',
+                'flight_meal': 'flight meal',
+                'seat_no': 'seat no',
+            }
+        }
+
         ";
 
-        $url = config('services.open-ai.url') . '/chat/completions';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-        ];
-        $data = [
-            'model' => 'gpt-4o-mini',
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => $prompt,
-                ],
+        $response = $this->chatCompletion([
+            [
+                'role' => 'user',
+                'content' => $prompt,
             ],
+            [
+                'role' => 'user',
+                'content' => $content,
+            ],
+        ]);
+
+        if(isset($response['choices'][0]['message']['content'])) {
+            $message = $response['choices'][0]['message']['content'];
+            
+            $decodedResponse = json_decode($message, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $this->saveTasks($decodedResponse);
+            } else {
+                $cleanedResponse = $this->cleanJsonResponse($message);
+                $data = json_decode($cleanedResponse, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return $this->saveTasks($data);
+                } else {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to parse JSON or missing required fields.',
+                    ];
+                }
+            }
+        }            
+            
+    }
+
+    /**
+     * Extract hotel data from the content
+     * 
+     * @param string $content
+     * 
+     * @return array from saveTasks()
+     */
+    public function extractHotelData($content)
+    {
+        $taskCreated = Task::findOrFail(28);
+        return [
+            'status' => 'success',
+            'message' => 'Task created successfully',
+            'data' => $taskCreated->id,
         ];
-        // dd($url, $header, $data);
-        $response =  $this->postRequest($url, $header, json_encode($data));
 
-        logger($response);
-        $message = $response['choices'][0]['message']['content'];
+        $prompt = "
+        You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
 
-        logger($message);
-        try {
+        1. `tasks` model with the following fields:
+            - `additional_info`: Additional information but make sure to only include relevant data and below 10 words, summarize it.
+            - `status`: Current status of the task.
+            - `price`: Price of the task in float type.
+            - `surcharge`: Any surcharge applied in float type.
+            - `total`: Total amount for the task in float type.
+            - `tax`: Total tax amount in float type.
+            - `reference`: Reference code for the task.
+            - `type`: Type of task (e.g., flight).
+            - `agent_name`: name of the agent handling the task.
+            - `client_name`: name of the client associated with the task.
+            - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+            - `client_name`: Name of the client.
+            - `cancellation_policy`: Cancellation policy details.
+            - `venue`: Venue or location associated with the task.
+        
+        2. `task_hotel_details` model, which applies only if the task is a hotel booking, with the following fields:
+            - `hotel_id`: Check-in date for the hotel booking.
+            - `booking_time`: Check-out date for the hotel booking.
+            - `check_in`: Type of room booked.
+            - `check_out`: Price of the room in float type.
+            - `room_number`: Name of the hotel.
+            - `room_type`: Address of the hotel.
+            - `room_amount`: Contact number of the hotel.
+            - `room_details`: Email address of the hotel.
+            - `rate`: Website of the hotel.
+            - `task_id`: Rating of the hotel.
 
-            $cleanJson = $this->cleanJsonResponse($message);
-            $data = json_decode($cleanJson, true);
+        Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
 
-            return $this->saveTasks($data);
-        } catch (Exception $e) {
-            logger($e->getMessage());
+        this is the content: $content
 
-            return $e->getMessage();
+        only pass me the data extracted in JSON format.
+
+        example answer = 
+
+        {
+            'additional_info': 'King Bed Deluxe High Floor - 2408 Oaks Liwa Heights, Jumeirah Lake Towers',
+            'status': 'status',
+            'price': 100.00,
+            'surcharge': 10.00,
+            'total': 110.00,
+            'tax': 5.00,
+            'reference': 'relevant reference',
+            'type': 'hotel',
+            'agent_name': 'agent name',
+            'client_name': 'Khaled Alajmi',
+            'supplier_name': 'Magic Holidays',
+            'cancellation_policy': 'cancellation policy',
+            'venue': 'venue',
+            'task_hotel_details': {
+                'hotel_id': 'hotel id',
+                'booking_time': 'booking time',
+                'check_in': 'check in',
+                'check_out': 'check out',
+                'room_number': 'room number',
+                'room_type': 'room type',
+                'room_amount': 'room amount',
+                'room_details': 'room details',
+                'rate': 'rate',
+                'task_id': 'task id',
+            }
+        }
+        ";
+        
+        $response = $this->chatCompletion([
+            [
+                'role' => 'user',
+                'content' => $prompt,
+            ],
+            [
+                'role' => 'user',
+                'content' => $content,
+            ],
+        ]);
+
+        if(isset($response['choices'][0]['message']['content'])) {
+            $message = $response['choices'][0]['message']['content'];
+            
+            $decodedResponse = json_decode($message, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $this->saveTasks($decodedResponse);
+            } else {
+                $cleanedResponse = $this->cleanJsonResponse($message);
+                $data = json_decode($cleanedResponse, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return $this->saveTasks($data);
+                } else {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to parse JSON or missing required fields.',
+                    ];
+                }
+            }
         }
     }
 
@@ -273,10 +436,18 @@ class OpenAiController extends Controller
         }
     }
 
+    /**
+     * Save tasks to the database
+     * 
+     * @param array $data
+     * 
+     * @return array contains status, message and data of task id
+     * 
+     */
     function saveTasks($data)
     {
         logger('Data: ', $data);
-        $task = $data['tasks'];
+        $task = $data;
         $client = Client::where('name', 'like', '%' . $task['client_name'] . '%')->first();
 
         if (!$client) {
@@ -307,7 +478,9 @@ class OpenAiController extends Controller
             'venue' => $task['venue'] ?? null,
         ];
         $taskCreated = Task::create($taskData);
-        logger('Task created: ', $taskCreated->toArray());
+
+        logger('Task created: ', $taskCreated->get()->toArray());
+
         // Save flight details if available
         // if (isset($data['task_flight_details'])) {
         //     $data = $data['task_flight_details'];
@@ -334,7 +507,11 @@ class OpenAiController extends Controller
         //     TaskFlightDetail::create($flightDetails);
         //}
 
-        return 'success';
+        return [
+            'status' => 'success',
+            'message' => 'Task created successfully',
+            'data' => $taskCreated->id,
+        ];
     }
 
     public function fineTuningView()

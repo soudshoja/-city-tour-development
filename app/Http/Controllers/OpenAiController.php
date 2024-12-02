@@ -308,13 +308,6 @@ class OpenAiController extends Controller
      */
     public function extractHotelData($content)
     {
-        $taskCreated = Task::findOrFail(28);
-        return [
-            'status' => 'success',
-            'message' => 'Task created successfully',
-            'data' => $taskCreated->id,
-        ];
-
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
 

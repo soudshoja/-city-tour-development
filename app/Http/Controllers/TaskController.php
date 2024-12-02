@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\Converter;
 use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Models\Task;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Storage;
 //// tset
 class TaskController extends Controller
 {
-    use NotificationTrait;
+    use NotificationTrait, Converter;
 
     public function index($id = null)
     {
@@ -135,25 +136,34 @@ class TaskController extends Controller
 
         $file = $request->file('task_file')->store('tasks');
 
-        ConvertApi::setApiCredentials(config('services.convert-api.secret'));
-
         if ($file) {
+            $file = storage_path('app/public/' . $file);
 
-            $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $file)], 'pdf');
-
-            Log::info('File converted successfully: ', $result->getFiles());
-            $response = $result->saveFiles(storage_path('app/public/tasks'));
-            $file = $response[0];
-
-            $contents = file_get_contents($file);
-
-            // Prepare the OpenAI request
+             $contents = $this->pdfToText($file);
+            
+             // Prepare the OpenAI request
             $openai = new OpenAiController();
-            $response = $openai->extractFileData($contents);
+            $response = $openai->flightOrHotel($contents);
 
-            if ($response == 'success') {
+            if($response['status'] == 'error'){
+                return redirect()->back()->with('error', 'File upload failed.');
+            }
 
-                return redirect()->back()->with('success', 'Tasks imported successfully.');
+            if($response['data'] == 'flight')
+            {
+                $response = $openai->extractFlightData($contents); 
+            } else {
+                $response = $openai->extractHotelData($contents);
+            }
+            
+            if ($response['status'] == 'success') {
+
+                $tasksId = $response['data'];
+
+                $tasks = Task::where('id', $tasksId)->first();
+                
+                return redirect()->back()->with('success', 'Tasks imported successfully.')->with('importedTask', $tasks);
+
             } else {
                 return redirect()->back()->with('error', 'Tasks import failed.');
             }
@@ -164,7 +174,7 @@ class TaskController extends Controller
 
         // Excel::import(new TasksImport, $request->file('excel_file'));
 
-        return redirect()->back()->with('success', 'Tasks imported successfully.');
+        return redirect()->back()->with('error', 'File is not processed .');
     }
 
     public function getTaskbyItemId($itemId)

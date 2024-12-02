@@ -10,6 +10,7 @@ use App\Models\TaskFlightDetail;
 use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Airline;
+use App\Models\Country;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -199,6 +200,7 @@ class OpenAiController extends Controller
             - `agent_name`: name of the agent handling the task.
             - `client_name`: name of the client associated with the task.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+            - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
             - `client_name`: Name of the client.
             - `cancellation_policy`: Cancellation policy details.
             - `venue`: Venue or location associated with the task.
@@ -230,7 +232,7 @@ class OpenAiController extends Controller
         example answer = 
         {
             'additional_info': 'additional info',
-            'status': 'status',
+            'status': 'completed',
             'price': 100.00,
             'surcharge': 10.00,
             'total': 110.00,
@@ -239,7 +241,8 @@ class OpenAiController extends Controller
             'type': 'flight',
             'agent_name': 'agent name',
             'client_name': 'client name',
-            'supplier_name': 'supplier name',
+            'supplier_name': 'Amadeus',
+            'supplier_country': 'Kuwait',
             'cancellation_policy': 'cancellation policy',
             'venue': 'venue',
             'task_flight_details': {
@@ -321,8 +324,9 @@ class OpenAiController extends Controller
             - `reference`: Reference code for the task.
             - `type`: Type of task (e.g., flight).
             - `agent_name`: name of the agent handling the task.
-            - `client_name`: name of the client associated with the task.
+            - `client_name`: name of the client associated with the task, some pdfs have the client name as holder name.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+            - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
             - `client_name`: Name of the client.
             - `cancellation_policy`: Cancellation policy details.
             - `venue`: Venue or location associated with the task.
@@ -349,7 +353,7 @@ class OpenAiController extends Controller
 
         {
             'additional_info': 'King Bed Deluxe High Floor - 2408 Oaks Liwa Heights, Jumeirah Lake Towers',
-            'status': 'status',
+            'status': 'completed',
             'price': 100.00,
             'surcharge': 10.00,
             'total': 110.00,
@@ -359,6 +363,7 @@ class OpenAiController extends Controller
             'agent_name': 'agent name',
             'client_name': 'Khaled Alajmi',
             'supplier_name': 'Magic Holidays',
+            'supplier_country': 'Kuwait',
             'cancellation_policy': 'cancellation policy',
             'venue': 'venue',
             'task_hotel_details': {
@@ -441,22 +446,39 @@ class OpenAiController extends Controller
     {
         logger('Data: ', $data);
         $task = $data;
+        $agent = Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first();
+
+        if (!$agent) {
+            $agent = Agent::create([
+                'name' => $task['agent_name'],
+                'status' => 'active',
+            ]);
+        }
+
         $client = Client::where('name', 'like', '%' . $task['client_name'] . '%')->first();
 
         if (!$client) {
             $client = Client::create([
                 'name' => $task['client_name'],
                 'status' => 'active',
+                'agent_id' => $agent->id ?? 16,
             ]);
         }
 
-        $agent = Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first();
-
         $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
+
+        $country = Country::where('name', 'like', '%' . $task['supplier_country'] . '%')->first();
+        
+        if(!$supplier) {
+            $supplier = Supplier::create([
+                'name' => $task['supplier_name'],
+                'country_id' => $country->id ?? 89,
+            ]);
+        }
 
         $taskData = [
             'additional_info' => $task['additional_info'] ?? null,
-            'status' => $task['status'] ?? null,
+            'status' => $task['status'] ?? 'completed',
             'client_name' => $task['client_name'] ?? null,
             'price' => isset($task['price']) ? $task['price'] : null,
             'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,

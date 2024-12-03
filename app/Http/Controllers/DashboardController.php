@@ -342,7 +342,7 @@ class DashboardController extends Controller
         $unpaidInvoices =  Invoice::where('status', 'unpaid')->count();
         $invoices = Invoice::all();
         $tasks = Task::all();
-        $agents = Agent::with('company')->get();
+        $agents = Agent::with('branch.company')->get();
         $clients = Client::all();
         $companies = Company::all();
         // Prepare clients with task count and invoice count

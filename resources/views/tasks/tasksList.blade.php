@@ -21,26 +21,26 @@
                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
                 <div 
                 @click.away = "importModal = false"     
-                class="bg-white rounded-md border-2 inline-flex flex-col gap-2 justify-center align-middles p-4 w-80">
-                    <form action="{{ route('tasks.update', $importedTask->id)}}" method="post">
+                class="bg-white rounded-md border-2 justify-center align-middles p-4 w-80">
+                    <form action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2">
                         @csrf
                         @method('PUT')
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->reference }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->supplier->name }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->price }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md" value="{{ $importedTask->type }}" readonly>
-                        <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
+                        <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
                             @foreach($clients as $client)
                                 <option value="{{ $client->id }}" {{$client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
                             @endforeach
                         </select>
-                        <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                        <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
                             @foreach($agents as $agent)
                                 <option value="{{ $agent->id }}" {{$agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
                             @endforeach
                         </select>
-                        <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                        <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
                             @foreach($suppliers as $supplier)
                                 <option value="{{ $supplier->id }}" {{$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
                             @endforeach

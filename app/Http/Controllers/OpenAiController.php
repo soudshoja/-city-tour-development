@@ -11,9 +11,13 @@ use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Airline;
 use App\Models\Country;
+use App\Models\Hotel;
+use App\Models\TaskHotelDetail;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
+use PhpParser\Node\Expr\Throw_;
+use Ramsey\Uuid\Type\Integer;
 
 class OpenAiController extends Controller
 {
@@ -224,7 +228,8 @@ class OpenAiController extends Controller
             - `seat_no`: Seat number.
         
         Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
-
+        if some of the fields are not available, you can set them to null.
+         
         this is the content: $content
 
         only pass me the data extracted in JSON format.
@@ -332,19 +337,23 @@ class OpenAiController extends Controller
             - `venue`: Venue or location associated with the task.
         
         2. `task_hotel_details` model, which applies only if the task is a hotel booking, with the following fields:
-            - `hotel_id`: Check-in date for the hotel booking.
-            - `booking_time`: Check-out date for the hotel booking.
-            - `check_in`: Type of room booked.
-            - `check_out`: Price of the room in float type.
-            - `room_number`: Name of the hotel.
-            - `room_type`: Address of the hotel.
-            - `room_amount`: Contact number of the hotel.
-            - `room_details`: Email address of the hotel.
-            - `rate`: Website of the hotel.
-            - `task_id`: Rating of the hotel.
+            - `hotel_name`: Name of the hotel.
+            - `hotel_address`: Address of the hotel.
+            - `hotel_city`: City of the hotel.
+            - `hotel_state`: State of the hotel.
+            - `hotel_country`: Country of the hotel.
+            - `hotel_zip`: Zip code of the hotel.
+            - `booking_time`: Time of booking.
+            - `check_in`: Check-in date.
+            - `check_out`: Check-out date.
+            - `room_number`: Room number.
+            - `room_type`: Type of room.
+            - `room_amount`: Amount of the room in float type.
+            - `room_details`: Details of the room.
+            - `rate`: Rate of the room in float type.
 
         Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
-
+        if some of the fields are not available, you can set them to null.
         this is the content: $content
 
         only pass me the data extracted in JSON format.
@@ -367,16 +376,20 @@ class OpenAiController extends Controller
             'cancellation_policy': 'cancellation policy',
             'venue': 'venue',
             'task_hotel_details': {
-                'hotel_id': 'hotel id',
-                'booking_time': 'booking time',
-                'check_in': 'check in',
-                'check_out': 'check out',
-                'room_number': 'room number',
-                'room_type': 'room type',
-                'room_amount': 'room amount',
-                'room_details': 'room details',
-                'rate': 'rate',
-                'task_id': 'task id',
+                'hotel_name': 'Oaks Liwa Heights',
+                'hotel_address': 'Jumeirah Lake Towers',
+                'hotel_city': null,
+                'hotel_state': 'Dubai',
+                'hotel_country': 'United Arab Emirates',
+                'hotel_zip': '12345',
+                'booking_time': '2024-10-16 14:00:00',
+                'check_in': '2024-10-17',
+                'check_out': '2024-10-20',
+                'room_number': '101',
+                'room_type': 'Deluxe Room',
+                'room_amount': '100.00',
+                'room_details': 'Sea View',
+                'rate': '40.00', 
             }
         }
         ";
@@ -492,36 +505,23 @@ class OpenAiController extends Controller
             'cancellation_policy' => $task['cancellation_policy'] ?? null,
             'venue' => $task['venue'] ?? null,
         ];
-        $taskCreated = Task::create($taskData);
 
-        logger('Task created: ', $taskCreated->get()->toArray());
+        try {
+            $taskCreated = Task::create($taskData);
 
-        // Save flight details if available
-        // if (isset($data['task_flight_details'])) {
-        //     $data = $data['task_flight_details'];
-        //     $airline = Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first();
-        //     $flightDetails = [
-        // 'farebase' => $flight['fare_basis'] ?? null,
-        // 'departure_time' => $flight['departure_time'] ?? null,
-        // 'departure_from' => $flight['from'] ?? null,
-        // 'airport_from' => $flight['from'] ?? null,
-        // 'arrival_time' => $flight['arrival_time'] ?? null,
-        // 'terminal' => $flight['terminal_arrival'] ?? null,
-        // 'arrive_to' => $flight['to'] ?? null,
-        // 'airport_to' => $flight['to'] ?? null,
-        // 'terminal_from' => $flight['terminal_from'] ?? null,
-        // 'airline_id' => $airline->id ?? null,
-        // 'flight_number' => $flight['flight_number'] ?? null,
-        // 'class_type' => $flight['class'] ?? null,
-        // 'baggage_allowed' => $flight['baggage_allowance'] ?? null,
-        // 'equipment' => $flight['equipment'] ?? null,
-        // 'flight_meal' => $flight['meal'] ?? null,
-        // 'seat_no' => $flight['seat_no'] ?? null,
-        // 'task_id' => $taskCreated->id,
-        //     ];
-        //     TaskFlightDetail::create($flightDetails);
-        //}
+            logger('Task created: ', $taskCreated->get()->toArray());
 
+
+            if (isset($data['task_flight_details'])) {
+                $this->saveFlightDetails($data, $taskCreated->id);
+            }
+
+            if (isset($data['task_hotel_details'])) {
+                $this->saveHotelDetails($data, $taskCreated->id);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
         return [
             'status' => 'success',
             'message' => 'Task created successfully',
@@ -529,8 +529,101 @@ class OpenAiController extends Controller
         ];
     }
 
+    /**
+     * Dont used yet
+     * 
+     * @return view
+     */
     public function fineTuningView()
     {
         return view('ai.openai.fine-tuning');
+    }
+
+    /**
+     * Save flight details to the database
+     * 
+     * @param array $data
+     * @param int $taskId
+     * 
+     * @return void 
+     *
+     */
+    public function saveFlightDetails(array $data, int $taskId)
+    {
+        try{
+
+            $data = $data['task_flight_details'];
+            $airline = Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first();
+            $flightDetails = [
+                'farebase' => $flight['fare_basis'] ?? null,
+                'departure_time' => $flight['departure_time'] ?? null,
+                'departure_from' => $flight['from'] ?? null,
+                'airport_from' => $flight['from'] ?? null,
+                'arrival_time' => $flight['arrival_time'] ?? null,
+                'terminal' => $flight['terminal_arrival'] ?? null,
+                'arrive_to' => $flight['to'] ?? null,
+                'airport_to' => $flight['to'] ?? null,
+                'terminal_from' => $flight['terminal_from'] ?? null,
+                'airline_id' => $airline->id ?? null,
+                'flight_number' => $flight['flight_number'] ?? null,
+                'class_type' => $flight['class'] ?? null,
+                'baggage_allowed' => $flight['baggage_allowance'] ?? null,
+                'equipment' => $flight['equipment'] ?? null,
+                'flight_meal' => $flight['meal'] ?? null,
+                'seat_no' => $flight['seat_no'] ?? null,
+                'task_id' => $taskId
+            ];
+
+            TaskFlightDetail::create($flightDetails);
+        } catch (Exception $e) {
+
+           throw $e; 
+        }
+    }
+
+    /**
+     * Save hotel details to the database
+     * 
+     * @param array $data
+     * @param int $taskId
+     * 
+     * @return void
+     */
+    public function saveHotelDetails(array $data, int $taskId)
+    {
+        try {
+            $data = $data['task_hotel_details'];
+
+            $hotel = Hotel::where('name', 'like', '%' . $data['hotel_name'] . '%')->first();
+
+            $hotelCountry = Country::where('name', 'like', '%' . $data['hotel_country'] . '%')->first();
+
+            if(!$hotel) {
+                $hotel = Hotel::create([
+                    'name' => $data['hotel_name'],
+                    'address' => $data['hotel_address'] ?? null,
+                    'city' => $data['hotel_city'] ?? null,
+                    'state' => $data['hotel_state'] ?? null,
+                    'country_id' => $hotelCountry->id ?? null,
+                    'zip' => $data['hotel_zip'] ?? null,
+                ]);
+            }
+
+            $hotelDetails = [
+                'hotel_id' => $hotel->id,
+                'booking_time' => $data['booking_time'] ?? null,
+                'check_in' => $data['check_in'] ?? null,
+                'check_out' => $data['check_out'] ?? null,
+                'room_number' => $data['room_number'] ?? null,
+                'room_type' => $data['room_type'] ?? null,
+                'room_amount' => $data['room_amount'] ?? null,
+                'room_details' => $data['room_details'] ?? null,
+                'rate' => $data['rate'] ?? null,
+                'task_id' => $taskId
+            ];
+            TaskHotelDetail::create($hotelDetails);
+        } catch (Exception $e) {
+            throw $e;
+        }
     }
 }

@@ -202,13 +202,13 @@
                         <div>
                             <label for="agentName">Agent Name</label>
                             <input id="agentName" type="text" name="agentName" class="form-input"
-                                placeholder="Agent Name" disabled />
+                                placeholder="Agent Name" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name  : ''}}" disabled />
                         </div>
                     </div>
                     <div class="mt-4">
                         <label for="agentEmail">Agent Email</label>
                         <input id="agentEmail" type="text" name="agentEmail" class="form-input"
-                            placeholder="Agent Email" disabled />
+                            placeholder="Agent Email" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email  : ''}}" disabled />
                     </div>
                 </div>
                 <div class="panel">

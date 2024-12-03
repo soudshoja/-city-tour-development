@@ -167,8 +167,12 @@ class TaskController extends Controller
         if ($file) {
             $file = storage_path('app/public/' . $file);
 
-             $contents = $this->pdfToText($file);
-            
+             $image = $this->pdfToImage($file);
+            dd($image);
+            // Process the image using OCR
+            $result = $this->processImage($image);
+
+            dd($result);
              // Prepare the OpenAI request
             $openai = new OpenAiController();
             $response = $openai->flightOrHotel($contents);

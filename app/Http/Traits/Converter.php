@@ -20,7 +20,7 @@ trait Converter
     {
         $parser = new Parser();
         $pdf = $parser->parseFile($filePath);
-        dd($pdf->getText());
+        
         return $pdf->getText();
     }
 

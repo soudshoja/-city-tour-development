@@ -32,17 +32,17 @@
                         <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
                         <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
                             @foreach($clients as $client)
-                                <option value="{{ $client->id }}" {{$client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                                <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
                             @endforeach
                         </select>
                         <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
                             @foreach($agents as $agent)
-                                <option value="{{ $agent->id }}" {{$agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                                <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
                             @endforeach
                         </select>
                         <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
                             @foreach($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                                <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
                             @endforeach
                         </select>
                         <x-primary-button type="submit" class="w-full mt-4"> Update </x-primary-button>

@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\Airline;
 use App\Models\Country;
 use App\Models\Hotel;
+use App\Models\Role;
 use App\Models\TaskHotelDetail;
 use Exception;
 use Illuminate\Http\Request;
@@ -187,14 +188,23 @@ class OpenAiController extends Controller
         ];
     } 
 
+    /**
+     * Extract flight data from the content
+     * 
+     * @param string $content
+     * 
+     * @return array from saveTasks()
+     */
     public function extractFlightData($content)
     {
+        $supplierList = json_encode(Supplier::all()->toArray());
+
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
         
         1. `tasks` model with the following fields:
             - `additional_info`: Additional information but make sure to only include relevant data and below 10 words, summarize it.
-            - `status`: Current status of the task.
+            - `status`: Current status of the task. whether it's completed, hold or confirmed or any other status.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
             - `total`: Total amount for the task in float type.
@@ -204,21 +214,23 @@ class OpenAiController extends Controller
             - `agent_name`: name of the agent handling the task.
             - `client_name`: name of the client associated with the task.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+                You can refer the supplier from this list: $supplierList
+                if the supplier is not in the list, just set it to null.
             - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
             - `client_name`: Name of the client.
             - `cancellation_policy`: Cancellation policy details.
             - `venue`: Venue or location associated with the task.
         
         2. `task_flight_details` model, which applies only if the task is a flight, with the following fields:
-            - `farebase`: Fare basis of the flight.
+            - `farebase`: Fare basis of the flight in float type.
             - `departure_time`: Departure time of the flight.
-            - `departure_from`: Location of departure.
+            - `departure_from`: Location of departure, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
             - `airport_from`: Airport code or name for departure.
-            - `arrival_time`: Arrival time of the flight.
-            - `terminal_to`: Arrival terminal.
-            - `arrive_to`: Location of arrival.
-            - `airport_to`: Airport code or name for arrival.
             - `terminal_from`: Departure terminal.
+            - `arrival_time`: Arrival time of the flight.
+            - `arrive_to`: Location of arrival, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
+            - `airport_to`: Airport code or name for arrival.
+            - `terminal_to`: Arrival terminal.
             - `airline_name`: Airline name. 
             - `flight_number`: Flight number.
             - `class_type`: Class type of the flight.
@@ -229,7 +241,9 @@ class OpenAiController extends Controller
         
         Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
         if some of the fields are not available, you can set them to null.
-         
+        
+        all related time should be in the format of 'Y-m-d H:i:s'
+
         this is the content: $content
 
         only pass me the data extracted in JSON format.
@@ -237,7 +251,7 @@ class OpenAiController extends Controller
         example answer = 
         {
             'additional_info': 'additional info',
-            'status': 'completed',
+            'status': 'completed'/ 'hold' / 'confirmed',
             'price': 100.00,
             'surcharge': 10.00,
             'total': 110.00,
@@ -251,18 +265,18 @@ class OpenAiController extends Controller
             'cancellation_policy': 'cancellation policy',
             'venue': 'venue',
             'task_flight_details': {
-                'farebase': 'farebase',
-                'departure_time': 'departure time',
-                'departure_from': 'departure from',
-                'airport_from': 'airport from',
-                'arrival_time': 'arrival time',
-                'terminal_to': 'terminal to',
-                'arrive_to': 'arrive to',
-                'airport_to': 'airport to',
-                'terminal_from': 'terminal from',
-                'airline_name': 'airline name',
-                'flight_number': 'flight number',
-                'class_type': 'class type',
+                'farebase': '20.00',
+                'departure_time': '2024-10-16 14:00:00',
+                'departure_from': 'Kuwait',
+                'airport_from': 'KWI',
+                'terminal_from': '1',
+                'arrival_time': '2024-10-16 16:00:00',
+                'arrive_to': 'Singapore',
+                'airport_to': 'SIN',
+                'terminal_to': '1',
+                'airline_name': 'Kuwait Airways',
+                'flight_number': 'KU-123',
+                'class_type': 'economy',
                 'baggage_allowed': 'baggage allowed',
                 'equipment': 'equipment',
                 'flight_meal': 'flight meal',
@@ -316,6 +330,8 @@ class OpenAiController extends Controller
      */
     public function extractHotelData($content)
     {
+        $supplierList = Supplier::all()->toArray();
+        
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
 
@@ -331,6 +347,8 @@ class OpenAiController extends Controller
             - `agent_name`: name of the agent handling the task.
             - `client_name`: name of the client associated with the task, some pdfs have the client name as holder name.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+                You can refer the supplier from this list: $supplierList
+                if the supplier is not in the list, just set it to null.
             - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
             - `client_name`: Name of the client.
             - `cancellation_policy`: Cancellation policy details.
@@ -459,49 +477,57 @@ class OpenAiController extends Controller
     {
         logger('Data: ', $data);
         $task = $data;
-        $agent = Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first();
+        
+        if(auth()->user()->role_id == Role::COMPANY )
+        {
+            $companyId = auth()->user()->company->id;
+        } else if (auth()->user()->role_id == Role::BRANCH) {
+            $companyId = auth()->user()->branch->company_id;
+        } else if(auth()->user()->role_id == Role::AGENT) {
+            $companyId = auth()->user()->agent->branch->company_id;
+        } else {
 
-        if (!$agent) {
-            $agent = Agent::create([
-                'name' => $task['agent_name'],
-                'status' => 'active',
-            ]);
+            return [
+                'status' => 'error',
+                'message' => 'User not authorized to create task',
+            ];
+
         }
 
-        $client = Client::where('name', 'like', '%' . $task['client_name'] . '%')->first();
-
-        if (!$client) {
-            $client = Client::create([
-                'name' => $task['client_name'],
-                'status' => 'active',
-                'agent_id' => $agent->id ?? 16,
-            ]);
+        $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
+            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first()
+            : Agent::with(['branch' => function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            }])->first();
+        
+        $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
+ 
+        if($task['supplier_name'] === null) {
+            throw new Exception('Supplier name is not found');
         }
 
         $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
-
-        $country = Country::where('name', 'like', '%' . $task['supplier_country'] . '%')->first();
         
         if(!$supplier) {
-            $supplier = Supplier::create([
-                'name' => $task['supplier_name'],
-                'country_id' => $country->id ?? 89,
-            ]);
+            return [
+                'status' => 'error',
+                'message' => 'Supplier not found',
+            ];
         }
 
         $taskData = [
             'additional_info' => $task['additional_info'] ?? null,
-            'status' => $task['status'] ?? 'completed',
-            'client_name' => $task['client_name'] ?? null,
+            'status' => $task['status'] ? strtolower($task['status']) : null,
+            'client_name' => $client->name ?? null,
             'price' => isset($task['price']) ? $task['price'] : null,
             'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,
             'total' => isset($task['total']) ? $task['total'] : null,
             'tax' => isset($task['tax']) ? $task['tax'] : null,
             'reference' => $task['reference'] ?? null,
             'type' => strtoupper($task['type']) ?? null,
-            'agent_id' => $agent->id ?? 16,
-            'client_id' => $client->id ?? 1,
-            'supplier_id' => $supplier->id ?? 11,
+            'agent_id' => $agent->id ,
+            'client_id' => $client->id ?? null,
+            'supplier_id' => $supplier->id ,
             'cancellation_policy' => $task['cancellation_policy'] ?? null,
             'venue' => $task['venue'] ?? null,
         ];
@@ -525,7 +551,7 @@ class OpenAiController extends Controller
         return [
             'status' => 'success',
             'message' => 'Task created successfully',
-            'data' => $taskCreated->id,
+            'data' => $taskCreated,
         ];
     }
 
@@ -550,31 +576,38 @@ class OpenAiController extends Controller
      */
     public function saveFlightDetails(array $data, int $taskId)
     {
+        
         try{
 
             $data = $data['task_flight_details'];
-            $airline = Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first();
+            
+            $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
+            $countryFrom = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first() : null;
+            $countryTo = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['arrive_to'] . '%')->first() : null;
+
+
             $flightDetails = [
-                'farebase' => $flight['fare_basis'] ?? null,
-                'departure_time' => $flight['departure_time'] ?? null,
-                'departure_from' => $flight['from'] ?? null,
-                'airport_from' => $flight['from'] ?? null,
-                'arrival_time' => $flight['arrival_time'] ?? null,
-                'terminal' => $flight['terminal_arrival'] ?? null,
-                'arrive_to' => $flight['to'] ?? null,
-                'airport_to' => $flight['to'] ?? null,
-                'terminal_from' => $flight['terminal_from'] ?? null,
+                'farebase' => (float)$data['farebase'] ?? null,
+                'departure_time' => $data['departure_time'] ?? null,
+                'country_id_from' => $countryFrom->id ?? null,
+                'airport_from' => $data['airport_from'] ?? null,
+                'terminal_from' => $data['terminal_from'] ?? null,
+                'arrival_time' => $data['arrival_time'] ?? null,
+                'country_id_to' => $countryTo-> id ?? null,
+                'airport_to' => $data['airport_to'] ?? null,
+                'terminal_to' => $data['terminal_to'] ?? null,
                 'airline_id' => $airline->id ?? null,
-                'flight_number' => $flight['flight_number'] ?? null,
-                'class_type' => $flight['class'] ?? null,
-                'baggage_allowed' => $flight['baggage_allowance'] ?? null,
-                'equipment' => $flight['equipment'] ?? null,
-                'flight_meal' => $flight['meal'] ?? null,
-                'seat_no' => $flight['seat_no'] ?? null,
+                'flight_number' => $data['flight_number'] ?? null,
+                'class_type' => $data['class_type'] ?? null,
+                'baggage_allowed' => $data['baggage_allowed'] ?? null,
+                'equipment' => $data['equipment'] ?? null,
+                'flight_meal' => $data['flight_meal'] ?? null,
+                'seat_no' => $data['seat_no'] ?? null,
                 'task_id' => $taskId
             ];
 
-            TaskFlightDetail::create($flightDetails);
+             TaskFlightDetail::create($flightDetails);
+
         } catch (Exception $e) {
 
            throw $e; 

@@ -165,40 +165,7 @@ class TaskController extends Controller
         $file = $request->file('task_file')->store('tasks');
 
         if ($file) {
-            $file = storage_path('app/public/' . $file);
-
-             $image = $this->pdfToImage($file);
-            dd($image);
-            // Process the image using OCR
-            $result = $this->processImage($image);
-
-            dd($result);
-             // Prepare the OpenAI request
-            $openai = new OpenAiController();
-            $response = $openai->flightOrHotel($contents);
-
-            if($response['status'] == 'error'){
-                return redirect()->back()->with('error', 'File upload failed.');
-            }
-
-            if($response['data'] == 'flight')
-            {
-                $response = $openai->extractFlightData($contents); 
-            } else {
-                $response = $openai->extractHotelData($contents);
-            }
-            
-            if ($response['status'] == 'success') {
-
-                $tasksId = $response['data'];
-
-                $tasks = Task::where('id', $tasksId)->first();
-                
-                return redirect()->back()->with('success', 'Tasks imported successfully.')->with('importedTask', $tasks);
-
-            } else {
-                return redirect()->back()->with('error', 'Tasks import failed.');
-            }
+            $this->extractTaskFromFile($file);
         } else {
             Log::error('File upload failed');
             return Redirect::back()->with('error', 'File upload failed');
@@ -222,6 +189,38 @@ class TaskController extends Controller
         return response()->json([
             'tasks' => $tasks
         ], 200);
+    }
+
+    public function extractTaskFromFile($file)
+    {
+        $file = storage_path('app/public/' . $file);
+
+        $contents = $this->pdfToText($file);
+
+        // Prepare the OpenAI request
+        $openai = new OpenAiController();
+        $response = $openai->flightOrHotel($contents);
+
+        if ($response['status'] == 'error') {
+            return redirect()->back()->with('error', 'File upload failed.');
+        }
+
+        if ($response['data'] == 'flight') {
+            $response = $openai->extractFlightData($contents);
+        } else {
+            $response = $openai->extractHotelData($contents);
+        }
+
+        if ($response['status'] == 'success') {
+
+            $tasksId = $response['data'];
+
+            $tasks = Task::where('id', $tasksId)->first();
+
+            return redirect()->back()->with('success', 'Tasks imported successfully.')->with('importedTask', $tasks);
+        } else {
+            return redirect()->back()->with('error', 'Tasks import failed.');
+        }
     }
 
     public function exportCsv()

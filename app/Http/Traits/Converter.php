@@ -6,6 +6,7 @@ use \Smalot\PdfParser\Parser;
 use Spatie\PdfToImage\Pdf;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
+use Org_Heigl\Ghostscript\Ghostscript;
 
 trait Converter
 {
@@ -19,11 +20,12 @@ trait Converter
     {
         $parser = new Parser();
         $pdf = $parser->parseFile($filePath);
+        dd($pdf->getText());
         return $pdf->getText();
     }
 
     /**
-     * Convert PDF to image
+     * Convert PDF to image (Not yet working)
      * 
      * @param string $filePath
      * 
@@ -31,6 +33,8 @@ trait Converter
      */
     private function pdfToImage($filePath)
     {
+        $pdf = new Pdf($filePath);
+        $pdf->setOutputFormat('jpg')->saveImage($filePath);
 
         return $filePath . '.jpg';
     }

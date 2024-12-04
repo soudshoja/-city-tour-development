@@ -165,7 +165,7 @@ class TaskController extends Controller
         $file = $request->file('task_file')->store('tasks');
 
         if ($file) {
-            $file = storage_path('app/public/' . $file);
+            $file = storage_path('app/' . $file);
 
              $contents = $this->pdfToText($file);
             

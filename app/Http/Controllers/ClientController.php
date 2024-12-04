@@ -124,7 +124,7 @@ class ClientController extends Controller
 
         $agents = [];
         if(Gate::allows('clientAgent', Client::class)) {
-            $agents = Agent::with('company')->get();
+            $agents = Agent::with('branch')->get();
         }
 
         $client = Client::findOrFail($id);

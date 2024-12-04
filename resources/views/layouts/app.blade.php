@@ -24,16 +24,24 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+
 
     <!-- CSS -->
 
-    @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css',
-    'resources/css/perfect-scrollbar.min.css',
-    'resources/js/app.js' ,'resources/css/cityCssByNisma.css','resources/js/dashboard.js'])
+    @vite(['resources/css/app.css', 'resources/css/style.css', 'resources/css/animate.css',
+    'resources/css/perfect-scrollbar.min.css', 'resources/css/cityCssByNisma.css'])
+    @vite(['resources/js/app.js', 'resources/js/dashboard.js', 'resources/js/jsbyNisma.js',])
 
     <!-- jQuery -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 
     <!-- DataTables JS -->
@@ -42,6 +50,7 @@
 </head>
 
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100">
+    @include('layouts.alert')
 
     <div x-data="{ sidebarOpen: false }" class="flex md:h-screen">
         <!-- Sidebar -->

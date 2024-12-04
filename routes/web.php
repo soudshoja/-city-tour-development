@@ -93,7 +93,14 @@ Route::post('/companies/create-agent', [CompanyController::class, 'createAgent']
 Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');
 Route::post('/companies/create-client', [CompanyController::class, 'createClient'])->name('companies.createClient');
 
+Route::get('/agentsettings', [CompanyController::class, 'showAgentTypeForm'])->name('agentsetting');
+Route::post('/agent-types', [CompanyController::class, 'createAgentType'])->name('agent-types.create');
 
+// Route to show the delete form
+Route::get('/agent-types/delete', [CompanyController::class, 'showDeleteAgentTypeForm'])->name('agent-types.delete.form');
+
+// Route to handle the delete request
+Route::delete('/agent-types/delete', [CompanyController::class, 'deleteAgentType'])->name('agent-types.delete');
 
 Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
 Route::get('/companiesnew', [CompanyController::class, 'new'])->name('companiesnew.new');

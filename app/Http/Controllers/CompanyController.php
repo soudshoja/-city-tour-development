@@ -13,6 +13,8 @@ use App\Models\Agent;
 use App\Models\User;
 use App\Models\Branch;
 use App\Models\Role;
+use App\Models\Country;
+use App\Models\AgentType;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
@@ -233,45 +235,51 @@ class CompanyController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'user_name' => 'required|string|max:255',
-            'user_email' => 'required|email|unique:users,email',
+        // Validate the request data
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'company_name' => 'required|string|max:255',
-            'code' => 'required|string|max:100|unique:companies,code',
-            'nationality_id' => 'required|integer',
-            'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:15',
+            'code' => 'required|string|max:100|unique:companies,code',
+            'nationality_id' => 'required|integer|exists:countries,id', // Validate that the ID exists in the countries table
+            'address' => 'nullable|string|max:255',
+            'status' => 'required|in:0,1', // Validate that the status is either 0 or 1
         ]);
 
-        // Create the admin user
+        // Create the user
         $user = User::create([
-            'name' => $request->user_name,
-            'email' => $request->user_email,
-            'password' => Hash::make($request->password),
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'password' => Hash::make($validatedData['password']), // Hash the password
             'role_id' => 2, // Assuming 2 is the role ID for "Company"
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
         ]);
 
         // Create the company
         Company::create([
-            'name' => $request->company_name,
-            'code' => $request->code,
-            'nationality_id' => $request->nationality_id,
-            'address' => $request->address,
-            'phone' => $request->phone,
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'code' => $validatedData['code'],
+            'nationality_id' => $validatedData['nationality_id'],
+            'address' => $validatedData['address'],
+            'phone' => $validatedData['phone'] ?? null,
             'user_id' => $user->id,
-            'email' => $request->email,
-            'status' => 'active', // Default status; adjust as needed
+            'status' => $validatedData['status'], // Use the validated status value from the request
         ]);
 
         // Redirect with success message
         return redirect()->route('companies.index')->with('success', 'Company registered successfully');
     }
 
+
+
     public function new()
     {
         $companies = Company::all();
-        return view('companies.companiesNew', compact('companies'));
+        $countries = Country::all(); // Fetch all countries from the `countries` table
+        return view('admin.companiesNew', compact('companies', 'countries'));
     }
 
     public function upload()
@@ -337,8 +345,9 @@ class CompanyController extends Controller
     {
         // Fetch branches belonging to the logged-in company
         $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+        $agentTypes = AgentType::all(); // Fetch all agent types
 
-        return view('companies.addNewToCompany', compact('branches'));
+        return view('companies.addNewToCompany', compact('branches', 'agentTypes'));
     }
 
     public function createBranch(Request $request)
@@ -359,6 +368,7 @@ class CompanyController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:15',
+            'address' => 'nullable|string|max:255',
         ]);
         // Add the company_id to the validated data
         $validatedData = array_merge($validatedData, [
@@ -380,6 +390,7 @@ class CompanyController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'phone' => $validatedData['phone'] ?? null,
+            'address' => $validatedData['address'] ?? null,
             'company_id' => $validatedData['company_id'], // Use the company ID from the form
             'user_id' => $user->id,
         ]);
@@ -406,6 +417,7 @@ class CompanyController extends Controller
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:15',
             'type' => 'required|string|max:255',
+
             'branch_id' => [
                 'required',
                 'exists:branches,id', // Validate the branch exists
@@ -449,9 +461,6 @@ class CompanyController extends Controller
 
         return redirect()->back()->with('success', 'Agent created successfully.');
     }
-
-
-
 
 
     public function createAccountant(Request $request)
@@ -505,5 +514,51 @@ class CompanyController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Client created successfully.');
+    }
+
+    public function createAgentType(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255|unique:agent_type,name', // Ensure unique names
+        ]);
+
+        // Create the agent type
+        AgentType::create([
+            'name' => $validatedData['name'],
+        ]);
+
+        return redirect()->back()->with('success', 'Agent type created successfully.');
+    }
+    public function showAgentTypeForm()
+    {
+        $agentTypes = AgentType::all(); // Fetch all existing agent types
+
+        return view('companies.setting.agentSettings', compact('agentTypes'));
+    }
+
+    public function showDeleteAgentTypeForm()
+    {
+        $agentTypes = AgentType::all(); // Fetch all agent types
+
+        return view('companies.settings.agentSettings', compact('agentTypes'));
+    }
+
+    public function deleteAgentType(Request $request)
+    {
+        $validated = $request->validate([
+            'agent_type_id' => 'required|exists:agent_type,id',
+        ]);
+
+        $agentType = AgentType::findOrFail($validated['agent_type_id']);
+
+        // Check if the agent type is associated with any agents
+        if ($agentType->agents()->exists()) {
+            return redirect()->back()->with('error', 'Agent type is associated with agents and cannot be deleted.');
+        }
+
+        // Delete the agent type
+        $agentType->delete();
+
+        return redirect()->back()->with('success', 'Agent type deleted successfully.');
     }
 }

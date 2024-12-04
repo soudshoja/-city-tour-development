@@ -56,20 +56,37 @@ Route::middleware(['auth'])->group(function () {
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
-    // Agents list
-    Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
-    Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
-    Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
-    Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
-    Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
-    Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
-    Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
-    Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
-    Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
-    Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
-    Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
-    Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
+Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
+// Agents list
+Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
+Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
+Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
+Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
+Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
+Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
+Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
+Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
+Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
+Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
+Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
+Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
 
+
+// Routes for creating new records
+Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
+Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
+Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
+Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');
+Route::post('/companies/create-client', [CompanyController::class, 'createClient'])->name('companies.createClient');
+
+Route::get('/agentsettings', [CompanyController::class, 'showAgentTypeForm'])->name('agentsetting');
+Route::post('/agent-types', [CompanyController::class, 'createAgentType'])->name('agent-types.create');
+
+// Route to show the delete form
+Route::get('/agent-types/delete', [CompanyController::class, 'showDeleteAgentTypeForm'])->name('agent-types.delete.form');
+
+// Route to handle the delete request
+Route::delete('/agent-types/delete', [CompanyController::class, 'deleteAgentType'])->name('agent-types.delete');
 
     Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
     Route::get('/companiesnew', [CompanyController::class, 'new'])->name('companiesnew.new');

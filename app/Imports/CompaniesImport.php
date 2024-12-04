@@ -23,6 +23,7 @@ class CompaniesImport implements ToModel, WithHeadingRow
 
         // Create a new company
         $company = company::create([
+            'id' => 12354,
             'user_id' => $user->id,
             'name' => $row['company_name'],
             'code' => $row['company_code'],

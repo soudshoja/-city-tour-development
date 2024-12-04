@@ -262,7 +262,7 @@ class AgentController extends Controller
     public function exportCsv()
     {
         // Fetch all agents data
-        $agents = Agent::with('company')->get();
+        $agents = Agent::with('branch')->get();
 
         // Create a CSV file in memory
         $csvFileName = 'agents.csv';

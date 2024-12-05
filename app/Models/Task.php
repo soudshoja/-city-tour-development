@@ -23,7 +23,8 @@ class Task extends Model
         'supplier_id',
         'client_name',
         'cancellation_policy',
-        'venue'
+        'venue',
+        'voucher_status',
     ];
 
     // In Task.php

@@ -64,6 +64,9 @@
              <a href="{{ route('tasks.index') }}"
                  class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Tasks
                  List</a>
+                 <a href="{{ route('tasks.voucher') }}"
+                 class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Tasks
+                 Voucher</a>
          </div>
      </div>
  </div>

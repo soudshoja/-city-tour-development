@@ -125,7 +125,11 @@ class InvoiceController extends Controller
         $clientId = $selectedClient ? $selectedClient->id : null;
         
           $clients = Client::with(['agent.branch' => function ($query) {
-            $companyId = auth()->user()->agent->branch->company_id;
+            if (auth()->user()->role_id == Role::COMPANY) {
+               $companyId = auth()->user()->company->id;
+             } elseif (auth()->user()->role_id == Role::AGENT) {
+                $companyId = auth()->user()->agent->branch->company_id;
+             }
             $query->where('company_id', $companyId);
         }])->get();
 

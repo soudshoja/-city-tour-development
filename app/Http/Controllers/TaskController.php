@@ -165,59 +165,40 @@ class TaskController extends Controller
         $file = $request->file('task_file')->store('tasks');
 
         if ($file) {
-            $file = storage_path('app/' . $file);
-
-             $contents = $this->pdfToText($file);
-            
-             // Prepare the OpenAI request
-            $openai = new OpenAiController();
-            $response = $openai->flightOrHotel($contents);
-
-            if($response['status'] == 'error'){
-                return redirect()->back()->with('error', 'File upload failed.');
-            }
-
-            if($response['data'] == 'flight')
-            {
-                $response = $openai->extractFlightData($contents); 
-            } else {
-                $response = $openai->extractHotelData($contents);
-            }
-            
-            if ($response['status'] == 'success') {
-
-                $tasksId = $response['data'];
-
-                $tasks = Task::where('id', $tasksId)->first();
-                
-                return redirect()->back()->with('success', 'Tasks imported successfully.')->with('importedTask', $tasks);
-
-            } else {
-                return redirect()->back()->with('error', 'Tasks import failed.');
-            }
+            $response = $this->extractTaskFromFile($file);
         } else {
-            Log::error('File upload failed');
-            return Redirect::back()->with('error', 'File upload failed');
+            $response = [
+                'status' => 'error',
+                'message' => 'File upload failed.'
+            ];
         }
 
         // Excel::import(new TasksImport, $request->file('excel_file'));
-
-        return redirect()->back()->with('error', 'File is not processed .');
+        
+        return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
 
-    public function getTaskbyItemId($itemId)
+    public function extractTaskFromFile($file)
     {
-        $tasks = Task::where('item_id', $itemId)->get();
+        $file = storage_path('app/public/' . $file);
 
-        if (!$tasks) {
-            return response()->json([
-                'message' => 'Task not found'
-            ], 404);
+        $contents = $this->pdfToText($file);
+
+        // Prepare the OpenAI request
+        $openai = new OpenAiController();
+        $response = $openai->flightOrHotel($contents);
+
+        if ($response['status'] == 'error') {
+            return redirect()->back()->with('error', 'File upload failed.');
         }
 
-        return response()->json([
-            'tasks' => $tasks
-        ], 200);
+        if ($response['data'] == 'flight') {
+            $response = $openai->extractFlightData($contents);
+        } else {
+            $response = $openai->extractHotelData($contents);
+        }
+
+        return $response;
     }
 
     public function exportCsv()

@@ -10,6 +10,3 @@
        @include('agents.index')
    </div>
    @endif
-   <script>
-    alert('hello');
-   </script>

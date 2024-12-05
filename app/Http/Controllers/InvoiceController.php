@@ -386,7 +386,7 @@ class InvoiceController extends Controller
 
         // Get all agents under the company
         $agents = Agent::with(['branch' => function($query) use ($user) {
-            $query->where('company_id', $user->company->id);
+            $query->where('branch_id', $user->company->branch->id);
         }])->pluck('id');
 
         // Get invoices related to those agents

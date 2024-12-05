@@ -13,4 +13,10 @@ class Supplier extends Model
 
     protected $fillable = ['name', 'status', 'code', 'email', 'address', 'phone', 'nationality'];
 
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
+
+
 }

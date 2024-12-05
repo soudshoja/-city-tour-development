@@ -42,8 +42,8 @@
                             @foreach($tasks as $task)
                             <li class="border-b border-gray-200 dark:border-gray-600 py-2">
                                 <strong class="text-gray-900 dark:text-gray-100">Task:
-                                    {{ $task->description }}:</strong> <span
-                                    class="text-gray-500 dark:text-gray-400">{{ $task->task_type }}</span> -
+                                    {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}:</strong> <span
+                                    class="text-gray-500 dark:text-gray-400">{{ $task->type }}</span> -
                                 <span class="text-gray-500 dark:text-gray-400">{{ $task->status }}</span>
                             </li>
                             @endforeach

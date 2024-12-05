@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class InvoiceDetails extends Model
+class InvoiceDetail extends Model
 {
     use HasFactory;
 
@@ -29,5 +29,10 @@ class InvoiceDetails extends Model
     public function task()
     {
         return $this->belongsTo(Task::class, 'task_id');
+    }
+
+    public function generalLedgers()
+    {
+        return $this->hasMany(GeneralLedger::class);
     }
 }

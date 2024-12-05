@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Alimranahmed\LaraOCR\Facades\OCR;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Agent;
@@ -10,8 +11,16 @@ use Exception;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
+use App\Models\Branch;
 use App\Models\Role;
+use ConvertApi\ConvertApi;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use PhpParser\Node\Expr\Throw_;
+use thiagoalessio\TesseractOCR\TesseractOCR;
 
 class ClientController extends Controller
 {
@@ -28,13 +37,14 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
-            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
-            $agentIds = Agent::where('company_id', $user->company->id)->pluck('id')->toArray();
-            $clients = Client::with('agent.company')->whereIn('agent_id', $agentIds)->paginate(6);
+            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
-            $clients = Client::with('agent.company')->where('agent_id', $agent->id)->paginate(6);
+            $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->paginate(6);
         }
 
         $clientsNo = $clientsCount;
@@ -93,38 +103,78 @@ class ClientController extends Controller
     // Show the form for editing a client
     public function edit($id)
     {
+        Gate::authorize('edit', [Client::class, Client::findOrFail($id)]);
+
+        $agents = [];
+        if(Gate::allows('clientAgent', Client::class)) {
+            $agents = Agent::with('company')->get();
+        }
+
         $client = Client::findOrFail($id);
-        return view('clients.edit', compact('client')); // Ensure the view exists
+        return view('clients.edit', compact('client','agents')); // Ensure the view exists
     }
 
     // Update the client in the database
     public function update(Request $request, $id)
     {
-
-
+        Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
+        // dd($request->all());
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:clients,email,' . $id,
-            'status' => 'required',   // Optional status field
-            'phone' => 'nullable|string|max:15',    // Optional phone field
+            'name' => 'string|max:255',
+            'email' => 'email|unique:clients,email,' . $id,
+            'status' => 'nullable',   // Optional status field
+            'phone' => 'string|max:15',    // Optional phone field
+            'file' => 'nullable|mimes:jpeg,jpg,png',    // Optional passport file field
         ]);
 
         // Find the client and update it
         try {
-            $client = Client::findOrFail($id);
-            $client->update([
-                'name' => $request->get('name'),
-                'email' => $request->get('email'),
-                'status_id' => intval($request->get('status')),
-                'phone' => $request->get('phone'),
-            ]);
+            $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
 
+                // if($file->getClientOriginalExtension() == 'pdf') {
 
+                //     $fileController = new FileController();
+                //     $file = $fileController->convertPdfToImage($file);
+
+                // }
+
+                $ocr = new TesseractOCR();
+                $ocr->image($file->getRealPath());
+                $text = $ocr->run();
+
+                try {
+
+                    $openai = new OpenAiController();
+                    $response =  $openai->extractPassport($text);
+                    $responseData = json_decode($response['data'], true);
+                    
+                    $this->updateClientPassport($client, $responseData);
+                    
+                } catch (Exception $e) {
+                    return redirect()->back()->withInput()->with('error', $e->getMessage());
+                }
+            }
             // Redirect to the clients list with a success message
-            return redirect()->route('clients.list')->with('success', 'Client updated successfully!');
+            return Redirect::back()->with(
+            [
+                'error' => 'test',
+                'success' => 'Client updated successfully!',
+            ]
+            );
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
+    }
+
+    public function updateClientPassport($client, $data)
+    {
+        $client->passport_no = $data['passport_no'];
+        $client->civil_no = $data['civil_no'];
+        // $client->passport_expiry = $data['passport_expiry'];
+        // $client->passport_country = $data['passport_country'];
+        $client->save();
     }
 
     public function upload()

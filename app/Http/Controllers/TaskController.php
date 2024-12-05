@@ -10,14 +10,17 @@ use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
 use App\Models\Role;
+use App\Services\TextFileProcessor;
 use ConvertApi\ConvertApi;
 use Exception;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Storage;
+//// tset
 class TaskController extends Controller
 {
     public function index($id = null)
@@ -27,20 +30,20 @@ class TaskController extends Controller
         $taskCount = 0;
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = Task::with('agent.company', 'client')->get(); // Retrieve all tasks for admin
+            $tasks = Task::with('agent.branch', 'client')->get(); // Retrieve all tasks for admin
             $taskCount = Task::count(); // Total task count for admin
         } elseif ($user->role_id == Role::COMPANY) {
             $agents = Agent::all();
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.company', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $tasks = Task::with('agent.branch', 'client')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
             $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
         } elseif ($user->role_id == Role::AGENT) {
             if ($id) {
                 $agent = Agent::find($id);
                 if ($agent) {
-                    $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
+                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
                     $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
                 } else {
                     return redirect()->back()->with('error', 'Agent not found.');
@@ -48,7 +51,7 @@ class TaskController extends Controller
             } else {
                 $agent = $user->agent;
                 if ($agent) {
-                    $tasks = Task::with('agent.company', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
+                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
                     $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
                 } else {
                     return redirect()->back()->with('error', 'Agent not found.');
@@ -61,10 +64,8 @@ class TaskController extends Controller
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
 
         // dd($tasks, $agent, $agents, $taskCount);
-        return view('tasks.tasksList', compact('tasks', 'agent','taskCount')); // Pass the tasks and task count to the view
+        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount')); // Pass the tasks and task count to the view
     }
-
-
 
     public function show($id)
 
@@ -126,24 +127,34 @@ class TaskController extends Controller
 
     public function import(Request $request)
     {
-
+    
         $request->validate([
             'task_file' => 'required|mimes:pdf',
         ]);
 
+        $file = $request->file('task_file')->store('tasks');
+
         ConvertApi::setApiCredentials(config('services.convert-api.secret'));
 
-        $file = $request->file('task_file');
-        $destinationPath = 'uploads';
-        if ($fileUploaded = $file->move($destinationPath, $file->getClientOriginalName())) {
-            $result = ConvertApi::convert('txt', ['File' => $fileUploaded->getPathname()], 'pdf');
+        if ($file) {
+
+            $result = ConvertApi::convert('txt', ['File' => storage_path('app/' . $file)], 'pdf');
 
             Log::info('File converted successfully: ', $result->getFiles());
-            $response = $result->saveFiles($destinationPath);
+            $response = $result->saveFiles(storage_path('app/tasks'));
+            $file = $response[0];
 
-            Log::info('File uploaded successfully: ', $response);
+            $contents = file_get_contents($file);
 
-            return Redirect::back()->with('success', 'File uploaded successfully');
+            // Prepare the OpenAI request
+            $openai = new OpenAiController();
+            $response = $openai->extractFileData($contents);
+
+            if ($response == 'success') {
+                return redirect()->back()->with('success', 'Tasks imported successfully.');
+            } else {
+                return redirect()->back()->with('error', 'Tasks import failed.');
+            }
         } else {
             Log::error('File upload failed');
             return Redirect::back()->with('error', 'File upload failed');
@@ -199,4 +210,6 @@ class TaskController extends Controller
         fclose($handle);
         exit();
     }
+
+    public function fileToTask() {}
 }

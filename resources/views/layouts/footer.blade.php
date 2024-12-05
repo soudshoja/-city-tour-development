@@ -214,7 +214,7 @@ if (localStorage.getItem('darkMode') === 'true') {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <!-- Alpine.js -->
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3" defer></script>
+
 <script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/collapse.min.js" defer></script>
 
 <!-- Scripts -->

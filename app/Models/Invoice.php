@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
@@ -41,13 +42,26 @@ class Invoice extends Model
         return $this->belongsTo(Agent::class, 'agent_id');
     }
 
-    public function tasks()
-    {
-        return $this->belongsToMany(Task::class);
-    }
-
     public function payment()
     {
-        return $this->hasMany(Payment::class, 'invoice_id');
+        return $this->hasOne(Payment::class);
     }
+
+    public function invoiceDetails()
+    {
+        return $this->hasMany(InvoiceDetail::class);
+    }
+
+
+    public function generalLedgers()
+    {
+        return $this->hasMany(GeneralLedger::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+
 }

@@ -1,6 +1,6 @@
 <x-app-layout>
-    <div x-data="invoiceModal()">
-        <div x-data="invoiceAdd">
+    <div id="invoiceModalComponent">
+      
             <div class="flex flex-col gap-2.5 xl:flex-row">
                 <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
                     <!-- company details -->
@@ -50,41 +50,7 @@
                         </div>
 
                     </div>
-                    <!-- ./company details -->
-                    <!-- agent detials -->
-                    <!-- 
-                    <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-                    
-                    <div class="flex flex-wrap justify-between px-4">
-                        <div class="flex shrink-0 items-center text-black dark:text-white">
-                            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="6" r="4" fill="#1C274C" />
-                                <path opacity="0.5"
-                                    d="M20 17.5C20 19.9853 20 22 12 22C4 22 4 19.9853 4 17.5C4 15.0147 7.58172 13 12 13C16.4183 13 20 15.0147 20 17.5Z"
-                                    fill="#1C274C" />
-                            </svg>
 
-                            <div class="pl-2">
-                                <h3>Choose An Agent</h3>
-
-                            </div>
-
-
-                        </div>
-                        <div class="space-y-1 text-gray-500 dark:text-gray-400">
-
-                            <button @click="openAgentModal()"
-                                class="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                                <span
-                                    class="gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Select Agent
-                                </span>
-                            </button>
-                        </div>
-
-                    </div>
--->
                     <!-- ./agent details -->
                     <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
 
@@ -94,7 +60,7 @@
                             <div>
                                 <div class="flex items-center justify-between">
                                     <div class="text-lg font-semibold">Bill To</div>
-                                    <button @click="openClientModal()"
+                                    <button type="button" id="openClientModalButton"
                                         class="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
                                         <span
                                             class="gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
@@ -109,27 +75,25 @@
                                             </svg> Select Client
                                         </span>
                                     </button>
-
+                                    <input id="receiverId" type="hidden" name="receiverId"  />
+                                    <input id="agentId" type="hidden" name="agentId" value="{{$agentId}}" />
                                 </div>
                                 <div class="mt-4 flex items-center">
                                     <label for="receiverName" class="mb-0 w-1/3 mr-2 ">Name</label>
                                     <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
-                                        value="{{ old('client_name', $receiverName ?? '') }}" x-model="receiverName"
-                                        placeholder="Enter Name" />
+                                      placeholder="Enter Name"  disabled/>
                                 </div>
                                 <div class="mt-4 flex items-center">
                                     <label for="receiverEmail" class="mb-0 w-1/3 mr-2 ">Email</label>
                                     <input id="receiverEmail" type="email" name="receiverEmail"
                                         class="form-input flex-1"
-                                        value="{{ old('client_email', $receiverEmail ?? '') }}" x-model="receiverEmail"
-                                        placeholder="Enter Email" />
+                                        placeholder="Enter Email" disabled/>
                                 </div>
 
                                 <div class="mt-4 flex items-center">
                                     <label for="receiverPhone" class="mb-0 w-1/3 mr-2 ">Phone Number</label>
                                     <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
-                                        value="{{ old('client_phone', $receiverPhone ?? '') }}" x-model="receiverPhone"
-                                        placeholder="Enter Phone Number" />
+                                        placeholder="Enter Phone Number" disabled/>
                                 </div>
                             </div>
                             <!-- ./client details -->
@@ -138,24 +102,16 @@
                         <div class="w-full lg:w-1/2 lg:max-w-fit">
                             <div class="flex items-center">
                                 <label for="invoiceNumber" class="mb-0 flex-1 mr-2 ">Invoice Number</label>
-                                <input type="text" name="invoiceNumber" class="form-input w-2/3 lg:w-[250px]"
-                                    placeholder="#8801" x-model="params.invoiceNumber" value="{{$invoiceNumber}}" />
-                            </div>
-                            <div class="mt-4 flex items-center">
-                                <label for="invoiceLabel" class="mb-0 flex-1 mr-2 ">Invoice Label</label>
-                                <input id="invoiceLabel" type="text" name="inv-label"
-                                    class="form-input w-2/3 lg:w-[250px]" placeholder="Enter Invoice Label"
-                                    x-model="params.label" />
+                                <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{$invoiceNumber}}" class="form-input w-2/3 lg:w-[250px]"
+                                    placeholder="#8801" />
                             </div>
                             <div class="mt-4 flex items-center">
                                 <label for="startDate" class="mb-0 flex-1 mr-2 ">Invoice Date</label>
-                                <input id="startDate" type="date" name="inv-date" class="form-input w-2/3 lg:w-[250px]"
-                                    x-model="params.invoiceDate" />
+                                <input id="invdate" type="date" name="invdate" class="form-input w-2/3 lg:w-[250px]" />
                             </div>
                             <div class="mt-4 flex items-center">
                                 <label for="dueDate" class="mb-0 flex-1 mr-2 ">Due Date</label>
-                                <input id="dueDate" type="date" name="due-date" class="form-input w-2/3 lg:w-[250px]"
-                                    x-model="params.dueDate" />
+                                <input id="duedate" type="date" name="duedate" class="form-input w-2/3 lg:w-[250px]" />
                             </div>
                         </div>
                         <!-- ./invoice details -->
@@ -163,170 +119,98 @@
                     <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
                     <!-- add items button-->
 
-                    <div class="flex justify-center items-center px-10">
-                        <button @click="openTaskModal()"
-                            class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                            <span
-                                class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd"
-                                        d="M17.5 2.75C17.9142 2.75 18.25 3.08579 18.25 3.5V5.75H20.5C20.9142 5.75 21.25 6.08579 21.25 6.5C21.25 6.91421 20.9142 7.25 20.5 7.25H18.25V9.5C18.25 9.91421 17.9142 10.25 17.5 10.25C17.0858 10.25 16.75 9.91421 16.75 9.5V7.25H14.5C14.0858 7.25 13.75 6.91421 13.75 6.5C13.75 6.08579 14.0858 5.75 14.5 5.75H16.75V3.5C16.75 3.08579 17.0858 2.75 17.5 2.75Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M2 6.5C2 4.37868 2 3.31802 2.65901 2.65901C3.31802 2 4.37868 2 6.5 2C8.62132 2 9.68198 2 10.341 2.65901C11 3.31802 11 4.37868 11 6.5C11 8.62132 11 9.68198 10.341 10.341C9.68198 11 8.62132 11 6.5 11C4.37868 11 3.31802 11 2.65901 10.341C2 9.68198 2 8.62132 2 6.5Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M13 17.5C13 15.3787 13 14.318 13.659 13.659C14.318 13 15.3787 13 17.5 13C19.6213 13 20.682 13 21.341 13.659C22 14.318 22 15.3787 22 17.5C22 19.6213 22 20.682 21.341 21.341C20.682 22 19.6213 22 17.5 22C15.3787 22 14.318 22 13.659 21.341C13 20.682 13 19.6213 13 17.5Z"
-                                        fill="currentColor" />
-                                    <path opacity="0.5"
-                                        d="M2 17.5C2 15.3787 2 14.318 2.65901 13.659C3.31802 13 4.37868 13 6.5 13C8.62132 13 9.68198 13 10.341 13.659C11 14.318 11 15.3787 11 17.5C11 19.6213 11 20.682 10.341 21.341C9.68198 22 8.62132 22 6.5 22C4.37868 22 3.31802 22 2.65901 21.341C2 20.682 2 19.6213 2 17.5Z"
-                                        fill="currentColor" />
-                                </svg>
-
-
-                                Add Item
-                            </span>
-                        </button>
-
-                    </div>
-
-                    <!-- ./add items button-->
-                    <div class="mt-8">
                         <!-- choose items -->
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Item</th>
-                                        <th class="w-1">Quantity</th>
-                                        <th class="w-1">Price</th>
-                                        <th>Total</th>
-                                        <th class="w-1"></th>
+                        <div class="mt-8">
+                                <!-- choose items -->
+                                <div class="table-responsive">
+                                    <table id="itemsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Item</th>
+                                                <th class="w-1">Quantity</th>
+                                                <th class="w-1">Task Price</th>
+                                                <th>Invoice Price</th>
+                                                <th class="w-1"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="items-body">
+                                            <!-- Items will be added dynamically here -->
+                                            <!-- "No Item Available" row will show if items.length <= 0 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- ./choose items -->
 
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-if="items.length <= 0">
-                                        <tr>
-                                            <td colspan="5" class="!text-center font-semibold">No Item Available</td>
-                                        </tr>
-                                    </template>
-                                    <template x-for="(item, i) in items" :key="i">
-                                        <tr class="border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b]">
-                                            <td>
-                                                <input type="text" class="form-input min-w-[200px]"
-                                                    placeholder="Enter Item Name" x-model="item.description" />
-
-                                            </td>
-                                            <td><input type="number" class="form-input w-32" placeholder="Quantity"
-                                                    x-model="item.quantity" /></td>
-                                            <td>
-                                                <input type="text" class="form-input w-32" placeholder="Price"
-                                                    x-model.number="item.total" @input="updateItemTotal(item)" />
-                                            </td>
-                                            <td x-text="`$${(item.total * item.quantity).toFixed(2)}`"></td>
-                                            <td>
-                                                <button type="button" @click="removeItem(item.id)">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="1.5" stroke-linecap="round"
-                                                        stroke-linejoin="round" class="h-5 w-5">
-                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                    </svg>
-                                                </button>
-
-
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                                <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
+                        <div class="mb-6 sm:mb-0">
+                            <button id="openTaskModalButton" class="ml-4 p-2 bg-blue-500 text-white rounded-lg hover:bg-yellow-600 transition-all duration-300 ease-in-out">
+                                <i class="fas fa-tasks"></i> Add Item
+                            </button>
 
                         </div>
-                        <!-- ./choose items -->
-
-                    </div>
-                    <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-
-                    <div class="mt-8 px-4">
-                        <div>
-                            <label for="notes">Notes</label>
-                            <textarea id="notes" name="notes" class="form-textarea min-h-[130px]"
-                                placeholder="Notes...." x-model="params.notes"></textarea>
+                        <div class="sm:w-2/5">
+                            <div class="mt-4 flex items-center justify-between font-semibold">
+                                <div>Total</div>
+                                <span id="subT">$0.00</span>
+                                <input id="subTotal" type="hidden" name="subTotal"  />
+                            </div>
                         </div>
                     </div>
+                         </div>
+  
 
                 </div>
                 <div class="mt-6 w-full xl:mt-0 xl:w-96">
                     <div class="panel mb-5">
-                        <div>
-                            <label for="currency">Currency</label>
-                            <select id="currency" name="currency" class="form-select" x-model="selectedCurrency">
-                                <template x-for="(currency, i) in currencyList" :key="i">
-                                    <option :value="currency" x-text="params.currency"></option>
-                                </template>
-                            </select>
-                        </div>
+                    <select id="currency" name="currency" class="form-select">
+                            <!-- You can add your options here -->
+                            <option value="KWD">KWD</option>
+                            <option value="MYR">MYR</option>
+                            <option value="USD">USD</option>
+                        </select>
                         <div class="mt-4">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
                                     <label for="tax">Tax(%) </label>
                                     <input id="tax" type="number" name="tax" class="form-input" placeholder="Tax"
-                                        @input="updateSubTotal()" x-model="params.tax" />
+                                        />
                                 </div>
                                 <div>
                                     <label for="discount">Discount(%) </label>
                                     <input id="discount" type="number" name="discount" class="form-input"
-                                        @input="updateSubTotal()" placeholder="Discount" x-model="params.discount" />
+                                        placeholder="Discount" />
                                 </div>
                             </div>
                         </div>
                         <div class="mt-4">
                             <div>
-                                <label for="shipping-charge">Shipping Charge($) </label>
-                                <input id="shipping-charge" type="number" name="shipping-charge" class="form-input"
-                                    @input="updateSubTotal()" placeholder="Shipping Charge"
-                                    x-model="params.shippingCharge" />
+                                <label for="agentName">Agent Name</label>
+                                <input id="agentName" type="text" name="agentName" class="form-input"
+                                     placeholder="Agent Name" disabled />
                             </div>
                         </div>
                         <div class="mt-4">
-                            <label for="payment-method">Accept Payment Via</label>
-                            <select id="payment-method" name="payment-method" class="form-select"
-                                x-model="params.paymentMethod">
-                                <option value="">Select Payment</option>
-                                <option value="bank">Bank Account</option>
-                                <option value="paypal">Paypal</option>
-                                <option value="upi">UPI Transfer</option>
-                            </select>
+                            <label for="agentEmail">Agent Email</label>
+                            <input id="agentEmail" type="text" name="agentEmail" class="form-input"
+                            placeholder="Agent Email"  disabled/>
                         </div>
                     </div>
                     <div class="panel">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                            <!-- Invoice Link Display -->
-                            <div x-show="isSaved" class="mt-4">
+                            <div id="invoice-link-container" style="display: none;" class="mt-4">
                                 <label>Invoice Link:</label>
-                                <a :href="invoiceLink" class="text-blue-600 underline" target="_blank"
-                                    x-text="invoiceLink"></a>
+                                <a id="invoice-link" href="#" class="text-blue-600 underline" target="_blank"></a>
                             </div>
-
-                            <button @click="generateInvoice()" type="button" :disabled="isSaving"
-                                class="btn btn-success w-full gap-2" id="generate-invoice-btn">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                    <path
-                                        d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z"
-                                        stroke="currentColor" stroke-width="1.5" />
-                                    <path
-                                        d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22"
-                                        stroke="currentColor" stroke-width="1.5" />
-                                    <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" />
+                                
+                            <button id="generate-invoice-btn"  type="button" class="btn btn-success w-full gap-2">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                    <path d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5"/>
+                                    <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                                 </svg>
-                                <span x-show="!isSaving && !isSaved" id="button-text">Save</span>
-                                <span x-show="isSaving" id="button-loading">Saving...</span>
-                                <span x-show="isSaved" id="button-saved">Saved</span>
+                                <span id="button-text">Save</span>
+                                <span id="button-loading" style="display: none;">Saving...</span>
+                                <span id="button-saved" style="display: none;">Saved</span>
                             </button>
 
                             <!-- add form here-->
@@ -369,512 +253,564 @@
                             </button>
                         </div>
                     </div>
-
-                    <!-- Agents Modal -->
-                    <div x-show="isAgentModalOpen"
-                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75"
-                        style="display: none;">
-                        <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
-                            <!-- Modal Header -->
-                            <div
-                                class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
-                                <h5 class="text-lg font-bold">Choose Agent</h5>
-                                <!-- Close Modal Button -->
-                                <button type="button" class="text-white-dark hover:text-dark"
-                                    @click="closeAgentModal()">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
-                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                            <!-- ./Modal Header -->
-                            <div class="m-6 ">
-                                <!-- Search Box -->
-                                <div class="relative mb-2">
-                                    <input type="text" placeholder="Search Client..."
-                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                        x-model="searchClient">
-                                    <button type="button"
-                                        class="btn btn-primary absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1 ">
-                                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
-                                                opacity="0.5"></circle>
-                                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <!-- ./Search Box -->
-
-
-                                <!-- List of Agents -->
-                                <ul
-                                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
-                                    <template x-for="Agent in filteredAgents" :key="Agent.id">
-                                        <li @click="selectAgent(Agent)"
-                                            class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
-                                            <span x-text="Agent.name"></span> - <span x-text="Agent.email"></span>
-                                        </li>
-                                    </template>
-                                </ul>
-                                <!-- ./List of Agents -->
-
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- Clients Modal -->
-                    <div x-show="isClientModalOpen"
-                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75"
-                        style="display: none;">
-                        <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
-                            <!-- Modal Header -->
-                            <div
-                                class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
-                                <h5 class="text-lg font-bold">Choose Client</h5>
-                                <!-- Close Modal Button -->
-                                <button type="button" class="text-white-dark hover:text-dark"
-                                    @click="closeClientModal()">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
-                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                            <!-- ./Modal Header -->
-                            <div class="m-6 ">
-                                <!-- Search Box -->
-                                <div class="relative mb-2">
-                                    <input type="text" placeholder="Search Client..."
-                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                        x-model="searchClient">
-                                    <button type="button"
-                                        class="btn btn-primary absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1 ">
-                                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
-                                                opacity="0.5"></circle>
-                                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <!-- ./Search Box -->
-
-
-                                <!-- List of Clients -->
-                                <ul
-                                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
-                                    <template x-for="client in filteredClients" :key="client.id">
-                                        <li @click="selectClient(client)"
-                                            class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
-                                            <span x-text="client.name"></span> - <span x-text="client.email"></span>
-                                        </li>
-                                    </template>
-                                </ul>
-                                <!-- ./List of Clients -->
-
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- Tasks Modal -->
-                    <div x-show="isTaskModalOpen"
-                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75"
-                        style="display: none;">
-                        <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
-                            <div
-                                class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
-                                <h5 class="text-lg font-bold">Choose Task</h5>
-                                <!-- Close Modal Button -->
-                                <button type="button" class="text-white-dark hover:text-dark" @click="closeTaskModal()">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
-                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="m-6">
-                                <!-- Search Box -->
-                                <div class="relative  mb-10">
-                                    <input type="text" placeholder="Search Task..."
-                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                        x-model="searchTask">
-                                    <button type="button"
-                                        class="btn btn-primary absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1 ">
-                                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
-                                                opacity="0.5"></circle>
-                                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <!-- ./Search Box -->
-                                <!-- List of Tasks -->
-                                <ul class=" border rounded-lg mb-10 max-h-60 overflow-y-auto  custom-scrollbar">
-                                    <template x-for="task in filteredTasks" :key="task.id">
-                                        <li @click="selectTask(task)"
-                                            class="cursor-pointer p-2 hover:bg-gray-100 text-gray-800">
-                                            <span x-text="task.reference"></span>-
-                                            <span x-text="task.type"></span>
-                                            <span x-text="task.additional_info"></span>
-                                            ( <span x-text="task.venue"></span>)
-                                        </li>
-                                    </template>
-                                </ul>
-                            </div>
-
-
-
-
-                        </div>
-                    </div>
-
-
-
+                 </div>
+              </div>
+      
+         <!-- Clients Modal -->
+         <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden">
+            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
+                <!-- Modal Header -->
+                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                    <h5 class="text-lg font-bold">Client Management</h5>
+                    <button type="button" class="text-white-dark hover:text-dark" id="closeClientModalButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                            class="h-6 w-6">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
+                <!-- ./Modal Header -->
+
+                <!-- Tabs -->
+                <div class="border-b flex justify-center">
+                    <button class="tab-button px-4 py-2 text-blue-500 border-b-2 border-blue-500" id="selectTabButton">Select Client</button>
+                    <button class="tab-button px-4 py-2 text-gray-500 hover:text-blue-500" id="addTabButton">Add New Client</button>
+                </div>
+                <!-- ./Tabs -->
+
+                <!-- Tab Content -->
+                <div id="selectTab" class="p-6">
+                    <!-- Search Box -->
+                    <div class="relative mb-4">
+                        <input type="text" placeholder="Search Client..."
+                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                            id="clientSearchInput">
+                    </div>
+                    <!-- ./Search Box -->
+
+                    <!-- List of Clients -->
+                    <ul id="clientList"
+                        class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                        <!-- Dynamic list items go here -->
+                    </ul>
+                    <!-- ./List of Clients -->
+                </div>
+
+                <div id="addTab" class="p-6 hidden">
+                    <!-- Add New Client Form -->
+                    <h6 class="text-lg font-bold mb-3">Add New Client</h6>
+                    <form method="POST" action="{{ route('invoices.clientAdd') }}">
+                            @csrf
+
+                            <!-- Name Field -->
+                            <div class="mb-4">
+                                <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                <input id="name" name="name" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Client Name" />
+                            </div>
+
+                            <!-- Email Field -->
+                            <div class="mb-4">
+                                <label for="email"
+                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                <input id="email" name="email" type="email" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Client Email" />
+                            </div>
+
+                            <!-- Phone Field -->
+                            <div class="mb-4">
+                                <label for="phone"
+                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                <input id="phone" name="phone" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Client Phone" />
+                            </div>
+
+                            <!-- Address Field -->
+                            <div class="mb-4">
+                                <label for="address"
+                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                <input id="address" name="address" type="text"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Client Address" />
+                            </div>
+
+                            <!-- Address Field -->
+                            <div class="mb-4">
+                                <label for="passport_no"
+                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
+                                <input id="passport_no" name="passport_no" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Passport Number" />
+                            </div>
+
+                        <!-- Email Field -->
+                            <div class="mb-4">
+                                <label for="agent_email"
+                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
+                                <input id="agent_email" name="agent_email" type="email" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Agent Email" />
+                            </div>
+
+                            <!-- Status Field -->
+                            <div class="mb-4">
+                                <label for="status"
+                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Status</label>
+                                <select id="status" name="status"
+                                    class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="1">Active</option>
+                                    <option value="2">Inactive</option>
+                                </select>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="flex items-center justify-center">
+                                <button type="submit"
+                                    class="p-2 btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
+                                    Register Client
+                                </button>
+                            </div>
+                        </form>
+                </div>
+                <!-- ./Tab Content -->
             </div>
         </div>
+
+                <!-- Tasks Modal -->
+                <div id="taskModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden">
+                    <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
+                        <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                            <h5 class="text-lg font-bold">Choose Task</h5>
+                            <!-- Close Modal Button -->
+                            <button type="button" class="text-white-dark hover:text-dark" id="closeTaskModalButton">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                    class="h-6 w-6">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="m-6">
+                            <!-- Search Box -->
+                            <div class="relative mb-10">
+                                <input type="text" placeholder="Search Task..."
+                                    class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                    id="taskSearchInput" oninput="filterTasks()">
+                            </div>
+                            <!-- ./Search Box -->
+                            <!-- List of Tasks -->
+                            <ul id="taskList" class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
+                                <!-- Dynamic list items go here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>       
         <!-- end main content section -->
     </div>
 
     <script>
-    // Invoice Add
-    function invoiceModal() {
 
-        return {
-            isAgentModalOpen: false,
-            isClientModalOpen: false,
-            isTaskModalOpen: false,
-            searchClient: '',
-            searchTask: '',
-            clients: @json($clients),
-            tasks: @json($tasks),
-            suppliers: @json($suppliers),
-            selectedClient: null,
-            selectedClientId: null,
-            receiverName: null,
-            receiverName: null,
-            receiverEmail: null,
-            receiverAddress: null,
-            receiverPhone: null,
-            selectedTaskName: null,
-            selectedTask: null,
-            taskRemark: '',
-            taskPrice: 0,
-            subtotal: 0,
-            total: 0,
-            tasksNew: [],
-            currency: 'USD',
-            items: [],
-            invoiceNumber: @json($invoiceNumber),
-            selectedCurrency: 'USD',
-            isSaving: false,
-            isSaved: false,
-            invoiceLink: '',
-            params: {
-                label: '',
-                invoiceDate: '',
-                dueDate: '',
-                accNo: '',
-                bankName: '',
-                swiftCode: '',
-                ibanNo: '',
-                country: '',
-                currency: '',
-                tax: 0,
-                discount: 0,
-                shippingCharge: 0,
-                paymentMethod: '',
-                invoiceNumber: @json($invoiceNumber),
-            },
-            removeItem(taskId) {
-                this.items = this.items.filter(item => item.id !== taskId);
-                this.updateTotal(this.items); // Update total if needed
-            },
+        let selectedTasks = @json($selectedTasks);
+        let items = [];
 
+             function updateItemPrice(itemId) {
+                    // Find the input field by ID
+                    const inputField = document.getElementById(`invprice-${itemId}`);    
+                    const newPrice = parseFloat(inputField.value) || 0;
 
-            openAgentModal() {
-                this.isAgentModalOpen = true;
-            },
-
-            closeAgentModal() {
-                this.isAgentModalOpen = false;
-            },
-
-            selectAgent(Agent) {
-                this.selectedAgent = Agent;
-                this.selectedAgentId = Agent.id ?? '';
-                this.receiverName = Agent.name ?? '';
-                this.receiverAddress = Agent.address ?? '';
-                this.receiverPhone = Agent.phone ?? '';
-                this.receiverEmail = Agent.email ?? '';
-                document.getElementById('receiverName').value = Agent.name ?? '';
-                document.getElementById('receiverEmail').value = Agent.email ?? '';
-                const addressField = document.getElementById('receiverAddress');
-                if (addressField) {
-                    addressField.value = Agent.address ? Agent.address : '';
+                    // Update the corresponding item in the `items` array
+                    const item = items.find(item => item.id === itemId);
+                    if (item) {
+                        item.invprice = newPrice; // Add or update the `invprice` property
+                    }
+                    calculateSubtotal();
                 }
 
-                const phoneField = document.getElementById('receiverPhone');
-                if (phoneField) {
-                    phoneField.value = Agent.phone ? Agent.phone : '';
+
+                function calculateSubtotal() {
+                const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
+                document.getElementById('subT').textContent = `$${subtotal.toFixed(2)}`;
+                document.getElementById('subTotal').value = subtotal;
+            }
+
+
+            document.addEventListener("DOMContentLoaded", function() {
+
+            let tasks = @json($tasks);
+            let clients = @json($clients);
+            let selectedClient = @json($selectedClient);
+            let selectedAgent = @json($selectedAgent);
+
+            document.getElementById("openClientModalButton").onclick = openClientModal;
+            document.getElementById("closeClientModalButton").onclick = closeClientModal;
+            document.getElementById('clientSearchInput').addEventListener('input', filterClients);
+
+
+            document.getElementById("openTaskModalButton").onclick = openTaskModal;
+            document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
+            document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
+
+
+                function removeItem(itemId) {
+                    items = items.filter(item => item.id !== itemId);
+                    renderItems(); // Re-render the table after removal
                 }
-                this.closeAgentModal();
-            },
 
-            openClientModal() {
-                this.isClientModalOpen = true;
-            },
-
-            closeClientModal() {
-                this.isClientModalOpen = false;
-            },
+                // Initial rendering of items
 
 
 
-            selectClient(client) {
-                this.selectedClient = client;
-                this.selectedClientId = client.id ?? '';
-                this.receiverName = client.name ?? '';
-                this.receiverAddress = client.address ?? '';
-                this.receiverPhone = client.phone ?? '';
-                this.receiverEmail = client.email ?? '';
-                document.getElementById('receiverName').value = client.name ?? '';
-                document.getElementById('receiverEmail').value = client.email ?? '';
-                const addressField = document.getElementById('receiverAddress');
-                if (addressField) {
-                    addressField.value = client.address ? client.address : '';
+
+            if (Array.isArray(selectedTasks)) {
+                    // Iterate over the array and select each task
+                    selectedTasks.forEach(task => selectTask(task));
+                } else  {
+                    // If it's a single task object, select it directly
+                    selectTask(selectedTasks);
                 }
 
-                const phoneField = document.getElementById('receiverPhone');
-                if (phoneField) {
-                    phoneField.value = client.phone ? client.phone : '';
-                }
-                this.closeClientModal();
-            },
-
-            openTaskModal() {
-                this.isTaskModalOpen = true;
-            },
-
-            closeTaskModal() {
-                this.isTaskModalOpen = false;
-            },
-
-            selectTask(task) {
-                this.selectedTask = task;
-                const taskExists = this.items.some(item => item.id === task.id);
-
-                if (!taskExists) {
-                    this.items.push({
-                        ...task,
-                        remark: '',
-                        quantity: 1,
-                        price: task.total || 0,
-                        description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`
+            // Function to select a task
+            function selectTask(task) {
+                    items.push({
+                        ...task, // Spread the properties of the task object
+                        remark: '', // Add default empty remark
+                        quantity: 1, // Default quantity is 1
+                        description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})` // Custom description format
                     });
+
+                // Set the selected task name
+                selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
+
+                // Call a function to update the total, passing the current items array
+              //  updateTotal(items);
+                closeTaskModal();
+            }
+
+            const itemsBody = document.getElementById('items-body');
+           
+            function renderItems() {
+                    itemsBody.innerHTML = ''; // Clear existing rows
+
+                    if (items.length === 0) {
+                        // If no items, display the "No Item Available" row
+                        const noItemsRow = document.createElement('tr');
+                        noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Item Available</td>';
+                        itemsBody.appendChild(noItemsRow);
+                    } else {
+                        // Iterate over items and create rows
+                        items.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
+                            
+                            row.innerHTML = `
+                                <td>
+                                <p>${item.description}</p>
+                                </td>
+                                <td>
+                                  <p>${item.quantity}</p>
+                                </td>
+                                 <td>$${(item.total * item.quantity).toFixed(2)}</td>
+                                <td>
+                                        <input 
+                                        id="invprice-${item.id}" 
+                                        type="number" 
+                                        name="invprice" 
+                                        placeholder="Invoice Price" 
+                                        class="form-input w-2/3 lg:w-[150px]" 
+                                        oninput="updateItemPrice(${item.id})"
+                                    />
+                                </td>
+
+                                <td>
+                                    <button type="button" onclick="removeItem(${item.id})">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" 
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </td>
+                            `;
+                            
+                            itemsBody.appendChild(row);
+                        });
+                    }
                 }
-                this.selectedTaskName = task.reference + '-' + task.type + task.additional_info + '(' + task.venue +
-                    ')';
-                this.updateTotal(this.items);
-                //  document.getElementById('item-name').value =  task.reference + '-' +  task.type +  task.additional_info +'('+task.venue+')';
-                this.closeTaskModal();
-            },
 
-            updateItemTotal(item) {
-                // Update total if necessary
-                item.total = parseFloat(item.total) || 0; // Ensure total is a valid number
-                item.quantity = parseFloat(item.quantity) || 1; // Ensure quantity is at least 1
-                // Update any other logic or overall total here if needed
-                this.updateTotal(this.items); // Update the overall total
-            },
+            renderItems();
 
-            // updateSubTotal() {
-            //     const taxAmount = this.subtotal * (this.params.tax / 100);
-            //     const discountAmount = this.subtotal * (this.params.discount / 100);
-
-            //     // Calculate total
-            //     this.total = this.subtotal + taxAmount + this.params.shippingCharge - discountAmount;
-
-            // },
-
-            updateTotal(items) {
-                const total = items.reduce((sum, item) => sum + (item.total * item.quantity),
+            function updateTotal(items) {
+                const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
                     0); // Calculate total based on price and quantity
                 this.subtotal = total;
                 // this.updateSubTotal();
-            },
-            // Method to add task
-            addTask() {
-                if (this.taskRemark && this.taskPrice !== null) {
-                    const newTask = {
-                        clientName: this.selectedClientName,
-                        taskId: this.selectedTask.id,
-                        taskName: this.selectedTaskName,
-                        remark: this.taskRemark,
-                        price: this.taskPrice
-                    };
+            };
 
-                    this.tasksNew.push(newTask);
-                    this.total += parseFloat(this.taskPrice);
-                    this.clearInputs();
-                } else {
-                    alert('Please fill in all fields');
-                }
-            },
+            function openClientModal() {
+                const modal = document.getElementById("clientModal");
+                modal.classList.remove("hidden");
+            }
 
-            // Clear input fields
-            clearInputs() {
-                this.taskRemark = '';
-                this.taskPrice = 0;
-            },
+            // Close Client Modal
+            function closeClientModal() {
+                const modal = document.getElementById("clientModal");
+                modal.classList.add("hidden");
+            }
 
-            // Method to generate invoice
-            async generateInvoice() {
-                if (this.isSaving) return;
 
-                // Indicate saving process
-                this.isSaving = true;
-                this.isSaved = false;
-                this.invoiceLink = null;
-
-                // Extract necessary values
-                const invoiceUrl = "{{ route('invoice.store') }}";
-                const csrfToken = "{{ csrf_token() }}";
-                const currency = this.selectedCurrency;
-                const params = this.params;
-                const total = this.subtotal;
-                const subtotal = this.subtotal;
-                const tasks = this.items;
-                const clientId = this.selectedClientId;
-
-                // Basic validation
-                if (!clientId || !total || !tasks.length) {
-                    console.error("Required data is missing.");
-                    this.isSaving = false;
-                    return;
-                }
-
-                try {
-                    const response = await fetch(invoiceUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            subtotal,
-                            total,
-                            tasks,
-                            params,
-                            currency
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error("Failed to reach the invoice controller.");
-                    }
-
-                    const result = await response.json();
-
-                    // Generate invoice link after success
-                    this.invoiceLink = `https://tour.citytravelers.co/invoice/` + this.invoiceNumber;
-                    this.isSaved = true;
-                } catch (error) {
-                    console.error("Error generating invoice:", error);
-                    this.isSaved = false;
-                } finally {
-                    // Reset saving state after delay
-                    setTimeout(() => {
-                        this.isSaving = false;
-                    }, 1000);
-                }
-            },
-
-            get filteredClients() {
-                return this.clients.filter(client =>
-                    client.name.toLowerCase().includes(this.searchClient.toLowerCase())
+            function filterClients() {
+                const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
+                const filteredClients = clients.filter(client =>
+                    client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
                 );
-            },
+                renderClientList(filteredClients);
+            }
 
-            get filteredTasks() {
-                return this.tasks
-                    .filter(task => task.client_id === this.selectedClientId) // Filter by selected client ID
-                    .filter(task => task.additional_info.toLowerCase().includes(this.searchTask.toLowerCase()));
-            },
+            function renderClientList(clientData) {
+                const clientList = document.getElementById('clientList');
+                clientList.innerHTML = '';
+                clientData.forEach(client => {
+                    const li = document.createElement('li');
+                    li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                    li.innerText = `${client.name} - ${client.email}`;
+                    li.onclick = () => selectClient(client);
+                    clientList.appendChild(li);
+                });
+            }
 
-        }
-    };
-    </script>
+            function selectClient(client) {
+                document.getElementById('receiverId').value = client.id;
+                
+                // Update input fields
+                document.getElementById('receiverName').value = client.name;
+                document.getElementById('receiverEmail').value = client.email;
+                document.getElementById('receiverPhone').value = client.phone;
+                closeClientModal();
+            }
+
+            function openTaskModal() {
+                document.getElementById('taskModal').classList.remove('hidden');
+            }
+
+            function closeTaskModal() {
+                document.getElementById('taskModal').classList.add('hidden');
+            }
+
+            function filterTasks() {
+                const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
+                const filteredTasks = tasks.filter(task =>
+                    task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
+                );
+                renderTaskList(filteredTasks);
+            }
+
+            function renderTaskList(taskData) {
+                const taskList = document.getElementById('taskList');
+                taskList.innerHTML = '';
+                taskData.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                    li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
+                    li.onclick = () => selectTask(task);
+                    taskList.appendChild(li);
+                });
+            }
 
 
-    <script>
-    const modal = document.getElementById("modal");
-    const openModalBtn = document.getElementById("openModalBtn");
-    const closeModalBtn = document.getElementById("closeModalBtn");
+            // Initialize modals with full data
+            renderClientList(clients);
+            renderTaskList(tasks);
 
-    openModalBtn.addEventListener("click", () => {
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-    });
+            function updateFormFields(client, agent) {
+    // Update hidden fields
+                document.getElementById('receiverId').value = client.id;
+                
+                // Update input fields
+                document.getElementById('receiverName').value = client.name;
+                document.getElementById('receiverEmail').value = client.email;
+                document.getElementById('receiverPhone').value = client.phone;
 
-    closeModalBtn.addEventListener("click", () => {
-        modal.classList.add("hidden");
-    });
+                document.getElementById('agentName').value = agent.name;
+                document.getElementById('agentEmail').value = agent.email;
+            }
 
-    function toggleClientFields() {
-        var clientSelect = document.getElementById('client-select');
-        var newClientFields = document.getElementById('new-client-fields');
-        if (clientSelect.value === 'new') {
-            newClientFields.style.display = 'block';
-        } else {
-            newClientFields.style.display = 'none';
-        }
+            // Call the function with the selectedClient object
+            updateFormFields(selectedClient, selectedAgent);
+
+                        
+                        // Handle Tab Switching
+            const selectTabButton = document.getElementById('selectTabButton');
+            const addTabButton = document.getElementById('addTabButton');
+            const selectTab = document.getElementById('selectTab');
+            const addTab = document.getElementById('addTab');
+
+            // Show Select Client Tab
+            selectTabButton.addEventListener('click', () => {
+                selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+                selectTabButton.classList.remove('text-gray-500');
+                addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+                addTabButton.classList.add('text-gray-500');
+
+                selectTab.classList.remove('hidden');
+                addTab.classList.add('hidden');
+            });
+
+            // Show Add New Client Tab
+            addTabButton.addEventListener('click', () => {
+                addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+                addTabButton.classList.remove('text-gray-500');
+                selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+                selectTabButton.classList.add('text-gray-500');
+
+                addTab.classList.remove('hidden');
+                selectTab.classList.add('hidden');
+            });
+
+
+            const generateInvoiceButton = document.getElementById('generate-invoice-btn');
+                const buttonText = document.getElementById('button-text');
+                const buttonLoading = document.getElementById('button-loading');
+                const buttonSaved = document.getElementById('button-saved');
+
+                // Set initial states
+                let isSaving = false;
+                let isSaved = false;
+
+                generateInvoiceButton.addEventListener('click', async function(event) {
+
+                    event.preventDefault(); // Prevent form submission or default action
+                    if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
+
+                    // Start saving
+                    isSaving = true;
+                    updateButtonState();
+
+                    try {
+                        // Simulate invoice generation (replace with your actual API call)
+                        await generateInvoice();
+                        isSaved = true;  // Mark as saved after generating
+                        updateButtonState();
+                    } catch (error) {
+                        console.error("Error generating invoice:", error);
+                        isSaving = false;  // Reset saving state
+                        updateButtonState();
+                        
+                    }
+                });
+
+                // Function to update button state (text, loading spinner, disabled state)
+                function updateButtonState() {
+                    if (isSaving) {
+                        buttonText.style.display = 'none';
+                        buttonLoading.style.display = 'inline-block';
+                        buttonSaved.style.display = 'none';
+                        generateInvoiceButton.disabled = true; // Disable button during saving
+                    } else if (isSaved) {
+                        buttonText.style.display = 'none';
+                        buttonLoading.style.display = 'none';
+                        buttonSaved.style.display = 'inline-block';
+                        generateInvoiceButton.disabled = false; // Re-enable button after saved
+                    } else {
+                        buttonText.style.display = 'inline-block';
+                        buttonLoading.style.display = 'none';
+                        buttonSaved.style.display = 'none';
+                        generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
+                    }
+                }
+
+        // Generate invoice
+        async function generateInvoice() {
+
+            const invoiceUrl = "{{ route('invoice.store') }}";
+            const csrfToken = "{{ csrf_token() }}";
+
+            const currency = document.getElementById('currency').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const invdate = document.getElementById('invdate').value;
+            const duedate = document.getElementById('duedate').value;
+            const subTotal = document.getElementById('subTotal').value;
+            const tasks =  items;
+            const clientId = document.getElementById('receiverId').value;
+            const agentId =  document.getElementById('agentId').value;
+
+              // Show loading state
+            buttonText.style.display = "none";
+            buttonLoading.style.display = "inline";
+
+            if (!clientId || !agentId || !tasks.length) {
+                console.error("Required data is missing.");
+                resetButtonState();
+                return;
+            }
+
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        agentId,
+                        tasks,
+                        subTotal,
+                        invoiceNumber,
+                        currency,
+                        invdate,
+                        duedate
+
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to reach the invoice controller.");
+                }
+
+                const result = await response.json();
+                //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
+                const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
+
+                            // Invoice link elements
+                const invoiceLinkContainer = document.getElementById("invoice-link-container");
+                const invoiceLink = document.getElementById("invoice-link");
+
+                // Update and show the invoice link
+                invoiceLink.href = generatedLink;
+                invoiceLink.textContent = generatedLink;
+                invoiceLinkContainer.style.display = "block";
+
+                // Show success state
+                buttonSaved.style.display = "inline";
+            } catch (error) {
+                console.error("Error generating invoice:", error);
+            } finally {
+            // Reset button states
+            buttonLoading.style.display = "none";
+            setTimeout(() => {
+                buttonSaved.style.display = "none";
+                buttonText.style.display = "inline";
+            }, 1000);
+          }
+        };
+
+        function resetButtonState() {
+        isSaving = false;
+        isSaved = false;
+        updateButtonState();
     }
-    </script>
-    <script>
-    let tasks = [];
 
-    document.getElementById('add-task-btn').addEventListener('click', function() {
-        const selectedTaskId = document.querySelector('input[type="checkbox"]:checked').value;
-        const remark = document.getElementById('remark').value;
-        const price = parseFloat(document.getElementById('price').value);
-
-        tasks.push({
-            task_id: selectedTaskId,
-            remark: remark,
-            price: price
-        });
-
-        updateTaskList();
-        updateTotal();
     });
 
-    function updateTaskList() {
-        const taskListElement = document.getElementById('tasks');
-        taskListElement.innerHTML = '';
 
-        tasks.forEach(task => {
-            const taskElement = document.createElement('li');
-            taskElement.className = 'list-group-item bg-dark text-light';
-            taskElement.innerText = `Task ${task.task_id}: ${task.remark} - $${task.price}`;
-            taskListElement.appendChild(taskElement);
-        });
-    }
+   
     </script>
+
 
 </x-app-layout>

@@ -29,13 +29,13 @@ class Task extends Model
     // In Task.php
     public function flightDetails()
    {
-             return $this->hasOne(TaskFlightDetail::class, 'task_id');
+        return $this->hasOne(TaskFlightDetail::class, 'task_id');
     }
 
 
-    public function invoices()
+    public function invoicedetail()
     {
-        return $this->belongsToMany(Invoice::class);
+        return $this->hasOne(InvoiceDetail::class, 'task_id');
     }
 
     public function agent()

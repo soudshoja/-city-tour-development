@@ -14,11 +14,12 @@ class Company extends Model
 
     protected $fillable = ['id', 'name', 'user_id', 'status', 'code', 'email', 'address', 'phone', 'nationality_id'];
 
-    public function agents()
+    public function branches()
     {
-        return $this->hasMany(Agent::class);
+        return $this->hasMany(Branch::class);
     }
 
+    public function user()
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -29,3 +30,4 @@ class Company extends Model
         return $this->hasMany(Branch::class);
     }
 }
+

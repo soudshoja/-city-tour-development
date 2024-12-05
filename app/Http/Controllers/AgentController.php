@@ -16,6 +16,7 @@ use App\Models\Role;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 
 class AgentController extends Controller
@@ -48,13 +49,13 @@ class AgentController extends Controller
     {
         $agents = Agent::all();
         $companies = Company::all();
+        $admin = Role::ADMIN;
 
-        return view('agents.agentsNew', compact('agents', 'companies'));
+        return view('agents.agentsNew', compact('agents', 'companies','admin'));
     }
 
     public function show($id)
     {
-
         $agent = Agent::with('company', 'tasks', 'invoices', 'clients')->findOrFail($id);
 
         // Paginate all sections when viewing the main page (agentsShow)
@@ -79,10 +80,9 @@ class AgentController extends Controller
 
 
     public function edit($id)
-    {
+   {
         $agent = Agent::find($id);
-        $companies = Company::all();
-
+    
         return view('agents.agentsEdit', compact('agent', 'companies'));
     }
 

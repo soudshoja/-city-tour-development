@@ -1,13 +1,9 @@
-@php
-    $notifications = \App\Models\Notification::all();
-@endphp
-<div class="notification-partials h-96 overflow-hidden fixed bottom-10 right-10">
+<div class="notification-partials h-96 overflow-y-auto">
     <style>
         .unread {
             background-color: #fa3c3c;
         }
-
-        .read {
+        .read{
             background-color: #f0f0f0;
         }
     </style>
@@ -19,10 +15,10 @@
         @foreach($notifications as $notification)
         @php
         if($notification->status == 'unread'){
-        $notiStatus = 'unread';
+            $notiStatus = 'unread';
         } else if($notification->status == 'read'){
-        $notiStatus = 'read';
-        }
+            $notiStatus = 'read';
+        } 
         @endphp
         <div class="notification-partials__item flex justify-between p-2 my-2 bg-gray-200 rounded-md shadow-md {{ $notiStatus }}">
             <div class="notification-partials__item__content">

@@ -25,6 +25,12 @@ export default {
             textColor: {
                 dark: "#000",
             },
+            zIndex: {
+                60: 60
+            },
+            width: {
+                120: "30rem",
+            }
         },
     },
 

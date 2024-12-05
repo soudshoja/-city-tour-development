@@ -12,6 +12,7 @@ export default defineConfig({
                 "resources/js/app.js",
                 "resources/css/perfect-scrollbar.min.css", 
                 "resources/css/cityCssByNisma.css",
+                "resources/js/jsbyNisma.js",
             ],
             refresh: true,
         }),

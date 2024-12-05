@@ -13,11 +13,16 @@ class GeneralLedger extends Model
         'transaction_id',
         'company_id',
         'account_id',
+        'invoice_id',
+        'invoice_detail_id',
         'transaction_date',
         'description',
         'debit',
         'credit',
         'balance',
+        'voucher_number',
+        'name',
+        'type',
     ];
 
     // Define the relationship to the Invoice model
@@ -25,6 +30,18 @@ class GeneralLedger extends Model
     {
         return $this->belongsTo(Account::class,'account_id');
     }
+
+    
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class,'invoice_id');
+    }
+
+    public function invoiceDetail()
+    {
+        return $this->belongsTo(InvoiceDetail::class,'invoice_detail_id');
+    }
+
 
     public function transaction()
     {

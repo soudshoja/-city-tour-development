@@ -14,7 +14,9 @@
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "pragmarx/google2fa-laravel": "^2.2",
-        "pragmarx/google2fa-qrcode": "^3.0"
+        "pragmarx/google2fa-qrcode": "^3.0",
+        "spatie/pdf-to-image": "^1.2",
+        "thiagoalessio/tesseract_ocr": "^2.13"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

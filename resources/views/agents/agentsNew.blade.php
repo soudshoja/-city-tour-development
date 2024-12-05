@@ -47,7 +47,7 @@
                                 placeholder="Phone Number" />
                         </div>
 
-                        @if(Auth()->user()->role_id === Role::ADMIN)
+                        @if(Auth()->user()->role_id === $admin)
                         <!-- Company Selection -->
                         <div class="mb-4">
                             <label for="company_id"

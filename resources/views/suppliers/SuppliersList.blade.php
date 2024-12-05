@@ -96,7 +96,7 @@
 
                             <td class="px-4 py-2 border">
                                 <span class="font-bold">» {{ $supplier->name }}</span><br>
-                                <span class="text-sm text-gray-500">Actiavte supplier to allow the system users to
+                                <span class="text-sm text-gray-500">Activate supplier to allow the system users to
                                     request API from the supplier</span>
                             </td>
                             <td class="px-4 py-2 border text-center space-x-2">

@@ -19,22 +19,37 @@ class ClientPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+    return true;
     }
 
     public function view(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+        return true;
     }
 
     public function create(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+        return false;
     }
 
-    public function update(User $user): bool
+    public function edit(User $user, Client $client): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+        return ($user->role_id === Role::ADMIN ||
+            ($user->role_id === Role::COMPANY && $user->company->id === $client->agent->branch->company_id) ||
+            ($user->role_id === Role::AGENT && $user->id === $client->agent->user_id));
+
+    }
+
+    public function clientAgent(User $user): bool
+    {
+        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::BRANCH || $user->role_id === Role::AGENT;
+    }
+    
+    public function update(User $user, Client $client): bool
+    {
+        return ($user->role_id === Role::ADMIN ||
+            ($user->role_id === Role::COMPANY && $user->company->id === $client->agent->branch->company_id) ||
+            ($user->role_id === Role::AGENT && $user->id === $client->agent->user_id));
     }
 
     public function delete(User $user): bool

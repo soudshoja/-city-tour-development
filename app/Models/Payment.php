@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
@@ -10,15 +11,25 @@ class Payment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'transaction_id',
-        'invoice_id',
-        'client_id',
-        'agent_id',
-        'payment_reference',
+        'voucher_number',
+        'from',
+        'pay_to',
+        'account_id',
+        'currency',
         'payment_date',
         'amount',
         'payment_method',
-        'status'
+        'status',
+        'account_number',
+        'bank_name',
+        'swift_no',
+        'iban_no',
+        'country',
+        'tax',
+        'discount',
+        'shipping',
+        'payment_reference',
+        'invoice_id',
     ];
     public function client()
     {
@@ -30,8 +41,13 @@ class Payment extends Model
         return $this->belongsTo(Agent::class, 'agent_id');
     }
 
-    public function transaction()
+    public function invoice()
     {
-        return $this->belongsTo(Transaction::class, 'transaction_id');
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+    
+    public function transactions(): MorphMany
+    {
+        return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');
     }
 }

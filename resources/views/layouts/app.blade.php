@@ -64,7 +64,7 @@
 
         </div>
     </div>
-
+    <x-loading />
 </body>
 <x-toast />
 

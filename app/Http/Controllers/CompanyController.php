@@ -57,6 +57,7 @@ class CompanyController extends Controller
         // ->where('agent_id', operator: $agentId)
         // ->get();
 
+
         if ($transactions->isEmpty()) {
             return response()->json(['message' => 'No transactions found for this agent.'], 404);
         }
@@ -193,21 +194,26 @@ class CompanyController extends Controller
     {
         // Fetch the specific company with its agents, tasks, clients, invoices, and items    
         $companies = Company::all();
+        $companies = Company::all();
         $company = Company::with([
             'agents.tasks.client',
             'agents.invoices',
             'agents.tasks.item'
         ])->findOrFail($id);
 
+
         // Return the view, passing the specific company to it
         return view('companies.companiesShow', compact('company', 'companies'));
+        return view('companies.companiesShow', compact('company', 'companies'));
     }
+
 
 
     public function edit($id)
     {
         $company = Company::findOrFail($id);
         $companies = Company::all();
+
 
         return view('companies.companiesEdit', compact('company', 'companies'));
     }
@@ -301,11 +307,20 @@ class CompanyController extends Controller
     public function toggleStatus(Request $request, $companyId)
     {
         $company = Company::findOrFail($companyId);
+    }
+    public function toggleStatus(Request $request, $companyId)
+    {
+        $company = Company::findOrFail($companyId);
 
         // Update the status based on the request input
         $company->status = $request->status;
         $company->save();
+        // Update the status based on the request input
+        $company->status = $request->status;
+        $company->save();
 
+        return response()->json(['success' => true]);
+    }
         return response()->json(['success' => true]);
     }
 

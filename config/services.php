@@ -50,4 +50,9 @@ return [
         'phone-number-id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'token' => env('WHATSAPP_TOKEN'),
     ],
+
+    'open-ai' => [
+        'url' => env('OPENAI_URL').'/'.env("OPENAI_VERSION"),
+        'key' => env('OPENAI_KEY'),
+    ],
 ];

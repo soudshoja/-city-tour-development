@@ -32,7 +32,7 @@ class AuthenticatedSessionController extends Controller
         if ($user) {
 
             // Check if user first time login
-            if (!$user->first_login){
+            if (!$user->first_login) {
                 Auth::login($user);
                 return redirect()->route('dashboard');
             }
@@ -56,6 +56,10 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $user = Auth::user();
+        $user->first_login = false;
+        $user->save();
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

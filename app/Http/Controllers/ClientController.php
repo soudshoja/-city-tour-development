@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Alimranahmed\LaraOCR\Facades\OCR;
+use App\Http\Traits\Converter;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Agent;
@@ -21,10 +22,11 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use PhpParser\Node\Expr\Throw_;
 use thiagoalessio\TesseractOCR\TesseractOCR;
-use GuzzleHttp\Client as GuzzleClient;
 
 class ClientController extends Controller
 {
+    use Converter;
+
     public function index()
     {
         return view('clients.index');
@@ -43,7 +45,6 @@ class ClientController extends Controller
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
             )->paginate(6);
-
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
@@ -52,7 +53,6 @@ class ClientController extends Controller
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
             )->paginate(6);
-
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
 
@@ -61,7 +61,7 @@ class ClientController extends Controller
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
             )->paginate(6);
         }
-        
+
         $clientsNo = $clientsCount;
 
         return view('clients.list', compact('clients', 'clientsNo'));
@@ -112,9 +112,9 @@ class ClientController extends Controller
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
         $paid = $invoices->where('status', 'paid')->sum('amount');
-        $unpaid = $invoices->where('status','<>' ,'paid')->sum('amount');
-        
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks','paid', 'unpaid')); // Ensure the view exists
+        $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
+
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -124,18 +124,18 @@ class ClientController extends Controller
 
         $agents = [];
         if(Gate::allows('clientAgent', Client::class)) {
-            $agents = Agent::with('company')->get();
+            $agents = Agent::with('branch')->get();
         }
 
         $client = Client::findOrFail($id);
-        return view('clients.edit', compact('client','agents')); // Ensure the view exists
+        return view('clients.edit', compact('client', 'agents')); // Ensure the view exists
     }
 
     // Update the client in the database
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-        
+
         // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',
@@ -144,25 +144,26 @@ class ClientController extends Controller
             'phone' => 'string|max:15',
             'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
         ]);
-        
+
         try {
             // Update the client data
             $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
-            
+
             // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {
                 try {
+                    $imagePath = $request->file('file')->getRealPath();
                     // Process the image using OCR
-                    $ocrResponse = $this->processImage($request);  // Get the response from processImage
-                    
+                    $ocrResponse = $this->processImage($imagePath);  // Get the response from processImage
+
                     // Now $ocrResponse is already an array, so no need to decode it
                     if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
                         $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
-    
+
                         // You can now use the parsed text (e.g., for passport extraction)
                         $openai = new OpenAiController();
                         $response = $openai->extractPassport($parsedText); // Pass the parsed text to OpenAI
-                        
+
                         // Since extractPassport already returns the parsed data (not a JSON string), 
                         // we can use it directly as an array
                         if (isset($response['data'])) {
@@ -174,12 +175,11 @@ class ClientController extends Controller
                     } else {
                         return redirect()->back()->withInput()->with('error', 'No text found in OCR response.');
                     }
-                    
                 } catch (Exception $e) {
                     return redirect()->back()->withInput()->with('error', $e->getMessage());
                 }
             }
-    
+
             // Redirect back with success message
             return Redirect::back()->with('success', 'Client updated successfully!');
         } catch (Exception $e) {
@@ -187,59 +187,6 @@ class ClientController extends Controller
         }
     }
 
-
-
-
-      public function processImage(Request $request)
-        {
-            // Get the API key from the .env file
-            $apiKey = env('OCR_SPACE_API_KEY');
-            
-            // Make sure the API key exists
-            if (!$apiKey) {
-                return response()->json(['error' => 'API key is missing.'], 400);
-            }
-        
-            // Check if the request has a file
-            if ($request->hasFile('file')) {
-                $imagePath = $request->file('file')->getRealPath();
-            
-                // Use GuzzleClient instead of Client to avoid conflict
-                $client = new GuzzleClient();
-                $url = 'https://api.ocr.space/parse/image';
-            
-                try {
-                    // Send the POST request to OCR.space
-                    $response = $client->post($url, [
-                        'headers' => [
-                            'apikey' => $apiKey,  // Use the API key from .env
-                        ],
-                        'multipart' => [
-                            [
-                                'name' => 'file',
-                                'contents' => fopen($imagePath, 'r'),
-                                'filename' => 'image.jpg',
-                            ],
-                        ]
-                    ]);
-            
-                    // Get the response body as an array
-                    $result = json_decode($response->getBody()->getContents(), true);
-                    
-                    // Check if OCR was successful and parsed text is available
-                    if (isset($result['ParsedResults'][0]['ParsedText'])) {
-                        return $result; // return the entire response array to be used later
-                    }
-            
-                    return response()->json(['error' => 'OCR processing failed.'], 500);
-            
-                } catch (\Exception $e) {
-                    return response()->json(['error' => 'OCR processing failed: ' . $e->getMessage()], 500);
-                }
-            } else {
-                return response()->json(['error' => 'No file provided.'], 400);
-            }
-        }
 
 
 

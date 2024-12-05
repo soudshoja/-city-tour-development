@@ -54,10 +54,10 @@
 
                     <!-- Buttons -->
                     <div class="flex space-x-2 justify-center">
-                        <button type="button" class="px-3 py-1 bg-yellow-600 text-black rounded-md shadow hover:bg-blue-700 text-sm">
+                        <button type="button" id="onscreen-btn" class="px-3 py-1 bg-yellow-600 text-black rounded-md shadow hover:bg-blue-700 text-sm">
                             Onscreen
                         </button>
-                        <button type="button" class="px-3 py-1 bg-green-600 text-black rounded-md shadow hover:bg-green-700 text-sm">
+                        <button type="button" id="excel-report-btn" class="px-3 py-1 bg-green-600 text-black rounded-md shadow hover:bg-green-700 text-sm">
                             Excel Report
                         </button>
                     </div>
@@ -139,18 +139,188 @@
         document.getElementById('to-date').value = formatDate(lastDay);
 
 
-        document.querySelectorAll('.toggle-general-ledger').forEach(button => {
-        button.addEventListener('click', function() {
-            const payReceiveId = this.getAttribute('data-pay-receive-id');
-            const generalLedgerRow = document.getElementById(`general-ledger-${payReceiveId}`);
-            
-            if (generalLedgerRow.style.display === 'none') {
-                generalLedgerRow.style.display = 'table-row';
-            } else {
-                generalLedgerRow.style.display = 'none';
+        document.getElementById('onscreen-btn').addEventListener('click', function () {
+            const fromDate = document.getElementById('from-date').value;
+            const toDate = document.getElementById('to-date').value;
+            const accountId = document.getElementById('account').value;
+            const branchId = document.getElementById('branch').value;
+
+            // Send AJAX request to fetch filtered data
+            fetch('/filter-ledgers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, // Include CSRF token for security
+                },
+                body: JSON.stringify({ from_date: fromDate, to_date: toDate, account: accountId, branch: branchId }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    updateTable(data); // Call the function to update the table
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    alert('An error occurred while fetching the report. Please try again.');
+                });
+        });
+
+// Function to dynamically update the table with filtered data
+function updateTable(ledgers) {
+    const payablesBody = document.getElementById('payablesBody');
+    payablesBody.innerHTML = ''; // Clear existing rows
+
+    if (ledgers.length === 0) {
+        // If no records found, display a message
+        payablesBody.innerHTML = '<tr><td colspan="8" class="text-center py-4">No records found</td></tr>';
+        return;
+    }
+
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+        // Loop through the ledgers and create rows
+        ledgers.forEach(ledger => {
+
+            totalDebit += parseFloat(ledger.debit || 0);
+            totalCredit += parseFloat(ledger.credit || 0);
+
+            const row = `
+                <tr class="general-ledger-row hover:bg-gray-50 text-xs">
+                    <td class="px-4 py-2 border-b">${ledger.invoice_number}</td>
+                    <td class="px-4 py-2 border-b">${ledger.transaction_date}</td>
+                    <td class="px-4 py-2 border-b">${ledger.description}</td>
+                    <td class="px-4 py-2 border-b">${ledger.branch_name}</td>
+                    <td class="px-4 py-2 border-b">${ledger.agent_name}</td>
+                    <td class="px-4 py-2 border-b">${ledger.generalLedger_name}</td>
+                    <td class="px-4 py-2 border-b text-right">${ledger.debit}</td>
+                    <td class="px-4 py-2 border-b text-right">${ledger.credit}</td>
+                </tr>
+            `;
+            payablesBody.insertAdjacentHTML('beforeend', row); // Add each row to the table
+        });
+
+        // Add a totals row
+        const totalsRow = `
+            <tr class="text-xs font-bold bg-gray-100">
+                <td colspan="6" class="px-4 py-2 border-t text-right">Totals:</td>
+                <td class="px-4 py-2 border-t text-right">${totalDebit.toFixed(2)}</td>
+                <td class="px-4 py-2 border-t text-right">${totalCredit.toFixed(2)}</td>
+            </tr>
+        `;
+        payablesBody.insertAdjacentHTML('beforeend', totalsRow); // Add totals row to the table
+
+    }
+
+    document.getElementById('excel-report-btn').addEventListener('click', () => {
+            const fromDate = document.getElementById('from-date').value;
+            const toDate = document.getElementById('to-date').value;
+            const accountId = document.getElementById('account').value;
+            const branchId = document.getElementById('branch').value;
+
+            // Send AJAX request to fetch filtered data
+            fetch('/filter-ledgers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, // Include CSRF token for security
+                },
+                body: JSON.stringify({ from_date: fromDate, to_date: toDate, account: accountId, branch: branchId }),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        alert('No data available for export.');
+                        return;
+                    }
+
+                    // Calculate totals
+                    let totalDebit = 0;
+                    let totalCredit = 0;
+
+                    data.forEach(ledger => {
+                        totalDebit += parseFloat(ledger.debit || 0);
+                        totalCredit += parseFloat(ledger.credit || 0);
+                    });
+
+                    // Include totals in the export request
+                    const exportData = {
+                        ledgers: data,
+                        totalDebit: totalDebit.toFixed(2),
+                        totalCredit: totalCredit.toFixed(2),
+                    };
+
+                    exportExcel(data); // Call the function to export the data to Excel
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    alert('An error occurred while fetching the report. Please try again.');
+                });
+        });
+
+        // Function to handle exporting the data
+        function exportExcel(ledgers) {
+            console.log('Ledgers:', ledgers);  // Check the structure of ledgers
+
+                const totalDebit = Array.isArray(ledgers) ? ledgers.reduce((total, ledger) => total + parseFloat(ledger.debit || 0), 0) : 0;
+                const totalCredit = Array.isArray(ledgers) ? ledgers.reduce((total, ledger) => total + parseFloat(ledger.credit || 0), 0) : 0;
+                console.log('totalDebit', totalDebit);
+                console.log('totalDebit', totalCredit);
+                // Send the data to the backend with totals
+                fetch('/export-excel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        ledgers: ledgers,
+                        total_debit: totalDebit,
+                        total_credit: totalCredit,
+                    }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Failed to export data: ${text}`);
+                        });
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const link = document.createElement('a');
+                    const url = window.URL.createObjectURL(blob);
+                    link.href = url;
+                    link.download = 'ledger_report.xlsx';
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Error exporting data:', error);
+
+                    // Log the response text to get more details
+                    fetch('/export-excel', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        },
+                        body: JSON.stringify({ ledgers: ledgers })
+                    })
+                    .then(response => {
+                        return response.text();  // Read as text to see the error page or message
+                    })
+                    .then(text => {
+                        console.log('Response body:', text);  // Log the error page or message
+                    });
+
+                    alert('An error occurred while exporting the data.');
+                });
             }
-        });
-        });
-       
+
     </script>
 </x-app-layout>

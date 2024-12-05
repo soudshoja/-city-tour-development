@@ -18,8 +18,7 @@ Route::get('register', [RegisteredUserController::class, 'create'])->name('regis
 // Admin registration
 Route::post('register/admin', [RegisteredUserController::class, 'storeAdmin'])->name('register.admin');
 
-// Company registration
-Route::post('register/company', [RegisteredUserController::class, 'storeCompany'])->name('register.company');
+
 
 
 Route::middleware('guest')->group(function () {

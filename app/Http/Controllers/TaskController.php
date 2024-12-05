@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\Converter;
 use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Models\Task;
@@ -10,7 +11,9 @@ use App\Models\Agent;
 use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
+use App\Models\Client;
 use App\Models\Role;
+use App\Models\Supplier;
 use App\Services\TextFileProcessor;
 use ConvertApi\ConvertApi;
 use Exception;
@@ -24,19 +27,34 @@ use Illuminate\Support\Facades\Storage;
 //// tset
 class TaskController extends Controller
 {
-    use NotificationTrait;
+    use NotificationTrait, Converter;
 
     public function index($id = null)
     {
+        if(!auth()->user()){
+            return redirect()->route('login');
+        }
+
         $user = Auth::user();
         $agent = null;
         $taskCount = 0;
+        $clients = collect();
+        $agents = collect();
 
         if ($user->role_id == Role::ADMIN) {
+
             $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get(); // Retrieve all tasks for admin
             $taskCount = Task::count(); // Total task count for admin
-        } elseif ($user->role_id == Role::COMPANY) {
+            $clients = Client::all();
             $agents = Agent::all();
+
+        } elseif ($user->role_id == Role::COMPANY) {
+            
+            $agents = Agent::with(['branch'=> function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get();
+
+            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
@@ -46,7 +64,7 @@ class TaskController extends Controller
         } elseif ($user->role_id == Role::AGENT) {
             
             if ($id) {
-                $agent = Agent::find($id);
+                $agent = Agent::with('branch')->find($id);
                 if ($agent) {
                     $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
                     $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
@@ -63,20 +81,23 @@ class TaskController extends Controller
                 }
             }
 
-        } else {
-            return redirect()->back()->with('error', 'Unauthorized access.');
-        }
+            $companyId = $agent->branch->company_id;
+            $agents = Agent::with(['branch','clients'])->where('branch_id', $agent->branch_id)->get();
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+        } 
 
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
-
+        
+        $suppliers = Supplier::all();
         // dd($tasks, $agent, $agents, $taskCount);
-        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount')); // Pass the tasks and task count to the view
+        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
     }
 
     public function show($id)
     {
         // Retrieve the task with related agent and client data
-        $task = Task::with(['agent', 'client', 'flightDetails'])->find($id);
+        $task = Task::with(['agent', 'client', 'flightDetails', 'supplier'])->find($id);
 
         // Check if task exists
         if (!$task) {
@@ -97,8 +118,15 @@ class TaskController extends Controller
 
     public function update(Request $request, $id)
     {
+        $request->validate([
+            'client_id' => 'required',
+            'agent_id' => 'required',
+            'supplier_id' => 'required',
+        ]);
+
         // Find the task
         $task = Task::findOrFail($id);
+        $client = Client::findOrFail($request->client_id);
         // If the request is an AJAX request, handle inline editing
         if ($request->ajax()) {
             try {
@@ -114,10 +142,11 @@ class TaskController extends Controller
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500); // Return error response with status 500
             }
         } else {
-
+            
             try {
-                $task->update($request->only(['reference', 'additional_info', 'venue', 'status']));
-
+                $task->update($request->only(['client_id', 'agent_id', 'supplier_id']));
+                $task->client_name = $client->name;
+                $task->save();
                 return redirect()->back()->with('success', 'Task updated successfully.');
             } catch (Exception $e) {
                 return redirect()->back()->with('error', 'Task update failed.');
@@ -135,51 +164,41 @@ class TaskController extends Controller
 
         $file = $request->file('task_file')->store('tasks');
 
-        ConvertApi::setApiCredentials(config('services.convert-api.secret'));
-
         if ($file) {
-
-            $result = ConvertApi::convert('txt', ['File' => storage_path('app/public/' . $file)], 'pdf');
-
-            Log::info('File converted successfully: ', $result->getFiles());
-            $response = $result->saveFiles(storage_path('app/public/tasks'));
-            $file = $response[0];
-
-            $contents = file_get_contents($file);
-
-            // Prepare the OpenAI request
-            $openai = new OpenAiController();
-            $response = $openai->extractFileData($contents);
-
-            if ($response == 'success') {
-
-                return redirect()->back()->with('success', 'Tasks imported successfully.');
-            } else {
-                return redirect()->back()->with('error', 'Tasks import failed.');
-            }
+            $response = $this->extractTaskFromFile($file);
         } else {
-            Log::error('File upload failed');
-            return Redirect::back()->with('error', 'File upload failed');
+            $response = [
+                'status' => 'error',
+                'message' => 'File upload failed.'
+            ];
         }
 
         // Excel::import(new TasksImport, $request->file('excel_file'));
-
-        return redirect()->back()->with('success', 'Tasks imported successfully.');
+        
+        return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
 
-    public function getTaskbyItemId($itemId)
+    public function extractTaskFromFile($file)
     {
-        $tasks = Task::where('item_id', $itemId)->get();
+        $file = storage_path('app/public/' . $file);
 
-        if (!$tasks) {
-            return response()->json([
-                'message' => 'Task not found'
-            ], 404);
+        $contents = $this->pdfToText($file);
+
+        // Prepare the OpenAI request
+        $openai = new OpenAiController();
+        $response = $openai->flightOrHotel($contents);
+
+        if ($response['status'] == 'error') {
+            return redirect()->back()->with('error', 'File upload failed.');
         }
 
-        return response()->json([
-            'tasks' => $tasks
-        ], 200);
+        if ($response['data'] == 'flight') {
+            $response = $openai->extractFlightData($contents);
+        } else {
+            $response = $openai->extractHotelData($contents);
+        }
+
+        return $response;
     }
 
     public function exportCsv()

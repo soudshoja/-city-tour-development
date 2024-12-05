@@ -13,6 +13,7 @@ use App\Models\Client;
 use App\Models\Invoice;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
+use App\Models\Branch;
 use App\Models\Role;
 use DateTimeImmutable;
 use Exception;
@@ -110,40 +111,31 @@ class AgentController extends Controller
     public function edit($id)
     {
         $agent = Agent::find($id);
-
-        return view('agents.agentsEdit', compact('agent', 'companies'));
+        $branches = collect();
+        
+        $user = auth()->user();
+        if ($user->role_id == Role::COMPANY) {
+            $branches = Branch::where('company_id', $user->company->id)->get();
+        }
+        
+        return view('agents.agentsEdit', compact('agent', 'branches'));
     }
 
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'phone_number' => 'required|string',
-            'company_id' => 'required',
-            'type' => 'required'
-        ]);
 
-        // Create a new user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make('citytour123'),
-        ]);
+        $agent = Agent::find($id); 
+        try{
+            $agent->update($request->all());
+            
+            return redirect()->back()->with('success', 'Agent updated successfully');
+        }catch(Exception $error) {
+            logger('Failed to update agent: ' . $error->getMessage());
 
-        // Create a new agent associated with the user
-        $agent = new Agent([
-            'user_id' => $user->id,
-            'company_id' => $request->company_id,
-            'type' => $request->type,
-            'email' => $request->email,
-            'name' => $request->name,
-            'phone_number' => $request->phone_number,
-        ]);
-        $agent->save();
-
-        return redirect()->route('agents.index')->with('success', 'Agent updated successfully');
+            return redirect()->back()->with('error', 'Failed to update agent');
+        }
+        
     }
 
 
@@ -270,7 +262,7 @@ class AgentController extends Controller
     public function exportCsv()
     {
         // Fetch all agents data
-        $agents = Agent::with('company')->get();
+        $agents = Agent::with('branch')->get();
 
         // Create a CSV file in memory
         $csvFileName = 'agents.csv';

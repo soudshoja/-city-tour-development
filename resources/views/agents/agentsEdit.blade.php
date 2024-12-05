@@ -32,12 +32,10 @@
 
                 <!-- Company -->
                 <div class="mb-6">
-                    <label for="company_id" class="block text-gray-700 font-semibold mb-2">Company</label>
-                    <select name="company_id" id="company_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
-                        @foreach($companies as $company)
-                            <option value="{{ $company->id }}" {{ $agent->company_id == $company->id ? 'selected' : '' }}>
-                                {{ $company->name }}
-                            </option>
+                    <label for="branch_id" class="block text-gray-700 font-semibold mb-2">Branch</label>
+                    <select name="branch_id" id="branch_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $agent->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -55,7 +53,7 @@
                 <!-- Submit Button -->
                 <div class="text-right">
                     <button type="submit"
-                        class="bg-indigo-500 text-white py-2 px-6 rounded-lg shadow hover:bg-indigo-600 transition duration-200">
+                        class="bg-black text-white py-2 px-6 rounded-lg shadow hover:bg-indigo-600 transition duration-200">
                         Update Agent
                     </button>
                 </div>

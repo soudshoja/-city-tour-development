@@ -1,32 +1,32 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Supplier extends Model
+class Hotel extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'name', 
-        'contact_person',
-        'email',
-        'phone',
+        'name',
         'address',
         'city',
         'state',
-        'postal_code',
-        'country_id',
+        'country',
+        'zip_code',
+        'phone',
+        'email',
         'website',
-        'payment_terms',
+        'rating',
+        'image',
+        'description',
     ];
 
-    public function country()
+    public function hotelDetails()
     {
-        return $this->belongsTo(Country::class);
+        return $this->hasMany(TaskHotelDetail::class);
     }
 
 }

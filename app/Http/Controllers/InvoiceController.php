@@ -68,7 +68,7 @@ class InvoiceController extends Controller
             }
         }
         $user = Auth::user();
-    
+        $agents = collect();
         if ($user->role_id == Role::COMPANY) {
             $company = $user->company;
             
@@ -78,7 +78,8 @@ class InvoiceController extends Controller
 
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
-            $company = Company::find($agent->company_id);
+            $company = Company::find($agent->branch->company_id);
+            
         }
     
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
@@ -123,8 +124,9 @@ class InvoiceController extends Controller
 
         $clientId = $selectedClient ? $selectedClient->id : null;
         
-        $clients = Client::with(['agent.branch' => function ($query) use ($user) {
-            $query->where('company_id', $user->company->id);
+          $clients = Client::with(['agent.branch' => function ($query) {
+            $companyId = auth()->user()->agent->branch->company_id;
+            $query->where('company_id', $companyId);
         }])->get();
 
         $tasks = null; 

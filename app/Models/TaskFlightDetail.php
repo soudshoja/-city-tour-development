@@ -12,13 +12,13 @@ class TaskFlightDetail extends Model
     protected $fillable = [
         'farebase',
         'departure_time',
-        'departure_from',
+        'country_id_from',
         'airport_from',
-        'arrival_time',
-        'terminal_to',
-        'arrive_to',
-        'airport_to',
         'terminal_from',
+        'arrival_time',
+        'country_id_to',
+        'airport_to',
+        'terminal_to',
         'airline_id',
         'flight_number',
         'class_type',
@@ -29,6 +29,15 @@ class TaskFlightDetail extends Model
         'task_id',
     ];
 
+    public function countryFrom()
+    {
+        return $this->belongsTo(Country::class, 'country_id_from');
+    }
+
+    public function countryTo()
+    {
+        return $this->belongsTo(Country::class, 'country_id_to');
+    }
 
     public function task()
     {

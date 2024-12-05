@@ -5,14 +5,14 @@
         <!-- cards -->
         <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
             <!-- card 1 (Customers) -->
-            <div class="p-4 bg-green-100/50 rounded-lg shadow-md w-full flex">
+            <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-green-800">{{$dashboardData['clientsCount']}}<span class="text-green-500"></span></h1>
-                    <p class="text-xs text-gray-500 mt-1">Total Customers</p>
+                    <h1 class="text-2xl font-bold text-green-800 dark:text-green-300">580<span class="text-green-500 dark:text-green-400">K</span></h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Customers</p>
                 </div>
                 <div class="mt-4 w-full text-center">
                     <svg
-                        class="w-full h-6 text-green-400"
+                        class="w-full h-6 text-green-400 dark:text-green-300"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
@@ -24,14 +24,14 @@
             <!-- ./card 1 -->
 
             <!-- card 2 (Agents) -->
-            <div class="p-4 bg-blue-100/50 rounded-lg shadow-md w-full flex">
+            <div class="p-4 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-blue-800">{{$dashboardData['agentsCount']}}<span class="text-blue-500"></span></h1>
-                    <p class="text-xs text-gray-500 mt-1">Total Agents</p>
+                    <h1 class="text-2xl font-bold text-blue-800 dark:text-blue-300">430<span class="text-blue-500 dark:text-blue-400">K</span></h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Agents</p>
                 </div>
                 <div class="mt-4 w-full text-center">
                     <svg
-                        class="w-full h-6 text-blue-400"
+                        class="w-full h-6 text-blue-400 dark:text-blue-300"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
@@ -43,14 +43,14 @@
             <!-- ./card 2 -->
 
             <!-- card 3 (Items) -->
-            <div class="p-4 bg-red-100/50  rounded-lg shadow-md w-full flex">
+            <div class="p-4 bg-red-100/50 dark:bg-red-900/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-red-800">{{$dashboardData['totalTasks']}}<span class="text-red-500"></span></h1>
-                    <p class="text-xs text-gray-500 mt-1">Total Tasks</p>
+                    <h1 class="text-2xl font-bold text-red-800 dark:text-red-300">120<span class="text-red-500 dark:text-red-400">Kwd</span></h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Items</p>
                 </div>
                 <div class="mt-4 w-full text-center">
                     <svg
-                        class="w-full h-6 text-red-400"
+                        class="w-full h-6 text-red-400 dark:text-red-300"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
@@ -62,14 +62,14 @@
             <!-- ./card 3 -->
 
             <!-- card 4 (Branches) -->
-            <div class="p-4 bg-yellow-100/50 rounded-lg shadow-md w-full flex">
+            <div class="p-4 bg-yellow-100/50 dark:bg-yellow-900/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
-                    <h1 class="text-2xl font-bold text-yellow-800">{{$dashboardData['totalBranches']}}<span class="text-yellow-500"></span></h1>
-                    <p class="text-xs text-gray-500 mt-1">Total Branches</p>
+                    <h1 class="text-2xl font-bold text-yellow-800 dark:text-yellow-300">35<span class="text-yellow-500 dark:text-yellow-400">K</span></h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Branches</p>
                 </div>
                 <div class="mt-4 w-full text-center">
                     <svg
-                        class="w-full h-6 text-yellow-400"
+                        class="w-full h-6 text-yellow-400 dark:text-yellow-300"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"

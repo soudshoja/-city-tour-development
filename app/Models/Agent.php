@@ -5,6 +5,7 @@
 
 namespace App\Models;
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,13 +18,18 @@ class Agent extends Model
         'name',
         'email',
         'type',
-        'branch_id',
         'phone_number',
+        'branch_id',
     ];
 
     public function branch()
     {
-        return $this->belongsTo(Branch::class, 'branch_id');
+        return $this->belongsTo(Branch::class, 'company_id');
+    }
+
+    public function type()
+    {
+        return $this->belongsTo(AgentType::class, 'type_id');
     }
 
     public function tasks()

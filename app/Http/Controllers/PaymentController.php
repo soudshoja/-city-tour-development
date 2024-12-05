@@ -250,16 +250,6 @@ class PaymentController extends Controller
 
         Log::info('company_id:', ['company_id' => $invoice->agent->branch->company->id]);
 
-        if ($receivableAccount) {
-            $filteredReceivableChildAccount = $receivableAccount->children()
-                ->where('reference_id', $invoice->client->id) // Filter by child reference_id
-                ->first(); // Get the first matching child account
-            Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
-            $ReceivablechildAccountId = $filteredReceivableChildAccount ? $filteredReceivableChildAccount->id : null;
-        } else {
-            $ReceivablechildAccountId = null; // Handle case when no parent account is found
-        }
-
 
         $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
             ->where('company_id', $invoice->agent->branch->company->id)
@@ -299,28 +289,8 @@ class PaymentController extends Controller
 
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
-                    $payment->account_id = $filteredReceivableChildAccount->id;
+                    $payment->account_id = $receivableAccount->id;
                     $payment->save();
-
-                    // // Update the accounts receivable entry
-                    // GeneralLedger::create([
-                    //     'transaction_id' => $transaction->id,
-                    //     'company_id' => $invoice->agent->company->id,
-                    //     'account_id' =>  $filteredReceivableChildAccount->id,
-                    //     'invoice_id' =>  $invoice->id,
-                    //     'transaction_date' => Carbon::now(),
-                    //     'description' => 'Payment received from: ' . $client->name,
-                    //     'debit' => $invoiceDetail['task_price'],
-                    //     'credit' =>0,
-                    //     'balance' => $invoiceDetail['task_price'],
-                    //     'name' =>  $client->name,
-                    //     'type' => 'receivable',
-                    //     'voucher_number' => $payment->voucher_number,
-                    // ]);
-
-                    // Update the receivable account balance
-                    $filteredReceivableChildAccount->actual_balance -= $invoiceDetail['task_price'];
-                    $filteredReceivableChildAccount->save();
 
 
                     // Update Cash/Bank Account
@@ -328,6 +298,7 @@ class PaymentController extends Controller
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
+                            'branch_id' => $invoice->agent->branch->id,
                             'account_id' =>  $bankAccount->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
@@ -339,6 +310,7 @@ class PaymentController extends Controller
                             'name' =>  $bankAccount->name,
                             'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,
+                            'type_reference_id' => $bankAccount->id
                         ]);
 
                         $bankAccount->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
@@ -349,6 +321,7 @@ class PaymentController extends Controller
                         GeneralLedger::create([
                             'transaction_id' => $payment->id,
                             'company_id' => $invoice->agent->branch->company->id,
+                            'branch_id' => $invoice->agent->branch->id,
                             'account_id' =>  $tapAccount->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
@@ -360,6 +333,7 @@ class PaymentController extends Controller
                             'balance' => $tapAccount->actual_balance += 0.35,
                             'name' =>  $tapAccount->name,
                             'type' => 'charges',
+                            'type_reference_id' => $tapAccount->id
                         ]);
 
                         $tapAccount->actual_balance += 0.35; // Add to expenses account

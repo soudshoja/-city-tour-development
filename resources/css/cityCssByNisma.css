@@ -81,3 +81,43 @@
 }
 
 /* company dashboard CSS ends */
+
+/* add company css page */
+
+.CirtbgYellow {
+    background-color: #f6d102;
+}
+.btnCityGrayColor {
+    background-color: #8d93a5;
+}
+.btnCityGrayColor:hover {
+    background-color: #747c92;
+}
+
+/* add company css page ends */
+
+/* add new for company css page */
+
+.SVGsColor {
+    color: #086ad9 !important;
+}
+
+.dark .SVGsColor {
+    color: #aecff6 !important;
+}
+
+.dark .BtColor {
+    background-color: #086ad9 !important;
+}
+
+/* navagation page css */
+.fade-in {
+    opacity: 0;
+    transition: opacity 0.3s ease-in;
+}
+
+.fade-in-loaded {
+    opacity: 1;
+}
+
+/* navagation page css ends */

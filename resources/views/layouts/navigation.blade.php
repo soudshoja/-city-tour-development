@@ -2,6 +2,7 @@
 use App\Models\Role;
 @endphp
 <div x-data="{ sidebarOpen: false, darkMode: localStorage.getItem('darkMode') === 'true' }"
+
     :class="{ 'dark': darkMode }" class="flex h-screen">
 
     <!-- Mobile Header -->
@@ -103,11 +104,11 @@ use App\Models\Role;
                         </div>
 
                         <!-- Notification -->
-                        <div>
+                        <div x-data="{toggle : false}">
                             <a href="#" class="block hover:bg-white-light/90 hover:text-primary dark:bg-gray-700 ">
                                 <a href="javascript:;"
                                     class="relative block rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-gray-700"
-                                    @click="toggle">
+                                    @click="toggle = !toggle">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg"
                                         class="stroke-current text-gray-800 dark:text-gray-200">
@@ -128,6 +129,24 @@ use App\Models\Role;
                                             class="relative inline-flex h-[6px] w-[6px] rounded-full bg-success"></span>
                                     </span>
                                 </a>
+                                <div
+                                    x-show="toggle"
+                                    x-cloak
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 transform scale-90"
+                                    x-transition:enter-end="opacity-100 transform scale-100"
+                                    x-transition:leave="transition ease-in duration-150"
+                                    x-transition:leave-start="opacity-100 transform scale-100"
+                                    x-transition:leave-end="opacity-0 transform scale-90"
+                                    class="absolute top-16 right-4 w-120 bg-white border-2 border-gray dark:bg-gray-700 rounded-lg shadow-md z-60" 
+                                >
+                                <h2 class="bg-gray-500 text-white font-semibold font-lg p-4 rounded-t-lg">
+                                    Notifications
+                                </h2>
+                                <div class="p-4">
+                                    <livewire:notification />
+                                </div>
+                            </div>
                             </a>
                         </div>
 
@@ -321,25 +340,25 @@ use App\Models\Role;
                 @endforeach
                 @endif
 
-                 @if(session('success'))
-                 <div
-                     class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg z-50">
-                     {{ session('success') }}
-                     <button type="button" class="close text-white ml-2" aria-label="Close"
-                         onclick="this.parentElement.style.display='none';">
-                         <span aria-hidden="true">&times;</span>
-                     </button>
-                 </div>
-                 @elseif(session('error'))
-                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                     {{ session('error') }}
-                     <button type="button" class="close text-white ml-2" aria-label="Close"
-                         onclick="this.parentElement.style.display='none';">
-                         <span aria-hidden="true">&times;</span>
-                     </button>
-                 </div>
-                 @endif
-             </div>
+                @if(session('success'))
+                <div
+                    class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg z-50">
+                    {{ session('success') }}
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                @elseif(session('error'))
+                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                    {{ session('error') }}
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                @endif
+            </div>
 
 
 

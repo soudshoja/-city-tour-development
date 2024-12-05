@@ -96,7 +96,7 @@ class InvoiceController extends Controller
         
         $this->storeNotification([
             'user_id' => $user->id,
-            'title' => 'Invoice Created',
+            'title' => 'Invoice' . $invoiceNumber. ' Created By ' . $user->name,
             'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
         ]);
    

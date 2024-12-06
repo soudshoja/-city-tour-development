@@ -20,7 +20,7 @@
                             class="form-input ps-10 placeholder:text-white-dark block w-full bg-white text-black rounded-md py-3 px-3 text-lg shadow focus:ring-2 focus:ring-blue-500"
                             :value="old('email')" required autofocus autocomplete="username" />
                         <span class="absolute start-4 top-1/2 -translate-y-1/2">
-                            <svg class="blackCity w-5 h-5" viewBox="0 0 18 18" fill="none">
+                            <svg class="text-black w-5 h-5" viewBox="0 0 18 18" fill="none">
                                 <path opacity="0.5"
                                     d="M10.65 2.25H7.35C4.23873 2.25 2.6831 2.25 1.71655 3.23851C0.75 4.22703 0.75 5.81802 0.75 9C0.75 12.182 0.75 13.773 1.71655 14.7615C2.6831 15.75 4.23873 15.75 7.35 15.75H10.65C13.7613 15.75 15.3169 15.75 16.2835 14.7615C17.25 13.773 17.25 12.182 17.25 9C17.25 5.81802 17.25 4.22703 16.2835 3.23851C15.3169 2.25 13.7613 2.25 10.65 2.25Z"
                                     fill="currentColor"></path>
@@ -46,7 +46,7 @@
                             class="form-input ps-10 placeholder:text-white-dark block w-full bg-white text-black rounded-md py-3 px-3 text-lg shadow focus:ring-2 focus:ring-blue-500"
                             required autocomplete="current-password" />
                         <span class="absolute start-4 top-1/2 -translate-y-1/2">
-                            <svg class="blackCity w-5 h-5" viewBox="0 0 18 18" fill="none">
+                            <svg class="text-black w-5 h-5" viewBox="0 0 18 18" fill="none">
                                 <path opacity="0.5"
                                     d="M1.5 12C1.5 9.87868 1.5 8.81802 2.15901 8.15901C2.81802 7.5 3.87868 7.5 6 7.5H12C14.1213 7.5 15.182 7.5 15.841 8.15901C16.5 8.81802 16.5 9.87868 16.5 12C16.5 14.1213 16.5 15.182 15.841 15.841C15.182 16.5 14.1213 16.5 12 16.5H6C3.87868 16.5 2.81802 16.5 2.15901 15.841C1.5 15.182 1.5 14.1213 1.5 12Z"
                                     fill="currentColor"></path>

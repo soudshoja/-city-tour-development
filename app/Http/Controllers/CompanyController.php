@@ -304,10 +304,7 @@ class CompanyController extends Controller
 
         return redirect()->back()->with('success', 'Companies imported successfully.');
     }
-    public function toggleStatus(Request $request, $companyId)
-    {
-        $company = Company::findOrFail($companyId);
-    }
+
     public function toggleStatus(Request $request, $companyId)
     {
         $company = Company::findOrFail($companyId);
@@ -319,8 +316,6 @@ class CompanyController extends Controller
         $company->status = $request->status;
         $company->save();
 
-        return response()->json(['success' => true]);
-    }
         return response()->json(['success' => true]);
     }
 

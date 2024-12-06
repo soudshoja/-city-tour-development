@@ -100,7 +100,8 @@ class OpenAiController extends Controller
         return response()->json($response);
     }
 
-    public function extractPassport($content){
+    public function extractPassport($content)
+    {
         $prompt = "
         You are an assistant for a travel agency. You need to extract passport details from the uploaded content. This passport is extracted by tesseract-OCR. The details you need might be nearby the words or sentences. The passport details should include the following fields:
         
@@ -127,17 +128,17 @@ class OpenAiController extends Controller
                 'content' => $content,
             ],
         ]);
-        
-        if(isset($response['choices'][0]['message']['content'])){
+
+        if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
             $message = $this->cleanJsonResponse($message);
-            
+
             return [
                 'status' => 'success',
                 'message' => 'Data extracted successfully',
                 'data' => $message,
             ];
-        }else{
+        } else {
             $message = $response;
 
             return [
@@ -145,7 +146,6 @@ class OpenAiController extends Controller
                 'message' => 'Data extraction failed',
             ];
         }
-
     }
 
     public function extractFileData($content)

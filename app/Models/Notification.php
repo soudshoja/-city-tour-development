@@ -14,6 +14,7 @@ class Notification extends Model
         'title',
         'message',
         'status',
+        'close',
     ];
 
     public function user()

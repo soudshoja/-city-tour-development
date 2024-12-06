@@ -1,3 +1,8 @@
+/* needed  */
+[x-cloak] {
+    display: none !important;
+}
+
 /* auth pages */
 
 /* CSS */
@@ -110,14 +115,44 @@
     background-color: #086ad9 !important;
 }
 
-/* navagation page css */
-.fade-in {
-    opacity: 0;
-    transition: opacity 0.3s ease-in;
+/** CSS BY BZS95 **/
+
+/** body **/
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
 }
 
-.fade-in-loaded {
-    opacity: 1;
+/** header **/
+
+/** sidebar **/
+.MaxW {
+    width: max-content;
 }
 
-/* navagation page css ends */
+.Sidebar-Nos {
+    width: 100px;
+    z-index: 10;
+}
+
+.Main {
+    width: 100%;
+}
+
+/** media queries **/
+
+@media (max-width: 768px) {
+    .Sidebar-Nos {
+        display: none;
+    }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .Sidebar-Nos {
+    }
+}

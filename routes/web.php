@@ -50,6 +50,11 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('dashboard');
     })->name('verify2fa');
 
+    // admin 
+    Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
+    Route::get('/companiesnew', [AdminUsersController::class, 'new'])->name('companiesnew.new');
+
+
     Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
 
     // Add a route for search functionality
@@ -87,8 +92,7 @@ Route::middleware(['auth'])->group(function () {
     // Route to handle the delete request
     Route::delete('/agent-types/delete', [CompanyController::class, 'deleteAgentType'])->name('agent-types.delete');
 
-    Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
-    Route::get('/companiesnew', [CompanyController::class, 'new'])->name('companiesnew.new');
+
     Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');
     Route::get('/companiesupload', [CompanyController::class, 'upload'])->name('companiesupload.upload');
     Route::post('/companiesupload', [CompanyController::class, 'import'])->name('companiesupload.import');

@@ -14,7 +14,7 @@
             <!-- Form Section -->
             <div class="w-full lg:w-3/5 p-8 flex items-center justify-center">
                 <div class="w-full">
-                    <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Add New
+                    <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Add New admin
                         Company</h2>
 
                     <!-- Registration Form -->

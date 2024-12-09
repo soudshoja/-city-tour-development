@@ -102,6 +102,7 @@ Route::delete('/agent-types/delete', [CompanyController::class, 'deleteAgentType
     // task routes
     Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::get('/tasks-voucher', [TaskController::class, 'voucher'])->name('tasks.voucher');
     Route::put('/tasks-update/{id}', [TaskController::class, 'update'])->name('tasks.update');
     Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
     Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
@@ -141,7 +142,7 @@ Route::delete('/agent-types/delete', [CompanyController::class, 'deleteAgentType
     Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
     Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
     Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
-    
+
     // Branches routes
     Route::group([
         'as' => 'branches.',

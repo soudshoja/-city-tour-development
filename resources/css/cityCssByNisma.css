@@ -1,3 +1,8 @@
+/* needed  */
+[x-cloak] {
+    display: none !important;
+}
+
 /* auth pages */
 
 /* CSS */
@@ -28,6 +33,49 @@
         /* Custom large rounding for left side */
         border-bottom-right-radius: 1rem;
         /* Custom large rounding for left side */
+    }
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    /* For Firefox */
+    scrollbar-color: #bec7e3 #edf2f7;
+    /* Thumb color and track color for Firefox */
+}
+
+/* WebKit browsers (Chrome, Safari, etc.) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    /* Width of the scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #bec7e3;
+    /* Track color */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #4fd1c5;
+    /* Thumb color */
+    border-radius: 10px;
+    /* Rounded edges */
+    border: 2px solid #edf2f7;
+    /* Adds a little padding around the thumb */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #000;
+    /* Thumb color on hover */
+}
+
+.mt07 {
+    margin-top: 0.7rem !important;
+}
+
+@media screen and (min-width: 1024px) {
+    .mt07 {
+        margin-top: 0 !important;
     }
 }
 
@@ -110,14 +158,57 @@
     background-color: #086ad9 !important;
 }
 
-/* navagation page css */
-.fade-in {
-    opacity: 0;
-    transition: opacity 0.3s ease-in;
+/** CSS BY BZS95 **/
+
+/** body **/
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
 }
 
-.fade-in-loaded {
-    opacity: 1;
+/** header **/
+
+/** sidebar **/
+.MaxW {
+    width: max-content;
 }
 
-/* navagation page css ends */
+.Sidebar-Nos {
+    width: 100px;
+    z-index: 10;
+}
+
+.Main {
+    width: 100%;
+}
+
+/** media queries **/
+
+@media (max-width: 768px) {
+    .Sidebar-Nos {
+        display: none;
+    }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .Sidebar-Nos {
+    }
+}
+
+#searchInput:focus {
+    outline: none !important;
+    /* Removes the blue outline */
+    box-shadow: none !important;
+    /* Removes any focus box-shadow */
+    border-color: inherit !important;
+    /* Keeps the border color unchanged */
+}
+
+.CheckBoxColor {
+    color: #bec7e3 !important;
+}

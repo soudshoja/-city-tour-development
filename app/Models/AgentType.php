@@ -10,8 +10,11 @@ class AgentType extends Model
 {
     protected $table = 'agent_type'; // Explicitly define the table name
 
+    // Add the 'name' field to the fillable array
+    protected $fillable = ['name'];
+
     public function agents()
     {
-        return $this->hasMany(Agent::class, 'type_id');
+    return $this->belongsTo(Agent::class);
     }
 }

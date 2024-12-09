@@ -15,6 +15,6 @@ class AgentType extends Model
 
     public function agents()
     {
-        return $this->hasMany(Agent::class, 'type_id');
+    return $this->belongsTo(Agent::class);
     }
 }

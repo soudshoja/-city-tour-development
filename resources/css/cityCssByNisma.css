@@ -212,3 +212,33 @@ body {
 .CheckBoxColor {
     color: #bec7e3 !important;
 }
+
+.alert {
+    position: absolute;
+    top: 70px; /* Adjust as needed */
+    right: 10px; /* Adjust as needed */
+    padding: 10px; /* Adjust padding as needed */
+    border-radius: 5px; /* Optional: for rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Optional: for a subtle shadow */
+    z-index: 1050;
+}
+
+.text-success {
+    --tw-text-opacity: 1;
+    color: rgb(0 171 85 / var(--tw-text-opacity));
+}
+
+.bg-success-light {
+    --tw-bg-opacity: 1;
+    background-color: rgb(221 245 240 / var(--tw-bg-opacity));
+}
+
+.text-danger {
+    --tw-text-opacity: 1;
+    color: rgb(231 81 90 / var(--tw-text-opacity));
+}
+
+.bg-danger-light {
+    --tw-bg-opacity: 1;
+    background-color: rgb(255 245 245 / var(--tw-bg-opacity));
+}

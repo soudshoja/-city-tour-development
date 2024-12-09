@@ -26,7 +26,7 @@ class Agent extends Model
     }
     public function type()
     {
-        return $this->belongsTo(AgentType::class, 'type_id');
+        return $this->belongsTo(AgentType::class, 'type_id'); // 'type_id' is the foreign key in the 'agents' table
     }
 
     public function tasks()

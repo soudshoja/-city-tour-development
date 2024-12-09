@@ -50,9 +50,7 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('dashboard');
     })->name('verify2fa');
 
-    // admin 
-    Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
-    Route::get('/companiesnew', [AdminUsersController::class, 'new'])->name('companiesnew.new');
+
 
 
     Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
@@ -61,6 +59,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
     Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
+
+
+
+    // admin 
+    Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
+    Route::get('/companiesnew', [AdminUsersController::class, 'new'])->name('companiesnew.new');
+    Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
+
+
+
     // Agents list
     Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
     Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
@@ -86,14 +94,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agentsettings', [CompanyController::class, 'showAgentTypeForm'])->name('agentsetting');
     Route::post('/agent-types', [CompanyController::class, 'createAgentType'])->name('agent-types.create');
 
-    // Route to show the delete form
+    // Route to show the delete form (GET request)
     Route::get('/agent-types/delete', [CompanyController::class, 'showDeleteAgentTypeForm'])->name('agent-types.delete.form');
 
-    // Route to handle the delete request
+    // Route to handle the delete request (DELETE request)
     Route::delete('/agent-types/delete', [CompanyController::class, 'deleteAgentType'])->name('agent-types.delete');
 
-
-    Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');
     Route::get('/companiesupload', [CompanyController::class, 'upload'])->name('companiesupload.upload');
     Route::post('/companiesupload', [CompanyController::class, 'import'])->name('companiesupload.import');
     Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('companiesshow.show');

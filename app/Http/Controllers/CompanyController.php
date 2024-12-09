@@ -472,6 +472,7 @@ class CompanyController extends Controller
 
         return redirect()->back()->with('success', 'Agent type created successfully.');
     }
+
     public function showAgentTypeForm()
     {
         $agentTypes = AgentType::all(); // Fetch all existing agent types
@@ -479,29 +480,34 @@ class CompanyController extends Controller
         return view('companies.setting.agentSettings', compact('agentTypes'));
     }
 
-    public function showDeleteAgentTypeForm()
-    {
-        $agentTypes = AgentType::all(); // Fetch all agent types
 
-        return view('companies.settings.agentSettings', compact('agentTypes'));
-    }
+    // delete agent type 
 
     public function deleteAgentType(Request $request)
     {
+        // Validate the incoming request
         $validated = $request->validate([
-            'agent_type_id' => 'required|exists:agent_type,id',
+            'agent_type_id' => 'required|exists:agent_type,id', // Ensure the ID exists in the agent_types table
         ]);
 
-        $agentType = AgentType::findOrFail($validated['agent_type_id']);
+        // Retrieve the agent type by ID
+        $agentType = AgentType::find($validated['agent_type_id']);
 
-        // Check if the agent type is associated with any agents
+        if (!$agentType) {
+            // If no agent type is found, return an error message
+            return redirect()->back()->with('error', 'Agent type not found.');
+        }
+
+        // Check if any agents are associated with this type
         if ($agentType->agents()->exists()) {
+            // If agents are associated with this agent type, prevent deletion and return error message
             return redirect()->back()->with('error', 'Agent type is associated with agents and cannot be deleted.');
         }
 
-        // Delete the agent type
+        // Proceed with deletion
         $agentType->delete();
 
+        // Redirect back with a success message
         return redirect()->back()->with('success', 'Agent type deleted successfully.');
     }
 }

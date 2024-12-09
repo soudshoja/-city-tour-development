@@ -41,6 +41,7 @@ class DashboardController extends Controller
 
         $company = $agents->company;
 
+        $agents = Agent::where('company_id', $company->id)->get();
         $agentsCount = $agents->count();
         // Count total tasks, pending tasks, and completed tasks for all agents
         $totalTaskCount = $agents->tasks()->count();
@@ -98,7 +99,7 @@ class DashboardController extends Controller
             'invoices' => $invoices,
             'notifications' => $notifications,
         ];
-        return view('items.index', compact('company', 'agents', 'dashboardData'));
+        return view('admin.index', compact('company', 'agent', 'dashboardData'));
     }
 
     public function companyDashboard()

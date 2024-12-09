@@ -73,6 +73,39 @@ class OpenAiController extends Controller
         return $response;
     }
 
+    public function chatCompletionImage($prompt, $image)
+    {
+        $url = config('services.open-ai.url') . '/chat/completions';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+        $data = [
+            'model' => 'gpt-4o-mini',
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => $prompt,
+                        ],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => 'C:\Users\User\Documents\GitHub\city-tour\storage\app\public\passports\passportClient.jpeg',
+                            ]
+                        ],
+                    ]
+                ],
+            ],
+        ];
+
+        $response =  $this->postRequest($url, $header, json_encode($data));
+        logger('chat completion image response: ', $response);
+        return response()->json($response);
+    }
+
     public function extractPassport($content)
     {
         $prompt = "
@@ -102,43 +135,19 @@ class OpenAiController extends Controller
                 'content' => $content,
             ],
         ]);
-    
-        // Check if response contains the expected structure
+
         if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
-    
-            // Check if the response is already a valid JSON string
-            $decodedResponse = json_decode($message, true);
-    
-            // If it's already a valid array, use it directly
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return [
-                    'status' => 'success',
-                    'message' => 'Data extracted successfully',
-                    'data' => $decodedResponse,
-                ];
-            } else {
-                // If the message is not valid JSON, attempt to clean the response
-                $cleanedResponse = $this->cleanJsonResponse($message);
-    
-                // Attempt decoding the cleaned response
-                $data = json_decode($cleanedResponse, true);
-    
-                // Check if the cleaned response is a valid JSON
-                if (json_last_error() === JSON_ERROR_NONE && isset($data['passport_no'])) {
-                    return [
-                        'status' => 'success',
-                        'message' => 'Data extracted successfully',
-                        'data' => $data,
-                    ];
-                } else {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Failed to parse JSON or missing required fields.',
-                    ];
-                }
-            }
+            $message = $this->cleanJsonResponse($message);
+
+            return [
+                'status' => 'success',
+                'message' => 'Data extracted successfully',
+                'data' => $message,
+            ];
         } else {
+            $message = $response;
+
             return [
                 'status' => 'error',
                 'message' => 'Data extraction failed. No content returned from OpenAI.',

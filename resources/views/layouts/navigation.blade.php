@@ -1,379 +1,121 @@
-@php
-use App\Models\Role;
-@endphp
-<div x-data="{ sidebarOpen: false, darkMode: localStorage.getItem('darkMode') === 'true' }"
-
-    :class="{ 'dark': darkMode }" class="flex h-screen">
-
-    <!-- Mobile Header -->
-    <nav
-        class="p-5 fixed top-0 left-0 right-0 flex items-center justify-center bg-white dark:bg-gray-800 shadow-md z-50 CityDisplaayNoneDesk">
-        <!-- Logo and App Name -->
-        <a href="{{ route('dashboard') }}" class="flex items-center">
-            <x-application-logo />
-
-        </a>
-    </nav>
-
-    @include('layouts.sidebar')
-
-    <!-- desktop & pads Header -->
-    <div :class="sidebarOpen ? 'ml-[260px]' : 'ml-0'" class="flex-1 transition-all duration-300 ease-in-out">
-        <!-- Header (Navigation) 1st -->
-        <nav class="CityDisplaayNone bg-white text-black dark:bg-black dark:text-white shadow-sm">
-            <div class="px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16 items-center">
-                    <div class="flex items-center space-x-4">
-                        <!-- Sidebar Toggle Button -->
-                        <button @click="sidebarOpen = !sidebarOpen"
-                            class="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="stroke-current text-[#1C274C] dark:text-white">
-                                <path d="M19 10L11 10M5 10H7" stroke-width="1.5" stroke-linecap="round"
-                                    class="stroke-current" />
-                                <path d="M5 18H13M19 18H17" stroke-width="1.5" stroke-linecap="round"
-                                    class="stroke-current" />
-                                <path d="M19 14L5 14" stroke-width="1.5" stroke-linecap="round"
-                                    class="stroke-current" />
-                                <path d="M19 6L5 6" stroke-width="1.5" stroke-linecap="round" class="stroke-current" />
-                            </svg>
+<header>
+    <div class="container mx-auto flex flex-wrap items-center justify-between px-6 py-4">
+        <!-- Logo -->
+        <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
+            <a href="{{ url('/') }}" class="flex items-center">
+                <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-8 mr-4">
+                <span class="text-lg font-bold text-gray-800">City Tour</span>
+            </a>
+        </div>
 
 
-                        </button>
+        <!-- Right Section -->
+        <div class="flex items-center space-x-4 w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
+            <!-- Search Icon -->
+            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+                <svg class="w-6 h-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 16">
+                    <path fill="currentColor" d="M6.5 13.02a5.5 5.5 0 0 1-3.89-1.61C1.57 10.37 1 8.99 1 7.52s.57-2.85 1.61-3.89c2.14-2.14 5.63-2.14 7.78 0C11.43 4.67 12 6.05 12 7.52s-.57 2.85-1.61 3.89a5.5 5.5 0 0 1-3.89 1.61m0-10c-1.15 0-2.3.44-3.18 1.32C2.47 5.19 2 6.32 2 7.52s.47 2.33 1.32 3.18a4.51 4.51 0 0 0 6.36 0C10.53 9.85 11 8.72 11 7.52s-.47-2.33-1.32-3.18A4.48 4.48 0 0 0 6.5 3.02" />
+                    <path fill="currentColor" d="M13.5 15a.47.47 0 0 1-.35-.15l-3.38-3.38c-.2-.2-.2-.51 0-.71s.51-.2.71 0l3.38 3.38c.2.2.2.51 0 .71c-.1.1-.23.15-.35.15Z" />
+                </svg>
+            </div>
 
-                        <a href="{{ route('dashboard') }}" class="flex items-center ml-2">
-                            <img id="logo" src="{{ asset('images/City0logo.svg') }}" alt="City App Logo">
-                            <span id="appName"
-                                class="ml-2 text-lg font-semibold text-gray-900 dark:text-white fade-in">City
-                                App</span>
-                        </a>
+            <!-- chat Icon -->
+            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+                <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
 
+                <svg class="w-5 h-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                    <path fill="currentColor" d="M0 262q0 43 24.5 81T90 405q-2 7-4.5 18t-7 34.5t-3.5 39T85 512q30 0 60.5-16t48.5-32t19-16q55 0 107-21q-6-2-22.5-12T277 405h-64q-18 0-38 20q-28 25-53 36l6-77l-17-15q-68-44-68-107q0-16 6-36q-4-6-5.5-18.5T42 185v-23l1-13Q0 195 0 262M299 0q-89 0-151.5 52T85 177q0 72 62 118t152 46q1 0 20.5 21.5t51.5 43t62 21.5q7 0 8.5-11t-1.5-26.5t-7-31.5t-7-27l-4-11q41-25 65.5-62.5T512 177q0-73-62.5-125T299 0m102 284l-28 17l11 32q2 5 5 17t6 19q-22-15-52-45q-23-25-42-25q-70 0-120.5-32.5T130 177q-1-56 48.5-95T299 43t120.5 39t49.5 95q0 63-68 107" />
+                </svg>
+
+
+            </div>
+
+            <!-- Notification Icon -->
+            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+
+                <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
+
+                <svg class="w-6 h-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M10.146 3.248a2 2 0 0 1 3.708 0A7 7 0 0 1 19 10v4.697l1.832 2.748A1 1 0 0 1 20 19h-4.535a3.501 3.501 0 0 1-6.93 0H4a1 1 0 0 1-.832-1.555L5 14.697V10c0-3.224 2.18-5.94 5.146-6.752M10.586 19a1.5 1.5 0 0 0 2.829 0zM12 5a5 5 0 0 0-5 5v5a1 1 0 0 1-.168.555L5.869 17H18.13l-.963-1.445A1 1 0 0 1 17 15v-5a5 5 0 0 0-5-5" />
+                </svg>
+            </div>
+
+            <!-- Profile Picture with Dropdown -->
+            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+                @if(Auth::check())
+                <!-- Authenticated User -->
+                <div x-data="{ open: false }" class="relative">
+                    <!-- Profile Image -->
+                    <div @click="open = !open" class="w-full h-full object-cover cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                            <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+                        </svg>
                     </div>
 
-                    <div class="flex items-center space-x-4 ml-auto sm:flex sm:space-x-2">
-                        <!-- Dark Mode Toggle Button -->
-                        <button x-cloak
-                            @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode); document.documentElement.classList.toggle('dark', darkMode)"
-                            class="relative flex items-center justify-between w-16 h-10 p-1 bg-gray-200 dark:bg-gray-700 rounded-full focus:outline-none transition-colors duration-300 ease-in-out sm:w-12 sm:h-6">
-
-                            <div :class="{ 'translate-x-0': !darkMode, 'translate-x-8 sm:translate-x-6': darkMode }"
-                                class="w-6 h-6 bg-white dark:bg-gray-200 rounded-full transform transition-transform duration-300 ease-in-out">
-                                <svg width="20" height="20" fill="none" stroke="#0d324d"
-                                    class="absolute inset-0 m-auto text-gray-500 dark:text-gray-800"
-                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="12" r="5" stroke-width="1.5"></circle>
-                                    <path d="M12 2V4" stroke-width="1.5" stroke-linecap="round"></path>
-                                    <path d="M12 20V22" stroke-width="1.5" stroke-linecap="round"></path>
-                                    <path d="M4 12L2 12" stroke-width="1.5" stroke-linecap="round"></path>
-                                    <path d="M22 12L20 12" stroke-width="1.5" stroke-linecap="round"></path>
-                                    <path opacity="0.5" d="M19.7778 4.22266L17.5558 6.25424" stroke-width="1.5"
-                                        stroke-linecap="round"></path>
-                                    <path opacity="0.5" d="M4.22217 4.22266L6.44418 6.25424" stroke-width="1.5"
-                                        stroke-linecap="round"></path>
-                                    <path opacity="0.5" d="M6.44434 17.5557L4.22211 19.7779" stroke-width="1.5"
-                                        stroke-linecap="round"></path>
-                                    <path opacity="0.5" d="M19.7778 19.7773L17.5558 17.5551" stroke-width="1.5"
-                                        stroke-linecap="round"></path>
-                                </svg>
-                            </div>
-                        </button>
-
-                        <!-- Todo List -->
-                        <div>
-                            <a href="{{ route('todolist.index') }}"
-                                class="relative block rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-gray-700"
-                                @click="toggle">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="stroke-current text-gray-800 dark:text-gray-200">
-                                    <path d="M2 5.5L3.21429 7L7.5 3" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M2 12.5L3.21429 14L7.5 10" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M2 19.5L3.21429 21L7.5 17" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M22 12H17M12 12H13.5" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <path d="M12 19H17M20.5 19H22" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <path d="M22 5L12 5" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                </svg>
-                            </a>
-                        </div>
-
-                        <!-- Notification -->
-                        <div x-data="{toggle : false}">
-                            <a href="#" class="block hover:bg-white-light/90 hover:text-primary dark:bg-gray-700 ">
-                                <a href="javascript:;"
-                                    class="relative block rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-gray-700"
-                                    @click="toggle = !toggle">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="stroke-current text-gray-800 dark:text-gray-200">
-                                        <path
-                                            d="M19.0001 9.7041V9C19.0001 5.13401 15.8661 2 12.0001 2C8.13407 2 5.00006 5.13401 5.00006 9V9.7041C5.00006 10.5491 4.74995 11.3752 4.28123 12.0783L3.13263 13.8012C2.08349 15.3749 2.88442 17.5139 4.70913 18.0116C9.48258 19.3134 14.5175 19.3134 19.291 18.0116C21.1157 17.5139 21.9166 15.3749 20.8675 13.8012L19.7189 12.0783C19.2502 11.3752 19.0001 10.5491 19.0001 9.7041Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                        <path
-                                            d="M7.5 19C8.15503 20.7478 9.92246 22 12 22C14.0775 22 15.845 20.7478 16.5 19"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                                        <path d="M12 6V10" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round"></path>
+                    <!-- Dropdown Menu -->
+                    <div x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-64 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <!-- User Information & Profile -->
+                        <a href="{{ route('profile.edit') }}">
+                            <div class="flex items-center p-2 border-b border-gray-200 hover:bg-gray-300 hover:rounded-t">
+                                <div class="w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+                                    <svg class="w-6 h-6 rounded-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                                        <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
                                     </svg>
+                                </div>
 
-                                    <span class="absolute top-0 flex h-3 w-3 right-0">
-                                        <span
-                                            class="absolute -top-[3px] inline-flex h-full w-full animate-ping rounded-full bg-success/50 opacity-75 -left-[3px]"></span>
-                                        <span
-                                            class="relative inline-flex h-[6px] w-[6px] rounded-full bg-success"></span>
-                                    </span>
-                                </a>
-                                <div
-                                    x-show="toggle"
-                                    x-cloak
-                                    x-transition:enter="transition ease-out duration-200"
-                                    x-transition:enter-start="opacity-0 transform scale-90"
-                                    x-transition:enter-end="opacity-100 transform scale-100"
-                                    x-transition:leave="transition ease-in duration-150"
-                                    x-transition:leave-start="opacity-100 transform scale-100"
-                                    x-transition:leave-end="opacity-0 transform scale-90"
-                                    class="absolute top-16 right-4 w-120 bg-white border-2 border-gray dark:bg-gray-700 rounded-lg shadow-md z-60" 
-                                >
-                                <h2 class="bg-gradient-to-r from-blue-500 to-yellow-400 to-20% text-white text-lg font-semibold font-lg p-4 rounded-t-lg">
-                                    Notifications
-                                </h2>
-                                <div class="p-4">
-                                    <livewire:notification />
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}
+                                        <span class="ml-1 text-green-500 text-xs bg-green-200 py-0.5 px-1 rounded">Pro</span>
+                                    </h4>
+                                    <p class="text-xs text-gray-500 mt-1">See Your Profile here</p>
                                 </div>
                             </div>
-                            </a>
-                        </div>
+                        </a>
 
-                        <!-- Chat -->
+                        <!-- Dropdown Links -->
                         <div>
-                            <a href="#"
-                                class="block hover:bg-white-light/90 hover:text-primary dark:bg-gray-700 dark:hover:bg-gray-200">
-                                <a href="javascript:;"
-                                    class="relative block rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-gray-700 dark:hover:bg-gray-200"
-                                    @click="toggle">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                        class="stroke-current text-gray-800 dark:text-gray-200">
-                                        <path
-                                            d="M22 10C22.0185 10.7271 22 11.0542 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H13"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                                        <path
-                                            d="M6 8L8.1589 9.79908C9.99553 11.3296 10.9139 12.0949 12 12.0949C13.0861 12.0949 14.0045 11.3296 15.8411 9.79908"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                                        <circle cx="19" cy="5" r="3" stroke="currentColor" stroke-width="1.5"></circle>
+
+                            <!-- Logout -->
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <a href="{{ route('logout') }}" class="flex items-center justify-center p-2 text-sm text-red-600 bg-gray-200 hover:bg-gray-300 hover:rounded-b"
+                                    onclick="event.preventDefault(); this.closest('form').submit();">
+                                    <svg class="w-5 h-5 text-red-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.023 5.5a9 9 0 1 0 9.953 0M12 2v8" color="currentColor" />
                                     </svg>
-
+                                    Sign Out
                                 </a>
-                            </a>
+                            </form>
                         </div>
-
-                        <!-- Profile Dropdown -->
-                        <div x-data="{ open: false }" @click.away="open = false"
-                            class="dark:bg-gray-700 flex justify-center items-center bg-gray-100 rounded-full sm:ml-auto">
-                            <x-dropdown align="right" width="48"
-                                class="top-11 w-[230px] !py-0 font-semibold text-dark left-0 dark:text-white-dark dark:text-white-light/90">
-                                <x-slot name="trigger">
-                                    <button
-                                        class="profile-icon flex items-center justify-center text-sm font-medium text-gray-500 dark:text-gray-400 bg-transparent rounded-full focus:outline-none p-1">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="stroke-current text-gray-800 dark:text-gray-200">
-                                            <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5">
-                                            </circle>
-                                            <path
-                                                d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                                        </svg>
-                                    </button>
-                                </x-slot>
-
-                                <x-slot name="content">
-                                    <!-- Profile Info Section -->
-                                    <div class="flex items-center px-4 py-4">
-                                        <div class="flex-none">
-                                            <svg class="mr-3 w-5 h-5 text-gray-500 dark:text-gray-400"
-                                                viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                                                class="stroke-current text-gray-800 dark:text-gray-200">
-                                                <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5">
-                                                </circle>
-                                                <path
-                                                    d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-                                                </path>
-                                            </svg>
-                                        </div>
-                                        <div class="ml-3 truncate">
-                                            <a class="text-sm text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
-                                                href="{{ route('profile.edit') }}">
-                                                <h4 class="text-sm font-semibold text-dark dark:text-white">
-                                                    {{ Auth::user()->name }}
-                                                    <span
-                                                        class="rounded bg-success-light px-1 text-xs text-success ml-2">Pro</span>
-                                                </h4>
-                                            </a>
-                                        </div>
-                                    </div>
-
-                                    <div class="border-t border-gray-200 dark:border-gray-600"></div>
-                                    @if(Auth::user()->role_id === Role::ADMIN)
-                                    <!-- Add New Admin Link -->
-                                    <div class="flex items-center px-4 py-2">
-                                        <div class="flex-none">
-                                            <svg class="mr-3 w-5 h-5 text-gray-500 dark:text-gray-400"
-                                                viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                                                class="stroke-current text-gray-800 dark:text-gray-200">
-                                                <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5">
-                                                </circle>
-                                                <path
-                                                    d="M20.4141 18.5H18.9999M18.9999 18.5H17.5857M18.9999 18.5L18.9999 17.0858M18.9999 18.5L18.9999 19.9142"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-                                                </path>
-                                                <path
-                                                    d="M12 13C14.6083 13 16.8834 13.8152 18.0877 15.024M15.5841 20.4366C14.5358 20.7944 13.3099 21 12 21C8.13401 21 5 19.2091 5 17C5 15.6407 6.18652 14.4398 8 13.717"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-                                                </path>
-                                            </svg>
-                                        </div>
-                                        <div class="ml-3 truncate">
-                                            <a class="text-sm text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
-                                                href="{{ route('register') }}">
-                                                <h4 class="text-sm font-semibold text-dark dark:text-white">
-                                                    Add New Admin
-                                                </h4>
-                                            </a>
-                                        </div>
-                                    </div>
-
-
-                                    <div class="border-t border-gray-200 dark:border-gray-600 mt-2"></div>
-                                    @endif
-                                    <!-- Logout Link -->
-
-                                    <form method="POST" action="{{ route('logout') }}">
-                                        @csrf
-                                        <x-dropdown-link :href="route('logout')"
-                                            onclick="event.preventDefault(); this.closest('form').submit();"
-                                            class="flex items-center py-2 dark:hover:text-white">
-                                            <div class="flex items-center px-4">
-                                                <div class="flex-none">
-                                                    <svg class="mr-3 w-5 h-5 text-gray-500 dark:text-gray-400"
-                                                        viewBox="0 0 24 24" fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        class="stroke-current text-gray-800 dark:text-gray-200">
-                                                        <circle cx="12" cy="6" r="4" stroke="currentColor"
-                                                            stroke-width="1.5"></circle>
-                                                        <path
-                                                            d="M20.4141 18.5H18.9999M18.9999 18.5H17.5857M18.9999 18.5L18.9999 17.0858M18.9999 18.5L18.9999 19.9142"
-                                                            stroke="currentColor" stroke-width="1.5"
-                                                            stroke-linecap="round"></path>
-                                                        <path
-                                                            d="M12 13C14.6083 13 16.8834 13.8152 18.0877 15.024M15.5841 20.4366C14.5358 20.7944 13.3099 21 12 21C8.13401 21 5 19.2091 5 17C5 15.6407 6.18652 14.4398 8 13.717"
-                                                            stroke="currentColor" stroke-width="1.5"
-                                                            stroke-linecap="round"></path>
-                                                    </svg>
-                                                </div>
-                                                <div class="ml-3 truncate">
-                                                    <h4 class="text-sm font-semibold text-red-500">
-                                                        {{ __('Log Out') }}
-                                                    </h4>
-                                                </div>
-                                            </div>
-                                        </x-dropdown-link>
-                                    </form>
-
-                                </x-slot>
-                            </x-dropdown>
-                        </div>
-
                     </div>
 
                 </div>
-            </div>
-        </nav>
+                @else
+                <!-- Guest User -->
+                <div x-data="{ open: false }" class="relative">
+                    <!-- Profile Image -->
+                    <div @click="open = !open" class="w-full h-full object-cover cursor-pointer h-[30px] w-[30px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                            <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+                        </svg>
+                    </div>
 
 
-        <!-- Header (Navigation) 2nd -->
-        <nav
-            class="CityDisplaayNone bg-white text-black dark:bg-gray-900 dark:text-white shadow-sm border-t border-gray-200 dark:border-gray-700">
-            <div class="px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-start h-12 items-center space-x-8">
-                    <!-- admin menu -->
-                    @if(Auth::user()->role_id === Role::ADMIN)
-                    @include('layouts.menus.admin')
-                    @endif
-                    <!-- company menu -->
-                    @if(Auth::user()->role_id === Role::COMPANY )
-                    @include('layouts.menus.company')
-                    @endif
-                    <!-- agent menu -->
-                    @if(Auth()->user()->role === Role::AGENT )
-                    @include('layouts.menus.agent')
-                    @endif
-
-
-
-
-                </div>
-            </div>
-        </nav>
-
-        <!-- Page Content -->
-        <main class="p-4 mobile-m-5 min-h-full ">
-            <!-- Your main content goes here -->
-            <div class="p-3">
-                {{ $slot }}
-
-                @if($errors->any())
-                @foreach($errors->all() as $error)
-                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                    {{ $error }}
-                    <button type="button" class="close text-white ml-2" aria-label="Close"
-                        onclick="this.parentElement.style.display='none';">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endforeach
-                @endif
-
-                @if(session('success'))
-                <div
-                    class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg z-50">
-                    {{ session('success') }}
-                    <button type="button" class="close text-white ml-2" aria-label="Close"
-                        onclick="this.parentElement.style.display='none';">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @elseif(session('error'))
-                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                    {{ session('error') }}
-                    <button type="button" class="close text-white ml-2" aria-label="Close"
-                        onclick="this.parentElement.style.display='none';">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <!-- Dropdown Menu -->
+                    <div x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-48 mt-2 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                        <x-dropdown-link :href="route('login')">
+                            {{ __('Login') }}
+                        </x-dropdown-link>
+                    </div>
                 </div>
                 @endif
             </div>
 
 
 
-        </main>
-
-        @include('layouts.footer')
-
+        </div>
     </div>
-
-</div>
-
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('logo').classList.add('fade-in-loaded');
-        document.getElementById('appName').classList.add('fade-in-loaded');
-    });
-</script>
+</header>

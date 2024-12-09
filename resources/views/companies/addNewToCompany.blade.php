@@ -287,6 +287,7 @@
                                 <!-- Hidden Company ID -->
                                 <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
+
                                 <!-- Agent Name -->
                                 <div class="mb-4 flex items-center">
                                     <input type="name" name="name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"

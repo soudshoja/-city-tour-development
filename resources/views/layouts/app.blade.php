@@ -24,7 +24,8 @@
 </head>
 
 <body>
-    <!-- fix it ya nsooooom --> @include('layouts.alert')
+    <!-- fix it ya nsooooom --> 
+     @include('layouts.alert')
 
     <!-- Top Navigation -->
     <div>

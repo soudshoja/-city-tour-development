@@ -15,6 +15,6 @@ class AgentType extends Model
 
     public function agents()
     {
-        return $this->hasMany(Agent::class, 'type_id');
+        return $this->hasMany(Agent::class, 'type_id'); // 'type_id' is the foreign key in the 'agents' table
     }
 }

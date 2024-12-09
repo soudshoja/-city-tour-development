@@ -144,6 +144,7 @@
         <a href="{{ route('coa.index') }}" class="MaxW mb-2 text-sm ml-2 p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex items-center justify-center">Chart Of Account</a>
         <a href="{{ route('charges.index') }}" class="MaxW mb-2 text-sm ml-2 p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex items-center justify-center">Manage Charges</a>
         <a href="{{ route('invoices.company.agents') }}" class="MaxW mb-2 text-sm ml-2 p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex items-center justify-center">Invoices List</a>
+        <a href="{{ route('invoice.salelist') }}" class="MaxW mb-2 text-sm ml-2 p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex items-center justify-center">Sale Invoices</a>
         <a href="{{ route('accounting.transaction') }}" class="MaxW mb-2 text-sm ml-2 p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex items-center justify-center">Transactions</a>
         <a href="{{ route('accounting.index') }}" class="MaxW mb-2 text-sm ml-2 p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex items-center justify-center">Accounting</a>
 

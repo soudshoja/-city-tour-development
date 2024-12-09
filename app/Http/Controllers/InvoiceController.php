@@ -8,6 +8,7 @@ use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Company;
 use App\Models\GeneralLedger;
@@ -55,6 +56,35 @@ class InvoiceController extends Controller
 
         return view('invoice.index', compact('invoices', 'agent'));
     }
+
+    public function salelist()
+    {
+        $user = Auth::user();
+
+        // Ensure that the user is a company
+        if ($user->role_id !== Role::COMPANY) {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        // Get all agents under the company
+        $agents = Agent::with(['branch' => function($query) use ($user) {
+            $query->where('branch_id', $user->company->branch->id);
+        }])->pluck('id');
+
+        // Get invoices related to those agents
+        $invoices = Invoice::with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
+
+        // Get clients related to the agents
+        $clients = Client::whereIn('agent_id', $agents)->get();
+
+        // Get tasks related to the agents
+        $tasks = Task::whereIn('agent_id', $agents)->get();
+
+        $totalInvoices = $invoices->total();
+
+        return view('invoice.salelist', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
+    }
+
 
     public function create(Request $request)
     {
@@ -160,6 +190,26 @@ class InvoiceController extends Controller
         ));
     }
     
+
+    public function edit(string $invoiceNumber)
+    {
+
+        // Retrieve the invoice based on the invoice number
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+
+        // Check if the invoice exists
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        $payment = Payment::where('invoice_id', $invoice->id)->first();
+
+        $invoiceDetails = $invoice->invoiceDetails;
+
+        return view('invoice.edit', compact('invoice', 'payment', 'invoiceDetails'));
+    }
+
+
 
     /**
      * Store a newly created resource in storage.
@@ -444,15 +494,6 @@ class InvoiceController extends Controller
         $transaction = Transaction::where('invoice_id', $invoice->id)->first();
 
         return view('invoice.clientInvoice', compact('invoice', 'invoiceDetails', 'transaction'));
-    }
-
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
     }
 
     /**

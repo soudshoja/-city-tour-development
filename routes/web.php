@@ -192,7 +192,9 @@ Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.
 Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
-
+Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
+Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
+           
 // PAYMENT
 Route::group([
     'middleware' => ['auth'],

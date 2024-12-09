@@ -407,7 +407,7 @@ class PaymentController extends Controller
         $data = [
             'invoice' => $invoice,
             'total_amount' => $invoice->amount,
-            'payment_method' => 'debit_card', // change to get from tap check charges later
+            'payment_method' => 'payment_gateway', // change to get from tap check charges later
             'client_name' => $invoice->client->name,
             'client_email' => $invoice->client->email,
             'invoice_number' => $invoice->invoice_number,

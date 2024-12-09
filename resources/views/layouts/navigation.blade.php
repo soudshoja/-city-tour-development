@@ -10,7 +10,8 @@
 
 
         <!-- Right Section -->
-        <div class="flex items-center space-x-4 w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
+        <div x-data="{ toggle: false }"
+            class="flex items-center space-x-4 w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <!-- Search Icon -->
             <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
                 <svg class="w-6 h-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 16">
@@ -31,13 +32,32 @@
             </div>
 
             <!-- Notification Icon -->
-            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+            <div @click="toggle = true"
+                class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
 
                 <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
 
                 <svg class="w-6 h-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M10.146 3.248a2 2 0 0 1 3.708 0A7 7 0 0 1 19 10v4.697l1.832 2.748A1 1 0 0 1 20 19h-4.535a3.501 3.501 0 0 1-6.93 0H4a1 1 0 0 1-.832-1.555L5 14.697V10c0-3.224 2.18-5.94 5.146-6.752M10.586 19a1.5 1.5 0 0 0 2.829 0zM12 5a5 5 0 0 0-5 5v5a1 1 0 0 1-.168.555L5.869 17H18.13l-.963-1.445A1 1 0 0 1 17 15v-5a5 5 0 0 0-5-5" />
                 </svg>
+                <div
+                    x-show="toggle"
+                    x-cloak
+                    @click.away="toggle = false"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 transform scale-90"
+                    x-transition:enter-end="opacity-100 transform scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 transform scale-100"
+                    x-transition:leave-end="opacity-0 transform scale-90"
+                    class="absolute top-16 right-0 w-120 bg-white border-2 border-gray dark:bg-gray-700 rounded-lg shadow-md z-60">
+                    <h2 class="bg-gradient-to-r from-blue-500 to-yellow-400 text-white text-lg font-semibold font-lg p-4 rounded-t-lg">
+                        Notifications
+                    </h2>
+                    <div class="p-4">
+                        <livewire:notification />
+                    </div>
+                </div>
             </div>
 
             <!-- Profile Picture with Dropdown -->

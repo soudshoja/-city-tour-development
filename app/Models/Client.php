@@ -15,8 +15,29 @@ class Client extends Model
     protected $fillable = [
         'name', 
         'email', 
-        'address', 
-        'status', 
+        'agent_id', 
+        'status',
+        'address',
+        'passport_file',
+        'passport_no',
         'phone', 
              ];
+
+             
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class, 'agent_id');
+    } 
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
 }
+
+

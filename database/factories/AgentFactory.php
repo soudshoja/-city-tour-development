@@ -15,9 +15,11 @@ class AgentFactory extends Factory
     {
         return [
             'name' => $this->faker->name,
+            'user_id' => rand(1, 10),
             'email' => $this->faker->unique()->safeEmail,
             'phone_number' => $this->faker->phoneNumber,
-            'description' => $this->faker->paragraph,
+            'branch_id' => rand(1, 10),
+            'type' => $this->faker->randomElement(['commission', 'salary']),
         ];
     }
 }

@@ -15,8 +15,12 @@ return new class extends Migration
             $table->id()->primary();
             $table->integer('user_id')->unsigned();
             $table->string('code')->unique();
-            $table->string('nationality');
+            $table->foreignId('nationality_id');
             $table->string('name');
+            $table->string('address')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->tinyInteger('status')->default(1);
             $table->timestamps();
         });
     }

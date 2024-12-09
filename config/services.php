@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+    'tap' => [
+        'secret' => env('APP_ENV') == 'production' ? env('TAP_SECRET') : env('TAP_SANDBOX_SECRET'),
+        'public' => env('APP_ENV') == 'production' ? env('TAP_PUBLIC') : env('TAP_SANDBOX_PUBLIC'),
+        'url' => env('TAP_URL') . '/v2',
+    ],
+
+    'convert-api' => [
+        'secret' => env('CONVERT_API_SECRET'),
+    ],
+
+    'whatsapp' => [
+        'url' => env('WHATSAPP_URL') . '/' . env('WHATSAPP_API_VERSION'),
+        'phone-number-id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'token' => env('WHATSAPP_TOKEN'),
+    ],
+
+    'open-ai' => [
+        'url' => env('OPENAI_URL').'/'.env("OPENAI_VERSION"),
+        'key' => env('OPENAI_KEY'),
+    ],
 ];

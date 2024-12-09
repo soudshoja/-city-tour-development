@@ -3,7 +3,7 @@ name: Deploy to cPanel
 on:
   push:
     branches:
-      - dev # or your default branch name
+      - main  # or your default branch name
 
 jobs:
   deploy:

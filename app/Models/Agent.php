@@ -30,7 +30,7 @@ class Agent extends Model
 
     public function type()
     {
-        return $this->belongsTo(AgentType::class, 'type_id');
+        return $this->hasOne(AgentType::class, 'type_id');
     }
 
     public function tasks()

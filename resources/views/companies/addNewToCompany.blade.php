@@ -234,7 +234,7 @@
 
                                 @csrf
                                 <!-- Hidden Company ID -->
-                                <input type="hidden" name="company_id" value="{{ auth()->user()->company_id }}">
+                                <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
                                 <!-- Branch Name -->
                                 <div class="mb-4 flex items-center ">
@@ -285,7 +285,7 @@
 
                                 @csrf
                                 <!-- Hidden Company ID -->
-                                <input type="hidden" name="company_id" value="{{ auth()->user()->company_id }}">
+                                <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
 
                                 <!-- Agent Name -->
@@ -371,7 +371,7 @@
 
                                 @csrf
                                 <!-- Hidden Company ID -->
-                                <input type="hidden" name="company_id" value="{{ auth()->user()->company_id }}">
+                                <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
                                 <!-- Accountant Name -->
                                 <div class="mb-4 flex items-center">
@@ -412,7 +412,7 @@
 
                                 @csrf
                                 <!-- Hidden Company ID -->
-                                <input type="hidden" name="company_id" value="{{ auth()->user()->company_id }}">
+                                <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
 
                                 <!-- Client Name -->

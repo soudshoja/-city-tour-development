@@ -14,9 +14,8 @@
     @include('layouts.links')
     <!-- CSS -->
 
-    @vite(['resources/css/app.css', 'resources/css/style.css', 'resources/css/animate.css',
-    'resources/css/perfect-scrollbar.min.css', 'resources/css/cityCssByNisma.css'])
-    @vite(['resources/js/app.js', 'resources/js/dashboard.js', 'resources/js/jsbyNisma.js',])
+    @vite(['resources/css/app.css', 'resources/css/cityCssByNisma.css'])
+    @vite(['resources/js/jsbyNisma.js',])
 
 
 

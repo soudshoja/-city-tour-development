@@ -18,9 +18,7 @@
     'resources/css/perfect-scrollbar.min.css', 'resources/css/cityCssByNisma.css'])
     @vite(['resources/js/app.js', 'resources/js/dashboard.js', 'resources/js/jsbyNisma.js',])
 
-
-
-
+    @livewireStyles
 </head>
 
 <body>
@@ -52,7 +50,7 @@
 
     </main>
 
-
+    @livewireScripts
 </body>
 
 </html>

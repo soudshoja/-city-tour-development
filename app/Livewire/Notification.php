@@ -18,6 +18,7 @@ class Notification extends Component
     public function mount(){
         $this->getNotification();
     }
+
     /**
      * Get the notification for the user
      *

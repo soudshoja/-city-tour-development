@@ -7,17 +7,17 @@
             @foreach($notifications as $notification)
             <div class="notification-item p-2 my-2 border-b border-gray-200">
                 <div class="flex justify-between items-center">
-                    <div class="flex items center">
-                        <div class="notification-icon bg-black text-white rounded-full p-2 mr-2">
+                    <div class="flex align-top">
+                        <div class="rounded-full text-white p-2 h-auto m-2 {{ $notification->status == 'read' ? 'bg-green-500' : 'bg-black' }}">
                             <i class="fas fa-bell"></i>
                         </div>
-                        <div class="notification-content">
+                        <button class="notification-content text-start" wire:click="markAsRead({{$notification->id}})">
                             <p class="text-sm font-semibold">{{$notification->title}}</p>
                             <p class="text-xs text-gray-500">{{$notification->message}}</p>
-                        </div>
+                        </button>
                     </div>
-                    <div class="notification-time text-xs text-gray-500">
-                        2 hours ago
+                    <div class="notification-time text-xs text-gray-499">
+                        {{ $notification->formatted_created_at }}
                     </div>
                 </div>
             </div>

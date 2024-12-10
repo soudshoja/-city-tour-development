@@ -10,7 +10,10 @@
 
 
         <!-- Right Section -->
-        <div x-data="{ toggle: false }"
+        <div x-data="{ 
+                toggle: false,
+                chatBox: false
+            }"
             class="flex items-center space-x-4 w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <!-- Search Icon -->
             <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
@@ -21,13 +24,61 @@
             </div>
 
             <!-- chat Icon -->
-            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm">
+            <div
+                @click="chatBox = true"
+                class="relative w-12 h-12 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full shadow-sm cursor-pointer ">
                 <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
 
                 <svg class="w-5 h-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
                     <path fill="currentColor" d="M0 262q0 43 24.5 81T90 405q-2 7-4.5 18t-7 34.5t-3.5 39T85 512q30 0 60.5-16t48.5-32t19-16q55 0 107-21q-6-2-22.5-12T277 405h-64q-18 0-38 20q-28 25-53 36l6-77l-17-15q-68-44-68-107q0-16 6-36q-4-6-5.5-18.5T42 185v-23l1-13Q0 195 0 262M299 0q-89 0-151.5 52T85 177q0 72 62 118t152 46q1 0 20.5 21.5t51.5 43t62 21.5q7 0 8.5-11t-1.5-26.5t-7-31.5t-7-27l-4-11q41-25 65.5-62.5T512 177q0-73-62.5-125T299 0m102 284l-28 17l11 32q2 5 5 17t6 19q-22-15-52-45q-23-25-42-25q-70 0-120.5-32.5T130 177q-1-56 48.5-95T299 43t120.5 39t49.5 95q0 63-68 107" />
                 </svg>
-
+                <div
+                    x-show="chatBox"
+                    x-cloak
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 transform scale-90"
+                    x-transition:enter-end="opacity-100 transform scale-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 transform scale-100"
+                    x-transition:leave-end="opacity-0 transform scale-90"
+                    @click.away="chatBox = false"
+                    class="flex flex-col justify-end absolute bg-white top-16 right-0 shadow-md w-96 h-96 bg-white rounded-lg rounded-tr-none text-white z-20 ">
+                    <div class="flex flex-col-reverse gap-4 overflow-y-auto pl-4 pr-4 pt-2 pb-8">
+                        <div class="flex flex-row-reverse gap-2">
+                            <div class="bg-blue-500 p-2 rounded-full translate-y-6">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="6" r="4" stroke="#1C274C" stroke-width="1.5" />
+                                    <path d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                            </div>
+                            <div class="p-2 bg-blue-500 rounded-lg rounded-br-none">
+                                This is text from user
+                            </div>
+                        </div>
+                        <div class="flex gap-2 overflow-visible">
+                            <div class="bg-gray-400 p-2 rounded-full translate-y-6 overflow-visible">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 16C9.85038 16.6303 10.8846 17 12 17C13.1154 17 14.1496 16.6303 15 16" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                    <ellipse cx="15" cy="10.5" rx="1" ry="1.5" fill="#1C274C" />
+                                    <ellipse cx="9" cy="10.5" rx="1" ry="1.5" fill="#1C274C" />
+                                    <path d="M22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C21.5093 4.43821 21.8356 5.80655 21.9449 8" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                            </div>
+                            <div class="p-2 bg-gray-400 rounded-lg rounded-bl-none">
+                                This is text from AI
+                            </div>
+                        </div>
+                        <!-- <div class="p-2 bg-blue-500 rounded-lg rounded-br-none">
+                            This is response from user
+                        </div>
+                        <div class="p-2 bg-gray-400 rounded-lg rounded-tl-none">
+                            This is response from AI
+                        </div> -->
+                    </div>
+                    <div class="chat p-2 w-full bg-gray-400 rounded-b-lg">
+                        <input type="text" name="" id="" class="w-full p-2 border border-gray-200 rounded-lg" placeholder="Type a message...">
+                    </div>
+                </div>
 
             </div>
 

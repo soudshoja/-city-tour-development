@@ -61,10 +61,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
 
-
-    // admin 
+    // Display a list of companies
     Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
-    Route::get('/companiesnew', [AdminUsersController::class, 'new'])->name('companiesnew.new');
+
+    // Show the form to create a new company
+    Route::get('/companies/new', [AdminUsersController::class, 'new'])->name('companiesnew.new');
+
+    // Store a new company
     Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
 
 

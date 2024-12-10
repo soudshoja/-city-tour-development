@@ -281,7 +281,9 @@
                         <!-- Right Section: Form -->
                         <div class="w-full h-auto flex items-center justify-center">
                             <form action="{{ route('companies.createAgent') }}" method="POST" class="w-full p-2">
-                                <h2 class="text-white font-bold text-center my-3 text-xl">Add New <span class="text-blue-500 dark:text-blue-400">Agent</span> Here</h2>
+                                <h2 class="text-white font-bold text-center my-3 text-xl">Add New
+                                    <span class="text-blue-500 dark:text-blue-400">Agent</span> Here
+                                </h2>
 
                                 @csrf
                                 <!-- Hidden Company ID -->
@@ -307,7 +309,7 @@
 
                                     <!-- Phone -->
                                     <div class="mb-4">
-                                        <input type="text" name="phone"
+                                        <input type="phone" name="phone"
                                             class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder=" agent Number">
                                     </div>
 

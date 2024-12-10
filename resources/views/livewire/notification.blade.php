@@ -11,9 +11,14 @@
         </button>
     </div>
     @foreach($notifications as $notification)
-    <div class="bg-grey-500 border-gray-800 rounded-md p-2"
+    <div class="px-2 py-4  my-2 rounded-md {{ $notification->status == 'read' ? 'bg-green-300 border border-green-600' : 'bg-gray-300' }}"
         wire:key="notification-{{ $notification->id }}">
-        <p class="text-sm text-gray-800">{{ $notification->title }}</p>
+        <p class="text-sm font-semibold ">{{ $notification->title }}</p>
     </div>
     @endforeach
+    <div class="see-all">
+        <a href="{{ route('notifications.index') }}" class="text-black font-semibold">
+            See All Notifications
+        <a>
+    </div>
 </div>

@@ -51,7 +51,7 @@
                     x-transition:leave-start="opacity-100 transform scale-100"
                     x-transition:leave-end="opacity-0 transform scale-90"
                     class="absolute top-16 right-0 w-120 bg-white border-2 border-gray dark:bg-gray-700 rounded-lg shadow-md z-60">
-                    <h2 class="bg-gradient-to-r from-blue-500 to-yellow-400 text-white text-lg font-semibold font-lg p-4 rounded-t-lg">
+                    <h2 class="bg-black text-white text-lg font-semibold font-lg p-4 rounded-t-lg">
                         Notifications
                     </h2>
                     <div class="p-4">

@@ -23,4 +23,8 @@ class Company extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+    public function nationality()
+    {
+        return $this->belongsTo(Country::class, 'nationality_id');
+    }
 }

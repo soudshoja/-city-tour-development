@@ -2,3 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 @import "@fortawesome/fontawesome-free/css/all.min.css";
+
+.bg-lime-200 {
+    background-color: rgb(212, 247, 148);
+}
+
+thead {
+    border-radius: 999px !important;
+}

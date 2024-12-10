@@ -29,7 +29,7 @@
     rel="stylesheet" />
 
   <!-- CSS -->
-  @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css', 'resources/js/app.js'])
+  @vite(['resources/css/app.css'])
 
 
   <!-- Scripts -->
@@ -141,6 +141,13 @@
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...
         </div>
       </form>
+
+      <div class="flex justify-end mt-4">
+            <a href="{{ route('payment.choose') }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Proceed to Payment
+            </a>
+        </div>
+
       @if(auth()->user() && (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
       <div class="flex gap-2 mt-2" id="invoice-link">
         <p>

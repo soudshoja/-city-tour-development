@@ -201,6 +201,7 @@ Route::group([
     'middleware' => ['auth'],
 ], function () {
 
+    Route::get('/payment', [PaymentController::class, 'showPaymentPage'])->name('payment.choose');
     Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
     Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
     Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');

@@ -29,7 +29,7 @@
         rel="stylesheet" />
 
     <!-- CSS -->
-    @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css'])
 
 
     <!-- Scripts -->

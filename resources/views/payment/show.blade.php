@@ -29,7 +29,7 @@
     rel="stylesheet" />
 
   <!-- CSS -->
-  @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css', 'resources/js/app.js'])
+  @vite(['resources/css/app.css'])
 
 
   <!-- Scripts -->
@@ -155,6 +155,13 @@
       @else
       <span class="text-green-600 font-bold">PAID</span>
       @endif
+    </div>
+
+        <!-- Button to Payment Page -->
+    <div class="flex justify-end mt-4">
+        <a href="{{ route('payment.choose') }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            Proceed to Payment
+        </a>
     </div>
 
     <!-- Signature Section -->

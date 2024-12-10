@@ -22,9 +22,10 @@ use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
+use App\Livewire\Notification;
+use App\Livewire\NotificationIndex;
 use App\Models\Role;
 
 
@@ -259,10 +260,7 @@ Route::group([
     'prefix' => 'notifications',
     'as' => 'notifications.',
 ], function () {
-    Route::get('/', [NotificationController::class, 'index'])->name('index');
-    Route::get('/{id}', [NotificationController::class, 'show'])->name('show');
-    Route::post('/{id}', [NotificationController::class, 'update'])->name('update');
-    Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
+    Route::get('/', NotificationIndex::class)->name('index');
 });
 
 require __DIR__ . '/auth.php';

@@ -1,7 +1,6 @@
 <!-- resources/views/coa/index.blade.php -->
 <x-app-layout>
 
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs" defer></script>
 
 
     <!-- Message Area -->

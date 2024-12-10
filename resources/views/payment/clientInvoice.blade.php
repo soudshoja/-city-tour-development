@@ -31,9 +31,6 @@
     <!-- CSS -->
     @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css', 'resources/js/app.js'])
 
-    <!-- Alpine.js -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3" defer></script>
-    <script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/collapse.min.js" defer></script>
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.7.1.slim.js"

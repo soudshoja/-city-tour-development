@@ -18,6 +18,9 @@
     /* Default for mobile: fully rounded */
 }
 
+.BoxShadow {
+    box-shadow: 2px 4px 12px #00000014;
+}
 @media (min-width: 1024px) {
     .custom-rounded-left {
         border-top-right-radius: 0;
@@ -276,4 +279,10 @@ body {
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow),
         var(--tw-shadow, 0 0 #0000) !important;
     --tw-ring-offset-width: 0px !important;
+}
+
+/* invoice page */
+
+.table-responsive {
+    background-color: #e5e7eb !important;
 }

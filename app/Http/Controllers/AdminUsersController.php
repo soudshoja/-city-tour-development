@@ -7,6 +7,9 @@ use App\Models\Country;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use App\Models\Branch;
+use App\Models\Agent;
 
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -42,6 +45,8 @@ class AdminUsersController extends Controller
 
     public function store(Request $request)
     {
+        Log::info('Store function called with request data:', $request->all());
+
         // Validate the request data
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
@@ -54,7 +59,9 @@ class AdminUsersController extends Controller
             'status' => 'required|in:0,1',
         ]);
 
-        // Create the user
+        Log::info('Validation passed:', $validatedData);
+
+        // Create the user (Company Owner)
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
@@ -64,8 +71,10 @@ class AdminUsersController extends Controller
             'first_login' => 1,
         ]);
 
+        Log::info('Company owner user created:', ['user_id' => $user->id]);
+
         // Create the company
-        Company::create([
+        $company = Company::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'code' => $validatedData['code'],
@@ -76,7 +85,44 @@ class AdminUsersController extends Controller
             'status' => $validatedData['status'],
         ]);
 
-        // Redirect with a success message
-        return redirect()->route('companies.index')->with('success', 'Company registered successfully');
+        Log::info('Company created:', ['company_id' => $company->id]);
+
+        // Create a default branch for the company
+        $defaultBranch = Branch::create([
+            'name' => $company->name . ' - Main Branch',
+            'email' => $company->email,
+            'phone' => $company->phone,
+            'address' => $company->address,
+            'company_id' => $company->id,
+            'user_id' => $user->id,
+        ]);
+
+        Log::info('Default branch created:', ['branch_id' => $defaultBranch->id]);
+
+        // Create a default agent for the company
+        $defaultAgentUser = User::create([
+            'name' => 'Default Agent',
+            'email' => 'agent_' . $company->code . '@example.com',
+            'password' => Hash::make('password123'),
+            'role_id' => 3,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
+        Log::info('Default agent user created:', ['user_id' => $defaultAgentUser->id]);
+
+        Agent::create([
+            'name' => 'Default Agent',
+            'email' => $defaultAgentUser->email,
+            'phone_number' => null,
+            'type_id' => 1,
+            'branch_id' => $defaultBranch->id,
+            'company_id' => $company->id,
+            'user_id' => $defaultAgentUser->id,
+        ]);
+
+        Log::info('Default agent created.');
+
+        return redirect()->route('companies.index')->with('success', 'Company registered successfully.');
     }
 }

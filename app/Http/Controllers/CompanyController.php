@@ -344,67 +344,73 @@ class CompanyController extends Controller
 
     public function createAgent(Request $request)
     {
+        // Log incoming request data
+        Log::info('Agent creation request:', $request->all());
 
         $company = Company::where('user_id', Auth::id())->first();
 
         if (!$company) {
-            dd('No company found for the logged-in user.');
+            Log::error('No company found for the logged-in user.');
+            return back()->withErrors(['error' => 'No company found for the logged-in user.']);
         }
 
-        // Retrieve the company ID
-        $companyID = $company->id;
-
+        // Log the company ID
+        Log::info('Company ID:', ['company_id' => $company->id]);
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:15',
-            'type' => 'required|string|max:255',
-
+            'type_id' => 'required|exists:agent_type,id',
             'branch_id' => [
                 'required',
-                'exists:branches,id', // Validate the branch exists
-                function ($attribute, $value, $fail) use ($companyID) {
-                    // Ensure the branch belongs to the company
-                    if (!Branch::where('id', $value)->where('company_id', $companyID)->exists()) {
+                'exists:branches,id',
+                function ($attribute, $value, $fail) use ($company) {
+                    if (!Branch::where('id', $value)->where('company_id', $company->id)->exists()) {
                         $fail('The selected branch is invalid for this company.');
                     }
                 },
             ],
         ]);
 
-        // Add the company_id to the validated data
-        $validatedData = array_merge($validatedData, [
-            'company_id' => $companyID,
-        ]);
+        // Log validated data
+        Log::info('Validated Data:', $validatedData);
 
+        try {
+            // Create user
+            $user = User::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'password' => Hash::make($validatedData['password']),
+                'role_id' => Role::AGENT,
+                'remember_token' => Str::random(10),
+                'first_login' => 1,
+            ]);
 
+            Log::info('User created:', ['user_id' => $user->id]);
 
-        // Create the branch user
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'type' => $validatedData['type'],
-            'password' => Hash::make($validatedData['password']), // Hash the password
-            'role_id' => Role::AGENT,
-            'remember_token' => Str::random(10),
-            'first_login' => 1,
-        ]);
+            // Create agent
+            Agent::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'phone_number' => $validatedData['phone'] ?? null,
+                'type_id' => $validatedData['type_id'],
+                'branch_id' => $validatedData['branch_id'],
+                'company_id' => $company->id,
+                'user_id' => $user->id,
+            ]);
 
-        // Create the Agent record
-        Agent::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'phone_number' => $validatedData['phone'] ?? null,
-            'type' => $validatedData['type'],
-            'branch_id' => $validatedData['branch_id'],   // Assign to the selected branch
-            'company_id' => $validatedData['company_id'], // Use the company ID from the form
-            'user_id' => $user->id,
-        ]);
+            Log::info('Agent created successfully.');
 
-        return redirect()->back()->with('success', 'Agent created successfully.');
+            return redirect()->back()->with('success', 'Agent created successfully.');
+        } catch (\Exception $e) {
+            Log::error('Error creating agent:', ['message' => $e->getMessage()]);
+            return back()->withErrors(['error' => 'Failed to create agent.']);
+        }
     }
+
+
 
     public function createAccountant(Request $request)
     {

@@ -334,7 +334,6 @@
                                     <!-- Select Box -->
                                     <select
                                         name="type_id"
-                                        id="agent_type"
                                         class="w-[60%] px-4 py-2 rounded-r-md border-l-0 flex items-center justify-center border border-[#e0e6ed] dark:border-[#17263c] dark:bg-[#1b2e4b]"
                                         required>
                                         @foreach ($agentTypes as $type)

@@ -12,16 +12,18 @@ return new class extends Migration
     public function up()
     {
         Schema::table('agents', function (Blueprint $table) {
-            $table->unsignedBigInteger('type_id')->nullable()->after('id'); // Add type_id column
-            $table->foreign('type_id')->references('id')->on('agent_type')->onDelete('set null'); // Add foreign key constraint
+            $table->unsignedBigInteger('company_id')->after('branch_id');
+
+            // Add foreign key if `company_id` references the `companies` table
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
         });
     }
 
     public function down()
     {
         Schema::table('agents', function (Blueprint $table) {
-            $table->dropForeign(['type_id']); // Drop foreign key
-            $table->dropColumn('type_id'); // Drop column
+            $table->dropForeign(['company_id']);
+            $table->dropColumn('company_id');
         });
     }
 };

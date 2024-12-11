@@ -12,8 +12,10 @@ use Illuminate\Database\Eloquent\Model;
 class Agent extends Model
 {
     use HasFactory;
+    protected $table = 'agents'; // Explicitly define the table name
 
-    protected $fillable = ['name', 'email', 'user_id', 'type', 'branch_id',  'company_id', 'phone_number', 'description'];
+
+    protected $fillable = ['name', 'email', 'user_id', 'type_id', 'branch_id',  'company_id', 'phone_number', 'description'];
 
     public function branch()
     {

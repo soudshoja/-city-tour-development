@@ -20,5 +20,5 @@ class Role extends Model
     public const AGENT = 3;
     public const ACCOUNTANT = 4;
     public const CLIENT =   5;
-    public const BRANCH = 6; // Replace with the correct role ID for Branch
+    public const BRANCH = 6;
 }

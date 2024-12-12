@@ -10,8 +10,10 @@ use App\Models\TaskFlightDetail;
 use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Airline;
+use App\Models\Conversation;
 use App\Models\Country;
 use App\Models\Hotel;
+use App\Models\Message;
 use App\Models\Role;
 use App\Models\TaskHotelDetail;
 use Exception;
@@ -73,6 +75,28 @@ class OpenAiController extends Controller
         return $response;
     }
 
+    public function chatCompletionTools(string $model = 'gpt-4o-mini', array $tools, array $message)
+    {
+        $url = config('services.open-ai.url') . '/chat/completions';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+
+        $data = [
+            'model' => $model,
+            'messages' => $message,
+            'tools' => $tools,
+            'user' => 'user',
+        ];
+
+        $response =  $this->postRequest($url, $header, json_encode($data));
+
+        logger('chat completion tools response: ', $response);
+
+        return $response;
+    }
+
     public function chatCompletionImage($prompt, $image)
     {
         $url = config('services.open-ai.url') . '/chat/completions';
@@ -123,7 +147,7 @@ class OpenAiController extends Controller
     
         only pass me the data extracted in JSON format.
         ";
-    
+
         // Make the request to the OpenAI API
         $response = $this->chatCompletion([
             [
@@ -167,7 +191,7 @@ class OpenAiController extends Controller
                     Suggest if it's a flight or hotel booking. 
                     sample answer: 'flight' or 'hotel'
                     ";
-        
+
         $response = $this->chatCompletion([
             [
                 'role' => 'user',
@@ -179,15 +203,15 @@ class OpenAiController extends Controller
             ],
         ]);
 
-        if(isset($response['choices'][0]['message']['content'])) {
-           $type = $response['choices'][0]['message']['content'];
-           
-           if($type !== 'flight' && $type !== 'hotel') {
+        if (isset($response['choices'][0]['message']['content'])) {
+            $type = $response['choices'][0]['message']['content'];
+
+            if ($type !== 'flight' && $type !== 'hotel') {
                 return [
                     'status' => 'error',
                     'message' => 'Invalid response. Please provide a valid response: flight or hotel'
                 ];
-           }
+            }
         }
 
         return [
@@ -195,7 +219,7 @@ class OpenAiController extends Controller
             'message' => 'Document type identified successfully',
             'data' => $type,
         ];
-    } 
+    }
 
     /**
      * Extract flight data from the content
@@ -306,9 +330,9 @@ class OpenAiController extends Controller
             ],
         ]);
 
-        if(isset($response['choices'][0]['message']['content'])) {
+        if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
-            
+
             $decodedResponse = json_decode($message, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
@@ -326,8 +350,7 @@ class OpenAiController extends Controller
                     ];
                 }
             }
-        }            
-            
+        }
     }
 
     /**
@@ -340,7 +363,7 @@ class OpenAiController extends Controller
     public function extractHotelData($content)
     {
         $supplierList = Supplier::all()->toArray();
-        
+
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
 
@@ -420,7 +443,7 @@ class OpenAiController extends Controller
             }
         }
         ";
-        
+
         $response = $this->chatCompletion([
             [
                 'role' => 'user',
@@ -432,9 +455,9 @@ class OpenAiController extends Controller
             ],
         ]);
 
-        if(isset($response['choices'][0]['message']['content'])) {
+        if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
-            
+
             $decodedResponse = json_decode($message, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
@@ -486,13 +509,12 @@ class OpenAiController extends Controller
     {
         logger('Data: ', $data);
         $task = $data;
-        
-        if(auth()->user()->role_id == Role::COMPANY )
-        {
+
+        if (auth()->user()->role_id == Role::COMPANY) {
             $companyId = auth()->user()->company->id;
         } else if (auth()->user()->role_id == Role::BRANCH) {
             $companyId = auth()->user()->branch->company_id;
-        } else if(auth()->user()->role_id == Role::AGENT) {
+        } else if (auth()->user()->role_id == Role::AGENT) {
             $companyId = auth()->user()->agent->branch->company_id;
         } else {
 
@@ -500,29 +522,35 @@ class OpenAiController extends Controller
                 'status' => 'error',
                 'message' => 'User not authorized to create task',
             ];
-
         }
 
         $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
-            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first()
-            : Agent::with(['branch' => function ($query) use ($companyId) {
+            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first() ??
+            Agent::with(['branch' => function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            }])->first() : Agent::with(['branch' => function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             }])->first();
-        
+
+
         $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
- 
-        if($task['supplier_name'] === null) {
+
+        if ($task['supplier_name'] === null) {
             throw new Exception('Supplier name is not found');
         }
 
         $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
-        
-        if(!$supplier) {
+
+        if (!$supplier) {
             return [
                 'status' => 'error',
                 'message' => 'Supplier not found',
             ];
         }
+        logger('tasks: ', $task);
+        logger('agent: ', $agent->toArray());
+
+        $client ? logger('client: ', $client->toArray()) : logger('client dont exist');
 
         $taskData = [
             'additional_info' => $task['additional_info'] ?? null,
@@ -533,10 +561,10 @@ class OpenAiController extends Controller
             'total' => isset($task['total']) ? $task['total'] : null,
             'tax' => isset($task['tax']) ? $task['tax'] : null,
             'reference' => $task['reference'] ?? null,
-            'type' => strtoupper($task['type']) ?? null,
-            'agent_id' => $agent->id ,
+            'type' => $task['type'] ? strtoupper($task['type']) : null,
+            'agent_id' => $agent->id,
             'client_id' => $client->id ?? null,
-            'supplier_id' => $supplier->id ,
+            'supplier_id' => $supplier->id,
             'cancellation_policy' => $task['cancellation_policy'] ?? null,
             'venue' => $task['venue'] ?? null,
         ];
@@ -585,24 +613,24 @@ class OpenAiController extends Controller
      */
     public function saveFlightDetails(array $data, int $taskId)
     {
-        
-        try{
+
+        try {
 
             $data = $data['task_flight_details'];
-            
+
             $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
             $countryFrom = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first() : null;
             $countryTo = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['arrive_to'] . '%')->first() : null;
 
 
             $flightDetails = [
-                'farebase' => (float)$data['farebase'] ?? null,
+                'farebase' => isset($data['farebase']) ? (float) $data['farebase'] : null,
                 'departure_time' => $data['departure_time'] ?? null,
                 'country_id_from' => $countryFrom->id ?? null,
                 'airport_from' => $data['airport_from'] ?? null,
                 'terminal_from' => $data['terminal_from'] ?? null,
                 'arrival_time' => $data['arrival_time'] ?? null,
-                'country_id_to' => $countryTo-> id ?? null,
+                'country_id_to' => $countryTo->id ?? null,
                 'airport_to' => $data['airport_to'] ?? null,
                 'terminal_to' => $data['terminal_to'] ?? null,
                 'airline_id' => $airline->id ?? null,
@@ -615,11 +643,10 @@ class OpenAiController extends Controller
                 'task_id' => $taskId
             ];
 
-             TaskFlightDetail::create($flightDetails);
-
+            TaskFlightDetail::create($flightDetails);
         } catch (Exception $e) {
 
-           throw $e; 
+            throw $e;
         }
     }
 
@@ -640,7 +667,7 @@ class OpenAiController extends Controller
 
             $hotelCountry = Country::where('name', 'like', '%' . $data['hotel_country'] . '%')->first();
 
-            if(!$hotel) {
+            if (!$hotel) {
                 $hotel = Hotel::create([
                     'name' => $data['hotel_name'],
                     'address' => $data['hotel_address'] ?? null,
@@ -666,6 +693,179 @@ class OpenAiController extends Controller
             TaskHotelDetail::create($hotelDetails);
         } catch (Exception $e) {
             throw $e;
+        }
+    }
+
+    public function retrieveThread($id)
+    {
+        $url = config('services.open-ai.url') . '/threads/' . $id;
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+        $response = $this->getRequest($url, $header);
+
+        return response()->json($response);
+    }
+
+    public function createAssistant()
+    {
+        $url = config('services.open-ai.url') . '/assistants';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+        $data = [
+            'model' => 'gpt-4o-mini',
+            'name' => 'City Tour Travel Assistant',
+            'description' => 'Assistant for City Tour travel agency system',
+            'instructions' => 'You are an assistant in a travel agency system. You will learn everything about this system and help users to get the information they need. You can ask for help if you need it.',
+            'metadata' => [
+                'user_id' => 'user-test',
+            ],
+            'temperature' => 0.5,
+        ];
+
+        $response = $this->postRequest($url, $header, json_encode($data));
+
+        return response()->json($response);
+    }
+
+    public function sendDataToThread()
+    {
+        $clients = Client::all()->toArray();
+        $id = 'thread_PHKwj9kyPTmvFQaupHMKI3e9';
+        $url = config('services.open-ai.url') . '/threads/' . $id . '/messages';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+        $data = [
+            'role' => 'assistant',
+            'content' => 'list of client in the system : ' . json_encode($clients),
+        ];
+
+        $response = $this->postRequest($url, $header, json_encode($data));
+
+        return response()->json($response);
+    }
+
+    public function createMessage($threadId, Request $request)
+    {
+        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+    }
+
+    public function askOpenAi($content, $conversationId)
+    {
+        $data =  [];
+
+        $pastConversation = Conversation::with('messages')->where('user_id', auth()->id())->get();
+
+
+        if ($pastConversation > 0) {
+
+            foreach ($pastConversation as $conversation) {
+                $data[] = [
+                    'role' => 'user',
+                    'content' => 'my question: ' . $conversation->messages->where('type', 'question')->first()->content . ' and your answer: ' . $conversation->messages->where('type', 'answer')->first()->content,
+                ];
+            }
+        }
+
+        $response = $this->questionOrAction($content);
+
+        if($response['data'] === 'question')
+        {
+            $data[] = [
+                'role' => 'user',
+                'content' => $content,
+            ];
+           return $this->askQuestion($data, $conversationId);
+        }
+        else
+        {
+            $data[] = [
+                'role' => 'user',
+                'content' => $content,
+            ];
+
+            return [
+                'status' => 'error'
+            ];
+        }
+
+        
+    }
+
+
+    public function questionOrAction($data)
+    {
+
+        $content = [
+            'role' => 'user',
+            'content' => 'determined if the content is question or action : ' . $data . ' and return the answer either , "action" or "question"',
+        ];
+
+        $response = $this->chatCompletion($content);
+
+        if(isset($response['choices'][0]['message']['content']));
+        {
+            $message = $response['choices'][0]['message']['content'];
+
+            if($message !== 'action' && $message !== 'question')
+            {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid response. Please provide a valid response: action or question'
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'message' => 'Prompt type identified successfully',
+                'data' => $message,
+            ];
+        }
+    }
+
+    public function askQuestion($data, $conversationId)
+    {
+        $response = $this->chatCompletion($data);
+
+        if (isset($response['choices'][0]['message']['content'])) {
+            $message = $response['choices'][0]['message']['content'];
+
+            $message = $this->cleanJsonResponse($message);
+
+            $createdMessage = Message::create([
+                'content' => $message,
+                'conversation_id' => $conversationId,
+                'type' => 'answer',
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Question answer successfully',
+                'data' => $message,
+            ];
+        } else {
+            $message = $response;
+
+            return [
+                'status' => 'error',
+                'message' => 'Question failed. No content returned from OpenAI.',
+                'data' => $message,
+            ];
         }
     }
 }

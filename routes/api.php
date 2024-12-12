@@ -5,6 +5,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\Auth\TwoFAController;
+use App\Http\Controllers\OpenAiController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -27,6 +28,11 @@ use App\Http\Controllers\Auth\TwoFAController;
 
         Route::get('/clients', [MobileController::class, 'client']);  
         Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);
+
+        Route::get('/test-get-client', [OpenAiController::class, 'clientTest']);
+        Route::get('/thread/{id}',[OpenAiController::class, 'retrieveThread']);
+        Route::get('/create-assistant',[OpenAiController::class, 'createAssistant']);
+        Route::get('/send-client-data',[OpenAiController::class, 'sendDataToThread']);
 
         Route::get('pin', function(){
             return view('auth.pin');

@@ -228,7 +228,7 @@ class TaskController extends Controller
             'task_file' => 'required|mimes:pdf',
         ]);
 
-        $file = $request->file('task_file')->store('tasks');
+        $file = $request->file('task_file')->store('public/tasks');
 
         if ($file) {
             $response = $this->extractTaskFromFile($file);
@@ -246,7 +246,7 @@ class TaskController extends Controller
 
     public function extractTaskFromFile($file)
     {
-        $file = storage_path('app/public/' . $file);
+        $file = storage_path('app/' . $file);
 
         $contents = $this->pdfToText($file);
 

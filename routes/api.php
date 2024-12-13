@@ -34,6 +34,7 @@ use App\Http\Controllers\OpenAiController;
         Route::get('/create-assistant',[OpenAiController::class, 'createAssistant']);
         Route::get('/send-client-data',[OpenAiController::class, 'sendDataToThread']);
 
+        Route::post('/send-message', [OpenAiController::class, 'sendMessage']);
         Route::get('pin', function(){
             return view('auth.pin');
         })->name('pin');

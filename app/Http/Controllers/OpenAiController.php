@@ -10,6 +10,7 @@ use App\Models\TaskFlightDetail;
 use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Airline;
+use App\Models\ChatCompletion;
 use App\Models\Conversation;
 use App\Models\Country;
 use App\Models\Hotel;
@@ -56,6 +57,26 @@ class OpenAiController extends Controller
         $response =  $this->postRequest($url, $header, json_encode($data));
 
         return response()->json($response);
+    }
+
+    public function chatCompletionJsonResponse(array $message){
+        $url = config('services.open-ai.url') . '/chat/completions';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+        $data = [
+            'model' => 'gpt-4o-mini',
+            'messages' => $message,
+            'response_format' => [
+                'type' => 'json_object',
+            ]        
+        ];
+        
+        $response =  $this->postRequest($url, $header, json_encode($data));
+
+        logger('chat completion response: ', $response);
+        return $response;
     }
 
     public function chatCompletion(array $message)
@@ -765,35 +786,45 @@ class OpenAiController extends Controller
         ];
     }
 
-    public function askOpenAi($content, $conversationId)
+    public function sendMessage(Request $request)
     {
-        $data =  [];
+        
+        $content = $request->input('content');
+        $userId = $request->input('id');
+        
 
-        $pastConversation = Conversation::with('messages')->where('user_id', auth()->id())->get();
+        $response = $this->askOpenAi($content, $userId);
+
+        return response()->json($response);
+    }
 
 
-        if ($pastConversation > 0) {
-
-            foreach ($pastConversation as $conversation) {
-                $data[] = [
-                    'role' => 'user',
-                    'content' => 'my question: ' . $conversation->messages->where('type', 'question')->first()->content . ' and your answer: ' . $conversation->messages->where('type', 'answer')->first()->content,
-                ];
-            }
-        }
-
+    /**
+     * Ask the AI system
+     * 
+     * @param string $content
+     * @param int $userId
+     * 
+     * @return array ['status', 'message', 'data']
+     */
+    public function askOpenAi($content, $userId)
+    {
         $response = $this->questionOrAction($content);
-
-        if($response['data'] === 'question')
+      
+        if(isset($response['error']) || $response['status'] === 'error')
         {
+            return $response;
+        }
+        
+        if($response['data']['type'] === 'question')
+        {
+
             $data[] = [
                 'role' => 'user',
                 'content' => $content,
             ];
-           return $this->askQuestion($data, $conversationId);
-        }
-        else
-        {
+           return $this->askQuestion($data, $userId);
+        } else {
             $data[] = [
                 'role' => 'user',
                 'content' => $content,
@@ -812,45 +843,119 @@ class OpenAiController extends Controller
     {
 
         $content = [
-            'role' => 'user',
-            'content' => 'determined if the content is question or action : ' . $data . ' and return the answer either , "action" or "question"',
+            [
+                'role' => 'user',
+                'content' => 'determined if the content is question or action : ' . $data . ' and return the answer either , "action" or "question"',
+            ],
+            [
+                'role' => 'user',
+                'content' => 'example answer in json format:
+                    {
+                     "type": "question"
+                    }     
+                "',
+            ]
         ];
 
-        $response = $this->chatCompletion($content);
+        $response = $this->chatCompletionJsonResponse($content);
+ 
+        if(isset($response['error']))
+        {
+            return $response;
+        }
 
         if(isset($response['choices'][0]['message']['content']));
         {
             $message = $response['choices'][0]['message']['content'];
 
-            if($message !== 'action' && $message !== 'question')
-            {
+            $message = json_decode($message)->type;
+
+            if ($message !== 'action' && $message !== 'question') {
                 return [
                     'status' => 'error',
-                    'message' => 'Invalid response. Please provide a valid response: action or question'
+                    'message' => 'Invalid response. Please provide a valid response: action or question',
+                    'data' => $message
                 ];
             }
 
             return [
                 'status' => 'success',
                 'message' => 'Prompt type identified successfully',
-                'data' => $message,
+                'data' => [
+                    'type' => $message,
+                ]
             ];
         }
     }
 
-    public function askQuestion($data, $conversationId)
+    /**
+     * Ask a question to the AI system
+     * 
+     * @param array $data
+     * @param int $userId
+     * 
+     * @return array ['status', 'message', 'data']
+     */
+    public function askQuestion($data, $userId)
     {
+
+        $data =  [];
+
+        $pastConversation = Conversation::with('messages')->where('user_id', $userId)->get();
+
+        if (count($pastConversation) > 0) {
+
+            foreach ($pastConversation as $conversation) {
+                $data[] = [
+                    'role' => 'user',
+                    'content' => 'my question: ' . $conversation->messages->where('type', 'question')->first()->content . ' and your answer: ' . $conversation->messages->where('type', 'answer')->first()->content,
+                ];
+            }
+        } else {
+
+            $response = $this->teachAiSystem($userId);
+
+            $conversationId = $response['data']['conversation_id'];
+
+            $conversation = Conversation::with('messages')->where('id', $conversationId)->first();
+
+            $data[] = [
+                'role' => 'user',
+                'content' => 'my question: ' . $conversation->messages->where('type', 'question')->first()->content . ' and your answer: ' . $conversation->messages->where('type', 'answer')->first()->content,
+            ];
+
+        }
+
         $response = $this->chatCompletion($data);
 
         if (isset($response['choices'][0]['message']['content'])) {
-            $message = $response['choices'][0]['message']['content'];
 
+            $message = $response['choices'][0]['message']['content'];
+            return $message;
             $message = $this->cleanJsonResponse($message);
 
-            $createdMessage = Message::create([
-                'content' => $message,
+            $conversationId = Conversation::create([
+                'user_id' => $userId,
+            ])->id;
+
+            $this->saveMessages($conversationId, 'question', $data);
+
+            $this->saveMessages($conversationId, 'answer', $message);
+
+            $recordChat = ChatCompletion::create([
                 'conversation_id' => $conversationId,
-                'type' => 'answer',
+                'chat_id' => $response['id'], 
+                'object' => $response['object'],
+                'created' => $response['created'],
+                'model' => $response['model'],
+                'system_fingerprint' => $response['system_fingerprint'],
+                'prompt_tokens' => $response['usage']['prompt_tokens'],
+                'completion_tokens' => $response['usage']['completion_tokens'],
+                'total_tokens' => $response['usage']['total_tokens'],
+                'reasoning_tokens' => $response['usage']['completion_tokens_details']['reasoning_tokens'],
+                'accepted_prediction_tokens' => $response['usage']['completion_tokens_details']['accepted_prediction_tokens'],
+                'rejected_prediction_tokens' => $response['usage']['completion_tokens_details']['rejected_prediction_tokens'],
+                
             ]);
 
             return [
@@ -867,5 +972,90 @@ class OpenAiController extends Controller
                 'data' => $message,
             ];
         }
+    }
+
+    /**
+     * Teach the AI system
+     * 
+     * @param int $userId
+     * 
+     * @return array ['status', 'message', 'data' => ['conversation_id']]
+     */
+    public function teachAiSystem($userId)
+    {
+        $content = [
+            [
+                'role' => 'system',
+                'content' => 'You are an assistant in a travel agency system. You will learn everything about this system and help users to get the information they need. You can ask for help if you need it.,
+                our system is cather for business. It is b2b system. We have three types of users: company, branch and agent. Each user has different roles and permissions. The company is the main user and has the highest permissions. The branch is the second user and has the second highest permissions. The agent is the third user and has the lowest permissions.,
+                The company can create branches and agents. The branch can create agents. The agent can create tasks. The company can see all the tasks created by the agents. The branch can see all the tasks created by the agents. The agent can see only the tasks created by him.,
+                The company can see all the tasks created by the agents. The branch can see all the tasks created by the agents. The agent can see only the tasks created by him.,
+                the main purpose of the system is to help the agents to create tasks and manage them. The task got from various suppliers. The task can be flight, hotel, car rental, etc. The agent can create a task and assign it to a client,
+                Users then will create invoice for the task and send payment link to client to pay for the task'
+            ],
+            [
+                'role' => 'user',
+                'content' => 'Now you understand the system, users will ask you questions about the system. You need to answer them correctly and provide them with the information they need.',
+            ]
+        ];
+
+        $response = $this->chatCompletion($content);
+
+        if (isset($response['error'])) {
+            return $response;
+        }
+
+        if (isset($response['choices'][0]['message']['content'])) {
+            $message = $response['choices'][0]['message']['content'];
+
+            $message = json_decode($message);
+            
+            if ($message !== 'action' && $message !== 'question') {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid response. Please provide a valid response: action or question',
+                    'data' => $message
+                ];
+            }
+
+            $conversationId = Conversation::create([
+                'user_id' => $userId,
+            ])->id;
+
+            $this->saveMessages($conversationId, 'question', $content);
+            
+            $this->saveMessages($conversationId, 'answer', $message);
+
+            return [
+                'status' => 'success',
+                'message' => 'Teaching the system successfully',
+                'data' => [
+                    'conversation_id' => $conversationId
+                ]
+            ];
+        }
+    }
+
+    /**
+     * @param int $conversationId
+     * @param string $type
+     * @param array $contents 
+     * 
+     * @return void
+     */
+    public function saveMessages(int $conversationId, string $type, array $contents)
+    {
+            if(count($contents) > 0)
+            {
+                foreach($contents as $content)
+                {
+                    $createdMessage = Message::create([
+                        'content' => $content['content'],
+                        'conversation_id' => $conversationId,
+                        'type' => $type,
+                        'role' => $content['role'],
+                    ]);
+                }
+            }
     }
 }

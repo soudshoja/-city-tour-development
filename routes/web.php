@@ -87,6 +87,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
 
 
+
     // Routes for creating new records
     Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
@@ -161,6 +162,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/branches', [BranchController::class, 'store'])->name('store');
         Route::get('/branches/create', [BranchController::class, 'create'])->name('create');
     });
+
+    Route::get('/branches/search', [BranchController::class, 'search'])->name('branches.search');
 
 
     // whatsapp

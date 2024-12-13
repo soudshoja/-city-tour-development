@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('conversation_id')->constrained()->onDelete('cascade');
             $table->string('type')->enum('question', 'answer');
+            $table->string('role')->enum('user', 'assistant');
             $table->text('content');
             $table->timestamps();
         });

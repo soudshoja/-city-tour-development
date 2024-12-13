@@ -18,6 +18,7 @@ class Chat extends Component
     }
 
     public function sendMessage(string $content){
+
         $conversationId = Conversation::create([
             'user_id' => auth()->id(),
         ])->id;

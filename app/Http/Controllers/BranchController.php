@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Exception;
@@ -83,24 +84,5 @@ class BranchController extends Controller
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', 'An error occurred: ' . $e->getMessage());
         }
-    }
-
-    public function search(Request $request)
-    {
-        $query = $request->get('query');
-        if (!$query) {
-            return response()->json([]);
-        }
-
-        // Log the query
-        Log::info('Search query:', ['query' => $query]);
-
-        // Fetch results
-        $branches = Branch::whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($query) . '%'])->get();
-
-        // Log the results
-        Log::info('Search results:', $branches->toArray());
-
-        return response()->json($branches);
     }
 }

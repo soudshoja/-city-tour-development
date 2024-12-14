@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use App\Models\Branch;
 use App\Models\Agent;
+use App\Models\Role;
 
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -24,20 +25,10 @@ class AdminUsersController extends Controller
         return view('adminsList', compact('adminUsers', 'NumberOfAdmins'));
     }
 
-    public function ShowCompanies(Request $request)
-    {
-        // Retrieve all companies with their related nationality
-        $companies = Company::with('nationality')->get(); // Eager load the nationality relationship
-
-        // Retrieve all companies and their count
-        $companiesCount = Company::count();
-
-        // Return view with the companies data
-        return view('admin.companiesList', compact('companies', 'companiesCount'));
-    }
 
 
-    public function new()
+
+    public function newCompany()
     {
         $countries = Country::all(); // Fetch all countries from the `countries` table
         return view('admin.addnewCompany', compact('countries'));
@@ -66,7 +57,7 @@ class AdminUsersController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
-            'role_id' => 2, // Assuming 2 is the role ID for "Company"
+            'role_id' => Role::COMPANY,
             'remember_token' => Str::random(10),
             'first_login' => 1,
         ]);
@@ -124,5 +115,18 @@ class AdminUsersController extends Controller
         Log::info('Default agent created.');
 
         return redirect()->route('companies.index')->with('success', 'Company registered successfully.');
+    }
+
+
+    public function ShowCompanies(Request $request)
+    {
+        // Retrieve all companies with their related nationality
+        $companies = Company::with('nationality')->get(); // Eager load the nationality relationship
+
+        // Retrieve all companies and their count
+        $companiesCount = Company::count();
+
+        // Return view with the companies data
+        return view('admin.companiesList', compact('companies', 'companiesCount'));
     }
 }

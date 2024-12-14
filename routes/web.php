@@ -65,7 +65,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
 
     // Show the form to create a new company
-    Route::get('/companies/new', [AdminUsersController::class, 'new'])->name('companiesnew.new');
+    Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
 
     // Store a new company
     Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
@@ -115,10 +115,12 @@ Route::middleware(['auth'])->group(function () {
     // task routes
     Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-    Route::put('/tasks-update/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::get('/tasks-voucher', [TaskController::class, 'voucher'])->name('tasks.voucher');
+    Route::put('/tasks-update/{id}', [TaskController::class, 'update'])->name('tasks.update');
     Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
     Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
+    Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
 
 
     // verdors routes
@@ -163,7 +165,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/branches/create', [BranchController::class, 'create'])->name('create');
     });
 
-    Route::get('/branches/search', [BranchController::class, 'search'])->name('branches.search');
 
 
     // whatsapp
@@ -201,6 +202,29 @@ Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoic
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
+
+
+// search for invoice creation
+
+// branch 
+Route::get('/search-branch', [InvoiceController::class, 'searchBranch'])->name('search.branch');
+Route::post('/select-branch', [InvoiceController::class, 'selectBranch'])->name('select.branch');
+
+// agent
+Route::get('/search-agent', [InvoiceController::class, 'searchAgent'])->name('search.agent');
+Route::post('/select-agent', [InvoiceController::class, 'selectAgent'])->name('select.agent');
+
+// client
+Route::get('/search-client', [InvoiceController::class, 'searchClient'])->name('search.client');
+Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name('select.client');
+
+
+// items 
+Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
+Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
+
+
+
 
 // PAYMENT
 Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');

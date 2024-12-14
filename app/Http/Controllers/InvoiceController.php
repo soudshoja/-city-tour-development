@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\NotificationTrait;
 use App\Models\Account;
 use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Company;
 use App\Models\GeneralLedger;
@@ -19,9 +21,11 @@ use App\Models\Role;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Redirect;
 
 class InvoiceController extends Controller
 {
+    use NotificationTrait;
 
     public function index($id = null)
     {
@@ -40,7 +44,10 @@ class InvoiceController extends Controller
             $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
-            $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->pluck('id');
+
             $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             // Agent can see their tasks
@@ -50,42 +57,84 @@ class InvoiceController extends Controller
         return view('invoice.index', compact('invoices', 'agent'));
     }
 
-    public function create(Request $request)
+    public function salelist()
     {
         $user = Auth::user();
-    
+
+        // Ensure that the user is a company
+        if ($user->role_id !== Role::COMPANY) {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        // Get all agents under the company
+        $agents = Agent::with(['branch' => function ($query) use ($user) {
+            $query->where('branch_id', $user->company->branch->id);
+        }])->pluck('id');
+
+        // Get invoices related to those agents
+        $invoices = Invoice::where('status', 'paid')->with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
+
+        // Get clients related to the agents
+        $clients = Client::whereIn('agent_id', $agents)->get();
+
+        // Get tasks related to the agents
+        $tasks = Task::whereIn('agent_id', $agents)->get();
+
+        $totalInvoices = $invoices->total();
+
+        return view('invoice.salelist', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
+    }
+
+
+    public function create(Request $request)
+    {
+        $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
+        $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+        $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
+
+        foreach ($selectedTasks as $task) {
+            if ($task->invoiceDetail) {
+                return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
+            }
+        }
+        $user = Auth::user();
+        $agents = collect();
         if ($user->role_id == Role::COMPANY) {
-            $company = $user->company;          
+            $company = $user->company;
+
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
-            $company = Company::find($agent->company_id);
+            $company = Company::find($agent->branch->company_id);
         }
-    
+
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
-    
+
         if (!$invoiceSequence) {
             $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
         }
-    
+
         $currentSequence = $invoiceSequence->current_sequence;
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
-    
+
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
-    
-        $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
-        $taskIdsArray = explode(',', $taskIds); // Multiple tasks
 
-   
+        $this->storeNotification([
+            'user_id' => $user->id,
+            'title' => 'Invoice' . $invoiceNumber . ' Created By ' . $user->name,
+            'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
+        ]);
+
         // Fetch tasks
-        $selectedTasks = Task::whereIn('id', $taskIdsArray)->get();
         // Handle client association
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
             $agentIds =  $selectedTasks->pluck('agent_id')->unique();
-
             $selectedAgent = Agent::find($agentIds->first());
-            
+
             if ($clientIds->count() >= 1) {
                 $selectedClient = Client::find($clientIds->first());
             } else {
@@ -93,32 +142,71 @@ class InvoiceController extends Controller
             }
         } else {
             $selectedClient = null; // No tasks selected
-            $selectedAgent =null;
+            $selectedAgent = null;
         }
-    
 
+        // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
+        $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
+            return $agent['id'];
+        }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
 
-        $agentId =  $selectedAgent ? $selectedAgent->id : null;
-        // Prepare additional data
         $clientId = $selectedClient ? $selectedClient->id : null;
-        $clients = $agentId ? Client::where('agent_id', $agentId)->get() : collect();
-        $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
+
+        $clients = Client::with(['agent.branch' => function ($query) {
+            if (auth()->user()->role_id == Role::COMPANY) {
+                $companyId = auth()->user()->company->id;
+            } elseif (auth()->user()->role_id == Role::AGENT) {
+                $companyId = auth()->user()->agent->branch->company_id;
+            }
+            $query->where('company_id', $companyId);
+        }])->get();
+
+        $tasks = null;
+        if ($user->role_id == Role::AGENT) {
+            $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
+        }
         $suppliers = Supplier::all();
-    
+
+        $todayDate = Carbon::now()->format('Y-m-d');
+
+        $appUrl = config('app.url');
+
         return view('invoice.create', compact(
-            'clients', 
-            'agentId', 
-            'clientId', 
-            'tasks', 
-            'company', 
-            'suppliers', 
-            'invoiceNumber', 
-            'selectedTasks', 
+            'clients',
+            'agents',
+            'agentId',
+            'clientId',
+            'tasks',
+            'company',
+            'suppliers',
+            'invoiceNumber',
+            'selectedTasks',
             'selectedAgent',
-            'selectedClient'
+            'selectedClient',
+            'todayDate',
+            'appUrl'
         ));
     }
-    
+
+
+    public function edit(string $invoiceNumber)
+    {
+
+        // Retrieve the invoice based on the invoice number
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+
+        // Check if the invoice exists
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        $payment = Payment::where('invoice_id', $invoice->id)->first();
+
+        $invoiceDetails = $invoice->invoiceDetails;
+
+        return view('invoice.edit', compact('invoice', 'payment', 'invoiceDetails'));
+    }
+
 
 
     /**
@@ -126,6 +214,24 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'tasks' => 'required|array',
+            'tasks.*.id' => 'required|integer',
+            'tasks.*.description' => 'required|string',
+            'tasks.*.remark' => 'nullable|string',
+            'tasks.*.invprice' => 'required|numeric',
+            'tasks.*.supplier_id' => 'required|integer',
+            'tasks.*.client_id' => 'required|integer',
+            'tasks.*.agent_id' => 'required|integer',
+            'invdate' => 'required|date',
+            'duedate' => 'required|date',
+            'subTotal' => 'required|numeric',
+            'clientId' => 'required|integer',
+            'agentId' => 'required|integer',
+            'invoiceNumber' => 'required|string',
+            'currency' => 'required|string',
+        ]);
+
 
         $tasks = $request->input('tasks');
         $duedate = $request->input('duedate');
@@ -138,24 +244,13 @@ class InvoiceController extends Controller
 
 
         $agent = Agent::where('id', operator: $agentId)->first();
-        $companyId = $agent ? $agent->company_id : null;
+        $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
+        $branchId = $agent ? $agent->branch_id : null;
         Log::info('Company ID:', ['companyId' => $companyId]);
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
             ->where('company_id', $companyId)
             ->first();
-
-        Log::info('clientId:', ['clientId' => $clientId]);
-
-        if ($receivableAccount) {
-            $filteredReceivableChildAccount = $receivableAccount->children()
-                ->where('reference_id', $clientId) // Filter by child reference_id
-                ->first(); // Get the first matching child account
-            Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
-            $ReceivablechildAccountId = $filteredReceivableChildAccount ? $filteredReceivableChildAccount->id : null;
-        } else {
-            $ReceivablechildAccountId = null; // Handle case when no parent account is found
-        }
 
 
         $payableAccount =  Account::where('name', 'like', '%Payable%')
@@ -165,18 +260,6 @@ class InvoiceController extends Controller
         $incomeAccount =  Account::where('name', 'like', '%Income On Sales%')
             ->where('company_id', $companyId)
             ->first();
-
-        if ($incomeAccount) {
-            Log::info('incomeAccount', ['incomeAccount' => $incomeAccount]);
-            $filteredIncomeChildAccount = $incomeAccount->children()
-                ->where('reference_id', $agentId) // Filter by child reference_id
-                ->first(); // Get the first matching child account
-            Log::info('filteredIncomeChildAccount', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount]);
-            $IncomechildAccountId = $filteredIncomeChildAccount ? $filteredIncomeChildAccount->id : null;
-        } else {
-            $IncomechildAccountId = null; // Handle case when no parent account is found
-        }
-
 
         try {
 
@@ -219,125 +302,74 @@ class InvoiceController extends Controller
                             'entity_id' => $companyId,
                             'entity_type' => 'company',
                             'transaction_type' => 'credit',
-                            'amount'=>  $task['invprice'],
-                            'date'=> Carbon::now(),
-                            'description'=> 'Invoice:' . $invoiceNumber . ' Generated',
-                            'invoice_id'=> $invoice->id,
-                            'reference_type' =>'Invoice', 
+                            'amount' =>  $task['invprice'],
+                            'date' => Carbon::now(),
+                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                            'invoice_id' => $invoice->id,
+                            'reference_type' => 'Invoice',
                         ]);
-
-
-                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
-                        if ($payableAccount) {
-                            $filteredPayableChildAccount = $payableAccount->children()
-                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
-                                ->first(); // Get the first matching child account
-                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
-                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
-                        } else {
-                            $PayablechildAccountId = null; // Handle case when no parent account is found
-                        }
 
 
                         // Try to create payable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'account_id' =>  $PayablechildAccountId,
+                            'branch_id' => $branchId,
+                            'account_id' =>  $payableAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be made to: ' . $supplier->name,
                             'debit' => $selectedtask->total,
-                            'credit' =>0,
+                            'credit' => 0,
                             'balance' => $selectedtask->total,
                             'name' => $supplier->name,
-                            'type' => 'payable'
+                            'type' => 'payable',
+                            'type_reference_id' => $supplier->id
                         ]);
-
-
-                        $filteredPayableChildAccount->actual_balance += $selectedtask->total;
-                        $filteredPayableChildAccount->save();
-                        Log::info('balance', ['filteredPayableChildAccount' => $filteredPayableChildAccount->actual_balance]);
-
-
-                        $parentPayableAccount = $filteredPayableChildAccount->parent; // Get the parent account
-                        if ($parentPayableAccount) {
-                            // Sum all child balances
-
-                            $totalBalance = $parentPayableAccount->children()->sum('actual_balance');
-                            $parentPayableAccount->actual_balance = $totalBalance; // Update the parent's balance
-                            $parentPayableAccount->save(); // Save the parent account
-                        }
 
 
                         // Try to create receivable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
+                            'branch_id' => $branchId,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
-                            'account_id' =>  $ReceivablechildAccountId,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be received from: ' . $client->name,
                             'debit' => 0,
                             'credit' => $task['invprice'],
                             'balance' => $task['invprice'],
                             'name' =>  $client->name,
-                            'type' => 'receivable'
+                            'type' => 'receivable',
+                            'type_reference_id' => $client->id
                         ]);
 
-                        $filteredReceivableChildAccount->actual_balance += $task['price'];
-                        $filteredReceivableChildAccount->save();
-                        Log::info('filteredReceivableChildAccount', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
-
-                        $parentReceivableAccount = $filteredReceivableChildAccount->parent; // Get the parent account
-                        if ($parentReceivableAccount) {
-                            // Sum all child balances
-
-                            Log::info('parentReceivableAccount:', ['parentReceivableAccount' => $parentReceivableAccount]);
-                            $totalBalance = $parentReceivableAccount->children()->sum('actual_balance');
-                            $parentReceivableAccount->actual_balance = $totalBalance; // Update the parent's balance
-                            $parentReceivableAccount->save(); // Save the parent account
-                        }
-
-                        Log::info('price:', ['price' => $task['price']]);
-                        Log::info('selectedtask->total:', ['selectedtask->total' => $selectedtask->total]);
 
                         $markup = $task['invprice'] - $selectedtask->total;
                         // Try to create income
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'account_id' => $IncomechildAccountId,
+                            'branch_id' => $branchId,
+                            'account_id' => $incomeAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Price markup by Agent: ' . $agent->name,
                             'debit' => 0,
                             'credit' => $markup,
                             'balance' => $markup,
                             'name' =>   $agent->name,
-                            'type' => 'income'
+                            'type' => 'income',
+                            'type_reference_id' => $agent->id
                         ]);
 
 
-                        Log::info('markup:', ['markup' => $markup]);
-                        Log::info('filteredIncomeChildAccount:', ['filteredIncomeChildAccount' => $filteredIncomeChildAccount->actual_balance]);
-                        $filteredIncomeChildAccount->actual_balance += $markup;
-                        $filteredIncomeChildAccount->save();
-
-                        $parentIncomeAccount = $filteredIncomeChildAccount->parent; // Get the parent account
-                        if ($parentIncomeAccount) {
-                            // Sum all child balances
-                            $totalBalance = $parentIncomeAccount->children()->sum('actual_balance');
-                            $parentIncomeAccount->actual_balance = $totalBalance; // Update the parent's balance
-                            $parentIncomeAccount->save(); // Save the parent account
-                        }
-                       
                         $selectedtask->status = 'Assigned';
                         $selectedtask->save();
-
                     } catch (Exception $e) {
                         Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                         return response()->json('Failed to create InvoiceDetails for task: ' . $task['description']);
@@ -400,10 +432,12 @@ class InvoiceController extends Controller
         }
 
         // Get all agents under the company
-        $agents = Agent::where('company_id', $user->company->id)->pluck('id');
+        $agents = Agent::with(['branch' => function ($query) use ($user) {
+            $query->where('branch_id', $user->company->branch->id);
+        }])->pluck('id');
 
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
+        $invoices = Invoice::where('status', 'unpaid')->with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agents)->get();
@@ -459,21 +493,25 @@ class InvoiceController extends Controller
         return view('invoice.clientInvoice', compact('invoice', 'invoiceDetails', 'transaction'));
     }
 
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
     {
-        //
+        $invoice = Invoice::find($id);
+
+        if (!$invoice) {
+            return response()->json(['error' => 'Invoice not found!'], 404);
+        }
+
+        try {
+            $invoice->update($request->all());
+
+            return redirect()->back()->with('status', 'Invoice updated successfully!');
+        } catch (Exception $error) {
+            logger('Failed to update invoice: ' . $error->getMessage());
+            return redirect()->back()->with('error', 'Failed to update invoice!');
+        }
     }
 
     /**
@@ -495,5 +533,22 @@ class InvoiceController extends Controller
         $invoice->save();
 
         return redirect()->route('invoice.index')->with('status', 'Invoice status updated successfully!');
+    }
+
+    public function getTaskInvoiceStatus($taskId)
+    {
+        $task = Task::find($taskId);
+
+        if (!$task) {
+            return response()->json(['error' => 'Task not found!'], 404);
+        }
+
+        $invoiceDetail = InvoiceDetail::where('task_id', $taskId)->first();
+
+        if (!$invoiceDetail) {
+            return response()->json(['error' => 'Invoice detail not found!'], 404);
+        }
+
+        return response()->json(['status' => $invoiceDetail->paid]);
     }
 }

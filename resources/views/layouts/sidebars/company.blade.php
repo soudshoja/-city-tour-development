@@ -1,5 +1,5 @@
 <!-- company dashboard -->
-<div x-data="{ dashboard: false }" class="flex items-center">
+<div x-data="{ dashboard: false }" class="flex items-center" x-cloak>
     <!-- dashboard Button -->
     <div @click="dashboard = !dashboard" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- dashboard Icon -->
@@ -20,7 +20,7 @@
 <!-- ./company dashboard -->
 
 <!-- Add New -->
-<div x-data="{ AddNew: false }" class="flex items-center">
+<div x-data="{ AddNew: false }" class="flex items-center" x-cloak>
     <!-- AddNew Button -->
     <div @click="AddNew = !AddNew" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- AddNew Icon -->
@@ -40,7 +40,7 @@
 
 
 <!-- company create invoice -->
-<div x-data="{ create: false }" class="flex items-center">
+<div x-data="{ create: false }" class="flex items-center" x-cloak>
     <!-- create invoice Button -->
     <div @click="create = !create" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- create invoice Icon -->
@@ -58,7 +58,7 @@
 
 
 <!-- company users LIST-->
-<div x-data="{ users: false }" class="flex items-center">
+<div x-data="{ users: false }" class="flex items-center" x-cloak>
     <!-- users Button -->
     <div @click="users = !users" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- users Icon -->
@@ -84,7 +84,7 @@
 
 
 <!-- company tasks -->
-<div x-data="{ tasks: false }" class="flex items-center">
+<div x-data="{ tasks: false }" class="flex items-center" x-cloak>
     <!-- tasks Button -->
     <div @click="tasks = !tasks" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- tasks Icon -->
@@ -105,7 +105,7 @@
 
 
 <!-- company branches  -->
-<div x-data="{ branches: false }" class="flex items-center">
+<div x-data="{ branches: false }" class="flex items-center" x-cloak>
     <!-- branches Button -->
     <div @click="branches = !branches" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- branches Icon -->
@@ -128,7 +128,7 @@
 
 
 <!-- company finances LIST -->
-<div x-data="{ finances: false }" class="flex items-center">
+<div x-data="{ finances: false }" class="flex items-center" x-cloak>
     <!-- finances Button -->
     <div @click="finances = !finances" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- finances Icon -->
@@ -153,7 +153,7 @@
 
 
 <!-- company reports LIST-->
-<div x-data="{ reports: false }" class="flex items-center">
+<div x-data="{ reports: false }" class="flex items-center" x-cloak>
     <!-- reports Button -->
     <div @click="reports = !reports" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- reports Icon -->
@@ -178,7 +178,7 @@
 <!-- ./company reports -->
 
 <!-- company settings LIST-->
-<div x-data="{ settings: false }" class="flex items-center">
+<div x-data="{ settings: false }" class="flex items-center" x-cloak>
     <!-- settings Button -->
     <div @click="settings = !settings" class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300 flex cursor-pointer items-center justify-center">
         <!-- settings Icon -->

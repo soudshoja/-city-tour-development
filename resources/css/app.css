@@ -10,3 +10,7 @@
 thead {
     border-radius: 999px !important;
 }
+
+[x-cloak] {
+    display: none !important;
+}

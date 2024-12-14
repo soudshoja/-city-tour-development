@@ -13,21 +13,20 @@ class Client extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 
-        'email', 
-        'agent_id', 
-        'status',
+        'name',
+        'email',
+        'agent_id',
         'address',
         'passport_file',
         'passport_no',
-        'phone', 
-             ];
+        'phone',
+    ];
 
-             
+
     public function agent()
     {
         return $this->belongsTo(Agent::class, 'agent_id');
-    } 
+    }
 
     public function invoices()
     {
@@ -39,5 +38,3 @@ class Client extends Model
         return $this->hasMany(Task::class);
     }
 }
-
-

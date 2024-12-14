@@ -51,7 +51,7 @@ class AgentController extends Controller
         $companies = Company::all();
         $admin = Role::ADMIN;
 
-        return view('agents.agentsNew', compact('agents', 'companies','admin'));
+        return view('agents.agentsNew', compact('agents', 'companies', 'admin'));
     }
 
     public function show($id)
@@ -77,12 +77,10 @@ class AgentController extends Controller
     }
 
 
-
-
     public function edit($id)
-   {
+    {
         $agent = Agent::find($id);
-    
+
         return view('agents.agentsEdit', compact('agent', 'companies'));
     }
 

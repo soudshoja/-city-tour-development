@@ -18,6 +18,10 @@
     /* Default for mobile: fully rounded */
 }
 
+.city-light-yellow {
+    background-color: #feaf3d;
+}
+
 .BoxShadow {
     box-shadow: 2px 4px 12px #00000014;
 }

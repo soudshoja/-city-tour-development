@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Conversation extends Model
 {
-    protected $fillable = ['user_id'];
+    protected $fillable = [
+        'user_id',
+        'thread_id',
+        'assistant_id',
+        'last_time_message'
+    ];
 
     public function user()
     {

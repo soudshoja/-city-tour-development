@@ -8,6 +8,7 @@ export default defineConfig({
                 "resources/css/app.css",
                 "resources/css/cityCssByNisma.css",
                 "resources/js/jsbyNisma.js",
+                "resources/js/app.js",
             ],
             refresh: true,
         }),

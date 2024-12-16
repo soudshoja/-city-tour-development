@@ -15,7 +15,7 @@
     <!-- CSS -->
 
     @vite(['resources/css/app.css', 'resources/css/cityCssByNisma.css', 'resources/css/style.css'])
-    @vite(['resources/js/jsbyNisma.js',])
+    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js'])
 
     @livewireStyles
 </head>

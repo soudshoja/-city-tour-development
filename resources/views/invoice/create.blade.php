@@ -74,7 +74,7 @@
                             <input id="agentId" type="hidden" name="agentId" value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
                         </div>
 
-                        <p class="my-2 text-gray-400 text-center">client details will displaying below after choosing the client</p>
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a client</p>
                         <!-- client name -->
                         <div class="mt-4 flex items-center">
                             <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
@@ -121,7 +121,7 @@
                             </button>
                             @endcan
                         </div>
-                        <p class="my-2 text-gray-400 text-center">Agent details will displaying below after choosing the Agent</p>
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
 
                         <!-- agent name -->
                         <div class="mt-4 flex items-center">
@@ -267,7 +267,7 @@
         </div>
 
         <!-- Agents Modal -->
-        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden">
+        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
             <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
                 <!-- Modal Header -->
                 <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
@@ -309,7 +309,7 @@
         </div>
         <!-- End Agents Modal -->
         <!-- Clients Modal -->
-        <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden ">
+        <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
             <div class="bg-white border rounded-lg shadow-lg  w-3/4 md:w-1/2 mb-10">
                 <!-- Modal Header -->
                 <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
@@ -456,7 +456,7 @@
         </div>
 
         <!-- Tasks Modal -->
-        <div id="taskModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 hidden">
+        <div id="taskModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
             <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
                 <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
                     <h5 class="text-lg font-bold">Choose Task</h5>

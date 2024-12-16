@@ -11,9 +11,13 @@ use App\Models\Agent;
 use App\Models\TaskFlightDetail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TasksImport;
+use App\Models\Airline;
 use App\Models\Client;
+use App\Models\Country;
+use App\Models\Hotel;
 use App\Models\Role;
 use App\Models\Supplier;
+use App\Models\TaskHotelDetail;
 use App\Services\TextFileProcessor;
 use ConvertApi\ConvertApi;
 use Exception;
@@ -310,5 +314,194 @@ class TaskController extends Controller
         $tasks = Task::whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
 
         return response()->json($tasks);
+    }
+
+    /**
+     * Save tasks to the database
+     * 
+     * @param array $data
+     * 
+     * @return array contains status, message and data of task id
+     * 
+     */
+    function saveTasks($data)
+    {
+        logger('Data: ', $data);
+        $task = $data;
+
+        if (auth()->user()->role_id == Role::COMPANY) {
+            $companyId = auth()->user()->company->id;
+        } else if (auth()->user()->role_id == Role::BRANCH) {
+            $companyId = auth()->user()->branch->company_id;
+        } else if (auth()->user()->role_id == Role::AGENT) {
+            $companyId = auth()->user()->agent->branch->company_id;
+        } else {
+
+            return [
+                'status' => 'error',
+                'message' => 'User not authorized to create task',
+            ];
+        }
+
+        $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
+            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first() ??
+            Agent::with(['branch' => function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            }])->first() : Agent::with(['branch' => function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            }])->first();
+
+
+        $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
+
+        if ($task['supplier_name'] === null) {
+            throw new Exception('Supplier name is not found');
+        }
+
+        $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
+
+        if (!$supplier) {
+            return [
+                'status' => 'error',
+                'message' => 'Supplier not found',
+            ];
+        }
+        logger('tasks: ', $task);
+        logger('agent: ', $agent->toArray());
+
+        $client ? logger('client: ', $client->toArray()) : logger('client dont exist');
+
+        $taskData = [
+            'additional_info' => $task['additional_info'] ?? null,
+            'status' => $task['status'] ? strtolower($task['status']) : null,
+            'client_name' => $client->name ?? null,
+            'price' => isset($task['price']) ? $task['price'] : null,
+            'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,
+            'total' => isset($task['total']) ? $task['total'] : null,
+            'tax' => isset($task['tax']) ? $task['tax'] : null,
+            'reference' => $task['reference'] ?? null,
+            'type' => $task['type'] ? strtoupper($task['type']) : null,
+            'agent_id' => $agent->id,
+            'client_id' => $client->id ?? null,
+            'supplier_id' => $supplier->id,
+            'cancellation_policy' => $task['cancellation_policy'] ?? null,
+            'venue' => $task['venue'] ?? null,
+        ];
+
+        try {
+            $taskCreated = Task::create($taskData);
+
+            logger('Task created: ', $taskCreated->get()->toArray());
+
+
+            if (isset($data['task_flight_details'])) {
+                $this->saveFlightDetails($data, $taskCreated->id);
+            }
+
+            if (isset($data['task_hotel_details'])) {
+                $this->saveHotelDetails($data, $taskCreated->id);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+        return [
+            'status' => 'success',
+            'message' => 'Task created successfully',
+            'data' => $taskCreated,
+        ];
+    }
+
+    /**
+     * Save flight details to the database
+     * 
+     * @param array $data
+     * @param int $taskId
+     * 
+     * @return void 
+     *
+     */
+    public function saveFlightDetails(array $data, int $taskId)
+    {
+
+        try {
+
+            $data = $data['task_flight_details'];
+
+            $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
+            $countryFrom = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first() : null;
+            $countryTo = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['arrive_to'] . '%')->first() : null;
+
+
+            $flightDetails = [
+                'farebase' => isset($data['farebase']) ? (float) $data['farebase'] : null,
+                'departure_time' => $data['departure_time'] ?? null,
+                'country_id_from' => $countryFrom->id ?? null,
+                'airport_from' => $data['airport_from'] ?? null,
+                'terminal_from' => $data['terminal_from'] ?? null,
+                'arrival_time' => $data['arrival_time'] ?? null,
+                'country_id_to' => $countryTo->id ?? null,
+                'airport_to' => $data['airport_to'] ?? null,
+                'terminal_to' => $data['terminal_to'] ?? null,
+                'airline_id' => $airline->id ?? null,
+                'flight_number' => $data['flight_number'] ?? null,
+                'class_type' => $data['class_type'] ?? null,
+                'baggage_allowed' => $data['baggage_allowed'] ?? null,
+                'equipment' => $data['equipment'] ?? null,
+                'flight_meal' => $data['flight_meal'] ?? null,
+                'seat_no' => $data['seat_no'] ?? null,
+                'task_id' => $taskId
+            ];
+
+            TaskFlightDetail::create($flightDetails);
+        } catch (Exception $e) {
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Save hotel details to the database
+     * 
+     * @param array $data
+     * @param int $taskId
+     * 
+     * @return void
+     */
+    public function saveHotelDetails(array $data, int $taskId)
+    {
+        try {
+            $data = $data['task_hotel_details'];
+
+            $hotel = Hotel::where('name', 'like', '%' . $data['hotel_name'] . '%')->first();
+
+            $hotelCountry = Country::where('name', 'like', '%' . $data['hotel_country'] . '%')->first();
+
+            if (!$hotel) {
+                $hotel = Hotel::create([
+                    'name' => $data['hotel_name'],
+                    'address' => $data['hotel_address'] ?? null,
+                    'city' => $data['hotel_city'] ?? null,
+                    'state' => $data['hotel_state'] ?? null,
+                    'country_id' => $hotelCountry->id ?? null,
+                    'zip' => $data['hotel_zip'] ?? null,
+                ]);
+            }
+
+            $hotelDetails = [
+                'hotel_id' => $hotel->id,
+                'booking_time' => $data['booking_time'] ?? null,
+                'check_in' => $data['check_in'] ?? null,
+                'check_out' => $data['check_out'] ?? null,
+                'room_number' => $data['room_number'] ?? null,
+                'room_type' => $data['room_type'] ?? null,
+                'room_amount' => $data['room_amount'] ?? null,
+                'room_details' => $data['room_details'] ?? null,
+                'rate' => $data['rate'] ?? null,
+                'task_id' => $taskId
+            ];
+            TaskHotelDetail::create($hotelDetails);
+        
+            throw $e;
+        }
     }
 }

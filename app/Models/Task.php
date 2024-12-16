@@ -23,7 +23,8 @@ class Task extends Model
         'supplier_id',
         'client_name',
         'cancellation_policy',
-        'venue'
+        'venue',
+        'voucher_status',
     ];
 
     // In Task.php
@@ -33,7 +34,7 @@ class Task extends Model
     }
 
 
-    public function invoicedetail()
+    public function invoiceDetail()
     {
         return $this->hasOne(InvoiceDetail::class, 'task_id');
     }

@@ -18,6 +18,8 @@ use App\Models\Payment;
 use App\Models\Sequence;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\LedgerExport;
 
 class AccountingController extends Controller
 {
@@ -32,46 +34,61 @@ class AccountingController extends Controller
             }
         ])->first();
     
-        // Prepare data for dropdowns (branches -> agents -> clients -> invoices -> invoiceDetails -> generalLedgers)
-        $branches = $company->branches->map(function ($branch) {
-            return [
-                'id' => $branch->id,
-                'name' => $branch->name,
-                'agents' => $branch->agents->map(function ($agent) {
-                    return [
-                        'id' => $agent->id,
-                        'name' => $agent->name,
-                        'clients' => $agent->clients->map(function ($client) {
-                            return [
-                                'id' => $client->id,
-                                'name' => $client->name,
-                                'invoices' => $client->invoices->map(function ($invoice) {
-                                    return [
-                                        'id' => $invoice->id,
-                                        'description' => $invoice->invoice_number,
-                                        'invoiceDetails' => $invoice->invoiceDetails->map(function ($invoiceDetail) {
-                                            return [
-                                                'id' => $invoiceDetail->id,
-                                                'generalLedgers' => $invoiceDetail->generalLedgers->map(function ($generalLedger) {
-                                                    return [
-                                                        'id' => $generalLedger->id,
-                                                        'name' => $generalLedger->name, // Adjust field as necessary
-                                                        'credit' => $generalLedger->credit, // Assuming these fields exist
-                                                        'debit' => $generalLedger->debit, // Adjust as needed
-                                                        'balance' => $generalLedger->balance, // Assuming balance exists
-                                                    ];
-                                                })
+        $suppliers = Supplier::all();
+        $accounts = Account::where('company_id', $company->id)
+                   ->select(['id', 'name'])
+                   ->get();
+
+                //    $accountsArray = $accounts->map(function ($account) {
+                //     return [
+                //         'id' => $account->id,
+                //         'name' => $account->name,
+                //     ];
+                // })->toArray(); // Convert the collection to an array
+                $accountsArray = []; 
+                $company->load([
+                    'branches.agents.clients.invoices.invoiceDetails.task.supplier',
+                ]);
+                
+        
+                foreach ($accounts as $account) {
+                    if ($account->name === 'Accounts Receivable') {
+                        foreach ($company->branches as $branch) { // Loop through branches
+                            foreach ($branch->agents as $agent) { // Loop through agents in each branch
+                                foreach ($agent->clients as $client) {            
+                                $accountsArray[] = [
+                                    'id' => 'account-' . $account->id . ':client-' . $client->id,
+                                    'name' => 'Client: ' . $client->name,
+                                ];
+                              }
+                            }
+                        }
+                    } elseif ($account->name === 'Accounts Payable') { 
+                                    foreach ( $suppliers as $supplier) { // Loop through invoice details
+                                            $accountsArray[] = [
+                                                'id' => 'account-' . $account->id . ':supplier-' . $supplier->id, // Ensure unique key
+                                                'name' => 'Supplier: ' . $supplier->name, // Use supplier's name
                                             ];
-                                        })
-                                    ];
-                                })
-                            ];
-                        }),
-                    ];
-                }),
-            ];
-        });
-    
+                                    }
+                    } elseif ($account->name === 'Income') {
+                        foreach ($company->branches as $branch) { // Loop through branches
+                            foreach ($branch->agents as $agent) { // Loop through agents in each branch
+                                $accountsArray[] = [
+                                    'id' => 'account-' . $account->id . ':agent-' . $agent->id, // Ensure unique key
+                                    'name' => 'Agent: ' . $agent->name, // Access the agent's name or other properties
+                                ];
+                            }
+                        }
+                    } else {
+                        // For other account names, you can keep them simple
+                        $accountsArray[] = [
+                            'id' => 'account-' . $account->id, // Ensure unique key
+                            'name' => $account->name,
+                        ];
+                    }
+                }
+
+
         // Prepare data for generalLedgers (to replace transactions)
         $generalLedgers = [];
         $groupedGeneralLedgers = [];
@@ -115,11 +132,83 @@ class AccountingController extends Controller
         return view('accounting.index', [
             'groupedGeneralLedgers' => $groupedGeneralLedgers,
             'company' => $company,
-            'branches' => $branches, // Used for dropdown population
+            'accounts' => $accountsArray,
+            'branches' => $company->branches, 
             'generalLedgers' => $generalLedgers, // To display in the table
         ]);
     }
     
+
+    public function filterLedgers(Request $request)
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $accountIdInput = $request->input('account');
+        $branchId = $request->input('branch');
+    
+        // Parse the account ID format
+        $parsedAccount = [];
+        if (preg_match('/^account-(\d+)(?::(client|supplier|agent)-(\d+))?$/', $accountIdInput, $matches)) {
+            $parsedAccount['account_id'] = $matches[1];
+            $parsedAccount['related_type'] = $matches[2] ?? null;
+            $parsedAccount['related_id'] = $matches[3] ?? null;
+        }
+    
+        if (empty($parsedAccount)) {
+            return response()->json(['error' => 'Invalid account ID format'], 400);
+        }
+    
+        // Build the query with conditional filters
+        $ledgersQuery = GeneralLedger::query()
+            ->when($fromDate, fn($query) => $query->where('transaction_date', '>=', $fromDate))
+            ->when($toDate, fn($query) => $query->where('transaction_date', '<=', $toDate))
+            ->when($parsedAccount['account_id'], fn($query) => $query->where('account_id', $parsedAccount['account_id']))
+            ->when($branchId, callback: fn($query) => $query->where('branch_id', $branchId));
+    
+        // Add conditions for related entities
+        if ($parsedAccount['related_type'] && $parsedAccount['related_id']) {
+            switch ($parsedAccount['related_type']) {
+                case 'client':
+                    $ledgersQuery->where('type_reference_id', $parsedAccount['related_id']);
+                    break;
+                case 'supplier':
+                    $ledgersQuery->where('type_reference_id', $parsedAccount['related_id']);
+                    break;
+                case 'agent':
+                    $ledgersQuery->where('type_reference_id', $parsedAccount['related_id']);
+                    break;
+            }
+        }
+    
+        $ledgers = $ledgersQuery->get();
+    
+        // Map results with additional context if necessary
+        $result = $ledgers->map(fn($ledger) => [
+            'invoice_number' => $ledger->invoice ? $ledger->invoice->invoice_number : null,
+            'transaction_date' => $ledger->transaction_date,
+            'description' => $ledger->description,
+            'agent_name' => $ledger->invoice->agent->name,
+            'branch_name' => $ledger->branch->name,
+            'generalLedger_name' => $ledger->name ?? null,
+            'debit' => $ledger->debit,
+            'credit' => $ledger->credit,
+        ]);
+    
+        return response()->json($result);
+    }
+
+
+    public function exportExcel(Request $request)
+    {   
+            // Extract ledgers and totals from the request
+            $ledgers = $request->input('ledgers');
+            $totalDebit = $request->input('total_debit');
+            $totalCredit = $request->input('total_credit');
+
+            // Export the data along with totals to Excel
+            return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'GeneralLedgerReport.xlsx');
+
+    }
 
 
     public function showCompanySummary()

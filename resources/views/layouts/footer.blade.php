@@ -213,9 +213,6 @@ if (localStorage.getItem('darkMode') === 'true') {
 <!-- Include Chart.js from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<!-- Alpine.js -->
-
-<script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/collapse.min.js" defer></script>
 
 <!-- Scripts -->
 

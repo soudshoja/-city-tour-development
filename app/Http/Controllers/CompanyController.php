@@ -15,11 +15,21 @@ use App\Models\Branch;
 use App\Models\Role;
 use App\Models\Country;
 use App\Models\AgentType;
+use App\Models\Branch;
+use App\Models\Role;
+use App\Models\Country;
+use App\Models\AgentType;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
 use App\Imports\companiesImport;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+
+
+
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -56,10 +66,11 @@ class CompanyController extends Controller
     {
 
         // Retrieve the company for the authenticated user with agents
-        $company = Company::where('user_id', Auth::id())->with('agents')->first();
+        $company = Company::where('user_id', Auth::id())->with('branches.agents.clients.invoices.invoiceDetails.tasks')->first();
         // Get all agents under the company
         $agents = $company->agents;
         $agentsCount = $company->agents->count();
+
         // Count total tasks, pending tasks, and completed tasks for all agents
         $totalTaskCount = $company->agents->sum(function ($agent) {
             return $agent->tasks()->count(); // Count all tasks for each agent
@@ -114,7 +125,7 @@ class CompanyController extends Controller
         // Prepare clients with task count and invoice count
         $clientsWithDetails = $clients->map(function ($client) {
             // Count the number of tasks related to this client
-            $taskCount = Task::where('client_id', $client->id)->count();
+            $taskCount = Task::where( 'client_id', $client->id)->count();
 
             // Count the total number of invoices related to this client
             $totalInvoices = Invoice::where('client_id', $client->id)->count();
@@ -149,11 +160,12 @@ class CompanyController extends Controller
             ];
         });
 
-
         // Prepare the data array
         $dashboardData = [
+            'hello'=>'hello',
             'totalTasks' => $totalTaskCount,
-            'pendingTasks' => $pendingTaskCount,
+            'totalBranches' => $company->branches->count(),
+            'pendingTasks' => $company->branches->count(),
             'completedTasks' => $completedTaskCount,
             'totalInvoices' => $totalInvoices,
             'totalInvoiceAmount' => $totalInvoiceAmount,
@@ -171,6 +183,7 @@ class CompanyController extends Controller
 
         return view('companies.index', compact('company', 'dashboardData'));
     }
+
 
 
     public function show($id)

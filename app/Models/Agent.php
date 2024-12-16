@@ -6,6 +6,7 @@
 namespace App\Models;
 
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,20 +16,23 @@ class Agent extends Model
     protected $table = 'agents'; // Explicitly define the table name
 
 
-    protected $fillable = ['name', 'email', 'user_id', 'type_id', 'branch_id',  'company_id', 'phone_number', 'description'];
+    protected $fillable = [
+        'user_id',
+        'name',
+        'email',
+        'type',
+        'phone_number',
+        'branch_id',
+    ];
 
     public function branch()
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
 
-    public function company()
-    {
-        return $this->belongsTo(Company::class, 'company_id');
-    }
     public function type()
     {
-        return $this->belongsTo(AgentType::class, 'type_id'); // 'type_id' is the foreign key in the 'agents' table
+        return $this->hasOne(AgentType::class, 'type_id');
     }
 
     public function tasks()

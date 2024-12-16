@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\NotificationTrait;
 use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetail;
@@ -24,6 +25,7 @@ use App\Support\PaymentGateway\Tap;
 
 class PaymentController extends Controller
 {
+    use NotificationTrait;
 
     public function index(string $invoiceNumber)
     {
@@ -42,6 +44,17 @@ class PaymentController extends Controller
         $transaction = Transaction::where('invoice_id', $invoice->id)->first();
 
         return view('payment.index', compact('invoice', 'invoiceDetails', 'transaction'));
+    }
+
+    public function showPaymentPage()
+    {
+        $invoice = [
+            'number' => 'INV12345',
+            'amount' => 1000.00, // Example amount
+        ];
+        $paymentGateways = ['PayPal', 'Stripe', 'Bank Transfer'];
+
+        return view('payment.choose', compact('invoice', 'paymentGateways'));
     }
 
     public function create($invoiceNumber, Request $request)
@@ -93,6 +106,12 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', $response['error']);
         }
 
+        $this->storeNotification([
+            'user_id' => Auth::id(),
+            'title' => 'Payment Initiated',
+            'message' => 'Payment has been initiated for invoice: ' . $invoiceNumber,
+        ]);
+
         return redirect($response['url']);
     }
 
@@ -126,7 +145,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->name,
-            'pay_to' => $invoice->agent->company->name,
+            'pay_to' => $invoice->agent->branch->company->name,
             'currency' => 'KWD',
             'payment_date' =>  Carbon::now(),
             'amount' =>  $data['total_amount'],
@@ -194,13 +213,25 @@ class PaymentController extends Controller
 
         if (isset($response['errors'])) {
 
+            $this->storeNotification([
+                'user_id' => Auth::id(),
+                'title' => 'Payment Failed',
+                'message' => 'Payment failed: ' . $response['errors'][0]['description'],
+            ]);
+
             return Redirect::route('dashboard')->with('error', $response['errors'][0]['description']);
         }
 
         if ($response['status'] != 'CAPTURED') {
+
+            $this->storeNotification([
+                'user_id' => Auth::id(),
+                'title' => 'Payment Failed',
+                'message' => 'Payment failed: ' . $response['status'],
+            ]);
+
             return Redirect::route('dashboard')->with('error', 'Payment error');
         }
-
 
         $clientName = $response['customer']['first_name'];
         $clientEmail = $response['customer']['email'];
@@ -211,6 +242,11 @@ class PaymentController extends Controller
         $paymentId = $response['metadata']['payment_id'];
         $invoiceNumber = $response['metadata']['invoice_number'];
 
+        $this->storeNotification([
+            'user_id' => Auth::id(),
+            'title' => 'Payment Successful',
+            'message' => 'Payment successful for invoice: ' . $invoiceNumber,
+        ]);
 
         // Fetch the invoice to get payment details
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
@@ -220,30 +256,20 @@ class PaymentController extends Controller
             ->get();
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
-            ->where('company_id', $invoice->agent->company->id)
+            ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-        Log::info('company_id:', ['company_id' => $invoice->agent->company->id]);
-
-        if ($receivableAccount) {
-            $filteredReceivableChildAccount = $receivableAccount->children()
-                ->where('reference_id', $invoice->client->id) // Filter by child reference_id
-                ->first(); // Get the first matching child account
-            Log::info('filteredReceivableChildAccount:', ['filteredReceivableChildAccount' => $filteredReceivableChildAccount]);
-            $ReceivablechildAccountId = $filteredReceivableChildAccount ? $filteredReceivableChildAccount->id : null;
-        } else {
-            $ReceivablechildAccountId = null; // Handle case when no parent account is found
-        }
+        Log::info('company_id:', ['company_id' => $invoice->agent->branch->company->id]);
 
 
         $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
-            ->where('company_id', $invoice->agent->company->id)
+            ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
 
 
         $tapAccount = Account::where('name', 'Tap Charges') // or bank account
-            ->where('company_id', $invoice->agent->company->id)
+            ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
 
@@ -253,19 +279,19 @@ class PaymentController extends Controller
         // dd($invoiceDetails);
         if (!empty($invoiceDetails)) {
             // dd($invoiceDetails);
-            foreach ($invoiceDetails as $invoicedetail) {
+            foreach ($invoiceDetails as $invoiceDetail) {
                 try {
 
-                    $selectedtask = Task::where('id', $invoicedetail['task_id'])->first();
+                    $selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
                     $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
                     // Create a transaction record first
                     $transaction = Transaction::create([
-                        'entity_id' =>  $invoice->agent->company->id,
+                        'entity_id' =>  $invoice->agent->branch->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
-                        'amount'=> $invoicedetail['task_price'],
+                        'amount'=> $invoiceDetail['task_price'],
                         'date'=> Carbon::now(),
                         'description'=> 'pay to Invoice:' . $invoiceNumber,
                         'invoice_id'=> $invoice->id,
@@ -274,59 +300,42 @@ class PaymentController extends Controller
 
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
-                    $payment->account_id = $filteredReceivableChildAccount->id;
+                    $payment->account_id = $receivableAccount->id;
                     $payment->save();
-
-                    // // Update the accounts receivable entry
-                    // GeneralLedger::create([
-                    //     'transaction_id' => $transaction->id,
-                    //     'company_id' => $invoice->agent->company->id,
-                    //     'account_id' =>  $filteredReceivableChildAccount->id,
-                    //     'invoice_id' =>  $invoice->id,
-                    //     'transaction_date' => Carbon::now(),
-                    //     'description' => 'Payment received from: ' . $client->name,
-                    //     'debit' => $invoicedetail['task_price'],
-                    //     'credit' =>0,
-                    //     'balance' => $invoicedetail['task_price'],
-                    //     'name' =>  $client->name,
-                    //     'type' => 'receivable',
-                    //     'voucher_number' => $payment->voucher_number,
-                    // ]);
-
-                    // Update the receivable account balance
-                    $filteredReceivableChildAccount->actual_balance -= $invoicedetail['task_price'];
-                    $filteredReceivableChildAccount->save();
 
 
                     // Update Cash/Bank Account
                     if ($bankAccount) {
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
-                            'company_id' => $invoice->agent->company->id,
+                            'company_id' => $invoice->agent->branch->company->id,
+                            'branch_id' => $invoice->agent->branch->id,
                             'account_id' =>  $bankAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoicedetail->id,
+                            'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment transfered to: ' . $bankAccount->name,
-                            'debit' => $invoicedetail['task_price'],
+                            'debit' => $invoiceDetail['task_price'],
                             'credit' =>0,
-                            'balance' => $invoicedetail['task_price'],
+                            'balance' => $invoiceDetail['task_price'],
                             'name' =>  $bankAccount->name,
                             'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,
+                            'type_reference_id' => $bankAccount->id
                         ]);
 
-                        $bankAccount->actual_balance += $invoicedetail['task_price']; // Add to cash/bank account
+                        $bankAccount->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
                         $bankAccount->save();
                     }
 
                     if ($tapAccount) {
                         GeneralLedger::create([
                             'transaction_id' => $payment->id,
-                            'company_id' => $invoice->agent->company->id,
+                            'company_id' => $invoice->agent->branch->company->id,
+                            'branch_id' => $invoice->agent->branch->id,
                             'account_id' =>  $tapAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoicedetail->id,
+                            'invoice_detail_id' =>  $invoiceDetail->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment Charged For:'. $tapAccount->name,
@@ -335,6 +344,7 @@ class PaymentController extends Controller
                             'balance' => $tapAccount->actual_balance += 0.35,
                             'name' =>  $tapAccount->name,
                             'type' => 'charges',
+                            'type_reference_id' => $tapAccount->id
                         ]);
 
                         $tapAccount->actual_balance += 0.35; // Add to expenses account
@@ -348,7 +358,7 @@ class PaymentController extends Controller
                 } catch (Exception $e) {
                     // Log the error if something goes wrong with a specific task
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                    return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoicedetail['task_description']], 500);
+                    return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
                 }
             }
         }
@@ -408,7 +418,7 @@ class PaymentController extends Controller
         $data = [
             'invoice' => $invoice,
             'total_amount' => $invoice->amount,
-            'payment_method' => 'debit_card', // change to get from tap check charges later
+            'payment_method' => 'payment_gateway', // change to get from tap check charges later
             'client_name' => $invoice->client->name,
             'client_email' => $invoice->client->email,
             'invoice_number' => $invoice->invoice_number,

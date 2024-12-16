@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\Invoice;
 use App\Models\Company;
 use App\Models\Client;
+use App\Models\Notification;
 use App\Models\Role;
 use App\Models\Task;
 use Illuminate\Support\Facades\Auth;
@@ -36,43 +37,32 @@ class DashboardController extends Controller
 
         $user = Auth::user();
 
-        if ($user->role_id == Role::ADMIN) {
-            // Admin can see all agents
-            $agent = Agent::with('company')->first();
-        } elseif ($user->role_id == Role::COMPANY) {
-            // Company can only see their agents
-            $agent = Agent::with('company')
-                ->where('company_id', $user->company->id) // assuming user belongs to one company
-                ->first();
-        } else {
-            $agent = Agent::where('user_id', Auth::id())->with('company')->first();
-        }
+        $agents = Agent::with('branch.company')->first();
 
-
-        $company = $agent->company;
+        $company = $agents->company;
 
         // Count total tasks, pending tasks, and completed tasks for all agents
-        $totalTaskCount = $agent->tasks()->count();
+        $totalTaskCount = $agents->tasks()->count();
 
-        $pendingTaskCount = $agent->tasks()->where('status', 'pending')->count();
+        $pendingTaskCount = $agents->tasks()->where('status', 'pending')->count();
 
-        $completedTaskCount = $agent->tasks()->where('status', 'completed')->count();
+        $completedTaskCount = $agents->tasks()->where('status', 'completed')->count();
 
-        $totalInvoices = $agent->invoices()->count();
+        $totalInvoices = $agents->invoices()->count();
 
-        $totalInvoiceAmount = $agent->invoices()->sum('amount');
+        $totalInvoiceAmount = $agents->invoices()->sum('amount');
 
-        $paidInvoices = $agent->invoices()->where('status', 'paid')->count();
+        $paidInvoices = $agents->invoices()->where('status', 'paid')->count();
 
-        $unpaidInvoices = $agent->invoices()->where('status', 'unpaid')->count();
+        $unpaidInvoices = $agents->invoices()->where('status', 'unpaid')->count();
 
-        $invoices = $agent->invoices()->get();
+        $invoices = $agents->invoices()->get();
 
-        $tripsCount = Item::whereIn('agent_id', $agent->pluck('id'))->count();
+        $tripsCount = Item::whereIn('agent_id', $agents->pluck('id'))->count();
         // Get clients under those agents
-        $clients = Client::whereIn('agent_id', $agent->pluck('id'))->get();
+        $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
 
-        $clientsCount = Client::whereIn('agent_id', $agent->pluck('id'))->count();
+        $clientsCount = Client::whereIn('agent_id', $agents->pluck('id'))->count();
 
         $clientsWithDetails = $clients->map(function ($client) {
 
@@ -91,6 +81,7 @@ class DashboardController extends Controller
             ];
         });
 
+        $notifications = Notification::with('user.agent.branch.company')->get();
         // Prepare the data array
         $dashboardData = [
             'totalTasks' => $totalTaskCount,
@@ -104,6 +95,7 @@ class DashboardController extends Controller
             'clients' => $clientsWithDetails,
             'totalTrips' => $tripsCount,
             'invoices' => $invoices,
+            'notifications' => $notifications,
         ];
         return view('admin.index', compact('company', 'agent', 'dashboardData'));
     }
@@ -111,7 +103,7 @@ class DashboardController extends Controller
     public function companyDashboard()
     {
         // Retrieve the company for the authenticated user with agents
-        $company = Company::where('user_id', Auth::id())->with('branches.agents')->first();
+        $company = Company::where('user_id', Auth::id())->with('branches.agents.clients.invoices.invoiceDetails.task')->first();
         // dd($company);
         // Get all agents under the company
         $agents = $company->branches->flatMap(function ($branch) {
@@ -208,10 +200,108 @@ class DashboardController extends Controller
             ];
         });
 
+        $notifications = Notification::with('user.agent.branch.company')->orderBy('created_at', 'desc')->get();
+
+        $branchesWithInvoiceSums = $company->branches()
+            ->with(['agents.clients.invoices.invoiceDetails'])
+            ->get()
+            ->map(function ($branch) {
+                // Calculate the total invoice amount for the branch
+                $totalInvoiceSum = $branch->agents->flatMap(function ($agent) {
+                    return $agent->clients->flatMap(function ($client) {
+                        return $client->invoices->flatMap(function ($invoice) {
+                            return $invoice->invoiceDetails;
+                        });
+                    });
+            })->sum('task_price'); // Assuming 'task_price' exists in `invoiceDetails`
+
+            return [
+                'name' => $branch->name,
+                'totalInvoiceSum' => $totalInvoiceSum,
+            ];
+        });
+
+        $totalInvoiceSumForCompany = $branchesWithInvoiceSums->sum('totalInvoiceSum');
+
+        // Calculate percentages
+        $chartBranchData = $branchesWithInvoiceSums->map(function ($branch) use ($totalInvoiceSumForCompany) {
+            return [
+                'name' => $branch['name'],
+                'percentage' => $totalInvoiceSumForCompany > 0 
+                    ? round(($branch['totalInvoiceSum'] / $totalInvoiceSumForCompany) * 100, 2) 
+                    : 0,
+            ];
+        });
+
+
+                // Initialize arrays for months
+        $paidAmounts = array_fill(0, 12, 0);
+        $unpaidAmounts = array_fill(0, 12, 0);
+
+        // Loop through branches and calculate paid/unpaid amounts
+        $branches = $company->branches()
+            ->with('agents.clients.invoices')
+            ->get();
+
+        foreach ($branches as $branch) {
+            foreach ($branch->agents as $agent) {
+                foreach ($agent->clients as $client) {
+                    foreach ($client->invoices as $invoice) {
+                        $monthIndex = (int) date('n', strtotime($invoice->invoice_date)) - 1; // Get month index (0 = January, 11 = December)
+
+                        if ($invoice->status === 'paid') {
+                            $paidAmounts[$monthIndex] += $invoice->amount; // Add to paid amounts
+                        } elseif ($invoice->status === 'unpaid') {
+                            $unpaidAmounts[$monthIndex] += $invoice->amount; // Add to unpaid amounts
+                        }
+                    }
+                }
+            }
+        }
+
+
+        $agentsData = [];
+
+        foreach ($company->branches as $branch) {
+            foreach ($branch->agents as $agent) {
+                // Count tasks associated with each agent
+                $taskCount = 0;
+    
+                foreach ($agent->clients as $client) {
+                    foreach ($client->invoices as $invoice) {
+                        foreach ($invoice->invoiceDetails as $invoiceDetail) {
+                            if ($invoiceDetail->task) {
+                                $taskCount++;
+                            }
+                        }
+                    }
+                }
+    
+                // Calculate the percentage of tasks per agent
+                $totalTasks = Task::count(); // Assuming this fetches all tasks across the company
+                $percentage = $totalTasks > 0 ? ($taskCount / $totalTasks) * 100 : 0;
+    
+                $agentsData[] = [
+                    'name' => $agent->name,
+                    'percentage' => $percentage,
+                ];
+            }
+        }
+
+
+        usort($agentsData, function ($a, $b) {
+            return $b['percentage'] <=> $a['percentage'];
+        });
+        
 
         // Prepare the data array
         $dashboardData = [
             'totalTasks' => $totalTaskCount,
+            'chartBranchData' => $chartBranchData,
+            'totalBranches' => $company->branches->count(),
+            'paidAmounts' => $paidAmounts,
+            'unpaidAmounts' => $unpaidAmounts,
+            'agentsData' => $agentsData,
             'pendingTasks' => $pendingTaskCount,
             'completedTasks' => $completedTaskCount,
             'totalInvoices' => $totalInvoices,
@@ -226,8 +316,9 @@ class DashboardController extends Controller
             'agentsCount' => $agentsCount,
             'agents' => $agentsWithDetails,
             'clients' => $clientsWithDetails,
+            'notifications' => $notifications,
         ];
-
+        
         return view('companies.index', compact('company', 'dashboardData'));
     }
 
@@ -250,7 +341,7 @@ class DashboardController extends Controller
         $unpaidInvoices =  Invoice::where('status', 'unpaid')->count();
         $invoices = Invoice::all();
         $tasks = Task::all();
-        $agents = Agent::with('company')->get();
+        $agents = Agent::with('branch.company')->get();
         $clients = Client::all();
         $companies = Company::all();
         // Prepare clients with task count and invoice count

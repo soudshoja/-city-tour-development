@@ -9,14 +9,47 @@
     </div>
     <!--./Notification Container -->
 
-
-    <div>
+    <div x-data ='{importModal : true }'>
         <!-- Breadcrumbs -->
         <x-breadcrumbs :breadcrumbs="[
-    ['label' => 'Dashboard', 'url' => route('dashboard')],
-    ['label' => 'Tasks List']
-]" />
-
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Tasks List']
+        ]" />
+        @if($importedTask  = session('importedTask'))
+            <div 
+                x-show="importModal"
+                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                <div 
+                @click.away = "importModal = false"     
+                class="bg-white rounded-md border-2 justify-center align-middles p-4 w-80">
+                    <form action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2">
+                        @csrf
+                        @method('PUT')
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
+                        <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($clients as $client)
+                                <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($agents as $agent)
+                                <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($suppliers as $supplier)
+                                <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                            @endforeach
+                        </select>
+                        <x-primary-button type="submit" class="w-full mt-4"> Update </x-primary-button>
+                    </form>
+                </div>
+            </div>
+        @endif
         <!-- ./Breadcrumbs -->
         <!-- Controls Section -->
         <div
@@ -146,7 +179,8 @@
                                     <span>Tasks Name</span>
                                 </div>
                             </th>
-
+                            <th class="px-4 py-2">Invoice</th>
+                            <th class="px-4 py-2">Invoice Status</th>
                             <th class="px-4 py-2">Client Name</th>
                             <th class="px-4 py-2">Type</th>
                             <th class="px-4 py-2">Net Price</th>
@@ -165,13 +199,15 @@
                         @foreach($tasks as $task)
                         <tr>
                             <td class="px-4 py-2">
-                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}">
+                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
                             </td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
                                 data-field="status">
                                 {{ $task->status }}
                             </td>
                             <td class="px-4 py-2">{{ $task->additional_info }} - {{ $task->venue }}</td>
+                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->invoice_number : 'N\A'}}</td>
+                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->status : 'N\A'}}</td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
                                 data-field="client_name">{{ $task->client_name }}</td>
                             <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
@@ -226,7 +262,7 @@
     </div> <!-- ./p-3 -->
 
     <!-- Task Modal -->
-    @include('tasks.singleTask')
+    @include('tasks.singleTask', ['agents' => $agents, 'clients' => $clients, 'suppliers' => $suppliers])
 
     <script>
         const selectAllCheckbox = document.getElementById("selectAll");

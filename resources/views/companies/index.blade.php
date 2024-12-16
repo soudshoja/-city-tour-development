@@ -104,27 +104,21 @@
     <script>
         const ctx = document.getElementById('earningsChart').getContext('2d');
 
-        // Helper function to generate random numbers
-        const generateRandomNumbers = (count, min, max) => {
-            return Array.from({
-                    length: count
-                }, () =>
-                Math.floor(Math.random() * (max - min + 1) + min)
-            );
-        };
-
         // Labels for the chart
         const labels = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
         ];
 
+        const paidAmounts = @json($dashboardData['paidAmounts']); // Real paid data
+        const unpaidAmounts = @json($dashboardData['unpaidAmounts']); // Real unpaid data
+
         // Data for the chart
         const data = {
             labels: labels,
             datasets: [{
                     label: 'Paid Amounts - Invoices',
-                    data: generateRandomNumbers(12, -100, 100),
+                    data: paidAmounts,
                     borderColor: 'rgb(34 197 94)',
                     backgroundColor: 'rgb(34 197 94)',
                     borderWidth: 3,
@@ -135,7 +129,7 @@
                 },
                 {
                     label: 'unpaid Amounts - Invoices',
-                    data: generateRandomNumbers(12, -100, 100),
+                    data: unpaidAmounts,
                     borderColor: 'rgb(239 68 68)',
                     backgroundColor: 'rgb(239 68 68)',
                     borderWidth: 3,
@@ -231,15 +225,15 @@
         const earningsChart = new Chart(ctx, config);
 
         // Actions (e.g., randomize data)
-        const actions = [{
-            name: 'Randomize',
-            handler(chart) {
-                chart.data.datasets.forEach((dataset) => {
-                    dataset.data = generateRandomNumbers(12, -100, 100);
-                });
-                chart.update();
-            },
-        }, ];
+        // const actions = [{
+        //     name: 'Randomize',
+        //     handler(chart) {
+        //         chart.data.datasets.forEach((dataset) => {
+        //             dataset.data = generateRandomNumbers(12, -100, 100);
+        //         });
+        //         chart.update();
+        //     },
+        // }, ];
     </script>
 
     <!-- ./income chart -->

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Alimranahmed\LaraOCR\Facades\OCR;
+use App\Http\Traits\Converter;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Agent;
@@ -24,6 +25,8 @@ use thiagoalessio\TesseractOCR\TesseractOCR;
 
 class ClientController extends Controller
 {
+    use Converter;
+
     public function index()
     {
         return view('clients.index');
@@ -37,14 +40,26 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
-            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
+
+            // retrieve client that has the latest task
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
+                Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
+            )->paginate(6);
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->paginate(6);
+
+            // retrieve client that has the latest task
+            $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
+                Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
+            )->paginate(6);
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
-            $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->paginate(6);
+
+            // retrieve client that has the latest task
+            $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->orderByDesc(
+                Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
+            )->paginate(6);
         }
 
         $clientsNo = $clientsCount;
@@ -93,11 +108,13 @@ class ClientController extends Controller
     public function show($id)
     {
         $client = Client::findOrFail($id);
-        $agents = Agent::with('company')->get();
-        $invoices = Invoice::where('client_id', $id)->get();
+        $agents = Agent::with('branch')->get();
+        $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
+        $paid = $invoices->where('status', 'paid')->sum('amount');
+        $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
 
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks')); // Ensure the view exists
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -107,66 +124,72 @@ class ClientController extends Controller
 
         $agents = [];
         if(Gate::allows('clientAgent', Client::class)) {
-            $agents = Agent::with('company')->get();
+            $agents = Agent::with('branch')->get();
         }
 
         $client = Client::findOrFail($id);
-        return view('clients.edit', compact('client','agents')); // Ensure the view exists
+        return view('clients.edit', compact('client', 'agents')); // Ensure the view exists
     }
 
     // Update the client in the database
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-        // dd($request->all());
+
+        // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',
             'email' => 'email|unique:clients,email,' . $id,
-            'status' => 'nullable',   // Optional status field
-            'phone' => 'string|max:15',    // Optional phone field
-            'file' => 'nullable|mimes:jpeg,jpg,png',    // Optional passport file field
+            'status' => 'nullable',
+            'phone' => 'string|max:15',
+            'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
         ]);
 
-        // Find the client and update it
         try {
+            // Update the client data
             $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
+
+            // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {
-                $file = $request->file('file');
-
-                // if($file->getClientOriginalExtension() == 'pdf') {
-
-                //     $fileController = new FileController();
-                //     $file = $fileController->convertPdfToImage($file);
-
-                // }
-
-                $ocr = new TesseractOCR();
-                $ocr->image($file->getRealPath());
-                $text = $ocr->run();
-
                 try {
+                    $imagePath = $request->file('file')->getRealPath();
+                    // Process the image using OCR
+                    $ocrResponse = $this->processImage($imagePath);  // Get the response from processImage
 
-                    $openai = new OpenAiController();
-                    $response =  $openai->extractPassport($text);
-                    $responseData = json_decode($response['data'], true);
-                    
-                    $this->updateClientPassport($client, $responseData);
-                    
+                    // Now $ocrResponse is already an array, so no need to decode it
+                    if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                        $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
+
+                        // You can now use the parsed text (e.g., for passport extraction)
+                        $openai = new OpenAiController();
+                        $response = $openai->extractPassport($parsedText); // Pass the parsed text to OpenAI
+
+                        // Since extractPassport already returns the parsed data (not a JSON string), 
+                        // we can use it directly as an array
+                        if (isset($response['data'])) {
+                            $this->updateClientPassport($client, $response['data']);
+                        } else {
+                            // Handle case where 'data' is not available
+                            return redirect()->back()->withInput()->with('error', 'OCR processing failed or no data returned.');
+                        }
+                    } else {
+                        return redirect()->back()->withInput()->with('error', 'No text found in OCR response.');
+                    }
                 } catch (Exception $e) {
                     return redirect()->back()->withInput()->with('error', $e->getMessage());
                 }
             }
-            // Redirect to the clients list with a success message
-            return Redirect::back()->with(
-            [
-                'error' => 'test',
-                'success' => 'Client updated successfully!',
-            ]
-            );
+
+            // Redirect back with success message
+            return Redirect::back()->with('success', 'Client updated successfully!');
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
+
+
+
+
 
     public function updateClientPassport($client, $data)
     {

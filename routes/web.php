@@ -24,6 +24,8 @@ use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
+use App\Livewire\Notification;
+use App\Livewire\NotificationIndex;
 use App\Models\Role;
 
 
@@ -122,7 +124,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
     Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
 
-
     // verdors routes
     Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
 
@@ -154,6 +155,8 @@ Route::middleware(['auth'])->group(function () {
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
     Route::get('/transaction', [AccountingController::class, 'index'])->name('accounting.transaction');
+    Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
+    Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
     // Branches routes
     Route::group([
@@ -177,8 +180,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
 });
 
-Route::middleware('auth')->group(function () {});
-
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
 // ITEMS
@@ -200,8 +201,12 @@ Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoi
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
+Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
+Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
+Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
+
 
 
 // search for invoice creation
@@ -227,21 +232,26 @@ Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('se
 
 
 // PAYMENT
-Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
-Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
-Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
-Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
-Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
-Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
-Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
-Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
-Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
-Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
-Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
-Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
-Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
+Route::group([
+    'middleware' => ['auth'],
+], function () {
 
+    Route::get('/payment', [PaymentController::class, 'showPaymentPage'])->name('payment.choose');
+    Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
+    Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
+    Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
+    Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
+    Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
+    Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
+    Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
+    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
+    Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
+    Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
+    Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
+    Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
+    Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
+    Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
+});
 
 // REPORTS
 Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
@@ -279,5 +289,14 @@ Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.sh
 Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
 Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
 Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.update');
+
+// NOIFICATIONS
+Route::group([
+    'middleware' => ['auth'],
+    'prefix' => 'notifications',
+    'as' => 'notifications.',
+], function () {
+    Route::get('/', NotificationIndex::class)->name('index');
+});
 
 require __DIR__ . '/auth.php';

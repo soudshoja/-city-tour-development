@@ -10,13 +10,23 @@ class Supplier extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'name', 
+        'contact_person',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'state',
+        'postal_code',
+        'country_id',
+        'website',
+        'payment_terms',
+    ];
 
-    protected $fillable = ['name', 'status', 'code', 'email', 'address', 'phone', 'nationality'];
-
-    public function tasks()
+    public function country()
     {
-        return $this->hasMany(Task::class);
+        return $this->belongsTo(Country::class);
     }
-
 
 }

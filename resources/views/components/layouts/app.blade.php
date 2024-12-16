@@ -14,16 +14,15 @@
     @include('layouts.links')
     <!-- CSS -->
 
-    @vite(['resources/css/app.css', 'resources/css/style.css', 'resources/css/cityCssByNisma.css'])
-    @vite(['resources/js/app.js', 'resources/js/dashboard.js', 'resources/js/jsbyNisma.js',])
+    @vite(['resources/css/app.css', 'resources/css/cityCssByNisma.css'])
+    @vite(['resources/js/jsbyNisma.js',])
 
-
-
-
+    @livewireStyles
 </head>
 
 <body>
-    <!-- fix it ya nsooooom --> @include('layouts.alert')
+    <!-- fix it ya nsooooom -->
+    @include('layouts.alert')
 
     <!-- Top Navigation -->
     <div>
@@ -50,7 +49,7 @@
 
     </main>
 
-
+    @livewireScripts
 </body>
 
 </html>

@@ -64,6 +64,9 @@
              <a href="{{ route('tasks.index') }}"
                  class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Tasks
                  List</a>
+                 <a href="{{ route('tasks.voucher') }}"
+                 class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">Tasks
+                 Voucher</a>
          </div>
      </div>
  </div>
@@ -98,6 +101,9 @@
              <a href="{{ route('invoices.company.agents') }}"
                  class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
                  Invoices List</a>
+                 <a href="{{ route('invoice.salelist') }}"
+                 class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                 Sale Invoices</a>
              <a href="{{ route('invoice.create') }}"
                  class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
                  Create Invoice</a>

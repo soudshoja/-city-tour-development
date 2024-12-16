@@ -13,6 +13,7 @@ class GeneralLedger extends Model
         'transaction_id',
         'company_id',
         'account_id',
+        'branch_id',
         'invoice_id',
         'invoice_detail_id',
         'transaction_date',
@@ -23,6 +24,7 @@ class GeneralLedger extends Model
         'voucher_number',
         'name',
         'type',
+        'type_reference_id',
     ];
 
     // Define the relationship to the Invoice model
@@ -47,6 +49,12 @@ class GeneralLedger extends Model
     {
         return $this->belongsTo(Transaction::class,'transaction_id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    } 
+ 
 
     public function company()
     {

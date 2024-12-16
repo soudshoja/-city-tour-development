@@ -29,11 +29,8 @@
     rel="stylesheet" />
 
   <!-- CSS -->
-  @vite(['resources/css/app.css', 'resources/css/style.css','resources/css/animate.css', 'resources/js/app.js'])
+  @vite(['resources/css/app.css'])
 
-  <!-- Alpine.js -->
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3" defer></script>
-  <script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/collapse.min.js" defer></script>
 
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
@@ -136,7 +133,7 @@
         <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
         <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
         <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-        <input type="hidden" name="payment_method" value="credit_card">
+        <input type="hidden" name="payment_method" value="payment_gateway">
         <button type="submit" id="payNowBtn" class="btn btn-primary">
           Pay Now
         </button>
@@ -144,6 +141,13 @@
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...
         </div>
       </form>
+
+      <div class="flex justify-end mt-4">
+            <a href="{{ route('payment.choose') }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Proceed to Payment
+            </a>
+        </div>
+
       @if(auth()->user() && (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
       <div class="flex gap-2 mt-2" id="invoice-link">
         <p>

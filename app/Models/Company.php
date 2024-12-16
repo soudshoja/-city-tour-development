@@ -12,7 +12,16 @@ class Company extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['id', 'name', 'user_id', 'status', 'code', 'email', 'address', 'phone', 'nationality_id'];
+    protected $fillable = [
+        'name',
+        'user_id',
+        'status',
+        'code',
+        'email',
+        'address',
+        'phone',
+        'nationality_id'
+    ];
 
     public function branches()
     {

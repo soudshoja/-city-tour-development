@@ -19,7 +19,10 @@
 }
 
 .city-light-yellow {
-    background-color: #feaf3d;
+    background-color: #ffb958 !important;
+}
+.city-light-yellow:hover {
+    background-color: #f7b14f !important;
 }
 
 .BoxShadow {

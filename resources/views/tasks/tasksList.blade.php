@@ -1,315 +1,207 @@
 <x-app-layout>
-    <script>
-        window.taskCount = @json($taskCount);
-    </script>
 
-    <!-- Notification Container -->
-    <div id="notification" class="fixed bottom-5 right-5 z-50 hidden bg-green-500 text-white p-3 rounded-lg shadow-lg">
-        <span id="notificationMessage"></span>
-    </div>
-    <!--./Notification Container -->
+    <!-- page wrapper -->
+    <div class="mx-auto">
 
-    <div x-data ='{importModal : true }'>
-        <!-- Breadcrumbs -->
-        <x-breadcrumbs :breadcrumbs="[
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Tasks List']
-        ]" />
-        @if($importedTask  = session('importedTask'))
-            <div 
-                x-show="importModal"
-                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                <div 
-                @click.away = "importModal = false"     
-                class="bg-white rounded-md border-2 justify-center align-middles p-4 w-80">
-                    <form action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2">
-                        @csrf
-                        @method('PUT')
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
-                        <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($clients as $client)
-                                <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($agents as $agent)
-                                <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                            @endforeach
-                        </select>
-                        <x-primary-button type="submit" class="w-full mt-4"> Update </x-primary-button>
-                    </form>
+
+        <!-- page title -->
+        <div class="flex justify-between items-center gap-5 my-3 ">
+
+
+            <div class="flex items-center gap-5 ">
+                <h2 class="text-3xl font-bold">Tasks List</h2>
+                <!-- total task number -->
+                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                    <span class="text-xl font-bold text-slate-700">{{ $taskCount }}</span>
                 </div>
             </div>
-        @endif
-        <!-- ./Breadcrumbs -->
-        <!-- Controls Section -->
-        <div
-            class="flex flex-col md:flex-row items-center justify-between p-3 bg-white dark:bg-gray-800 shadow rounded-lg space-y-3 md:space-y-0 text-gray-700 dark:text-gray-300">
-
-            <!-- left side -->
-            <div
-                class="flex items-start md:items-center border border-gray-300 rounded-lg p-2 space-y-3 md:space-y-0 md:space-x-3">
-                <!-- left side -->
-                <div class="flex gap-2 mr-2">
-
-                    <a
-                        class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-                        <span class="text-black dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Total
-                            Tasks </span>
-
-
-                    </a>
-                    <a
-                        class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-info-light dark:bg-gray-700"><span
-                            id="TasksData"></span>
-                    </a>
-                </div>
-
-
-            </div>
-
-
-            <!-- right side -->
-            <div class="flex items-center gap-3 space-y-3 md:space-y-0 md:space-x-2">
-
-            <button id="createInvoiceBtn" class="badge bg-success shadow-md dark:group-hover:bg-transparent whitespace-nowrap">
-                Create Invoice for Selected Tasks
-            </button>
-
-                <!-- Search Box -->
-                <div class="mt07 relative flex items-center h-12">
-                    <input id="searchInput" type="text" placeholder="Search"
-                        class="w-full h-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-300">
-                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2"
-                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-4.35-4.35M9.5 17A7.5 7.5 0 109.5 2a7.5 7.5 0 000 15z" />
+            <!-- add new task & refresh page -->
+            <div class="flex items-center gap-5">
+                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                        <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
                     </svg>
                 </div>
-
-
-                <!-- Upload Task Button -->
-                <div class="relative flex items-center h-12">
-                    <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
-                        enctype="multipart/form-data" class="inline-flex">
-                        @csrf
-                        <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden"
-                            onchange="uploadTask()" />
-
-                        <button id="uploadTaskButton" type="button"
-                            onclick="document.getElementById('pdfInput').click();"
-                            class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-700 focus:outline-none">
-                            <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span>Upload Task</span>
-                        </button>
-                    </form>
+                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
                 </div>
-                <!-- ./Upload Task Button -->
+            </div>
 
-                <script>
-                    function uploadTask() {
-                        console.log(document.getElementById('loadingScreen'));
-                        document.getElementById('loadingScreen').style.display = 'block';
-                        // Check if a file has been selected
-                        const fileInput = document.getElementById('pdfInput');
-                        if (fileInput.files.length > 0) {
-                            // Submit the form once a file is selected
-                            document.getElementById('uploadTaskForm').submit();
-                        }
-                    }
-                </script>
+
+        </div>
+        <!-- ./page title -->
+
+
+        <!-- actions -->
+        <div class="w-full justify-between flex flex-col gap-5 mt-5 md:flex-row">
+            <div class="w-[70%]">
+                <!-- Table  -->
+                <div class="panel oxShadow rounded-lg">
+                    <!--  search icon -->
+                    <div class="!pl-0 w-full h-12 border border-gray-200 rounded-full flex items-center ">
+                        <div class=" relative w-10 h-10 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                            <svg class="w-6 h-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 16">
+                                <path fill="currentColor" d="M6.5 13.02a5.5 5.5 0 0 1-3.89-1.61C1.57 10.37 1 8.99 1 7.52s.57-2.85 1.61-3.89c2.14-2.14 5.63-2.14 7.78 0C11.43 4.67 12 6.05 12 7.52s-.57 2.85-1.61 3.89a5.5 5.5 0 0 1-3.89 1.61m0-10c-1.15 0-2.3.44-3.18 1.32C2.47 5.19 2 6.32 2 7.52s.47 2.33 1.32 3.18a4.51 4.51 0 0 0 6.36 0C10.53 9.85 11 8.72 11 7.52s-.47-2.33-1.32-3.18A4.48 4.48 0 0 0 6.5 3.02"></path>
+                                <path fill="currentColor" d="M13.5 15a.47.47 0 0 1-.35-.15l-3.38-3.38c-.2-.2-.2-.51 0-.71s.51-.2.71 0l3.38 3.38c.2.2.2.51 0 .71c-.1.1-.23.15-.35.15Z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <!-- ./search icon -->
+                    <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
+                        <div class="dataTable-top"></div>
+                        <div class="dataTable-container">
+
+                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                                <thead>
+                                    <tr>
+                                        <th><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Client Name</th>
+                                        @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Agent Name</th>
+                                        @endif
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Price</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Supplier</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($tasks as $task)
+                                    <tr>
+                                        <td>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->client_name }}</td>
+                                        @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent_name }}</td>
+                                        @endif
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->type }}</td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->price }}</td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->status }}</td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->supplier->name }}</td>
+                                        <td class="p-3 text-sm">
+                                            <a href="#" class="text-blue-500 hover:underline">View</a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="dataTable-bottom justify-between">
+
+                            <div class="flex items-center gap-5">
+
+                                <div class="dataTable-info">Showing 1 to 10 of 25 entries</div>
+                                <div class="dataTable-dropdown">
+                                    <label>
+                                        <select class="dataTable-selector">
+                                            <option value="10" selected="">10</option>
+                                            <option value="20">20</option>
+                                            <option value="30">30</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </label>
+
+                                </div>
+
+                            </div>
+                            <nav class="dataTable-pagination">
+                                <ul class="dataTable-pagination-list">
+                                    <li class="pager">
+                                        <a href="#" data-page="1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg></a>
+                                    </li>
+                                    <li class="active"><a href="#" data-page="1">1</a></li>
+                                    <li class=""><a href="#" data-page="2">2</a></li>
+                                    <li class=""><a href="#" data-page="3">3</a></li>
+                                    <li class="pager"><a href="#" data-page="2"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg></a></li>
+                                    <li class="pager"><a href="#" data-page="3"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg></a></li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ./Table  -->
 
             </div>
+            <!-- right -->
+            <div class="w-[30%]">
+
+                <div class="flex flex-col md:flex-row justify-center text-center gap-5">
+                    <!-- customize -->
+                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32">
+                            <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                        </svg>
+                        <span class="text-sm">Customize</span>
+                    </button>
+                    <!-- ./customize -->
+
+                    <!-- filter -->
+                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                        </svg>
+                        <span class="text-sm">Filter</span>
+                    </button>
+                    <!-- ./filter -->
+
+                    <!-- export -->
+                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                        </svg>
+                        <span class="text-sm">Export</span>
+                    </button>
+                    <!-- ./export -->
+                </div>
+                <div class="mt-5 ">
+                    <!-- display task details here-->
+                    <div class="panel w-full xl:mt-0  rounded-lg h-96"></div>
+                    <!-- display task details here-->
+
+                </div>
+            </div>
+            <!-- ./right -->
+        </div>
+        <!--./actions-->
+
+        <!-- page content -->
+        <div class="flex flex-col gap-2.5 xl:flex-row mt-5">
+
+
+
+
+
 
 
 
         </div>
-        <!-- ./Controls Section -->
+        <!-- ./page content -->
 
 
-        <!-- Table Section -->
-        <div class="mt-5 overflow-x-auto bg-white shadow rounded-lg">
-            <div class="max-h-[35rem] overflow-y-auto custom-scrollbar">
-                <table class="AgentTable CityMobileTable w-full">
-                    <thead class="sticky top-0 z-10">
-                        <tr>
-                            <!-- select all icon -->
-                            <th class="px-4 py-2">
-                                <svg id="selectAllSVG" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
-                                    <path
-                                        d="M8.0374 14.1437C7.78266 14.2711 7.47314 14.1602 7.35714 13.9001L3.16447 4.49844C2.49741 3.00261 3.97865 1.45104 5.36641 2.19197L11.2701 5.344C11.7293 5.58915 12.2697 5.58915 12.7289 5.344L18.6326 2.19197C20.0204 1.45104 21.5016 3.00261 20.8346 4.49844L19.2629 8.02275C19.0743 8.44563 18.7448 8.78997 18.3307 8.99704L8.0374 14.1437Z"
-                                        fill="#1C274C" class="dark:fill-white" />
-                                    <path opacity="0.5"
-                                        d="M8.6095 15.5342C8.37019 15.6538 8.26749 15.9407 8.37646 16.185L10.5271 21.0076C11.1174 22.3314 12.8818 22.3314 13.4722 21.0076L17.4401 12.1099C17.6313 11.6812 17.1797 11.2491 16.7598 11.459L8.6095 15.5342Z"
-                                        fill="#1C274C" class="dark:fill-gray-400" />
-                                </svg>
-
-                                <input type="checkbox" id="selectAll" class="form-checkbox CheckBoxColor hidden">
-                            </th>
-                            <th class="px-4 py-2">Status</th>
-                            <!-- Table Headers: Tasks Name and Agent Name -->
-                            <th class="px-4 py-2 cursor-pointer" id="tasksNameHeader">
-                                <div class="inline-flex items-center">
-                                    <svg id="sortIcon" class="mr-1 w-5 h-5" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
-                                        <path d="M13 7L3 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                                            class="dark:stroke-white" />
-                                        <path d="M10 12H3" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                                            class="dark:stroke-white" />
-                                        <path d="M8 17H3" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                                            class="dark:stroke-white" />
-                                        <path
-                                            d="M11.3161 16.6922C11.1461 17.07 11.3145 17.514 11.6922 17.6839C12.07 17.8539 12.514 17.6855 12.6839 17.3078L11.3161 16.6922ZM16.5 7L17.1839 6.69223C17.0628 6.42309 16.7951 6.25 16.5 6.25C16.2049 6.25 15.9372 6.42309 15.8161 6.69223L16.5 7ZM20.3161 17.3078C20.486 17.6855 20.93 17.8539 21.3078 17.6839C21.6855 17.514 21.8539 17.07 21.6839 16.6922L20.3161 17.3078ZM19.3636 13.3636L20.0476 13.0559L19.3636 13.3636ZM13.6364 12.6136C13.2222 12.6136 12.8864 12.9494 12.8864 13.3636C12.8864 13.7779 13.2222 14.1136 13.6364 14.1136V12.6136ZM12.6839 17.3078L17.1839 7.30777L15.8161 6.69223L11.3161 16.6922L12.6839 17.3078ZM21.6839 16.6922L20.0476 13.0559L18.6797 13.6714L20.3161 17.3078L21.6839 16.6922ZM20.0476 13.0559L17.1839 6.69223L15.8161 7.30777L18.6797 13.6714L20.0476 13.0559ZM19.3636 12.6136H13.6364V14.1136H19.3636V12.6136Z"
-                                            fill="#1C274C" class="dark:fill-white" />
-                                    </svg>
-                                    <span>Tasks Name</span>
-                                </div>
-                            </th>
-                            <th class="px-4 py-2">Invoice</th>
-                            <th class="px-4 py-2">Invoice Status</th>
-                            <th class="px-4 py-2">Client Name</th>
-                            <th class="px-4 py-2">Type</th>
-                            <th class="px-4 py-2">Net Price</th>
-                            <th class="px-4 py-2">Surcharge</th>
-                            <th class="px-4 py-2">Tax</th>
-                            <th class="px-4 py-2">Total</th>
-                            <th class="px-4 py-2">Agent Name</th>
-                            <th class="px-4 py-2">Supplier Name</th>
-                            <th class="px-4 py-2">Reference</th>
-
-                            <th class="px-4 py-2">Actions</th>
-                            <th class="px-4 py-2">Payment</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
-                        @foreach($tasks as $task)
-                        <tr>
-                            <td class="px-4 py-2">
-                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
-                            </td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="status">
-                                {{ $task->status }}
-                            </td>
-                            <td class="px-4 py-2">{{ $task->additional_info }} - {{ $task->venue }}</td>
-                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->invoice_number : 'N\A'}}</td>
-                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->status : 'N\A'}}</td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="client_name">{{ $task->client_name }}</td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="type">{{ $task->type }}</td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="price">
-                                {{ $task->price }}
-                            </td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="surcharge">
-                                {{ $task->surcharge }}
-                            </td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="tax">
-                                {{ $task->tax }}
-                            </td>
-                            <td class="px-4 py-2" data-id="{{ $task->id }}" data-field="total">
-                                {{ $task->total }}
-                            </td>
-
-                            <td class="px-4 py-2">{{ $task->agent->name }}</td>
-                            <td class="px-4 py-2">{{ $task->supplier->name }}</td>
-                            <td class="px-4 py-2">{{ $task->reference }}</td>
-                            <td class="px-4 py-2">
-
-                                <a href="javascript:void(0);" onclick="ShowTask({{ $task->id }})">
-                                    <span
-                                        class="badge bg-dark shadow-md dark:group-hover:bg-transparent whitespace-nowrap">
-                                        See Details
-                                    </span>
-                                </a>
+    </div>
+    <!-- ./page wrapper -->
 
 
-                            </td>
-                            <td class="px-4 py-2">
-                                <!-- payment link -->
-                                <a href="{{ route('invoice.create', ['task_ids' => $task->id]) }}">
-                                    <span
-                                        class="badge bg-success shadow-md dark:group-hover:bg-transparent whitespace-nowrap">Create
-                                        Invoice
-                                    </span>
-                                </a>
-                            </td>
 
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div><!-- ./Table Section -->
 
-    </div> <!-- ./p-3 -->
-
-    <!-- Task Modal -->
-    @include('tasks.singleTask', ['agents' => $agents, 'clients' => $clients, 'suppliers' => $suppliers])
-
-    <script>
-        const selectAllCheckbox = document.getElementById("selectAll");
-    const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
-    const createInvoiceBtn = document.getElementById("createInvoiceBtn");
-
-  // Select/Deselect all checkboxes
-  selectAllCheckbox.addEventListener("change", function () {
-        rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
-        toggleCreateInvoiceButton(); // Update button state
-    });
-
-    // Toggle "Create Invoice" button based on selected checkboxes
-    const toggleCreateInvoiceButton = () => {
-        const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
-        createInvoiceBtn.disabled = !isAnySelected;
-    };
-
-    // Add change event to each row checkbox
-    rowCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener("change", function () {
-            // Update the "Select All" checkbox state
-            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-            selectAllCheckbox.checked = allChecked;
-
-            // Update button state
-            toggleCreateInvoiceButton();
-        });
-    });
-
-    // Initialize button state on page load
-    toggleCreateInvoiceButton();
-
-    // Gather selected task IDs and submit them
-    createInvoiceBtn.addEventListener("click", function () {
-        const selectedTaskIds = Array.from(rowCheckboxes)
-            .filter(checkbox => checkbox.checked)
-            .map(checkbox => checkbox.value);
-
-        if (selectedTaskIds.length === 0) {
-            alert("No tasks selected!");
-            return;
-        }
-
-        // Example: Redirect to the batch invoice creation route
-        const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
-        window.location.href = url;
-    });
-    </script>
 </x-app-layout>

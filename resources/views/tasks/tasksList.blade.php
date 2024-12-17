@@ -122,7 +122,7 @@
                 <script>
                     function uploadTask() {
                         console.log(document.getElementById('loadingScreen'));
-                        document.getElementById('loadingScreen').style.display = 'block';
+                        
                         // Check if a file has been selected
                         const fileInput = document.getElementById('pdfInput');
                         if (fileInput.files.length > 0) {

@@ -823,7 +823,11 @@ class OpenAiController extends Controller
             
             $messages = $this->getMessages($threadId);
 
-            return $messages['data'];
+            return [
+                'status' => 'success',
+                'message' => 'Question asked successfully',
+                'data' => $messages,
+            ];
             // $answer = $messages['data'][0]['content'][0];
 
             // if($answer['type'] !== 'text')
@@ -1089,22 +1093,21 @@ class OpenAiController extends Controller
 
     /**
      * @param int $conversationId
-     * @param string $type
-     * @param array $contents 
+     * @param string $type of content
+     * @param string $runId
+     * @param string $messageId
+     * @param array $tokens [prompt_tokens, completion_tokens, total_tokens, cache_tokens]
      * 
      * @return void
      */
-    public function saveMessages(int $conversationId, string $type, array $contents)
+    public function saveMessages(int $conversationId, string $runId = null, string $messageId, string $type, array $contents)
     {
-        if (count($contents) > 0) {
-            foreach ($contents as $content) {
-                $createdMessage = Message::create([
-                    'content' => $content['content'],
-                    'conversation_id' => $conversationId,
-                    'type' => $type,
-                    'role' => $content['role'],
-                ]);
-            }
-        }
+        Message::create([
+            'conversation_id' => $conversationId,
+            'run_id' => $runId,
+            'message_id' => $messageId,
+            'type' => $type,
+            'content' => $contents,
+        ]);
     }
 }

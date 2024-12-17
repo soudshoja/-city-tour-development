@@ -18,6 +18,8 @@
     @vite(['resources/js/jsbyNisma.js',])
 
     @livewireStyles
+
+    <!-- Scripts -->
 </head>
 
 <body>

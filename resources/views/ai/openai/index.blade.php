@@ -48,66 +48,9 @@
         <livewire:chat />
     </div>
     <script>
-        async function sendPrompt(prompt) {
-            let loading = document.getElementById("loading-spinner");
-            loading.style.display = "flex";
 
-            loading.classList.add("justify-items-center");
-
-
-
-            // Send POST request to the server with the prompt
-            const response = await fetch("{{ route('open-ai.store') }}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                },
-                body: JSON.stringify({
-                    prompt: prompt
-                })
-            });
-
-            const data = await response.json();
-            const responseText = data.choices[0].message.content;
-
-            document.getElementById("loading-spinner").style.display = "none";
-            // Simulate streaming by chunking the response
-            simulateStreaming(responseText);
-        }
-
-        function simulateStreaming(text) {
-            const responseContainer = document.getElementById("response-container");
-            responseContainer.innerHTML = ""; // Clear previous response
-
-            // Split text into words instead of characters
-            const words = text.split(" ");
-            let currentIndex = 0;
-
-            function displayNextChunk() {
-                if (currentIndex < words.length) {
-                    // Append the next word with a space
-                    const word = words[currentIndex];
-                    const messageDiv = document.createElement("span");
-                    messageDiv.textContent = word + " ";
-                    responseContainer.appendChild(messageDiv);
-
-                    // Move to the next word
-                    currentIndex++;
-
-                    // Set delay for the next word
-                    setTimeout(displayNextChunk, 30); // Adjust delay as needed
-                }
-            }
-
-            displayNextChunk(); // Start streaming simulation
-        }
-
-        document.getElementById("send").addEventListener("click", function() {
-            const prompt = document.getElementById("prompt").value;
-            if (prompt) {
-                sendPrompt(prompt);
-            }
-        });
+        var d = $('.chat-box');
+        console.log(d.prop("scrollHeight"));
+        d.scrollTop(d.prop("scrollHeight"));
     </script>
 </x-app-layout>

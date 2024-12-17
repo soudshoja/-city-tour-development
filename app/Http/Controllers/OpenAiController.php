@@ -643,6 +643,7 @@ class OpenAiController extends Controller
     //     return response()->json($response);
     // }
 
+    // MESSAGE
     public function createMessage(string $threadId, string $message)
     {
         $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
@@ -656,7 +657,50 @@ class OpenAiController extends Controller
             'content' => $message,
         ];
 
-        return $this->postRequest($url, $header, json_encode($data));
+        $messageResponse =  $this->postRequest($url, $header, json_encode($data)); 
+
+        return [
+            'status' => isset($messageResponse['id']) ? 'success' : 'error',
+            'message' => isset($messageResponse['id']) ? 'Message created successfully' : 'Failed to create message',
+            'data' => $messageResponse,
+        ];
+    }
+
+    public function getMessages($threadId)
+    {
+        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+
+        $response = $this->getRequest($url, $header);
+
+        if(!isset($response['data'])){
+            return [
+                'status' => 'error',
+                'message' => 'Failed to retrieve messages',
+                'data' => $response,
+            ];
+        }
+
+
+        if (count($response['data']) == 0) {
+            $status = 'error';
+            $message = 'No messages returned from OpenAI';
+        } else {
+            $status = 'success';
+            $message = 'Messages retrieved successfully';
+            $data = $response['data'];
+        }
+
+        return [
+            'status' => $status,
+            'message' => $message,
+            'data' => isset($data) ? $data : $response,
+        ];
     }
 
     // RUN
@@ -677,7 +721,13 @@ class OpenAiController extends Controller
             ],
         ];
 
-        return $this->postRequest($url, $header, json_encode($data));
+        $response = $this->postRequest($url, $header, json_encode($data));
+        
+        return [
+            'status' => isset($response['id']) ? 'success' : 'error',
+            'message' => isset($response['id']) ? 'Run created successfully' : 'Failed to create run',
+            'data' => $response,
+        ];
     }
 
     public function checkRun(string $threadId, string $runId)
@@ -723,6 +773,24 @@ class OpenAiController extends Controller
         }
     }
 
+    public function listRun()
+    {
+        $threadId = env('OPENAI_THREAD_ID');
+
+        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+        $response = $this->getRequest($url, $header);
+
+        return response()->json($response);
+    }
+
+
+
     public function sendMessage(Request $request)
     {
         $content = $request->input('content');
@@ -733,7 +801,6 @@ class OpenAiController extends Controller
 
         return response()->json($response);
     }
-
 
     /**
      * Ask the AI system
@@ -746,6 +813,7 @@ class OpenAiController extends Controller
     public function askOpenAi($content, $userId)
     {
         $conversation = collect();
+        $createNewThread = true;
 
         //Check if the message is question or action
         $response = $this->questionOrAction($content);
@@ -762,10 +830,14 @@ class OpenAiController extends Controller
             ];
 
 
-            //Check thread for this user, if not exist create new thread
+            //Check thread for this user, if not exist create new thread, by default create new thread is true
             $conversation = Conversation::where('user_id', $userId)->first();
 
-            if (!$conversation || $conversation->thread_id == null || $conversation->assistant_id == null) {
+            if ($conversation) {
+                $createNewThread = $conversation->thread_id == null || $conversation->assistant_id == null; // return false or true
+            } 
+
+            if ($createNewThread) {
                 $conversation = Conversation::updateOrCreate([
                     'user_id' => $userId,
                     'assistant_id' => env('OPENAI_ASSISTANT_ID'),
@@ -783,62 +855,54 @@ class OpenAiController extends Controller
 
             $assistantId = $conversation->assistant_id;
             $threadId = $conversation->thread_id;
-
+            
+            //Create message for thread
             $messageResponse = $this->createMessage($threadId, $content);
 
-            if (!isset($messageResponse['id'])) {
-                return [
-                    'status' => 'error',
-                    'message' => 'Failed to create message',
-                    'data' => $messageResponse,
-                ];
-            }
+            if($messageResponse['status'] == 'error') return $messageResponse;
+            
 
-            // $message = Message::create([
-            //     'conversation_id' => $conversation->id,
-            //     'message_id' => $messageResponse['id'],
-            //     'type' => 'prompt',
-            // ]);
+            $messageResponse = $messageResponse['data'];
+
+            $createdMessageId = $this->saveMessagesDB($conversation->id, null, $messageResponse['id'],'question');
 
             //Run thread
             $runResponse = $this->createRun($assistantId, $threadId);
 
-            if(!isset($runResponse['id'])){
-
-                return [
-                    'status' => 'error',
-                    'message' => 'Failed to create run',
-                    'data' => $runResponse,
-                ];
-
-            }
+            if($runResponse['status'] === 'error') return $runResponse; 
 
             $runId = $runResponse['id'];
 
+            $this->updateMessageDB($createdMessageId, ['run_id' => $runId]);
 
-            //TODO: Run status check, if status is complete, get messages and show to user
+            //Run status check, if status is complete, get messages and show to user
             $checkRun = $this->checkRun($threadId, $runId);
 
             if($checkRun['status'] === 'error') return $checkRun;
             
             $messages = $this->getMessages($threadId);
 
+            if($messages['status'] === 'error') return $messages;
+
+            $latestMessage = $messages['data'][0];
+
+            $answer = $latestMessage['content'][0]['text']['value'];
+
+            if ($latestMessage['role'] == 'assistant') {
+                $this->saveMessagesDB(
+                    $conversation->id,
+                    $runId,
+                    $latestMessage['id'],
+                    'answer'
+                );
+            }
+
             return [
                 'status' => 'success',
                 'message' => 'Question asked successfully',
-                'data' => $messages,
+                'data' => $answer,
             ];
-            // $answer = $messages['data'][0]['content'][0];
 
-            // if($answer['type'] !== 'text')
-            // {
-            //     return [
-            //         'status' => 'error',
-            //         'message' => 'answer is not a text'
-            //     ];
-            // }
-
-            // return $answer['text']['value'];
 
         } else {
 
@@ -852,38 +916,6 @@ class OpenAiController extends Controller
             ];
         }
     }
-
-    public function getMessages($threadId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-
-        $response = $this->getRequest($url, $header);
-
-        return $response;
-    }
-
-    public function listRun()
-    {
-        $threadId = env('OPENAI_THREAD_ID');
-
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $response = $this->getRequest($url, $header);
-
-        return response()->json($response);
-    }
-
 
     public function questionOrAction($data)
     {
@@ -981,7 +1013,7 @@ class OpenAiController extends Controller
                 'user_id' => $userId,
             ])->id;
 
-            // $this->saveMessages($conversationId, 'question', $data);
+            $this->saveMessagesToDB($conversationId, 'question', $data);
 
             // $this->saveMessages($conversationId, 'answer', $message);
 
@@ -1015,17 +1047,6 @@ class OpenAiController extends Controller
                 'data' => $message,
             ];
         }
-    }
-
-    /**
-     *  Ask the AI system using thread, message and run 
-     * 
-     * 
-     */
-    public function newAskQuestion($message)
-    {
-        $assistantId = env('OPENAI_ASSISTANT_ID');
-        $threadId = env('OPENAI_THREAD_ID');
     }
 
 
@@ -1098,16 +1119,20 @@ class OpenAiController extends Controller
      * @param string $messageId
      * @param array $tokens [prompt_tokens, completion_tokens, total_tokens, cache_tokens]
      * 
-     * @return void
+     * @return int $messageId
      */
-    public function saveMessages(int $conversationId, string $runId = null, string $messageId, string $type, array $contents)
+    public function saveMessagesDB(int $conversationId, ?string $runId = null, string $messageId, string $type)
     {
-        Message::create([
+        return Message::create([
             'conversation_id' => $conversationId,
             'run_id' => $runId,
             'message_id' => $messageId,
             'type' => $type,
-            'content' => $contents,
-        ]);
+        ])->id;
+    }
+
+    public function updateMessageDB(int $id, array $columns)
+    {
+        Message::where('id', $id)->update($columns);
     }
 }

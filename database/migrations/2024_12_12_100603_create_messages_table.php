@@ -14,9 +14,15 @@ return new class extends Migration
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('conversation_id')->constrained()->onDelete('cascade');
-            $table->string('type')->enum('question', 'answer');
-            $table->string('role')->enum('user', 'assistant');
-            $table->text('content');
+            $table->string('run_id')->nullable();
+            $table->string('message_id')->unique();
+            $table->bigInteger('prompt_tokens')->nullable();
+            $table->bigInteger('completion_tokens')->nullable();
+            $table->bigInteger('total_tokens')->nullable();
+            $table->bigInteger('cache_tokens')->nullable();
+            $table->string('type')->nullable()->enum('prompt', 'answer');
+            $table->string('role')->nullable()->enum('user', 'assistant');
+            $table->text('content')->nullable();
             $table->timestamps();
         });
     }

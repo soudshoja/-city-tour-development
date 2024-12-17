@@ -14,7 +14,9 @@ class Message extends Model
         'completion_tokens',
         'total_tokens',
         'cache_tokens',
-        'type'
+        'type',
+        'role',
+        'content',
     ];
 
     public function conversation()

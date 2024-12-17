@@ -17,6 +17,7 @@ use App\Models\Hotel;
 use App\Models\Message;
 use App\Models\Role;
 use App\Models\TaskHotelDetail;
+use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -534,7 +535,7 @@ class OpenAiController extends Controller
 
 
     // THREAD
-    public function createThreadRun(string $assistantId)
+    public function createThreadRun(string $assistantId, User $user)
     {
         if ($assistantId == null) {
             return response()->json([
@@ -551,9 +552,9 @@ class OpenAiController extends Controller
         ];
         $data = [
             'assistant_id' => $assistantId,
-            'additional_instructions' => 'Address the user as' . auth()->user()->name,
+            'additional_instructions' => 'Address the user as' . $user->name . ', but you dont need to call his name every time you respond.',
             'metadata' => [
-                'user_id' => (string) auth()->user()->id,
+                'user_id' => (string) $user->id,
             ],
         ];
 
@@ -587,7 +588,11 @@ class OpenAiController extends Controller
 
         $response = $this->postRequest($url, $header, json_encode($data));
 
-        return response()->json($response);
+        return [
+            'status' => isset($response['id']) ? 'success' : 'error',
+            'message' => isset($response['id']) ? 'Thread created successfully' : 'Failed to create thread',
+            'data' => $response,
+        ];
     }
 
     public function retrieveThread($id)
@@ -678,28 +683,39 @@ class OpenAiController extends Controller
 
         $response = $this->getRequest($url, $header);
 
-        if(!isset($response['data'])){
-            return [
-                'status' => 'error',
-                'message' => 'Failed to retrieve messages',
-                'data' => $response,
-            ];
-        }
+        if(isset($response['error']['message'])){
+            if(str_contains($response['error']['message'], 'No thread found')){
+               
+                $createThread = $this->createThread();
 
+                if($createThread['status'] == 'error'){
+                    return $createThread;
+                }
+                logger('create thread response: ', $createThread['data']);
 
-        if (count($response['data']) == 0) {
-            $status = 'error';
-            $message = 'No messages returned from OpenAI';
-        } else {
-            $status = 'success';
-            $message = 'Messages retrieved successfully';
-            $data = $response['data'];
+                $threadId = $createThread['data']['id'];
+
+                Conversation::updateOrCreate([
+                    'user_id' => auth()->user()->id,
+                    'assistant_id' => env('OPENAI_ASSISTANT_ID'),
+                    'thread_id' => $threadId,
+                ]);
+
+                $response = $this->getMessages($threadId);
+
+            } else {
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to retrieve messages',
+                    'data' => $response,
+                ];
+            }
         }
 
         return [
-            'status' => $status,
-            'message' => $message,
-            'data' => isset($data) ? $data : $response,
+            'status' => 'success',
+            'message' => 'Messages retrieved successfully',
+            'data' => $response['data']
         ];
     }
 
@@ -715,10 +731,6 @@ class OpenAiController extends Controller
         ];
         $data = [
             'assistant_id' => $assistantId,
-            'additional_instructions' => 'Address the user as Ahmad Al Sabah',
-            'metadata' => [
-                'user_id' => "1",
-            ],
         ];
 
         $response = $this->postRequest($url, $header, json_encode($data));
@@ -793,11 +805,8 @@ class OpenAiController extends Controller
 
     public function sendMessage(Request $request)
     {
-        $content = $request->input('content');
-        $userId = $request->input('id');
 
-
-        $response = $this->askOpenAi($content, $userId);
+        $response = $this->askOpenAi($request->input('prompt'), $request->input('user_id'));
 
         return response()->json($response);
     }
@@ -810,28 +819,25 @@ class OpenAiController extends Controller
      * 
      * @return array ['status', 'message', 'data']
      */
-    public function askOpenAi($content, $userId)
+    public function askOpenAi($content, $userId) : array
     {
+        $user = User::find($userId);
         $conversation = collect();
         $createNewThread = true;
 
         //Check if the message is question or action
-        $response = $this->questionOrAction($content);
+        $response = $this->promptOrAction($content);
+        
+        logger('prompt or action response: ', $response);
 
         if (isset($response['error']) || $response['status'] === 'error') {
             return $response;
         }
 
-        if ($response['data']['type'] === 'question') {
-
-            $data[] = [
-                'role' => 'user',
-                'content' => $content,
-            ];
-
+        if ($response['data']['type'] === 'prompt') {
 
             //Check thread for this user, if not exist create new thread, by default create new thread is true
-            $conversation = Conversation::where('user_id', $userId)->first();
+            $conversation = Conversation::where('user_id', $userId)->latest()->first();
 
             if ($conversation) {
                 $createNewThread = $conversation->thread_id == null || $conversation->assistant_id == null; // return false or true
@@ -843,7 +849,7 @@ class OpenAiController extends Controller
                     'assistant_id' => env('OPENAI_ASSISTANT_ID'),
                 ]);
 
-                $threadRunResponse = $this->createThreadRun($conversation->assistant_id);
+                $threadRunResponse = $this->createThreadRun($conversation->assistant_id, $user);
 
                 if ($threadRunResponse['status'] == 'error') {
                     return $threadRunResponse;
@@ -863,23 +869,35 @@ class OpenAiController extends Controller
             
 
             $messageResponse = $messageResponse['data'];
+            
+            logger('message response: ', $messageResponse);
 
-            $createdMessageId = $this->saveMessagesDB($conversation->id, null, $messageResponse['id'],'question');
+            $createdMessageId = $this->saveMessagesDB(
+                $conversation->id,
+                null,
+                $messageResponse['id'],
+                'question',
+                $tokens = []
+            );
 
             //Run thread
             $runResponse = $this->createRun($assistantId, $threadId);
 
             if($runResponse['status'] === 'error') return $runResponse; 
 
-            $runId = $runResponse['id'];
+            $runId = $runResponse['data']['id'];
+
+            logger('run response: ', $runResponse);
 
             $this->updateMessageDB($createdMessageId, ['run_id' => $runId]);
 
             //Run status check, if status is complete, get messages and show to user
-            $checkRun = $this->checkRun($threadId, $runId);
+            $checkRunResponse = $this->checkRun($threadId, $runId);
 
-            if($checkRun['status'] === 'error') return $checkRun;
+            if($checkRunResponse['status'] === 'error') return $checkRunResponse;
             
+            $tokens = $checkRunResponse['data']['usage'];
+
             $messages = $this->getMessages($threadId);
 
             if($messages['status'] === 'error') return $messages;
@@ -893,43 +911,55 @@ class OpenAiController extends Controller
                     $conversation->id,
                     $runId,
                     $latestMessage['id'],
-                    'answer'
+                    'answer',
+                    $tokens
                 );
             }
 
             return [
                 'status' => 'success',
                 'message' => 'Question asked successfully',
-                'data' => $answer,
+                'data' => $messages['data'],
             ];
 
 
-        } else {
+        } else if($response['data']['type'] === 'action') {
 
-            $data[] = [
-                'role' => 'user',
-                'content' => $content,
-            ];
+            // $data[] = [
+            //     'role' => 'user',
+            //     'content' => $content,
+            // ];
 
             return [
-                'status' => 'error'
+                'status' => 'error',
+                'message' => 'Sorry, action is not yet supported',
+                'data' => [
+                    'type' => $response['data']['type'],
+                ]
+            ];
+        } else {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid response. Please provide a valid response: action or question',
+                'data' => $response['data']
             ];
         }
     }
 
-    public function questionOrAction($data)
+    public function promptOrAction($data)
     {
 
         $content = [
             [
                 'role' => 'user',
-                'content' => 'determined if the content is question or action : ' . $data . ' and return the answer either , "action" or "question"',
+                'content' => 'determined if the content is prompt or action : ' . $data . ' and return the answer either , "action" or "prompt", usually the it will be a prompt, if you are not sure just default to prompt
+                action usually is a command or instruction so that the system can perform an action based on the command or instruction, while prompt is a question or request for information',
             ],
             [
                 'role' => 'user',
                 'content' => 'example answer in json format:
                     {
-                     "type": "question"
+                     "type": "prompt"
                     }     
                 "',
             ]
@@ -938,7 +968,11 @@ class OpenAiController extends Controller
         $response = $this->chatCompletionJsonResponse($content);
 
         if (isset($response['error'])) {
-            return $response;
+            return [
+                'status' => 'error',
+                'message' => 'Failed to determine the type of content',
+                'data' => $response['error']
+            ];
         }
 
         if (isset($response['choices'][0]['message']['content'])); {
@@ -946,7 +980,17 @@ class OpenAiController extends Controller
 
             $message = json_decode($message)->type;
 
-            if ($message !== 'action' && $message !== 'question') {
+            if ($message == 'action') {
+                return [
+                    'status' => 'error',
+                    'message' => 'Sorry, action is not yet supported',
+                    'data' => [
+                        'type' => $message,
+                    ]
+                ];
+            }
+
+            if ($message !== 'prompt') {
                 return [
                     'status' => 'error',
                     'message' => 'Invalid response. Please provide a valid response: action or question',
@@ -1121,13 +1165,17 @@ class OpenAiController extends Controller
      * 
      * @return int $messageId
      */
-    public function saveMessagesDB(int $conversationId, ?string $runId = null, string $messageId, string $type)
+    public function saveMessagesDB(int $conversationId, ?string $runId = null, string $messageId, string $type, array $tokens)
     {
         return Message::create([
             'conversation_id' => $conversationId,
             'run_id' => $runId,
             'message_id' => $messageId,
             'type' => $type,
+            'prompt_tokens' => $tokens['prompt_tokens'] ?? null,
+            'completion_tokens' => $tokens['completion_tokens'] ?? null,
+            'total_tokens' => $tokens['total_tokens'] ?? null,
+            'cache_tokens' => $tokens['prompt_token_details']['cached_tokens'] ?? null,
         ])->id;
     }
 

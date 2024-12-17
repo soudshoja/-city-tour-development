@@ -501,6 +501,7 @@ class TaskController extends Controller
             ];
             TaskHotelDetail::create($hotelDetails);
         
+        } catch(Exception $e) {
             throw $e;
         }
     }

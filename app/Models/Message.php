@@ -9,11 +9,12 @@ class Message extends Model
     protected $fillable = [
         'conversation_id',
         'run_id',
-        'status',
+        'message_id',
         'prompt_tokens',
         'completion_tokens',
         'total_tokens',
-        'cache_tokens'
+        'cache_tokens',
+        'type'
     ];
 
     public function conversation()

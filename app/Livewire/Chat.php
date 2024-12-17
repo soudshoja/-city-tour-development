@@ -10,7 +10,7 @@ use Livewire\Component;
 class Chat extends Component
 {
     public $conversation;
-    public $messages;
+    public $messages = [];
     public $prompt;
     public $error = null;
 
@@ -20,9 +20,18 @@ class Chat extends Component
 
     public function mount(){
         $openAiController = new OpenAiController();
-        $conversation = Conversation::where('user_id', auth()->user()->id)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->first();
+        $conversation = Conversation::where('user_id', auth()->user()->id)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->latest()->first();
 
-        $this->messages = $openAiController->getMessages($conversation->thread_id)['data'];
+        $messages = $openAiController->getMessages($conversation->thread_id);
+
+        logger('messages: \n',$messages);
+
+        if($messages['status'] == 'error'){
+            $this->error = $messages['message'];
+            return;
+        }
+
+        $this->messages = $messages['data'];
     }
 
     public function getMessage()
@@ -44,9 +53,14 @@ class Chat extends Component
         $response = $openAiController->askOpenAi($this->prompt, auth()->user()->id);
 
         if($response['status'] == 'error'){
+           
+            logger('error',$response);
+
             $this->error = $response['message'];
             return;
         }
+
+        logger('response: \n',$response);
 
         $this->messages = $response['data'];
     }

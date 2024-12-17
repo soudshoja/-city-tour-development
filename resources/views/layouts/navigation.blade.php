@@ -42,7 +42,7 @@
                     x-transition:leave-start="opacity-100 transform scale-100"
                     x-transition:leave-end="opacity-0 transform scale-90"
                     @click.away="chatBox = false"
-                    class="flex flex-col justify-end absolute bg-white top-16 right-0 shadow-md w-96 h-96 bg-white rounded-lg rounded-tr-none text-white z-20 ">
+                    class="flex flex-col justify-end absolute bg-white top-16 right-0 shadow-md w-120 h-160 bg-white rounded-lg z-20 ">
                     <livewire:chat />
                 </div>
             </div>

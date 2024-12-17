@@ -12,7 +12,7 @@ class Chat extends Component
     public $conversation;
     public $messages;
     public $prompt;
-    public $loading = false;
+    public $error = null;
 
     // public function getConversation(int $userId){
     //     $this->conversation = Conversation::with('messages')->where('user_id', $userId)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->first();
@@ -25,20 +25,30 @@ class Chat extends Component
         $this->messages = $openAiController->getMessages($conversation->thread_id)['data'];
     }
 
-    public function getMessage($parameter)
+    public function getMessage()
     {
+       
     }
 
     public function sendMessage()
     {
+        $this->error = null;
+        $rand = rand(0, 1);
+
         if($this->prompt == null || $this->prompt == ''){
+            $this->error = 'Please enter a message';
             return;
         }
 
-        $this->loading = true;
-        
         $openAiController = new OpenAiController();
-        $this->messages = $openAiController->askOpenAi($this->prompt, auth()->user()->id);
+        $response = $openAiController->askOpenAi($this->prompt, auth()->user()->id);
+
+        if($response['status'] == 'error'){
+            $this->error = $response['message'];
+            return;
+        }
+
+        $this->messages = $response['data'];
     }
 
     public function render()

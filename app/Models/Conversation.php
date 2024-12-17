@@ -8,8 +8,8 @@ class Conversation extends Model
 {
     protected $fillable = [
         'user_id',
-        'thread_id',
         'assistant_id',
+        'thread_id',
         'last_time_message'
     ];
 

@@ -8,6 +8,7 @@ use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\InvoicePartial;
 use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Company;
@@ -167,7 +168,7 @@ class InvoiceController extends Controller
             $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
         }
         $suppliers = Supplier::all();
-
+        $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
 
         $appUrl = config('app.url');
@@ -184,6 +185,7 @@ class InvoiceController extends Controller
             'selectedTasks',
             'selectedAgent',
             'selectedClient',
+            'paymentGateways',
             'todayDate',
             'appUrl'
         ));
@@ -209,7 +211,61 @@ class InvoiceController extends Controller
     }
 
 
+    public function savePartial(Request $request)
+    {
+        $request->validate([
+            'invoiceId' => 'required',
+            'date' => 'required',
+            'clientId' => 'required',
+            'amount' => 'required',
+            'type' => 'required|string',
+            'invoiceNumber'=> 'required|string',
+            'gateway' => 'required|string',
+        ]);
 
+        $invoiceId = $request->input('invoiceId');
+        $invoiceNumber = $request->input('invoiceNumber');
+        $clientId = $request->input('clientId'); 
+        $type = $request->input('type');
+        $date = $request->input('date'); 
+        $amount = $request->input('amount');
+        $gateway = $request->input('gateway');
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+
+
+        try {
+
+                $invoicepartial = InvoicePartial::create([
+                    'invoice_id' => $invoiceId,
+                    'invoice_number' => $invoiceNumber,
+                    'client_id' => $clientId,
+                    'amount' => $amount,
+                    'status' => 'unpaid',
+                    'expiry_date' => $date,
+                    'type' => $type,
+                    'payment_gateway' => $gateway,
+                ]);
+
+                $invoice->payment_type = $type;
+                $invoice->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Invoice Partial created successfully!',
+                    'invoiceId' => $invoiceId,
+                ]);
+    
+            } catch (Exception $e) {
+                Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create invoice!',
+                ]);
+            }
+
+    }
+    
     /**
      * Store a newly created resource in storage.
      */
@@ -232,25 +288,7 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'currency' => 'required|string',
         ]);
-
-        $request->validate([
-            'tasks' => 'required|array',
-            'tasks.*.id' => 'required|integer',
-            'tasks.*.description' => 'required|string',
-            'tasks.*.remark' => 'nullable|string',
-            'tasks.*.invprice' => 'required|numeric',
-            'tasks.*.supplier_id' => 'required|integer',
-            'tasks.*.client_id' => 'required|integer',
-            'tasks.*.agent_id' => 'required|integer',
-            'invdate' => 'required|date',
-            'duedate' => 'required|date',
-            'subTotal' => 'required|numeric',
-            'clientId' => 'required|integer',
-            'agentId' => 'required|integer',
-            'invoiceNumber' => 'required|string',
-            'currency' => 'required|string',
-        ]);
-
+     
 
         $tasks = $request->input('tasks');
         $duedate = $request->input('duedate');
@@ -265,8 +303,7 @@ class InvoiceController extends Controller
         $agent = Agent::where('id', operator: $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
-        $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
-        $branchId = $agent ? $agent->branch_id : null;
+
         Log::info('Company ID:', ['companyId' => $companyId]);
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
@@ -420,7 +457,12 @@ class InvoiceController extends Controller
                 }
             }
 
-            return response()->json('Invoice created successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice created successfully!',
+                'invoiceId' => $invoice->id,
+            ]);
+
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json('Invoice creation failed!');
@@ -505,6 +547,7 @@ class InvoiceController extends Controller
 
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice')->get();
 
         // Check if the invoice exists
         if (!$invoice) {
@@ -513,8 +556,27 @@ class InvoiceController extends Controller
 
         $invoiceDetails = $invoice->invoiceDetails;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials'));
     }
+
+    public function split(string $invoiceNumber, int $clientId)
+    {
+
+        // Retrieve the invoice based on the invoice number
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoicePartial = InvoicePartial::where('invoice_number', $invoiceNumber)->where('client_id', $clientId)->with('client', 'invoice')->first();
+        $invoicePartial->expiry_date = \Carbon\Carbon::parse($invoicePartial->expiry_date);
+        // Check if the invoice exists
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        $invoiceDetails = $invoice->invoiceDetails;
+
+        return view('invoice.split', compact('invoice', 'invoiceDetails', 'invoicePartial'));
+    }
+
+
 
     public function sendInvoice(string $invoiceNumber)
     {

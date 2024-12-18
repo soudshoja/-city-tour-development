@@ -878,7 +878,7 @@ class OpenAiController extends Controller
                 $conversation->id,
                 null,
                 $messageResponse['id'],
-                'question',
+                'prompt',
                 $tokens = []
             );
 

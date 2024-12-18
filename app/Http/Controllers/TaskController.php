@@ -28,14 +28,15 @@ use Illuminate\Models\Suppliers;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-//// tset
+
+
 class TaskController extends Controller
 {
     use NotificationTrait, Converter;
 
     public function index($id = null)
     {
-        if(!auth()->user()){
+        if (!auth()->user()) {
             return redirect()->route('login');
         }
 
@@ -51,10 +52,9 @@ class TaskController extends Controller
             $taskCount = Task::count(); // Total task count for admin
             $clients = Client::all();
             $agents = Agent::all();
-
         } elseif ($user->role_id == Role::COMPANY) {
-            
-            $agents = Agent::with(['branch'=> function ($query) use ($user) {
+
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
 
@@ -62,11 +62,11 @@ class TaskController extends Controller
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.branch', 'client','invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
             $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
 
         } elseif ($user->role_id == Role::AGENT) {
-            
+
             if ($id) {
                 $agent = Agent::with('branch')->find($id);
                 if ($agent) {
@@ -86,13 +86,13 @@ class TaskController extends Controller
             }
 
             $companyId = $agent->branch->company_id;
-            $agents = Agent::with(['branch','clients'])->where('branch_id', $agent->branch_id)->get();
+            $agents = Agent::with(['branch', 'clients'])->where('branch_id', $agent->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-        } 
+        }
 
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
-        
+
         $suppliers = Supplier::all();
         // dd($tasks, $agent, $agents, $taskCount);
         return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
@@ -100,7 +100,7 @@ class TaskController extends Controller
 
     public function voucher($id = null)
     {
-        if(!auth()->user()){
+        if (!auth()->user()) {
             return redirect()->route('login');
         }
 
@@ -116,10 +116,9 @@ class TaskController extends Controller
             $taskCount = Task::count(); // Total task count for admin
             $clients = Client::all();
             $agents = Agent::all();
-
         } elseif ($user->role_id == Role::COMPANY) {
-            
-            $agents = Agent::with(['branch'=> function ($query) use ($user) {
+
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
 
@@ -127,11 +126,11 @@ class TaskController extends Controller
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.branch', 'client','invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
             $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
 
         } elseif ($user->role_id == Role::AGENT) {
-            
+
             if ($id) {
                 $agent = Agent::with('branch')->find($id);
                 if ($agent) {
@@ -151,13 +150,13 @@ class TaskController extends Controller
             }
 
             $companyId = $agent->branch->company_id;
-            $agents = Agent::with(['branch','clients'])->where('branch_id', $agent->branch_id)->get();
+            $agents = Agent::with(['branch', 'clients'])->where('branch_id', $agent->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-        } 
+        }
 
         $tasks = $tasks ?? collect(); // Ensure $tasks is not null
-        
+
         $suppliers = Supplier::all();
         // dd($tasks, $agent, $agents, $taskCount);
         return view('tasks.tasksVoucher', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
@@ -177,7 +176,7 @@ class TaskController extends Controller
         // Return the task data as JSON for the modal to load dynamically
         return response()->json(['task' => $task], 200);
     }
-    
+
     // edit and update tasks
     public function edit($id)
     {
@@ -212,7 +211,7 @@ class TaskController extends Controller
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500); // Return error response with status 500
             }
         } else {
-            
+
             try {
                 $task->update($request->only(['client_id', 'agent_id', 'supplier_id']));
                 $task->client_name = $client->name;
@@ -227,7 +226,7 @@ class TaskController extends Controller
 
     public function import(Request $request)
     {
-    
+
         $request->validate([
             'task_file' => 'required|mimes:pdf',
         ]);
@@ -244,7 +243,7 @@ class TaskController extends Controller
         }
 
         // Excel::import(new TasksImport, $request->file('excel_file'));
-        
+
         return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
 
@@ -309,7 +308,8 @@ class TaskController extends Controller
      * @param $agentId
      * @return array
      */
-    public function getAgentTask($agentId){
+    public function getAgentTask($agentId)
+    {
         // get tasks that doesnt have invoice only
         $tasks = Task::whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
 

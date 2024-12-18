@@ -1,315 +1,455 @@
 <x-app-layout>
-    <script>
-        window.taskCount = @json($taskCount);
-    </script>
 
-    <!-- Notification Container -->
-    <div id="notification" class="fixed bottom-5 right-5 z-50 hidden bg-green-500 text-white p-3 rounded-lg shadow-lg">
-        <span id="notificationMessage"></span>
-    </div>
-    <!--./Notification Container -->
+    <!-- page wrapper -->
+    <div class="mx-auto">
 
-    <div x-data ='{importModal : true }'>
-        <!-- Breadcrumbs -->
-        <x-breadcrumbs :breadcrumbs="[
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Tasks List']
-        ]" />
-        @if($importedTask  = session('importedTask'))
-            <div 
-                x-show="importModal"
-                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                <div 
-                @click.away = "importModal = false"     
-                class="bg-white rounded-md border-2 justify-center align-middles p-4 w-80">
-                    <form action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2">
-                        @csrf
-                        @method('PUT')
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
-                        <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($clients as $client)
-                                <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($agents as $agent)
-                                <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                            @endforeach
-                        </select>
-                        <x-primary-button type="submit" class="w-full mt-4"> Update </x-primary-button>
-                    </form>
+
+        <!-- page title -->
+        <div class="flex justify-between items-center gap-5 my-3 ">
+
+
+            <div class="flex items-center gap-5 ">
+                <h2 class="text-3xl font-bold">Tasks List</h2>
+                <!-- total task number -->
+                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                    <span class="text-xl font-bold text-slate-700">{{ $taskCount }}</span>
                 </div>
             </div>
-        @endif
-        <!-- ./Breadcrumbs -->
-        <!-- Controls Section -->
-        <div
-            class="flex flex-col md:flex-row items-center justify-between p-3 bg-white dark:bg-gray-800 shadow rounded-lg space-y-3 md:space-y-0 text-gray-700 dark:text-gray-300">
-
-            <!-- left side -->
-            <div
-                class="flex items-start md:items-center border border-gray-300 rounded-lg p-2 space-y-3 md:space-y-0 md:space-x-3">
-                <!-- left side -->
-                <div class="flex gap-2 mr-2">
-
-                    <a
-                        class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-                        <span class="text-black dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Total
-                            Tasks </span>
-
-
-                    </a>
-                    <a
-                        class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-info-light dark:bg-gray-700"><span
-                            id="TasksData"></span>
-                    </a>
-                </div>
-
-
-            </div>
-
-
-            <!-- right side -->
-            <div class="flex items-center gap-3 space-y-3 md:space-y-0 md:space-x-2">
-
-            <button id="createInvoiceBtn" class="badge bg-success shadow-md dark:group-hover:bg-transparent whitespace-nowrap">
-                Create Invoice for Selected Tasks
-            </button>
-
-                <!-- Search Box -->
-                <div class="mt07 relative flex items-center h-12">
-                    <input id="searchInput" type="text" placeholder="Search"
-                        class="w-full h-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-300">
-                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2"
-                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-4.35-4.35M9.5 17A7.5 7.5 0 109.5 2a7.5 7.5 0 000 15z" />
+            <!-- add new task & refresh page -->
+            <div class="flex items-center gap-5">
+                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                        <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
                     </svg>
                 </div>
 
-
-                <!-- Upload Task Button -->
-                <div class="relative flex items-center h-12">
-                    <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
-                        enctype="multipart/form-data" class="inline-flex">
-                        @csrf
-                        <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden"
-                            onchange="uploadTask()" />
-
-                        <button id="uploadTaskButton" type="button"
-                            onclick="document.getElementById('pdfInput').click();"
-                            class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-700 focus:outline-none">
-                            <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span>Upload Task</span>
-                        </button>
-                    </form>
+                <!-- add invoice icon -->
+                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
                 </div>
-                <!-- ./Upload Task Button -->
+            </div>
 
-                <script>
-                    function uploadTask() {
-                        console.log(document.getElementById('loadingScreen'));
-                        
-                        // Check if a file has been selected
-                        const fileInput = document.getElementById('pdfInput');
-                        if (fileInput.files.length > 0) {
-                            // Submit the form once a file is selected
-                            document.getElementById('uploadTaskForm').submit();
-                        }
-                    }
-                </script>
+
+        </div>
+        <!-- ./page title -->
+
+
+        <!-- actions -->
+        <div class="w-full justify-between flex flex-col gap-5 mt-5 md:flex-row">
+            <div class="w-[70%]">
+                <!-- Table  -->
+                <div class="panel oxShadow rounded-lg">
+                    <!--  search icon -->
+                    <div class="relative">
+                        <!-- Search Input -->
+                        <input type="text" placeholder="Find fast in tasks table..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
+
+                        <!-- Search Button with SVG Icon -->
+                        <button type="button" class="btn DarkBCcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                            id="searchButton">
+                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
+                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- ./search icon -->
+                    <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
+                        <div class="dataTable-top"></div>
+                        <!-- table -->
+                        <div class="dataTable-container h-max">
+                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" id="selectAll" class="form-checkbox hidden">
+                                                <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                    <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                                </svg>
+                                            </label>
+                                        </th>
+
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
+
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Client Name</th>
+                                        @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Agent Name</th>
+                                        @endif
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Price</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Supplier</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($tasks as $task)
+                                    <tr>
+
+                                        <!-- checkbox -->
+                                        <td>
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                    <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                                </svg>
+                                            </label>
+
+                                        </td>
+                                        <td class="p-3 text-sm">
+                                            <a href="javascript:void(0);" id="viewTask" class="text-blue-500 hover:underline">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                    <path fill="#1e40af" d="M17.994 20.79q-.16.062-.303-.043q-.145-.105-.181-.276q-.031-.16.049-.31t.239-.217q1.027-.348 1.657-1.217t.63-1.958t-.62-1.957t-1.648-1.218q-.165-.067-.242-.217t-.046-.31q.036-.17.18-.276q.145-.105.304-.043q1.321.396 2.139 1.508q.817 1.111.817 2.513t-.817 2.514t-2.158 1.507m-2.525-.05q-.48-.161-.899-.417t-.774-.611t-.621-.794t-.408-.937q-.061-.16.034-.295t.26-.17q.16-.031.298.061t.205.252q.125.377.322.704t.48.61q.263.263.593.47t.682.331q.159.068.248.208q.09.14.04.3q-.056.165-.178.258q-.122.092-.282.03m.747-2.49q-.106.056-.215.013t-.109-.175V15.45q0-.13.109-.174q.108-.043.214.013l2.01 1.319q.106.055.106.161t-.106.162zm-3.154-2.266q-.166-.036-.261-.17q-.095-.135-.034-.295q.143-.48.408-.908q.266-.428.621-.784t.794-.621q.437-.265.937-.427q.16-.062.291.03q.132.093.169.258q.03.16-.059.31q-.09.15-.25.217q-.37.125-.7.322q-.33.198-.612.48q-.283.283-.48.6q-.197.318-.322.695q-.068.159-.205.242t-.297.052M10.902 21q-.348 0-.576-.229t-.29-.571l-.263-2.092q-.479-.145-1.035-.454q-.557-.31-.948-.664l-1.915.824q-.317.14-.644.03t-.504-.415L3.648 15.57q-.177-.305-.104-.638t.348-.546l1.672-1.25q-.045-.272-.073-.559q-.03-.288-.03-.559q0-.252.03-.53q.028-.278.073-.626l-1.672-1.25q-.275-.213-.338-.555t.113-.648l1.06-1.8q.177-.287.504-.406t.644.021l1.896.804q.448-.373.97-.673q.52-.3 1.013-.464l.283-2.092q.061-.342.318-.571T10.96 3h2.08q.349 0 .605.229q.257.229.319.571l.263 2.112q.575.202 1.016.463t.909.654l1.992-.804q.318-.14.645-.021t.503.406l1.06 1.819q.177.306.104.638t-.348.547l-1.216.911q-.17.14-.36.136q-.188-.005-.347-.176q-.16-.171-.148-.38t.182-.347l1.225-.908l-.994-1.7l-2.552 1.07q-.454-.499-1.193-.935q-.74-.435-1.4-.577L13 4h-1.994l-.312 2.689q-.756.161-1.39.52q-.633.358-1.26.985L5.55 7.15l-.994 1.7l2.169 1.62q-.125.336-.175.73t-.05.82q0 .38.05.755t.156.73l-2.15 1.645l.994 1.7l2.475-1.05q.483.483 1.009.82q.526.338 1.139.544q.044.907.324 1.731t.74 1.515q.123.184.013.387t-.348.203m1.071-11.5q-1.046 0-1.773.724T9.473 12q0 .467.16.89t.479.777q.16.183.366.206q.207.023.384-.136q.177-.154.181-.355t-.154-.347q-.208-.2-.312-.47T10.473 12q0-.625.438-1.063t1.062-.437q.289 0 .565.116q.276.117.476.324q.146.148.338.134q.192-.015.346-.191q.154-.177.134-.381t-.198-.364q-.311-.3-.753-.469t-.908-.169" />
+                                                </svg>
+                                            </a>
+                                        </td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->client_name }}</td>
+                                        @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent_name }}</td>
+                                        @endif
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->type }}</td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->price }}</td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->status }}</td>
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->supplier->name }}</td>
+
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- ./table -->
+
+
+                        <!-- pagination -->
+                        <div class="dataTable-bottom justify-center">
+                            <nav class="dataTable-pagination">
+                                <ul class="dataTable-pagination-list flex gap-2 mt-4">
+                                    <li class="pager" id="prevPage">
+                                        <a href="#">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </a>
+                                    </li>
+                                    <!-- Dynamic page numbers will be injected here -->
+                                    <li class="pager" id="nextPage">
+                                        <a href="#">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </a>
+                                    </li>
+                                </ul>
+
+
+                            </nav>
+                        </div>
+                        <!-- ./pagination -->
+                    </div>
+                </div>
+
+                <!-- ./Table  -->
 
             </div>
+            <!-- right -->
+            <div class="w-[30%]">
+
+                <div class="flex flex-col md:flex-row justify-center text-center gap-5">
+                    <!-- customize -->
+                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32">
+                            <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                        </svg>
+                        <span class="text-sm">Customize</span>
+                    </button>
+                    <!-- ./customize -->
+
+                    <!-- filter -->
+                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                        </svg>
+                        <span class="text-sm">Filter</span>
+                    </button>
+                    <!-- ./filter -->
+
+                    <!-- export -->
+                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                        </svg>
+                        <span class="text-sm">Export</span>
+                    </button>
+                    <!-- ./export -->
+                </div>
+                <div class="mt-5 ">
+                    <!-- display task details here-->
+                    <div id="taskDetails" class="panel w-full xl:mt-0  rounded-lg h-96"></div>
+                    <!-- display task details here-->
+
+                </div>
+            </div>
+            <!-- ./right -->
+        </div>
+        <!--./actions-->
+
+        <!-- page content -->
+        <div class="flex flex-col gap-2.5 xl:flex-row mt-5">
+
 
 
 
         </div>
-        <!-- ./Controls Section -->
+        <!-- ./page content -->
 
 
-        <!-- Table Section -->
-        <div class="mt-5 overflow-x-auto bg-white shadow rounded-lg">
-            <div class="max-h-[35rem] overflow-y-auto custom-scrollbar">
-                <table class="AgentTable CityMobileTable w-full">
-                    <thead class="sticky top-0 z-10">
-                        <tr>
-                            <!-- select all icon -->
-                            <th class="px-4 py-2">
-                                <svg id="selectAllSVG" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
-                                    <path
-                                        d="M8.0374 14.1437C7.78266 14.2711 7.47314 14.1602 7.35714 13.9001L3.16447 4.49844C2.49741 3.00261 3.97865 1.45104 5.36641 2.19197L11.2701 5.344C11.7293 5.58915 12.2697 5.58915 12.7289 5.344L18.6326 2.19197C20.0204 1.45104 21.5016 3.00261 20.8346 4.49844L19.2629 8.02275C19.0743 8.44563 18.7448 8.78997 18.3307 8.99704L8.0374 14.1437Z"
-                                        fill="#1C274C" class="dark:fill-white" />
-                                    <path opacity="0.5"
-                                        d="M8.6095 15.5342C8.37019 15.6538 8.26749 15.9407 8.37646 16.185L10.5271 21.0076C11.1174 22.3314 12.8818 22.3314 13.4722 21.0076L17.4401 12.1099C17.6313 11.6812 17.1797 11.2491 16.7598 11.459L8.6095 15.5342Z"
-                                        fill="#1C274C" class="dark:fill-gray-400" />
-                                </svg>
+    </div>
+    <!-- ./page wrapper -->
 
-                                <input type="checkbox" id="selectAll" class="form-checkbox CheckBoxColor hidden">
-                            </th>
-                            <th class="px-4 py-2">Status</th>
-                            <!-- Table Headers: Tasks Name and Agent Name -->
-                            <th class="px-4 py-2 cursor-pointer" id="tasksNameHeader">
-                                <div class="inline-flex items-center">
-                                    <svg id="sortIcon" class="mr-1 w-5 h-5" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
-                                        <path d="M13 7L3 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                                            class="dark:stroke-white" />
-                                        <path d="M10 12H3" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                                            class="dark:stroke-white" />
-                                        <path d="M8 17H3" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"
-                                            class="dark:stroke-white" />
-                                        <path
-                                            d="M11.3161 16.6922C11.1461 17.07 11.3145 17.514 11.6922 17.6839C12.07 17.8539 12.514 17.6855 12.6839 17.3078L11.3161 16.6922ZM16.5 7L17.1839 6.69223C17.0628 6.42309 16.7951 6.25 16.5 6.25C16.2049 6.25 15.9372 6.42309 15.8161 6.69223L16.5 7ZM20.3161 17.3078C20.486 17.6855 20.93 17.8539 21.3078 17.6839C21.6855 17.514 21.8539 17.07 21.6839 16.6922L20.3161 17.3078ZM19.3636 13.3636L20.0476 13.0559L19.3636 13.3636ZM13.6364 12.6136C13.2222 12.6136 12.8864 12.9494 12.8864 13.3636C12.8864 13.7779 13.2222 14.1136 13.6364 14.1136V12.6136ZM12.6839 17.3078L17.1839 7.30777L15.8161 6.69223L11.3161 16.6922L12.6839 17.3078ZM21.6839 16.6922L20.0476 13.0559L18.6797 13.6714L20.3161 17.3078L21.6839 16.6922ZM20.0476 13.0559L17.1839 6.69223L15.8161 7.30777L18.6797 13.6714L20.0476 13.0559ZM19.3636 12.6136H13.6364V14.1136H19.3636V12.6136Z"
-                                            fill="#1C274C" class="dark:fill-white" />
-                                    </svg>
-                                    <span>Tasks Name</span>
-                                </div>
-                            </th>
-                            <th class="px-4 py-2">Invoice</th>
-                            <th class="px-4 py-2">Invoice Status</th>
-                            <th class="px-4 py-2">Client Name</th>
-                            <th class="px-4 py-2">Type</th>
-                            <th class="px-4 py-2">Net Price</th>
-                            <th class="px-4 py-2">Surcharge</th>
-                            <th class="px-4 py-2">Tax</th>
-                            <th class="px-4 py-2">Total</th>
-                            <th class="px-4 py-2">Agent Name</th>
-                            <th class="px-4 py-2">Supplier Name</th>
-                            <th class="px-4 py-2">Reference</th>
+    <!-- Floating Actions div-->
+    <div>
+        <div id="floatingActions" class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)]  rounded-lg w-auto h-auto z-50 p-3">
 
-                            <th class="px-4 py-2">Actions</th>
-                            <th class="px-4 py-2">Payment</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
-                        @foreach($tasks as $task)
-                        <tr>
-                            <td class="px-4 py-2">
-                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
-                            </td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="status">
-                                {{ $task->status }}
-                            </td>
-                            <td class="px-4 py-2">{{ $task->additional_info }} - {{ $task->venue }}</td>
-                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->invoice_number : 'N\A'}}</td>
-                            <td class="px-4 py-2">{{ $task->invoiceDetail ? $task->invoiceDetail->invoice->status : 'N\A'}}</td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="client_name">{{ $task->client_name }}</td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="type">{{ $task->type }}</td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="price">
-                                {{ $task->price }}
-                            </td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="surcharge">
-                                {{ $task->surcharge }}
-                            </td>
-                            <td class="px-4 py-2 editable-cell" contenteditable="true" data-id="{{ $task->id }}"
-                                data-field="tax">
-                                {{ $task->tax }}
-                            </td>
-                            <td class="px-4 py-2" data-id="{{ $task->id }}" data-field="total">
-                                {{ $task->total }}
-                            </td>
-
-                            <td class="px-4 py-2">{{ $task->agent->name }}</td>
-                            <td class="px-4 py-2">{{ $task->supplier->name }}</td>
-                            <td class="px-4 py-2">{{ $task->reference }}</td>
-                            <td class="px-4 py-2">
-
-                                <a href="javascript:void(0);" onclick="ShowTask({{ $task->id }})">
-                                    <span
-                                        class="badge bg-dark shadow-md dark:group-hover:bg-transparent whitespace-nowrap">
-                                        See Details
-                                    </span>
-                                </a>
-
-
-                            </td>
-                            <td class="px-4 py-2">
-                                <!-- payment link -->
-                                <a href="{{ route('invoice.create', ['task_ids' => $task->id]) }}">
-                                    <span
-                                        class="badge bg-success shadow-md dark:group-hover:bg-transparent whitespace-nowrap">Create
-                                        Invoice
-                                    </span>
-                                </a>
-                            </td>
-
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="flex justify-between gap-5 items-center h-full">
+                <button id="createInvoiceBtn" class="flex px-5 py-3 gap-3 btn-success hover:bg-[#00ab5599] rounded-lg shadow-sm items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#ffffff" d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
+                    </svg>
+                    <span class="text-sm">Create Invoice</span>
+                </button>
+                <button class="flex px-5 py-3 gap-3 btn-danger hover:bg-[#e7515aa8] rounded-lg shadow-sm items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#ffffff" d="M12 2c5.53 0 10 4.47 10 10s-4.47 10-10 10S2 17.53 2 12S6.47 2 12 2m5 5h-2.5l-1-1h-3l-1 1H7v2h10zM9 18h6a1 1 0 0 0 1-1v-7H8v7a1 1 0 0 0 1 1" />
+                    </svg>
+                    <span class="text-sm">Delete</span>
+                </button>
             </div>
-        </div><!-- ./Table Section -->
+            <div id="closeFloatingActions" class="flex cursor-pointer items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
+                    <path fill="#E53935" d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
+                </svg>
+            </div>
+        </div>
 
-    </div> <!-- ./p-3 -->
+    </div>
 
-    <!-- Task Modal -->
-    @include('tasks.singleTask', ['agents' => $agents, 'clients' => $clients, 'suppliers' => $suppliers])
+    <!-- ./Floating Actions div -->
 
+
+
+
+    <!-- table pagination script -->
     <script>
-        const selectAllCheckbox = document.getElementById("selectAll");
-    const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
-    const createInvoiceBtn = document.getElementById("createInvoiceBtn");
+        document.addEventListener('DOMContentLoaded', function() {
+            const rowsPerPage = 10; // Number of rows per page
+            const table = document.getElementById('myTable');
+            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
+            const paginationContainer = document.querySelector('.dataTable-pagination-list'); // Target pagination container
+            let currentPage = 1;
+            const totalPages = Math.ceil(rows.length / rowsPerPage); // Calculate total pages
 
-  // Select/Deselect all checkboxes
-  selectAllCheckbox.addEventListener("change", function () {
-        rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
-        toggleCreateInvoiceButton(); // Update button state
-    });
+            // Function to create pagination
+            function createPagination() {
+                // Remove existing page numbers
+                Array.from(paginationContainer.querySelectorAll('li.page-number')).forEach((el) => el.remove());
 
-    // Toggle "Create Invoice" button based on selected checkboxes
-    const toggleCreateInvoiceButton = () => {
-        const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
-        createInvoiceBtn.disabled = !isAnySelected;
-    };
+                // Create and add page numbers dynamically
+                for (let i = 1; i <= totalPages; i++) {
+                    const li = document.createElement('li');
+                    li.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                    li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
 
-    // Add change event to each row checkbox
-    rowCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener("change", function () {
-            // Update the "Select All" checkbox state
-            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-            selectAllCheckbox.checked = allChecked;
+                    const nextPageElement = paginationContainer.querySelector('#nextPage');
 
-            // Update button state
-            toggleCreateInvoiceButton();
+                    // Insert before #nextPage if it exists, otherwise append
+                    if (nextPageElement) {
+                        paginationContainer.insertBefore(li, nextPageElement);
+                    } else {
+                        paginationContainer.appendChild(li);
+                    }
+                }
+            }
+
+            // Function to show rows for the current page
+            function showPage(page) {
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+
+                // Show rows for the current page, hide others
+                rows.forEach((row, index) => {
+                    row.style.display = index >= start && index < end ? '' : 'none';
+                });
+
+                currentPage = page; // Update current page
+                createPagination(); // Recreate pagination numbers
+            }
+
+            // Function to handle page number click
+            function handlePageChange(e) {
+                e.preventDefault();
+                const page = parseInt(e.target.dataset.page, 10);
+                if (page && page !== currentPage) {
+                    showPage(page);
+                }
+            }
+
+            // Event listener for previous button
+            const prevPageButton = document.getElementById('prevPage');
+            if (prevPageButton) {
+                prevPageButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) {
+                        showPage(currentPage - 1);
+                    }
+                });
+            }
+
+            // Event listener for next button
+            const nextPageButton = document.getElementById('nextPage');
+            if (nextPageButton) {
+                nextPageButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) {
+                        showPage(currentPage + 1);
+                    }
+                });
+            }
+
+            // Event listener for page numbers
+            paginationContainer.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A' && e.target.dataset.page) {
+                    handlePageChange(e);
+                }
+            });
+
+            // Initialize pagination
+            if (totalPages > 1) {
+                createPagination();
+                showPage(1); // Show the first page initially
+            }
         });
-    });
-
-    // Initialize button state on page load
-    toggleCreateInvoiceButton();
-
-    // Gather selected task IDs and submit them
-    createInvoiceBtn.addEventListener("click", function () {
-        const selectedTaskIds = Array.from(rowCheckboxes)
-            .filter(checkbox => checkbox.checked)
-            .map(checkbox => checkbox.value);
-
-        if (selectedTaskIds.length === 0) {
-            alert("No tasks selected!");
-            return;
-        }
-
-        // Example: Redirect to the batch invoice creation route
-        const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
-        window.location.href = url;
-    });
     </script>
+
+
+    <!-- show task details script -->
+    <script>
+        // show task details
+        document.addEventListener("DOMContentLoaded", function() {
+            // Get references to the elements
+            const viewTaskLink = document.getElementById("viewTask");
+            const taskDetailsDiv = document.getElementById("taskDetails");
+
+            // Check if the elements exist
+            if (viewTaskLink && taskDetailsDiv) {
+                // Add event listener to the 'View' link
+                viewTaskLink.addEventListener("click", function(event) {
+                    event.preventDefault(); // Prevent default link behavior
+                    console.log("View Task clicked!"); // Debug log
+                    taskDetailsDiv.textContent =
+                        "This is some dummy task detail text shown when you click the link.";
+                });
+            } else {
+                console.error("One or more elements were not found. Check your IDs.");
+            }
+        });
+    </script>
+
+    <!-- search script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const table = document.getElementById('myTable');
+            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
+
+            // Function to filter rows based on search input
+            function filterTable() {
+                const query = searchInput.value.toLowerCase(); // Get the search query
+                rows.forEach(row => {
+                    const cells = Array.from(row.cells); // Get all cells in the row
+                    const rowText = cells.map(cell => cell.textContent.toLowerCase()).join(' '); // Combine text from all cells
+                    if (rowText.includes(query)) {
+                        row.style.display = ''; // Show row if it matches the query
+                    } else {
+                        row.style.display = 'none'; // Hide row if it doesn't match
+                    }
+                });
+            }
+
+            // Event listener for the search input
+            searchInput.addEventListener('input', filterTable);
+        });
+    </script>
+
+
+    <!-- select all & create invoice script -->
+    <script>
+        const floatingActions = document.getElementById("floatingActions");
+        const closeFloatingActions = document.getElementById("closeFloatingActions");
+        const selectAllCheckbox = document.getElementById("selectAll");
+        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+        const createInvoiceBtn = document.getElementById("createInvoiceBtn");
+
+
+        // Select/Deselect all checkboxes
+        selectAllCheckbox.addEventListener("change", function() {
+            rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+            toggleCreateInvoiceButton(); // Update button state
+        });
+
+        // Toggle "Create Invoice" button based on selected checkboxes
+        const toggleCreateInvoiceButton = () => {
+            const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
+            createInvoiceBtn.disabled = !isAnySelected;
+        };
+        // Add change event to each row checkbox
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function() {
+                // Update the "Select All" checkbox state
+                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                selectAllCheckbox.checked = allChecked;
+
+                // Update button state
+                toggleCreateInvoiceButton();
+
+                // Show or hide the floating div based on any checkbox selection
+                const isAnyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+                if (isAnyChecked) {
+                    floatingActions.classList.remove("hidden");
+                } else {
+                    floatingActions.classList.add("hidden");
+                }
+            });
+        });
+
+        // Initialize button state on page load
+        toggleCreateInvoiceButton();
+
+        // Gather selected task IDs and submit them
+        createInvoiceBtn.addEventListener("click", function() {
+            const selectedTaskIds = Array.from(rowCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.value);
+
+            if (selectedTaskIds.length === 0) {
+                alert("No tasks selected!");
+                return;
+            }
+
+            // Example: Redirect to the batch invoice creation route
+            const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
+            window.location.href = url;
+        });
+
+        // Close the floating div when the "X" button is clicked
+        closeFloatingActions.addEventListener("click", function() {
+            floatingActions.classList.add("hidden");
+        });
+    </script>
+
 </x-app-layout>

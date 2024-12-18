@@ -26,8 +26,9 @@ class Chat extends Component
        
         $openAiController = new OpenAiController();
         $conversation = Conversation::where('user_id', auth()->user()->id)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->latest()->first();
-        
-        if(!$conversation) return;
+       
+        // return if no conversation, or if conversation has no thread_id or assistant_id
+        if($conversation == null ? true : !($conversation->thread_id && $conversation->assistant_id)) return;
 
         $messages = $openAiController->getMessages($conversation->thread_id, $conversation->assistant_id, auth()->user());
 

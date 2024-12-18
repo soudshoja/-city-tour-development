@@ -682,7 +682,7 @@ class OpenAiController extends Controller
 
 
         $response = $this->getRequest($url, $header);
-
+        logger('get messages response: ', $response);
         if(isset($response['error']['message'])){
             if(str_contains($response['error']['message'], 'No thread found')){
                

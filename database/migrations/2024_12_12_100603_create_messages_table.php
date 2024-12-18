@@ -20,7 +20,7 @@ return new class extends Migration
             $table->bigInteger('completion_tokens')->nullable();
             $table->bigInteger('total_tokens')->nullable();
             $table->bigInteger('cache_tokens')->nullable();
-            $table->string('type')->nullable()->enum('prompt', 'answer');
+            $table->string('type')->nullable()->enum('prompt', 'action','answer');
             $table->string('role')->nullable()->enum('user', 'assistant');
             $table->text('content')->nullable();
             $table->timestamps();

@@ -21,31 +21,15 @@ class Chat extends Component
     public function mount(){
     }
 
-    public function getMessage()
+    public function loadMessages()
     {
        
         $openAiController = new OpenAiController();
         $conversation = Conversation::where('user_id', auth()->user()->id)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->latest()->first();
         
-        if(!$conversation){
-            $conversation = new Conversation();
-            $conversation->user_id = auth()->user()->id;
-            $conversation->assistant_id = env('OPENAI_ASSISTANT_ID');
-            $conversation->save();
-        }
+        if(!$conversation) return;
 
-        if(!isset($conversation->thread_id)){
-            $threadCreated = $openAiController->createThread();
-
-            if ($threadCreated['status'] == 'error') {
-                $this->error = $threadCreated['message'];
-                return;
-            }
-            $conversation->thread_id = $threadCreated['data']['id'];
-            $conversation->save();
-        }
-
-        $messages = $openAiController->getMessages($conversation->thread_id);
+        $messages = $openAiController->getMessages($conversation->thread_id, $conversation->assistant_id, auth()->user());
 
         logger('messages: \n',$messages);
 
@@ -60,7 +44,6 @@ class Chat extends Component
     public function sendMessage()
     {
         $this->error = null;
-        $rand = rand(0, 1);
 
         if($this->prompt == null || $this->prompt == ''){
             $this->error = 'Please enter a message';

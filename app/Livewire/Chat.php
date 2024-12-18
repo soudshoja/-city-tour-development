@@ -19,6 +19,11 @@ class Chat extends Component
     // }
 
     public function mount(){
+    }
+
+    public function getMessage()
+    {
+       
         $openAiController = new OpenAiController();
         $conversation = Conversation::where('user_id', auth()->user()->id)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->latest()->first();
 
@@ -32,11 +37,6 @@ class Chat extends Component
         }
 
         $this->messages = $messages['data'];
-    }
-
-    public function getMessage()
-    {
-       
     }
 
     public function sendMessage()

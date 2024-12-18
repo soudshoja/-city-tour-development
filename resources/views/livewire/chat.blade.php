@@ -1,4 +1,6 @@
-<div class="bg-white rounded-lg h-auto overflow-y-auto chat-container">
+<div
+    wire:init="getMessage"
+    class="bg-white rounded-lg h-auto overflow-y-auto chat-container">
     @if($error)
     <div class="z-20 fixed top-5 right-10 bg-red-500 text-white p-4 text-center rounded-md font-semibold">
         <p>{{ $error }}</p>
@@ -35,8 +37,8 @@
     </div>
     <div class="chat p-2 w-full bg-white rounded-b-lg flex justify-between sticky bottom-0">
         <form wire:submit.prevent="sendMessage" class="w-full flex gap-2">
-            <div  class="flex justify-center items-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 invisible" wire:loading.class.remove="invisible" ></div>
+            <div class="flex justify-center items-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 invisible" wire:loading.class.remove="invisible"></div>
             </div>
             <input type="text" wire:model='prompt' name="" id="" class="w-full p-2 border-none bg-gray-200 rounded-lg" placeholder="Type a message...">
             <button type="submit" class="send p-2 rounded-lg">Send</button>

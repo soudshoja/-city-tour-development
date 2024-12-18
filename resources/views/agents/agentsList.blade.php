@@ -335,8 +335,8 @@
                             <td class="px-4 py-2">{{ $agent->phone_number }}</td>
                             <td class="px-4 py-2">
                                 <span
-                                    class="border rounded px-2 py-1 {{ $agent->type == 'staff' ? 'border-teal-600 text-teal-600' : ($agent->type == 'commission' ? 'border-sky-600 text-sky-600' : '') }}">
-                                    {{ $agent->type }}
+                                    class="border rounded px-2 py-1 {{ $agent->agentType->name == 'salary' ? 'border-teal-600 text-teal-600' : ($agent->agentType->name == 'commission' ? 'border-sky-600 text-sky-600' : '') }}">
+                                    {{ $agent->agentType->name }}
                                 </span>
                             </td>
                             <td class="px-4 py-2 flex gap-2">

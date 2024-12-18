@@ -11,11 +11,6 @@ use App\Models\Client;
 use App\Models\Task;
 use App\Models\Agent;
 use App\Models\User;
-use App\Models\Branch;
-use App\Models\Role;
-use App\Models\Country;
-use App\Models\AgentType;
-use App\Models\Branch;
 use App\Models\Role;
 use App\Models\Country;
 use App\Models\AgentType;
@@ -24,12 +19,7 @@ use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
 use App\Imports\companiesImport;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-
-
-
+use App\Models\Branch;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;

@@ -20,21 +20,20 @@ class Agent extends Model
         'user_id',
         'name',
         'email',
-        'type',
+        'type_id',
         'phone_number',
         'branch_id',
     ];
 
     public function branch()
     {
-        return $this->belongsTo(Branch::class, 'branch_id');
+        return $this->belongsTo(Branch::class);
     }
 
-    public function type()
+    public function agentType()
     {
-        return $this->hasOne(AgentType::class, 'type_id');
+        return $this->belongsTo(AgentType::class, 'type_id');
     }
-
     public function tasks()
     {
         return $this->hasMany(Task::class);

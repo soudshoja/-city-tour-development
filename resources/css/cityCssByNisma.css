@@ -11,6 +11,59 @@ body {
     background-attachment: fixed !important;
 }
 
+.dataTable-pagination .active a {
+    background-color: #1e40af !important;
+}
+
+.DarkBCcolor {
+    background-color: #1e40af !important;
+}
+
+/* Hide the default checkbox */
+.custom-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+/* Style the SVG */
+.custom-checkbox .checkbox-svg {
+    cursor: pointer;
+    transition: stroke 0.3s ease, fill 0.3s ease;
+}
+
+/* When checkbox is checked, change SVG appearance */
+.custom-checkbox input[type="checkbox"]:checked + .checkbox-svg rect {
+    fill: #1e40af; /* Green when checked */
+    stroke: #1e40af; /* Green border when checked */
+}
+
+/* Optional: Style the checkbox when disabled */
+.custom-checkbox input[type="checkbox"]:disabled + .checkbox-svg rect {
+    stroke: #ccc; /* Light gray stroke when disabled */
+    fill: #f0f0f0; /* Light gray fill when disabled */
+    cursor: not-allowed;
+}
+
+/* Add the slide-up animation */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Apply the animation to the floatingActions div */
+#floatingActions {
+    animation: slideUp 0.3s ease-out;
+}
+
+.CuzPostion {
+    bottom: 80px;
+    right: 50%;
+}
 /* needed  */
 [x-cloak] {
     display: none !important;
@@ -40,37 +93,25 @@ body {
     box-shadow: 2px 4px 12px #00000014;
 }
 
-/* Custom scrollbar styling for webkit browsers */
-.custom-scrollbar {
-    scrollbar-width: thin;
-    /* For Firefox */
-    scrollbar-color: #bec7e3 #edf2f7;
-    /* Thumb color and track color for Firefox */
+::-webkit-scrollbar {
+    width: 10px;
 }
 
-/* WebKit browsers (Chrome, Safari, etc.) */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    /* Width of the scrollbar */
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #bec7e3;
-    /* Track color */
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #4fd1c5;
-    /* Thumb color */
+/* Track */
+::-webkit-scrollbar-track {
+    box-shadow: inset 0 0 5px #bec7e3;
     border-radius: 10px;
-    /* Rounded edges */
-    border: 2px solid #edf2f7;
-    /* Adds a little padding around the thumb */
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #000;
-    /* Thumb color on hover */
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #b1c0db;
+    border-radius: 10px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #1e40af;
 }
 
 .mt07 {

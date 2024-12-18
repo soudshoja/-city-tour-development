@@ -29,14 +29,17 @@
                     <!-- invoice details -->
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
 
-                        <div class="flex items-center">
+                        <div class="flex items-center w-full">
+                            <label for="invoiceNumber" class="w-full text-sm font-semibold">Invoice Number</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{$invoiceNumber}}" class="w-full form-input"
                                 placeholder="Invoice Number" />
                         </div>
                         <div class="mt-4 flex items-center">
+                            <label for="invdate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$todayDate}} disabled />
                         </div>
                         <div class="mt-4 flex items-center">
+                            <label for="duedate" class="w-full text-sm font-semibold">Due Date</label>
                             <input id="duedate" type="date" name="duedate" class="w-full form-input" />
                         </div>
 

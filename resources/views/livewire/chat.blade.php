@@ -1,5 +1,5 @@
 <div
-    wire:init="getMessage"
+    wire:init="loadMessages"
     class="bg-white rounded-lg h-auto overflow-y-auto chat-container">
     @if($error)
     <div class="z-20 fixed top-5 right-10 bg-red-500 text-white p-4 text-center rounded-md font-semibold">

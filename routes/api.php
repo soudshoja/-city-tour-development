@@ -37,7 +37,7 @@ use App\Http\Controllers\OpenAiController;
         Route::delete('/delete-thread/{id}',[OpenAiController::class, 'deleteThread']);
         Route::get('/check-run/{threadId}/{runId}',[OpenAiController::class, 'checkRun']);
         Route::get('/get-message/{threadId}', [OpenAiController::class, 'getMessages']);
-        Route::get('/list-run', [OpenAiController::class, 'listRun']);
+        Route::get('/list-run/{threadId}', [OpenAiController::class, 'listRun']);
         Route::post('/send-message', [OpenAiController::class, 'sendMessage']);
 
         Route::get('pin', function(){

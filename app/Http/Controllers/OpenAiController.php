@@ -560,6 +560,8 @@ class OpenAiController extends Controller
 
         $response = $this->postRequest($url, $header, json_encode($data));
 
+        logger('create thread run response: ', $response);
+
         if (isset($response['id'])) {
             return [
                 'status' => 'success',
@@ -576,7 +578,7 @@ class OpenAiController extends Controller
         }
     }
 
-    public function createThread()
+    public function createThread(string $assistantId, User $user)
     {
         $url = config('services.open-ai.url') . '/threads';
         $header = [
@@ -584,7 +586,13 @@ class OpenAiController extends Controller
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
-        $data = [];
+        $data = [
+            'assistant_id' => $assistantId,
+            'additional_instructions' => 'Address the user as' . $user->name . ', but you dont need to call his name every time you respond.',
+            'metadata' => [
+                'user_id' => (string) $user->id,
+            ],
+        ];
 
         $response = $this->postRequest($url, $header, json_encode($data));
 
@@ -673,7 +681,7 @@ class OpenAiController extends Controller
         ];
     }
 
-    public function getMessages($threadId)
+    public function getMessages(string $threadId, string $assistantId, User $user)
     {
         $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
         $header = [
@@ -688,7 +696,7 @@ class OpenAiController extends Controller
         if(isset($response['error']['message'])){
             if(str_contains($response['error']['message'], 'No thread found')){
                
-                $createThread = $this->createThread();
+                $createThread = $this->createThread($assistantId, $user);
 
                 if($createThread['status'] == 'error'){
                     return $createThread;
@@ -698,12 +706,12 @@ class OpenAiController extends Controller
                 $threadId = $createThread['data']['id'];
 
                 Conversation::updateOrCreate([
-                    'user_id' => auth()->user()->id,
+                    'user_id' => $user->id,
                     'assistant_id' => env('OPENAI_ASSISTANT_ID'),
                     'thread_id' => $threadId,
                 ]);
 
-                $response = $this->getMessages($threadId);
+                $response = $this->getMessages($threadId, $assistantId, $user);
 
             } else {
                 return [
@@ -733,6 +741,7 @@ class OpenAiController extends Controller
         ];
         $data = [
             'assistant_id' => $assistantId,
+           
         ];
 
         $response = $this->postRequest($url, $header, json_encode($data));
@@ -782,15 +791,13 @@ class OpenAiController extends Controller
                 throw $e;
             }
 
-            sleep(5);
+            sleep(1);
             $countCheck++;
         }
     }
 
-    public function listRun()
+    public function listRun($threadId)
     {
-        $threadId = env('OPENAI_THREAD_ID');
-
         $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs';
         $header = [
             'Authorization: Bearer ' . config('services.open-ai.key'),
@@ -851,13 +858,13 @@ class OpenAiController extends Controller
                     'assistant_id' => env('OPENAI_ASSISTANT_ID'),
                 ]);
 
-                $threadRunResponse = $this->createThreadRun($conversation->assistant_id, $user);
+                $threadRunResponse = $this->createThread($conversation->assistant_id, $user);
 
                 if ($threadRunResponse['status'] == 'error') {
                     return $threadRunResponse;
                 }
 
-                $conversation->thread_id = $threadRunResponse['data']['id'];
+                $conversation->thread_id = $threadRunResponse['data']['thread_id'];
                 $conversation->save();
             }
 
@@ -900,7 +907,7 @@ class OpenAiController extends Controller
             
             $tokens = $checkRunResponse['data']['usage'];
 
-            $messages = $this->getMessages($threadId);
+            $messages = $this->getMessages($threadId, $assistantId, $user);
 
             if($messages['status'] === 'error') return $messages;
 

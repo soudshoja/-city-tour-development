@@ -588,6 +588,8 @@ class OpenAiController extends Controller
 
         $response = $this->postRequest($url, $header, json_encode($data));
 
+        logger('create thread response: ', $response);
+
         return [
             'status' => isset($response['id']) ? 'success' : 'error',
             'message' => isset($response['id']) ? 'Thread created successfully' : 'Failed to create thread',

@@ -1,4 +1,14 @@
 <x-app-layout>
+    <style>
+        button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
@@ -30,13 +40,18 @@
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
 
                         <div class="flex items-center">
+                        <label class="block text-sm font-medium mb-1">Invoice Number:</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{$invoiceNumber}}" class="w-full form-input"
                                 placeholder="Invoice Number" />
                         </div>
+                        
                         <div class="mt-4 flex items-center">
+                        <label class="block text-sm font-medium mb-1">Invoice Date:</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$todayDate}} disabled />
                         </div>
+                  
                         <div class="mt-4 flex items-center">
+                        <label class="block text-sm font-medium mb-1">Due Date:</label>
                             <input id="duedate" type="date" name="duedate" class="w-full form-input" />
                         </div>
 
@@ -157,7 +172,7 @@
                         <table id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th>Item</th>
+                                    <th>Task</th>
                                     <th>Client</th>
                                     <th class="w-1">Quantity</th>
                                     <th class="w-1">Task Price</th>
@@ -179,7 +194,7 @@
                                      city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
                                 <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                     <path fill="currentColor" d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
-                                </svg> Add Item
+                                </svg> Add Task
                             </button>
 
                         </div>
@@ -211,6 +226,10 @@
                             <label>Invoice Link:</label>
                             <a id="invoice-link" href="#" class="text-blue-600 underline" target="_blank"></a>
                         </div>
+                        <div id="invoice-link-container1" style="display: none;" class="mt-4">
+                            <label>Split Invoice Link:</label>
+                            <a id="invoice-link1" href="#" class="text-blue-600 underline" target="_blank"></a>
+                        </div>
 
                         <button id="generate-invoice-btn" type="button" class="btn btn-success w-full gap-2">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
@@ -222,7 +241,7 @@
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
-
+                        <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
                         <button type="button" class="btn btn-info w-full gap-2">
@@ -237,30 +256,207 @@
                             Send Invoice
                         </button>
 
-                        <a href="#" class="btn btn-primary w-full gap-2">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path opacity="0.5"
-                                    d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                    stroke="currentColor" stroke-width="1.5"></path>
-                                <path
-                                    d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                    stroke="currentColor" stroke-width="1.5"></path>
-                            </svg>
-                            Preview
-                        </a>
+                         <!-- Payment Type Section -->
+                         <div  id="paymentMethod" class="mt-4">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                            <div class="flex gap-4">
+                                <!-- Full Payment Tab -->
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        id="payment_type_full"
+                                        name="payment_type"
+                                        value="full"
+                                        onclick="hideModal()"
+                                        hidden
+                                        class="peer"
+                                        checked
+                                    />
+                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19a1 1 0 00.76-.36l3-4a1 1 0 00-.76-1.64H12V7a1 1 0 00-2 0v6H8a1 1 0 00-.76 1.64l3 4A1 1 0 0011 19z" />
+                                        </svg>
+                                        <span class="font-medium">Full</span>
+                                        <p class="text-sm text-gray-500">Pay the total amount.</p>
+                                    </div>
+                                </label>
 
-                        <button type="button" class="btn btn-secondary w-full gap-2">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path opacity="0.5"
-                                    d="M17 9.00195C19.175 9.01406 20.3529 9.11051 21.1213 9.8789C22 10.7576 22 12.1718 22 15.0002V16.0002C22 18.8286 22 20.2429 21.1213 21.1215C20.2426 22.0002 18.8284 22.0002 16 22.0002H8C5.17157 22.0002 3.75736 22.0002 2.87868 21.1215C2 20.2429 2 18.8286 2 16.0002L2 15.0002C2 12.1718 2 10.7576 2.87868 9.87889C3.64706 9.11051 4.82497 9.01406 7 9.00195"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                                <path d="M12 2L12 15M12 15L9 11.5M12 15L15 11.5" stroke="currentColor"
-                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                            Download
-                        </button>
+                                <!-- Partial Payment Tab -->
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        id="payment_type_partial"
+                                        name="payment_type"
+                                        value="partial"
+                                        onclick="showModal('partial')"
+                                        hidden
+                                        class="peer"
+                                    />
+                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-4H5a1 1 0 01-.9-1.4L8.1 7h1.7l3 4H11v4h2a1 1 0 01.9 1.4l-3.1 5H9z" />
+                                        </svg>
+                                        <span class="font-medium">Partial</span>
+                                        <p class="text-sm text-gray-500">Split the amount into parts.</p>
+                                    </div>
+                                </label>
+
+                                <!-- Split Payment Tab -->
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        id="payment_type_split"
+                                        name="payment_type"
+                                        value="split"
+                                        onclick="showModal('split')"
+                                        hidden
+                                        class="peer"
+                                    />
+                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19l-3-3m0 0l3-3m-3 3h12m-9-6V5a1 1 0 011-1h2a1 1 0 011 1v6m-5-3h6" />
+                                        </svg>
+                                        <span class="font-medium">Split</span>
+                                        <p class="text-sm text-gray-500">Split and generate links.</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                                                <!-- Payment Gateway Section -->
+                                <section class="mb-6">
+                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                    <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                                        @foreach($paymentGateways as $gateway)
+                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                        @endforeach
+                                    </select>
+                                </section>
+
+                        </div>
+
+
+
+
+                            <div id="errorMessage" class="hidden text-red-500">
+                                <!-- Error message -->
+                            </div>
+
+                            <!-- Modal -->
+                            <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                                <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                    <h3 class="text-xl font-bold mb-4">Split/Partial Payment Details</h3>
+                                    <!-- Include your previous page content here -->
+                                    <div class="bg-gray-100 p-5">
+                                            <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+                                                <!-- Tabs Navigation -->
+                                                <div class="flex border-b mb-6">
+                                                    <button id="tab-split" class="text-gray-800 px-4 py-2 border-b-2 font-medium" onclick="showTab('split')">Split Payment</button>
+                                                    <button id="tab-partial" class="text-gray-800 px-4 py-2 border-b-2 font-medium" onclick="showTab('partial')">Partial Payment</button>
+                                                </div>
+
+                                                <!-- Split Payment Tab Content -->
+                                                <div id="split-payment-container" class="tab-content hidden">
+                                                    <form>
+                                                        <!-- Top Fields -->
+                                                        <div class="grid grid-cols-3 gap-4 mb-5">
+                                                            <div>
+                                                                <label class="block text-sm font-medium mb-1">Amount *</label>
+                                                                <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="0" />
+                                                            </div>
+                                                            <div>
+                                                                <label class="block text-sm font-medium mb-1">Split into *</label>
+                                                                <input type="number" id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows()" />
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Expiry and Description -->
+                                                        <div class="grid grid-cols-2 gap-4 mb-5">
+                                                            <div>
+                                                                <label class="block text-sm font-medium mb-1">Description *</label>
+                                                                <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Table -->
+                                                        <div class="overflow-x-auto">
+                                                        <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th class="border-b px-4 py-2">S.No</th>
+                                                                        <th class="border-b px-4 py-2">Choose Client</th>
+                                                                        <th class="border-b px-4 py-2">Expiry Date</th>
+                                                                        <th class="border-b px-4 py-2">Amount</th>
+                                                                        <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="split-rows">
+                                                                    <!-- Dynamic rows will be generated here -->
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+
+                                                        <!-- Buttons -->
+                                                         
+                                                         <div >
+                                                            <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+
+                                                <!-- Partial Payment Tab Content -->
+                                                <div id="partial-payment-container" class="tab-content hidden">
+                                                <div class="mt-4 flex items-center">
+                                                        <label for="receiverName1" class="mb-0 w-1/3 mr-2 ">Client Name</label>
+                                                        <input id="receiverName1" type="text" name="receiverName1" class="form-input flex-1"
+                                                            placeholder="Enter Name" disabled />
+                                                    </div>
+                                                    <div class="grid grid-cols-3 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Split into *</label>
+                                                        <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
+                                                    </div>
+                                                    <div class="mt-4 flex items-center">
+                                                        <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                        <span id="subT1">$0.00</span>
+                                                    </div>
+                                                  </div>
+                                                  <div class="mt-4 flex items-center">
+                                                        <label for="receiverName1" class="mb-0 w-1/3 mr-2 ">Payment Gateway</label>
+                                                        <select id="payment_gateway1" name="payment_gateway1" class="border border-gray-300 p-2 rounded w-full">
+                                                            @foreach($paymentGateways as $gateway)
+                                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                  </div>
+                                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                                    <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th class="border-b px-4 py-2">S.No</th>
+                                                                        <th class="border-b px-4 py-2">Expiry Date</th>
+                                                                        <th class="border-b px-4 py-2">Amount</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="split-rows1">
+                                                                    <!-- Dynamic rows will be generated here -->
+                                                                </tbody>
+                                                     </table>
+
+                                                    <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+
+                                                    <div class="flex space-x-4 mt-5">
+                                                            <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                        </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <div class="mt-4 flex justify-end">
+                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                    </div>
+                                </div>
+                            </div>
                     </div>
                 </div>
             </div>
@@ -490,6 +686,7 @@
 
     <script>
         let selectedTasks = @json($selectedTasks);
+        const clients = @json($clients);
         let items = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
@@ -517,9 +714,186 @@
         const buttonLoading = document.getElementById('button-loading');
         const buttonSaved = document.getElementById('button-saved');
 
+        
+        const invoiceIdInput = document.getElementById('invoiceId');
+        
+
+        function checkInvoiceId() {
+        const tabs = document.querySelectorAll('input[name="payment_type"]');
+        const clientButton = document.getElementById("openClientModalButton");
+        const agentButton = document.getElementById("select-agent");
+        const taskButton = document.getElementById("openTaskModalButton");
+
+
+         console.log(invoiceIdInput.value);
+        if (!invoiceIdInput.value) {
+            tabs.forEach(tab => {
+                tab.disabled = true;
+            });
+            clientButton.disabled = false;
+            agentButton.disabled = false;
+            taskButton.disabled = false;
+            generateInvoiceButton.disabled = false;
+            document.getElementById('paymentMethod').classList.add('hidden');
+
+        } else {
+            tabs.forEach(tab => {
+                tab.disabled = false;
+            });
+            clientButton.disabled = true;
+            agentButton.disabled = true;
+            taskButton.disabled = true;
+            generateInvoiceButton.disabled = false;
+            document.getElementById('paymentMethod').classList.remove('hidden');
+        }
+    }
+
+    // Run the check on page load and whenever the input value changes
+    document.addEventListener('DOMContentLoaded', checkInvoiceId);
+    invoiceIdInput.addEventListener('input', checkInvoiceId);
+
+
         // Set initial states
         let isSaving = false;
         let isSaved = false;
+
+        function showModal(type) {
+        document.getElementById('paymentModal').classList.remove('hidden');
+        this.showTab(type);
+        }
+
+        function hideModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        
+        function showClientModal() {
+            // Create the modal container
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'clientModal';
+            modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+
+            // Modal content
+            modalContainer.innerHTML = `
+                <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
+                    <!-- Close Button -->
+                    <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeClientModal1()">✕</button>
+
+                    <!-- Search Box -->
+                    <div id="selectTab" class="p-6">
+                        <div class="relative mb-4">
+                            <input type="text" placeholder="Search Client..."
+                                class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                id="clientSearchInput">
+                        </div>
+                        <!-- ./Search Box -->
+
+                        <!-- List of Clients -->
+                        <ul id="clientList1"
+                            class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                            <!-- Dynamic list items go here -->
+                        </ul>
+                        <!-- ./List of Clients -->
+                    </div>
+                </div>
+            `;
+
+            // Append the modal to the body
+            document.body.appendChild(modalContainer);
+        }
+
+        function closeClientModal1() {
+            // Remove the modal from the DOM
+            const modal = document.getElementById('clientModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function showTab(tab) {
+        document.querySelectorAll('.tab-content').forEach((content) => {
+            content.classList.add('hidden');
+        });
+
+        document.querySelector(`#${tab}-payment-container`).classList.remove('hidden');
+
+        document.querySelectorAll('.border-b-2').forEach((tabButton) => {
+            tabButton.classList.remove('border-indigo-500', 'text-indigo-500');
+            tabButton.classList.add('text-gray-800');
+        });
+
+        document.querySelector(`#tab-${tab}`).classList.add('border-indigo-500', 'text-indigo-500');
+    }
+
+        function updateRows() {
+            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
+
+            const tbody = document.getElementById('split-rows');
+            tbody.innerHTML = ''; // Clear existing rows
+
+            for (let i = 1; i <= splitInto; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="border-b px-4 py-2">${i}</td>
+                    <td class="border-b px-4 py-2">
+                       <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
+                         ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                       </select>
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                              @foreach($paymentGateways as $gateway)
+                               <option value="{{ $gateway }}">{{ $gateway }}</option>
+                              @endforeach
+                         </select>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                const selectElement = row.querySelector('.account-select');
+                new TomSelect(selectElement, {
+                    create: false,
+                    sortField: {
+                        field: 'text',
+                        direction: 'asc'
+                    }
+                });
+
+            }
+        }
+
+        function updateRows1() {
+            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
+
+            const tbody = document.getElementById('split-rows1');
+            tbody.innerHTML = ''; // Clear existing rows
+
+            for (let i = 1; i <= splitInto1; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="border-b px-4 py-2">${i}</td>
+                    <td class="border-b px-4 py-2">
+                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+            }
+        }
+
 
         function updateItemPrice(itemId) {
             // Find the input field by ID
@@ -538,7 +912,9 @@
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
             document.getElementById('subT').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('subT1').textContent = `$${subtotal.toFixed(2)}`;
             document.getElementById('subTotal').value = subtotal;
+            document.getElementById('total-amount').value = subtotal;
         }
 
 
@@ -738,6 +1114,7 @@
 
             // Update input fields
             document.getElementById('receiverName').value = client.name;
+            document.getElementById('receiverName1').value = client.name;
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
@@ -790,6 +1167,7 @@
 
             // Update input fields
             document.getElementById('receiverName').value = client.name;
+            document.getElementById('receiverName1').value = client.name;
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 
@@ -837,6 +1215,173 @@
                 generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
             }
         }
+
+        function savePartial(mode) {
+     
+            if (mode === 'split') {
+                // Collect Split Payment Data
+                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                const description = document.getElementById('split-desc').value;
+                const rows = document.querySelectorAll('#split-rows tr');
+
+                const splitData = [];
+                rows.forEach(row => {
+                    const selectElement = row.querySelector('select');
+                    const clientId = selectElement.value;
+                    const date = row.querySelector('input[type="date"]').value;
+                    const gateway = row.querySelector('#payment_gateway').value || null;
+                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                    const clientName = selectElement.options[selectElement.selectedIndex].text;
+
+                    splitData.push({ clientId, clientName, date, amount, gateway });
+                });
+
+                console.log('Split Payment Data:', { totalAmount, splitInto, description, splitData });
+                save('split', splitData);
+
+            } else if (mode === 'partial') {
+                // Collect Partial Payment Data
+                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                const partialRows = document.querySelectorAll('#split-rows1 tr');
+                const gateway = document.getElementById('payment_gateway1').value;
+
+                const partialData = [];
+
+                partialRows.forEach(row => {
+                    const date = row.querySelector('input[type="date"]').value;
+                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                    partialData.push({ date, amount, gateway });
+                });
+   
+                console.log('Partial Payment Data:', partialData);
+                save('partial', partialData);
+
+            }
+        }
+
+        async function save(type, data) {   
+            const invoiceUrl = "{{ route('invoice.partial') }}"; 
+            const csrfToken = "{{ csrf_token() }}";
+            const invoiceId = document.getElementById('invoiceId').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+
+    if (type === 'split') {  
+        // Handle split payment, generate links for each row
+        try {
+            const invoiceLinks = []; // Store links for each client
+            for (const item of data) {
+                const { clientId, clientName, date, amount, gateway } = item;
+
+                console.log(invoiceId,clientId,type,date,amount);
+                console.log(csrfToken);
+                console.log(clientName)
+                // Send POST request for each client
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        invoiceId,
+                        invoiceNumber,
+                        clientId, 
+                        type,
+                        date, 
+                        amount,
+                        gateway
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                }
+
+                const result = await response.json();
+
+                const generatedLink = `${appUrl}/invoice/partial/${invoiceNumber}/${clientId}`;
+                invoiceLinks.push({ clientId, clientName, link: generatedLink });
+            }
+           
+            // Display links
+            const invoiceLinkContainer = document.getElementById("invoice-link-container1");
+            invoiceLinkContainer.innerHTML = `<label>Split Invoice Links:</label>`;
+            invoiceLinks.forEach(({ clientName, clientId, link }) => {
+                const linkElement = document.createElement('a');
+                linkElement.href = link;
+                linkElement.textContent = `Client ${clientName}: ${link}`;
+                linkElement.target = "_blank";
+                linkElement.classList.add('text-blue-600', 'underline', 'block', 'mt-2');
+                invoiceLinkContainer.appendChild(linkElement);
+            });
+
+            invoiceLinkContainer.style.display = "block";
+
+        } catch (error) {
+            console.error('Error generating invoices:', error);
+            displayErrorMessage("Error generating one or more invoices. Please check your data.");
+        } finally {
+            resetButtonState();
+            hideModal();
+        }
+
+            } else if (type === 'partial') {
+                // Handle partial payment as before
+               const clientId = document.getElementById('receiverId').value;
+
+                try { 
+
+                    for (const item of data) {
+                        const { date, amount, gateway } = item;
+
+                    const response = await fetch(invoiceUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            invoiceId,
+                            invoiceNumber,
+                            clientId, 
+                            type,
+                            date, 
+                            amount,
+                            gateway
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Failed to generate partial invoice.");
+                    }
+                    }
+                } catch (error) {
+                    console.error('Error generating invoice:', error);
+                    displayErrorMessage("Error generating invoice. Please try again.");
+                } finally {
+                    resetButtonState();
+                    hideModal();
+                }
+            }
+        }
+
+        function displayErrorMessage(message) {
+            const alert = document.createElement('div');
+            alert.innerHTML = `
+                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                    ${message}
+                    <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(alert);
+        }
+
+
 
         // Generate invoice
         async function generateInvoice() {
@@ -902,8 +1447,10 @@
                 }
 
                 const result = await response.json();
-                //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
-                // const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
+                const { invoiceId } = result;
+                console.log(invoiceId);
+
+                document.getElementById('invoiceId').value = invoiceId;
                 const generatedLink = appUrl + '/invoice/' + invoiceNumber;
 
                 // Invoice link elements
@@ -936,7 +1483,8 @@
             } finally {
                 // Reset button states
                 buttonLoading.style.display = "none";
-                setTimeout(() => {
+                setTimeout(() => {  
+                    checkInvoiceId();
                     resetButtonState();
                 }, 1000);
             }

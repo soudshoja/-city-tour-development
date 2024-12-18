@@ -103,13 +103,12 @@ class InvoiceController extends Controller
         $agents = collect();
         if ($user->role_id == Role::COMPANY) {
             $company = $user->company;
-
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            }])->get();
+            $company = Company::with('branches.agents')->find($company->id);
+            $agents = $company->branches->flatMap->agents;
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
-            $company = Company::find($agent->branch->company_id);
+            $company = $agent->branch->company;
+            $agents = $company->branches->flatMap->agents;
         }
 
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
@@ -195,19 +194,69 @@ class InvoiceController extends Controller
     public function edit(string $invoiceNumber)
     {
 
+        $user = Auth::user();
+        $agents = collect();
+        if ($user->role_id == Role::COMPANY) {
+            $company = $user->company;
+            $company = Company::with('branches.agents')->find($company->id);
+            $agents = $company->branches->flatMap->agents;
+
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = $user->agent;
+            $company = $agent->branch->company;
+            $agents = $company->branches->flatMap->agents;
+        }
+   
         // Retrieve the invoice based on the invoice number
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
 
         // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        $payment = Payment::where('invoice_id', $invoice->id)->first();
+        $clients = Client::with(['agent.branch' => function ($query) {
+            if (auth()->user()->role_id == Role::COMPANY) {
+                $companyId = auth()->user()->company->id;
+            } elseif (auth()->user()->role_id == Role::AGENT) {
+                $companyId = auth()->user()->agent->branch->company_id;
+            }
+            $query->where('company_id', $companyId);
+        }])->get();
 
         $invoiceDetails = $invoice->invoiceDetails;
+        $agentId = $invoice->agent_id;
+        $clientId = $invoice->client_id;
+        $tasks = $agents->flatMap->tasks;
+        $selectedTasks = $invoice->invoiceDetails->pluck('task');
+        $selectedAgent = $invoice->agent;
+        $selectedClient = $invoice->client;
 
-        return view('invoice.edit', compact('invoice', 'payment', 'invoiceDetails'));
+        $suppliers = Supplier::all();
+        $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
+        $invoiceDate = $invoice->invoice_date;
+        $dueDate =  $invoice->due_date;
+
+        $appUrl = config('app.url');
+
+        return view('invoice.edit', compact(
+            'clients',
+            'agents',
+            'agentId',     
+            'clientId',
+            'tasks',
+            'company',
+            'suppliers',
+            'invoiceNumber',
+            'selectedTasks',
+            'selectedAgent',
+            'selectedClient',
+            'paymentGateways',
+            'invoiceDate',
+            'dueDate',
+            'appUrl'
+        ));
+
     }
 
 
@@ -331,7 +380,8 @@ class InvoiceController extends Controller
                 'currency' => $currency,
                 'status' => 'unpaid',
                 'invoice_date' => $invdate,
-                'due_date' => $duedate
+                'due_date' => $duedate,
+                'payment_type' => 'full',
             ]);
 
             if (!empty($tasks)) {

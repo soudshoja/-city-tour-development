@@ -199,7 +199,7 @@
                             <th class="px-4 py-2">Client name</th>
                             <th class="px-4 py-2">Amount</th>
                             <th class="px-4 py-2">Status</th>
-                            <th class="px-4 py-2">Actions</th>
+                            <th class="px-4 py-2">Actionssss</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
@@ -224,6 +224,7 @@
                                         </div>
                                     </div>
                                 </div>
+
                             </td>
 
 

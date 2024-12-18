@@ -465,24 +465,6 @@ function submitSelectedItems() {
         });
 }
 
-// invoice page modals
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Function to close modals when clicking outside of them
-function closeModalOnClickOutside(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.addEventListener("click", function (event) {
-            // Close the modal if the clicked target is the background overlay
-            if (event.target === modal) {
-                modal.classList.add("hidden"); // Hide modal
-            }
-        });
-    }
-}
-
-// Apply the function to all modals
-document.addEventListener("DOMContentLoaded", function () {
-    closeModalOnClickOutside("taskModal");
-    closeModalOnClickOutside("clientModal");
-    closeModalOnClickOutside("agentModal");
-});
+// tasks list page

@@ -97,7 +97,7 @@ class DashboardController extends Controller
             'invoices' => $invoices,
             'notifications' => $notifications,
         ];
-        return view('admin.index', compact('company', 'agent', 'dashboardData'));
+        return view('admin.index', compact('company', 'dashboardData'));
     }
 
     public function companyDashboard()
@@ -213,13 +213,13 @@ class DashboardController extends Controller
                             return $invoice->invoiceDetails;
                         });
                     });
-            })->sum('task_price'); // Assuming 'task_price' exists in `invoiceDetails`
+                })->sum('task_price'); // Assuming 'task_price' exists in `invoiceDetails`
 
-            return [
-                'name' => $branch->name,
-                'totalInvoiceSum' => $totalInvoiceSum,
-            ];
-        });
+                return [
+                    'name' => $branch->name,
+                    'totalInvoiceSum' => $totalInvoiceSum,
+                ];
+            });
 
         $totalInvoiceSumForCompany = $branchesWithInvoiceSums->sum('totalInvoiceSum');
 
@@ -227,14 +227,14 @@ class DashboardController extends Controller
         $chartBranchData = $branchesWithInvoiceSums->map(function ($branch) use ($totalInvoiceSumForCompany) {
             return [
                 'name' => $branch['name'],
-                'percentage' => $totalInvoiceSumForCompany > 0 
-                    ? round(($branch['totalInvoiceSum'] / $totalInvoiceSumForCompany) * 100, 2) 
+                'percentage' => $totalInvoiceSumForCompany > 0
+                    ? round(($branch['totalInvoiceSum'] / $totalInvoiceSumForCompany) * 100, 2)
                     : 0,
             ];
         });
 
 
-                // Initialize arrays for months
+        // Initialize arrays for months
         $paidAmounts = array_fill(0, 12, 0);
         $unpaidAmounts = array_fill(0, 12, 0);
 
@@ -266,7 +266,7 @@ class DashboardController extends Controller
             foreach ($branch->agents as $agent) {
                 // Count tasks associated with each agent
                 $taskCount = 0;
-    
+
                 foreach ($agent->clients as $client) {
                     foreach ($client->invoices as $invoice) {
                         foreach ($invoice->invoiceDetails as $invoiceDetail) {
@@ -276,11 +276,11 @@ class DashboardController extends Controller
                         }
                     }
                 }
-    
+
                 // Calculate the percentage of tasks per agent
                 $totalTasks = Task::count(); // Assuming this fetches all tasks across the company
                 $percentage = $totalTasks > 0 ? ($taskCount / $totalTasks) * 100 : 0;
-    
+
                 $agentsData[] = [
                     'name' => $agent->name,
                     'percentage' => $percentage,
@@ -292,7 +292,7 @@ class DashboardController extends Controller
         usort($agentsData, function ($a, $b) {
             return $b['percentage'] <=> $a['percentage'];
         });
-        
+
 
         // Prepare the data array
         $dashboardData = [
@@ -318,7 +318,7 @@ class DashboardController extends Controller
             'clients' => $clientsWithDetails,
             'notifications' => $notifications,
         ];
-        
+
         return view('companies.index', compact('company', 'dashboardData'));
     }
 

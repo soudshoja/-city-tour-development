@@ -1,11 +1,35 @@
 <header>
-    <div class="container mx-auto flex flex-wrap items-center justify-between px-6 py-4">
+    <div class="mt-2 container mx-auto flex flex-wrap items-center justify-between px-6 py-4">
         <!-- Logo -->
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
+            <!-- Logo Image & home link -->
             <a href="{{ url('/') }}" class="flex items-center">
                 <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-8 mr-4">
                 <span class="text-lg font-bold text-gray-800">City Tour</span>
             </a>
+
+            <div class="ml-5 hidden lg:block xl:block">
+                <!-- company menu -->
+                @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                @include('layouts.menus.company')
+                @endif
+
+                <!-- branch menu -->
+                @if(Auth()->user()->role_id ==\App\Models\Role::BRANCH)
+                @include('layouts.menus.branch')
+                @endif
+
+                <!-- agent menu -->
+                @if(Auth()->user()->role_id ==\App\Models\Role::AGENT)
+                @include('layouts.menus.agent')
+                @endif
+
+                <!-- admin menu -->
+                @if(Auth()->user()->role_id ==\App\Models\Role::ADMIN)
+                @include('layouts.menus.admin')
+                @endif
+
+            </div>
         </div>
 
 

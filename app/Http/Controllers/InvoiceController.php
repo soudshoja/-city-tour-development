@@ -241,6 +241,7 @@ class InvoiceController extends Controller
 
         return view('invoice.edit', compact(
             'clients',
+            'invoice',
             'agents',
             'agentId',     
             'clientId',

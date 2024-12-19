@@ -198,10 +198,10 @@
                             </button>
 
                         </div>
-                        <div class="sm:w-2/5">
-                            <div class="mt-4 flex items-center justify-between font-semibold">
-                                <div>Total</div>
-                                <span id="subT">$0.00</span>
+                        <div class="sm:w-2/5 flex justify-end">
+                            <div class="mt-4 flex items-center font-semibold">
+                                <div class="mr-2">Total:</div>
+                                <span id="subT">0.00</span>
                                 <input id="subTotal" type="hidden" name="subTotal" />
                             </div>
                         </div>
@@ -219,45 +219,8 @@
                         <option value="USD">USD</option>
                     </select>
 
-                </div>
-                <div class="panel">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                        <div id="invoice-link-container" style="display: none;" class="mt-4">
-                            <label>Invoice Link:</label>
-                            <a id="invoice-link" href="#" class="text-blue-600 underline" target="_blank"></a>
-                        </div>
-                        <div id="invoice-link-container1" style="display: none;" class="mt-4">
-                            <label>Split Invoice Link:</label>
-                            <a id="invoice-link1" href="#" class="text-blue-600 underline" target="_blank"></a>
-                        </div>
-
-                        <button id="generate-invoice-btn" type="button" class="btn btn-success w-full gap-2">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                <path d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z" stroke="currentColor" stroke-width="1.5" />
-                                <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
-                                <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                            </svg>
-                            <span id="button-text">Save</span>
-                            <span id="button-loading" style="display: none;">Saving...</span>
-                            <span id="button-saved" style="display: none;">Saved</span>
-                        </button>
-                        <input id="invoiceId" type="hidden" name="invoiceId" />
-                        <!-- add form here-->
-
-                        <button type="button" class="btn btn-info w-full gap-2">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path
-                                    d="M17.4975 18.4851L20.6281 9.09373C21.8764 5.34874 22.5006 3.47624 21.5122 2.48782C20.5237 1.49939 18.6511 2.12356 14.906 3.37189L5.57477 6.48218C3.49295 7.1761 2.45203 7.52305 2.13608 8.28637C2.06182 8.46577 2.01692 8.65596 2.00311 8.84963C1.94433 9.67365 2.72018 10.4495 4.27188 12.0011L4.55451 12.2837C4.80921 12.5384 4.93655 12.6658 5.03282 12.8075C5.22269 13.0871 5.33046 13.4143 5.34393 13.7519C5.35076 13.9232 5.32403 14.1013 5.27057 14.4574C5.07488 15.7612 4.97703 16.4131 5.0923 16.9147C5.32205 17.9146 6.09599 18.6995 7.09257 18.9433C7.59255 19.0656 8.24576 18.977 9.5522 18.7997L9.62363 18.79C9.99191 18.74 10.1761 18.715 10.3529 18.7257C10.6738 18.745 10.9838 18.8496 11.251 19.0285C11.3981 19.1271 11.5295 19.2585 11.7923 19.5213L12.0436 19.7725C13.5539 21.2828 14.309 22.0379 15.1101 21.9985C15.3309 21.9877 15.5479 21.9365 15.7503 21.8474C16.4844 21.5244 16.8221 20.5113 17.4975 18.4851Z"
-                                    stroke="currentColor" stroke-width="1.5" />
-                                <path opacity="0.5" d="M6 18L21 3" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                            </svg>
-                            Send Invoice
-                        </button>
-
-                         <!-- Payment Type Section -->
-                         <div  id="paymentMethod" class="mt-4">
+                     <!-- Payment Type Section -->
+                     <div  id="paymentMethod" class="mt-4">
                             <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
                             <div class="flex gap-4">
                                 <!-- Full Payment Tab -->
@@ -323,20 +286,66 @@
                             </div>
 
                                                 <!-- Payment Gateway Section -->
-                                <section class="mb-6">
+                                <section  id="payment_gateway_section" class="mb-6">
                                     <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
                                     <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
                                         @foreach($paymentGateways as $gateway)
                                             <option value="{{ $gateway }}">{{ $gateway }}</option>
                                         @endforeach
                                     </select>
+                                   <div>
+                                    <button id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                            <path
+                                                d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                                fill="currentColor"
+                                            />
+                                            <path
+                                                d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                                fill="currentColor"
+                                            />
+                                        </svg>
+                                        Update Invoice
+                                    </button>
+                                    </div>
                                 </section>
 
                         </div>
 
+                </div>
+                <div class="panel">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
 
+                        <button id="generate-invoice-btn" type="button"  class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                <path d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z" stroke="currentColor" stroke-width="1.5" />
+                                <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
+                                <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
+                            <span id="button-text">Save</span>
+                            <span id="button-loading" style="display: none;">Saving...</span>
+                            <span id="button-saved" style="display: none;">Saved</span>
+                        </button>
+                        <input id="invoiceId" type="hidden" name="invoiceId" />
+                        <!-- add form here-->
 
+                        <button id="send-invoice-btn" type="button"  class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
+                                <path
+                                    d="M17.4975 18.4851L20.6281 9.09373C21.8764 5.34874 22.5006 3.47624 21.5122 2.48782C20.5237 1.49939 18.6511 2.12356 14.906 3.37189L5.57477 6.48218C3.49295 7.1761 2.45203 7.52305 2.13608 8.28637C2.06182 8.46577 2.01692 8.65596 2.00311 8.84963C1.94433 9.67365 2.72018 10.4495 4.27188 12.0011L4.55451 12.2837C4.80921 12.5384 4.93655 12.6658 5.03282 12.8075C5.22269 13.0871 5.33046 13.4143 5.34393 13.7519C5.35076 13.9232 5.32403 14.1013 5.27057 14.4574C5.07488 15.7612 4.97703 16.4131 5.0923 16.9147C5.32205 17.9146 6.09599 18.6995 7.09257 18.9433C7.59255 19.0656 8.24576 18.977 9.5522 18.7997L9.62363 18.79C9.99191 18.74 10.1761 18.715 10.3529 18.7257C10.6738 18.745 10.9838 18.8496 11.251 19.0285C11.3981 19.1271 11.5295 19.2585 11.7923 19.5213L12.0436 19.7725C13.5539 21.2828 14.309 22.0379 15.1101 21.9985C15.3309 21.9877 15.5479 21.9365 15.7503 21.8474C16.4844 21.5244 16.8221 20.5113 17.4975 18.4851Z"
+                                    stroke="currentColor" stroke-width="1.5" />
+                                <path opacity="0.5" d="M6 18L21 3" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                            </svg>
+                            Send Invoice
+                        </button>
 
+                
                             <div id="errorMessage" class="hidden text-red-500">
                                 <!-- Error message -->
                             </div>
@@ -344,24 +353,19 @@
                             <!-- Modal -->
                             <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
                                 <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
-                                    <h3 class="text-xl font-bold mb-4">Split/Partial Payment Details</h3>
+                                    <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
                                     <!-- Include your previous page content here -->
                                     <div class="bg-gray-100 p-5">
                                             <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
-                                                <!-- Tabs Navigation -->
-                                                <div class="flex border-b mb-6">
-                                                    <button id="tab-split" class="text-gray-800 px-4 py-2 border-b-2 font-medium" onclick="showTab('split')">Split Payment</button>
-                                                    <button id="tab-partial" class="text-gray-800 px-4 py-2 border-b-2 font-medium" onclick="showTab('partial')">Partial Payment</button>
-                                                </div>
 
                                                 <!-- Split Payment Tab Content -->
-                                                <div id="split-payment-container" class="tab-content hidden">
+                                                <div id="split-payment-container" class="tab-content">
                                                     <form>
                                                         <!-- Top Fields -->
                                                         <div class="grid grid-cols-3 gap-4 mb-5">
                                                             <div>
                                                                 <label class="block text-sm font-medium mb-1">Amount *</label>
-                                                                <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="0" />
+                                                                <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled/>
                                                             </div>
                                                             <div>
                                                                 <label class="block text-sm font-medium mb-1">Split into *</label>
@@ -401,33 +405,47 @@
                                                             <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                                                         </div>
-                                                    </form>
-                                                </div>
+                                                    </form> 
+                                        </div>
+                                </div>
+                            </div>
+                         <div class="mt-4 flex justify-end">
+                             <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                         </div>
+                    </div>
+                </div>
 
-                                                <!-- Partial Payment Tab Content -->
-                                                <div id="partial-payment-container" class="tab-content hidden">
-                                                <div class="mt-4 flex items-center">
-                                                        <label for="receiverName1" class="mb-0 w-1/3 mr-2 ">Client Name</label>
-                                                        <input id="receiverName1" type="text" name="receiverName1" class="form-input flex-1"
-                                                            placeholder="Enter Name" disabled />
-                                                    </div>
-                                                    <div class="grid grid-cols-3 gap-4 mb-5">
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                        <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
-                                                    </div>
-                                                    <div class="mt-4 flex items-center">
-                                                        <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
-                                                        <span id="subT1">$0.00</span>
-                                                    </div>
-                                                  </div>
-                                                  <div class="mt-4 flex items-center">
-                                                        <label for="receiverName1" class="mb-0 w-1/3 mr-2 ">Payment Gateway</label>
-                                                        <select id="payment_gateway1" name="payment_gateway1" class="border border-gray-300 p-2 rounded w-full">
-                                                            @foreach($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                                            @endforeach
-                                                        </select>
+        <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                    <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
+                    <div class="bg-gray-100 p-5">
+                       <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+                               <!-- Partial Payment Tab Content -->
+                                           <div id="partial-payment-container" class="tab-content">
+                                                     <div class="grid grid-cols-3 gap-4 mb-5">
+                                                        <div>
+                                                            <label  class="block text-sm font-medium mb-1">Client Name</label>
+                                                            <span id="receiverName1">AHMED</span>
+                                                        </div>
+                                                        <div>
+                                                            <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                            <span id="subT1">             0.00</span>
+                                                        </div>
+                                                     </div>
+    
+                                                   <div class="grid grid-cols-3 gap-4 mb-5">
+                                                         <div>
+                                                            <label class="block text-sm font-medium mb-1">Split into *</label>
+                                                            <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
+                                                        </div>
+                                                        <div>
+                                                            <label  class="block text-sm font-medium mb-1">Payment Gateway</label>
+                                                            <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                                @foreach($paymentGateways as $gateway)
+                                                                <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
                                                   </div>
                                                     <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
                                                     <table class="min-w-full bg-white border border-gray-300 text-center">
@@ -448,20 +466,15 @@
                                                     <div class="flex space-x-4 mt-5">
                                                             <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
-                                                        </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <div class="mt-4 flex justify-end">
-                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
-                                    </div>
-                                </div>
+                                                    </div>
+                                      </div>
                             </div>
-                    </div>
-                </div>
+                       </div>
+                       <div class="mt-4 flex justify-end">
+                                <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                       </div>
             </div>
         </div>
-
         <!-- Agents Modal -->
         <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
             <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
@@ -723,6 +736,17 @@
         const clientButton = document.getElementById("openClientModalButton");
         const agentButton = document.getElementById("select-agent");
         const taskButton = document.getElementById("openTaskModalButton");
+        const sendInvoice = document.getElementById("send-invoice-btn");
+        const generateInvoice = document.getElementById("generate-invoice-btn");
+        const paymentGatewaySection = document.getElementById('payment_gateway_section');
+        const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
+
+        if (paymentType === 'full') {
+            paymentGatewaySection.style.display = 'block'; // Show the section
+        } else {
+            paymentGatewaySection.style.display = 'none'; // Hide the section
+        }
 
 
          console.log(invoiceIdInput.value);
@@ -734,6 +758,8 @@
             agentButton.disabled = false;
             taskButton.disabled = false;
             generateInvoiceButton.disabled = false;
+            sendInvoice.classList.add('hidden');
+            generateInvoice.classList.remove('hidden');
             document.getElementById('paymentMethod').classList.add('hidden');
 
         } else {
@@ -744,6 +770,8 @@
             agentButton.disabled = true;
             taskButton.disabled = true;
             generateInvoiceButton.disabled = false;
+            sendInvoice.classList.remove('hidden');
+            generateInvoice.classList.add('hidden');
             document.getElementById('paymentMethod').classList.remove('hidden');
         }
     }
@@ -758,12 +786,19 @@
         let isSaved = false;
 
         function showModal(type) {
-        document.getElementById('paymentModal').classList.remove('hidden');
-        this.showTab(type);
+        if(type == 'split'){
+            document.getElementById('paymentModal').classList.remove('hidden');
+        } else   if(type == 'partial'){
+            document.getElementById('paymentModal1').classList.remove('hidden');
+        }
+
+        checkInvoiceId();
         }
 
         function hideModal() {
             document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('paymentModal1').classList.add('hidden');
+            checkInvoiceId();
         }
 
         
@@ -810,21 +845,6 @@
             }
         }
         
-        function showTab(tab) {
-        document.querySelectorAll('.tab-content').forEach((content) => {
-            content.classList.add('hidden');
-        });
-
-        document.querySelector(`#${tab}-payment-container`).classList.remove('hidden');
-
-        document.querySelectorAll('.border-b-2').forEach((tabButton) => {
-            tabButton.classList.remove('border-indigo-500', 'text-indigo-500');
-            tabButton.classList.add('text-gray-800');
-        });
-
-        document.querySelector(`#tab-${tab}`).classList.add('border-indigo-500', 'text-indigo-500');
-    }
-
         function updateRows() {
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
@@ -911,8 +931,8 @@
 
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
-            document.getElementById('subT').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('subT1').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
+            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
             document.getElementById('subTotal').value = subtotal;
             document.getElementById('total-amount').value = subtotal;
         }
@@ -939,11 +959,11 @@
                                 <td>
                                 <p>${item.client_name}</p>
                                 </td>
-                                <td>
+                                <td class="border-b px-4 py-2">
                                   <p>${item.quantity}</p>
                                 </td>
-                                 <td>$${(item.total * item.quantity).toFixed(2)}</td>
-                                <td>
+                                 <td class="border-b px-4 py-2">${(item.total * item.quantity).toFixed(2)}</td>
+                                <td class="border-b px-4 py-2">
                                         <input 
                                         id="invprice-${item.id}" 
                                         type="number" 
@@ -954,7 +974,7 @@
                                     />
                                 </td>
 
-                                <td>
+                                <td class="border-b px-4 py-2">
                                     <button id="remove-button-${item.id}" type="button" onclick="" data-id="">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" 
                                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
@@ -1114,7 +1134,7 @@
 
             // Update input fields
             document.getElementById('receiverName').value = client.name;
-            document.getElementById('receiverName1').value = client.name;
+            document.getElementById('receiverName1').textContent = client.name;
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
@@ -1167,7 +1187,7 @@
 
             // Update input fields
             document.getElementById('receiverName').value = client.name;
-            document.getElementById('receiverName1').value = client.name;
+            document.getElementById('receiverName1').textContent = client.name;
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 
@@ -1307,24 +1327,12 @@
             }
            
             // Display links
-            const invoiceLinkContainer = document.getElementById("invoice-link-container1");
-            invoiceLinkContainer.innerHTML = `<label>Split Invoice Links:</label>`;
-            invoiceLinks.forEach(({ clientName, clientId, link }) => {
-                const linkElement = document.createElement('a');
-                linkElement.href = link;
-                linkElement.textContent = `Client ${clientName}: ${link}`;
-                linkElement.target = "_blank";
-                linkElement.classList.add('text-blue-600', 'underline', 'block', 'mt-2');
-                invoiceLinkContainer.appendChild(linkElement);
-            });
-
-            invoiceLinkContainer.style.display = "block";
 
         } catch (error) {
             console.error('Error generating invoices:', error);
             displayErrorMessage("Error generating one or more invoices. Please check your data.");
         } finally {
-            resetButtonState();
+            afterPaymentType();
             hideModal();
         }
 
@@ -1362,7 +1370,7 @@
                     console.error('Error generating invoice:', error);
                     displayErrorMessage("Error generating invoice. Please try again.");
                 } finally {
-                    resetButtonState();
+                    afterPaymentType();
                     hideModal();
                 }
             }
@@ -1381,8 +1389,29 @@
             document.body.appendChild(alert);
         }
 
+        function afterPaymentType(){
+            const tabs = document.querySelectorAll('input[name="payment_type"]');
+            const partial = document.getElementById('payment_type_partial');
+            const split = document.getElementById('payment_type_split');
+            const full = document.getElementById('payment_type_full');
+            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
 
-
+            if (paymentType === 'full') {
+                partial.disabled = true;
+                split.disabled = true;
+                full.disabled = false;
+            } else if (paymentType === 'partial') {
+                partial.disabled = false;
+                split.disabled = true;
+                full.disabled = true;
+            } else if(paymentType === 'split') {
+                partial.disabled = true;
+                split.disabled = false;
+                full.disabled = true;
+            }
+            
+        }
+          
         // Generate invoice
         async function generateInvoice() {
 
@@ -1452,15 +1481,6 @@
 
                 document.getElementById('invoiceId').value = invoiceId;
                 const generatedLink = appUrl + '/invoice/' + invoiceNumber;
-
-                // Invoice link elements
-                const invoiceLinkContainer = document.getElementById("invoice-link-container");
-                const invoiceLink = document.getElementById("invoice-link");
-
-                // Update and show the invoice link
-                invoiceLink.href = generatedLink;
-                invoiceLink.textContent = generatedLink;
-                invoiceLinkContainer.style.display = "block";
 
                 // Show success state
                 isSaved = true; // Mark as saved after generating

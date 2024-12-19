@@ -17,7 +17,7 @@
         </div>
         <!-- ./quick actions icon -->
 
-        <!--   dashboard -->
+        <!--  dashboard -->
         <div class="flex flex-col items-center ">
             <!-- Menu item-->
             <div class="relative group">

@@ -812,6 +812,58 @@ class OpenAiController extends Controller
     }
 
 
+    // RUN STEP
+    public function listStep(string $threadId, string $runId)
+    {
+        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/steps';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+        $response = $this->getRequest($url, $header);
+
+        if(isset($response['error'])){
+            return [
+                'status' => 'error',
+                'message' => 'Failed to step run',
+                'data' => $response,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Run stepped successfully',
+            'data' => $response['data']
+        ];
+    }
+
+    public function retrieveStep(string $threadId, string $runId, string $stepId)
+    {
+        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/steps/' . $stepId;
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+        $response = $this->getRequest($url, $header);
+
+        if(isset($response['error'])){
+            return [
+                'status' => 'error',
+                'message' => 'Failed to retrieve run',
+                'data' => $response,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Run retrieved successfully',
+            'data' => $response['data']
+        ];
+    }
 
     public function sendMessage(Request $request)
     {
@@ -1197,4 +1249,26 @@ class OpenAiController extends Controller
     {
         Message::where('id', $id)->update($columns);
     }
+
+    //TODO: Upload a file to OpenAi embeddings
+    public function uploadFileToOpenAi(Request $request)
+    {
+        $file = $request->file('file');
+
+        $url = config('services.open-ai.url') . '/files';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+            'OpenAI-Beta: embeddings=v1',
+        ];
+
+        $data = [
+            'file' => $file,
+        ];
+
+        $response = $this->postRequest($url, $header, $data);
+
+        return response()->json($response);
+    }
+
 }

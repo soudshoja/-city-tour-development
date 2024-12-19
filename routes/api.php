@@ -35,10 +35,12 @@ use App\Http\Controllers\OpenAiController;
         Route::get('/send-client-data',[OpenAiController::class, 'sendDataToThread']);
         Route::get('/create-thread',[OpenAiController::class, 'createThread']);
         Route::delete('/delete-thread/{id}',[OpenAiController::class, 'deleteThread']);
-        Route::get('/check-run/{threadId}/{runId}',[OpenAiController::class, 'checkRun']);
-        Route::get('/get-message/{threadId}', [OpenAiController::class, 'getMessages']);
+        Route::get('/thread/{threadId}/run/{runId}',[OpenAiController::class, 'checkRun']);
+        Route::get('/thread/{threadId}/messages', [OpenAiController::class, 'getMessages']);
         Route::get('/list-run/{threadId}', [OpenAiController::class, 'listRun']);
         Route::post('/send-message', [OpenAiController::class, 'sendMessage']);
+        Route::get('/list-step/{threadId}/{runId}',[OpenAiController::class, 'listStep']);
+        Route::get('/step/{threadId}/{runId}/{stepId}',[OpenAiController::class, 'retrieveStep']);
 
         Route::get('pin', function(){
             return view('auth.pin');

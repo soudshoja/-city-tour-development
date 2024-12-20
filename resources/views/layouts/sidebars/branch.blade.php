@@ -17,7 +17,7 @@
         </div>
         <!-- ./quick actions icon -->
 
-        <!--   dashboard -->
+        <!--  dashboard -->
         <div class="flex flex-col items-center ">
             <!-- Menu item-->
             <div class="relative group">
@@ -43,7 +43,7 @@
             </div>
         </div>
 
-        <!-- ./  dashboard -->
+        <!-- ./ dashboard -->
 
         <!-- Add New -->
         <div class="flex flex-col items-center ">
@@ -69,7 +69,7 @@
         <!-- ./Add New -->
 
 
-        <!--   create invoice -->
+        <!--  create invoice -->
         <div class="flex flex-col items-center ">
             <!-- Menu item-->
             <div class="relative group">
@@ -90,10 +90,10 @@
                 </a>
             </div>
         </div>
-        <!-- ./  create invoice -->
+        <!-- ./ create invoice -->
 
 
-        <!--   tasks -->
+        <!--  tasks -->
         <div class="flex flex-col items-center">
             <!-- Menu item-->
             <div class="relative group">
@@ -115,7 +115,7 @@
                 </a>
             </div>
         </div>
-        <!-- ./  tasks -->
+        <!-- ./ tasks -->
     </div>
 
     <!-- mode switchers -->

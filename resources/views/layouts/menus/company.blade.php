@@ -43,7 +43,7 @@
     <!-- ./Finance -->
 
     <!-- Users -->
-    <li class="menu nav-item relative  bg-gray-200 hover:bg-gray-300 rounded-full shadow-md group">
+    <li class="menu nav-item relative bg-gray-200 hover:bg-gray-300 rounded-full shadow-md group">
         <a href="javascript:;" class="nav-link flex items-center gap-2">
             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <g fill="none" stroke="currentColor" stroke-width="1.5">
@@ -58,7 +58,8 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block   shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <!-- Dropdown Menu -->
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
             <li>
                 <a href="{{ route('agents.index') }}" class="block px-4 py-2 hover:bg-gray-200">Agents List</a>
             </li>
@@ -68,6 +69,9 @@
         </ul>
     </li>
     <!-- ./Users -->
+
+    <!-- ./Users -->
+
 
     <!-- Branches -->
     <li class="menu nav-item relative bg-gray-200 hover:bg-gray-300 rounded-full shadow-md group">
@@ -83,7 +87,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block   shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
             <li>
                 <a href="{{ route('branches.index') }}" class="block px-4 py-2 hover:bg-gray-200">Branches List</a>
             </li>
@@ -106,7 +110,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block bg-white shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
             <li>
                 <a href="{{ route('reports.summary') }}" class="block px-4 py-2 hover:bg-gray-200">Summary</a>
             </li>
@@ -138,7 +142,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block   shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
             <li>
                 <a href="{{ route('agentsetting') }}" class="block px-4 py-2 hover:bg-gray-200">Agent Settings</a>
             </li>

@@ -5,23 +5,27 @@
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-4">
-                    <div class=" shrink-0 items-center text-black dark:text-white">
-                        <x-application-logo class="custom-logo-size" />
-
+                    <div class="smPaddingBottom shrink-0 items-center text-black dark:text-white">
+                        <div class="flex items-center ">
+                            <x-application-logo class="custom-logo-size" />
+                            <h3 class="pl-2 text-2xl font-bold">{{ $company->name }}</h3>
+                        </div>
                         <div class="pl-2">
                             @if($company)
-                            <h3>{{ $company->name }}</h3>
+
                             <p>{{ $company->address }}</p>
                             @else
                             <p>No company assigned</p>
                             @endif
                         </div>
 
-                        <div class="flex">
-                            <p class="pl-1">{{ $company->email }}</p>
-                        </div>
-                        <div class="flex">
-                            <p class="pl-1">{{ $company->phone }}</p>
+                        <div class="">
+                            <div class="flex">
+                                <p class="pl-1">{{ $company->email }}</p>
+                            </div>
+                            <div class="flex">
+                                <p class="pl-1">{{ $company->phone }}</p>
+                            </div>
                         </div>
 
 
@@ -71,13 +75,14 @@
                                         fill="#004c9e" />
                                     <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
                                         stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Client</span>
+                                </svg>
+                                <span class="pl-2">Choose Client</span>
                             </button>
                             <input id="receiverId" type="hidden" name="receiverId" />
                             <input id="agentId" type="hidden" name="agentId" value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
                         </div>
 
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a client</p>
+                        <p class="my-4 text-gray-400 text-center text-xs">details will displaying below after choosing a client</p>
                         <!-- client name -->
                         <div class="mt-4 flex items-center">
                             <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
@@ -112,7 +117,7 @@
                                 onclick="openAgentModal()"
                                 class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="#004c9e"
                                     xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="10" cy="6" r="4" fill="#004c9e" />
                                     <path
@@ -120,11 +125,12 @@
                                         fill="#004c9e" />
                                     <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
                                         stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
+                                </svg>
+                                <span class="pl-2">Choose Agent</span>
                             </button>
                             @endcan
                         </div>
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
+                        <p class="my-4 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
 
                         <!-- agent name -->
                         <div class="mt-4 flex items-center">
@@ -160,12 +166,11 @@
                         <table id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th>Item</th>
-                                    <th>Client</th>
-                                    <th class="w-1">Quantity</th>
-                                    <th class="w-1">Task Price</th>
-                                    <th>Invoice Price</th>
-                                    <th class="w-1"></th>
+                                    <th class="whitespace-nowrap">Task</th>
+                                    <th class="whitespace-nowrap">Client</th>
+                                    <th class="whitespace-nowrap">Quantity</th>
+                                    <th class="whitespace-nowrap">Task Price</th>
+                                    <th class="whitespace-nowrap">Invoice Price</th>
                                 </tr>
                             </thead>
                             <tbody id="items-body">
@@ -551,7 +556,7 @@
             if (items.length === 0) {
                 // If no items, display the "No Item Available" row
                 const noItemsRow = document.createElement('tr');
-                noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Item Available</td>';
+                noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Tasks Available</td>';
                 itemsBody.appendChild(noItemsRow);
             } else {
                 // Iterate over items and create rows

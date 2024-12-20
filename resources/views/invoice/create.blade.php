@@ -320,6 +320,31 @@
                                     </div>
                                 </section>
 
+                                <!-- Added Buttons/Links Section -->
+                            <section id="additional-actions" class="mt-6">
+                                <div class="flex flex-wrap gap-4">
+
+                                    <!-- Share Buttons -->
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="shareViaWhatsApp()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-blue-700 rounded">
+                                            Share via WhatsApp
+                                        </button>
+                                        <button onclick="shareViaEmail()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-indigo-700 rounded">
+                                            Share via Email
+                                        </button>
+                                        <button onclick="copyLink()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-gray-700 rounded">
+                                            Copy Link
+                                        </button>
+                                    </div>
+
+                                    <!-- View Button -->
+                                    <button onclick="viewInvoice()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded">
+                                        View
+                                    </button>
+                                </div>
+                            </section>
+
+
                         </div>
 
                 </div>

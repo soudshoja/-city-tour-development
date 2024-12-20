@@ -105,10 +105,12 @@ class InvoiceController extends Controller
             $company = $user->company;
             $company = Company::with('branches.agents')->find($company->id);
             $agents = $company->branches->flatMap->agents;
+            $branches = $company->branches;
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $agents = $company->branches->flatMap->agents;
+            $branches = $company->branches;
         }
 
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
@@ -175,6 +177,7 @@ class InvoiceController extends Controller
         return view('invoice.create', compact(
             'clients',
             'agents',
+            'branches',
             'agentId',
             'clientId',
             'tasks',
@@ -612,9 +615,11 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
+        $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
+
         $invoiceDetails = $invoice->invoiceDetails;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paymentGateway'));
     }
 
     public function split(string $invoiceNumber, int $clientId)

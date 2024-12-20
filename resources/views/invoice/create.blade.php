@@ -33,8 +33,14 @@
                         <div class="flex">
                             <p class="pl-1">{{ $company->phone }}</p>
                         </div>
-
-
+                        <div class="flex items-center w-full space-x-4">
+                         <label class="text-sm font-semibold">Branch</label>
+                            <select id="branch" name="branch" class=" border border-gray-300 p-2 rounded">
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <!-- invoice details -->
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
@@ -57,6 +63,7 @@
 
 
                     </div>
+
                     <!--./invoice details -->
                 </div>
                 <!-- ./company details -->
@@ -64,12 +71,11 @@
 
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
 
-
-
                 <!-- users details -->
                 <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
                     <!-- client details -->
                     <div class="w-full">
+
                         <!-- choose client button -->
                         <div class="flex items-center">
                             <button type="button" id="openClientModalButton"
@@ -287,14 +293,16 @@
 
                                                 <!-- Payment Gateway Section -->
                                 <section  id="payment_gateway_section" class="mb-6">
+                                    <div class="mt-4">
                                     <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
                                     <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
                                         @foreach($paymentGateways as $gateway)
                                             <option value="{{ $gateway }}">{{ $gateway }}</option>
                                         @endforeach
                                     </select>
-                                   <div>
-                                    <button id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                  </div>
+                                   <div class="mt-4">
+                                    <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                             xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
@@ -869,7 +877,7 @@
                         <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                        <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
                               @foreach($paymentGateways as $gateway)
                                <option value="{{ $gateway }}">{{ $gateway }}</option>
                               @endforeach
@@ -1238,6 +1246,15 @@
 
         function savePartial(mode) {
      
+            if (mode === 'full') {
+                    const gateway = document.getElementById('payment_gateway').value;
+                    const date = document.getElementById('duedate').value;
+                    const amount = document.getElementById('subTotal').value;
+                    const fullData = [];
+
+                    fullData.push({ date, amount, gateway });
+                    save('full', fullData);
+            }else
             if (mode === 'split') {
                 // Collect Split Payment Data
                 const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
@@ -1250,7 +1267,7 @@
                     const selectElement = row.querySelector('select');
                     const clientId = selectElement.value;
                     const date = row.querySelector('input[type="date"]').value;
-                    const gateway = row.querySelector('#payment_gateway').value || null;
+                    const gateway = row.querySelector('#payment_gateway2').value || null;
                     const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
                     const clientName = selectElement.options[selectElement.selectedIndex].text;
 
@@ -1288,7 +1305,52 @@
             const invoiceId = document.getElementById('invoiceId').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
 
-    if (type === 'split') {  
+            if (type === 'full') {  
+            const clientId = document.getElementById('receiverId').value;
+
+                try {
+                    for (const item of data) {
+                        const { date, amount, gateway } = item;
+
+                        // Send POST request for each client
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId, 
+                                type,
+                                date, 
+                                amount,
+                                gateway
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                        }
+
+                        const result = await response.json();
+
+                        const generatedLink = `${appUrl}/invoice/partial/${invoiceNumber}/${clientId}`;
+                        invoiceLinks.push({ clientId, clientName, link: generatedLink });
+                    }
+                
+                    // Display links
+
+                } catch (error) {
+                    console.error('Error generating invoices:', error);
+                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
+          }
+        }else
+         if (type === 'split') {  
         // Handle split payment, generate links for each row
         try {
             const invoiceLinks = []; // Store links for each client
@@ -1321,13 +1383,8 @@
                 }
 
                 const result = await response.json();
-
-                const generatedLink = `${appUrl}/invoice/partial/${invoiceNumber}/${clientId}`;
-                invoiceLinks.push({ clientId, clientName, link: generatedLink });
             }
            
-            // Display links
-
         } catch (error) {
             console.error('Error generating invoices:', error);
             displayErrorMessage("Error generating one or more invoices. Please check your data.");
@@ -1394,12 +1451,14 @@
             const partial = document.getElementById('payment_type_partial');
             const split = document.getElementById('payment_type_split');
             const full = document.getElementById('payment_type_full');
+            const update = document.getElementById('update-invoice-btn');
             const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
 
             if (paymentType === 'full') {
                 partial.disabled = true;
                 split.disabled = true;
                 full.disabled = false;
+                update.disabled = true;
             } else if (paymentType === 'partial') {
                 partial.disabled = false;
                 split.disabled = true;

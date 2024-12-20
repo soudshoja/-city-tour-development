@@ -1271,4 +1271,24 @@ class OpenAiController extends Controller
         return response()->json($response);
     }
 
+    public function getClient()
+    {
+        $user = auth()->user();
+
+        if($user->role_id == Role::ADMIN){
+            $client = Client::all();
+        } else if ($user->role_id == Role::COMPANY) {
+            $client = Client::with(['agent.branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get();
+        } else if ($user->role_id == Role::BRANCH) {
+            $client = Client::with(['agent' => function ($query) use ($user) {
+                $query->where('branch_id', $user->branch_id);
+            }])->get();
+        } else {
+            $client = Client::where('agent_id', $user->id)->get();
+        }
+
+        return $client;
+    }
 }

@@ -178,6 +178,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
     Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
+    Route::get('/testclient',[OpenAiController::class, 'getClient']);
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');

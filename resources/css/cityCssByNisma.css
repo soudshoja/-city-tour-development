@@ -1,4 +1,8 @@
-/** custom **/
+/** theme customization **/
+
+/*** menus  ************************************************************************************************/
+
+/** custom city style **/
 
 /** body **/
 html,
@@ -11,12 +15,61 @@ body {
     background-attachment: fixed !important;
 }
 
+.group-hover\:opacity-100 {
+    opacity: 1; /* Makes the tooltip visible on hover */
+}
+
+.group-hover\:translate-x-2 {
+    transform: translateX(0.5rem); /* Slides tooltip slightly to the right */
+}
+
+.transition-all {
+    transition-property: all; /* Enables smooth transitions for all changes */
+}
+
+.duration-200 {
+    transition-duration: 200ms; /* Sets transition speed */
+}
+
+/* Define the heartbeat animation */
+@keyframes heartbeat {
+    0% {
+        transform: scale(1);
+    }
+    30% {
+        transform: scale(1.1);
+    }
+    60% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.1);
+    }
+}
+
+/* Apply the animation on hover */
+.heartbeat-container:hover .heartbeat {
+    animation: heartbeat 1s infinite;
+}
+
+/********************************************************************/
 .dataTable-pagination .active a {
     background-color: #1e40af !important;
 }
 
+.LightBCcolor {
+    background-color: #3961e4 !important;
+}
+
+.LightBCcolor:hover {
+    background-color: #2a4dcd !important;
+}
+
 .DarkBCcolor {
     background-color: #1e40af !important;
+}
+.DarkBCcolor:hover {
+    background-color: #1c3a9e60 !important;
 }
 
 /* Hide the default checkbox */
@@ -43,35 +96,17 @@ body {
     cursor: not-allowed;
 }
 
-/* Add the slide-up animation */
-@keyframes slideUp {
-    from {
-        transform: translateY(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* Apply the animation to the floatingActions div */
-#floatingActions {
-    animation: slideUp 0.3s ease-out;
-}
-
 .CuzPostion {
     bottom: 80px;
     right: 50%;
 }
-/* needed  */
+/* needed  ***************************************************/
 [x-cloak] {
     display: none !important;
 }
 
 /* auth pages */
 
-/* CSS */
 .custom-rounded-left {
     border-radius: 0.5rem;
     /* Default for mobile: fully rounded */
@@ -173,11 +208,47 @@ body {
     background-color: #086ad9 !important;
 }
 
-/** CSS BY BZS95 **/
+/** sidebar *************************************************************************************/
 
-/** header **/
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black;
+}
 
-/** sidebar **/
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 80%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
 .MaxW {
     width: max-content;
 }
@@ -270,15 +341,32 @@ body {
     --tw-ring-offset-width: 0px !important;
 }
 
-/* invoice page */
+/* invoice page ***********************************************************************************/
 
 .table-responsive {
     background-color: #e5e7eb !important;
 } /* used */
 
-/** tasks list page **/
+/** tasks list page *******************************************************************************/
 
-/****** media  *****/
+/* Add the slide-up animation */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Apply the animation to the floatingActions div */
+#floatingActions {
+    animation: slideUp 0.3s ease-out;
+}
+
+/****** media  **********************************************************************************/
 
 @media screen and (max-width: 768px) {
     .table-responsive {

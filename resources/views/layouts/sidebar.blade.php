@@ -8,6 +8,16 @@ use App\Models\Role;
     @include('layouts.sidebars.company')
     @endif
 
+    <!-- branch menu -->
+    @if(Auth::user()->role_id === Role::BRANCH )
+    @include('layouts.sidebars.branch')
+    @endif
+
+    <!--  agent menu -->
+    @if(Auth::user()->role_id === Role::AGENT )
+    @include('layouts.sidebars.agent')
+    @endif
+
     <!-- admin menu -->
     @if(Auth::user()->role_id === Role::ADMIN )
     @include('layouts.sidebars.admin')

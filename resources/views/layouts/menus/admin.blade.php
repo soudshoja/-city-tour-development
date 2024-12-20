@@ -22,7 +22,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block  shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
 
             <li>
                 <a href="{{ route('clients.list') }}" class="block px-4 py-2 hover:bg-gray-200">Companies List</a>
@@ -48,7 +48,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block  shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
 
             <li>
                 <a href="{{ route('clients.list') }}" class="block px-4 py-2 hover:bg-gray-200">Admins List</a>
@@ -69,7 +69,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block  shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
 
             <li>
                 <a href="{{ route('supplierslist.index') }}" class="block px-4 py-2 hover:bg-gray-200">Suppliers List</a>
@@ -91,7 +91,7 @@
                 <path d="M9 5L15 12L9 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
         </a>
-        <ul class="sub-menu absolute hidden group-hover:block   shadow-lg rounded-md mt-2 left-0 w-48 z-10">
+        <ul class="sub-menu absolute hidden group-hover:flex flex-col shadow-lg rounded-md top-full left-0 w-48 z-10 bg-white">
             <li>
                 <a href="{{ route('role.index') }}" class="block px-4 py-2 hover:bg-gray-200"> Manage Roles</a>
             </li>

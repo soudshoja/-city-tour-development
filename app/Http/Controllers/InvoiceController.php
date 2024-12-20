@@ -228,13 +228,19 @@ class InvoiceController extends Controller
         $agentId = $invoice->agent_id;
         $clientId = $invoice->client_id;
         $tasks = $agents->flatMap->tasks;
-        $selectedTasks = $invoice->invoiceDetails->pluck('task');
+        $selectedTasks = $invoice->invoiceDetails->map(function ($invoiceDetail) use ($invoice) {
+            $task = $invoiceDetail->task;
+            $task->task_price = $invoiceDetail->task_price;
+            $task->invprice = (float) $invoice->amount;
+            return $task;
+        });
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $invoiceDate = $invoice->invoice_date;
+        $invprice= $invoice->amount;
         $dueDate =  $invoice->due_date;
 
         $appUrl = config('app.url');
@@ -254,6 +260,7 @@ class InvoiceController extends Controller
             'selectedClient',
             'paymentGateways',
             'invoiceDate',
+            'invprice',
             'dueDate',
             'appUrl'
         ));

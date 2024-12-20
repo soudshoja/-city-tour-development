@@ -40,18 +40,18 @@
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
 
                         <div class="flex items-center">
-                        <label class="block text-sm font-medium mb-1">Invoice Number:</label>
+                        <label class="w-full text-sm font-semibold">Invoice Number:</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{$invoiceNumber}}" class="w-full form-input"
                                 placeholder="Invoice Number" />
                         </div>
                         
                         <div class="mt-4 flex items-center">
-                        <label class="block text-sm font-medium mb-1">Invoice Date:</label>
+                        <label class="w-full text-sm font-semibold">Invoice Date:</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$invoiceDate}} disabled />
                         </div>
                   
                         <div class="mt-4 flex items-center">
-                        <label class="block text-sm font-medium mb-1">Due Date:</label>
+                        <label class="w-full text-sm font-semibold">Due Date:</label>
                             <input id="duedate" type="date" name="duedate" value={{$dueDate}} class="w-full form-input" />
                         </div>
 
@@ -198,10 +198,10 @@
                             </button>
 
                         </div>
-                        <div class="sm:w-2/5">
-                            <div class="mt-4 flex items-center justify-between font-semibold">
-                                <div>Total</div>
-                                <span id="subT">$0.00</span>
+                        <div class="sm:w-2/5 flex justify-end">
+                            <div class="mt-4 flex items-center font-semibold">
+                                <div class="mr-2">Total:</div>
+                                <span id="subT">0.00</span>
                                 <input id="subTotal" type="hidden" name="subTotal" />
                             </div>
                         </div>
@@ -310,20 +310,22 @@
                             <a id="invoice-link1" href="#" class="text-blue-600 underline" target="_blank"></a>
                         </div>
 
-                        <button id="generate-invoice-btn" type="button" class="btn btn-success w-full gap-2">
+                        <button id="generate-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
                                 <path d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z" stroke="currentColor" stroke-width="1.5" />
                                 <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                             </svg>
-                            <span id="button-text">Save</span>
+                            <span id="button-text">Update</span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
                         <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
-                        <button type="button" class="btn btn-info w-full gap-2">
+                        <button type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow"  >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
                                 <path
@@ -709,7 +711,7 @@
 
         let selectedAgent = @json($selectedAgent);
         let selectedClient = @json($selectedClient);
-
+       console.log('client',selectedClient );
         const generateInvoiceButton = document.getElementById('generate-invoice-btn');
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
@@ -906,8 +908,9 @@
 
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
-            document.getElementById('subT').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('subT1').textContent = `$${subtotal.toFixed(2)}`;
+            console.log(subtotal);
+            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
+            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
             document.getElementById('subTotal').value = subtotal;
             document.getElementById('total-amount').value = subtotal;
         }
@@ -937,12 +940,13 @@
                                 <td>
                                   <p>${item.quantity}</p>
                                 </td>
-                                 <td>$${(item.total * item.quantity).toFixed(2)}</td>
+                                 <td>${(item.total * item.quantity).toFixed(2)}</td>
                                 <td>
                                         <input 
                                         id="invprice-${item.id}" 
                                         type="number" 
                                         name="invprice" 
+                                        value=${item.task_price}
                                         placeholder="Invoice Price" 
                                         class="form-input w-2/3 lg:w-[150px]" 
                                         oninput="updateItemPrice(${item.id})"
@@ -967,6 +971,7 @@
                     removeButton.addEventListener('click', function() {
                         removeItem(item.id);
                     });
+                    
                 });
             }
         }
@@ -976,7 +981,7 @@
             renderItems(); // Re-render the table after removal
         }
 
-        function chooseTasksAgent(agent) {
+        function chooseTasksAgent(agent) {        
 
             agent = JSON.parse(agent);
             const agentId = agent.id;
@@ -1053,6 +1058,7 @@
 
             closeTaskModal();
             renderItems();
+            calculateSubtotal();
         }
 
         function updateTotal(items) {
@@ -1157,6 +1163,7 @@
         }
 
         function updateFormFields(client, agent) {
+          console.log(client);
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
 
@@ -1500,7 +1507,6 @@
 
             // Initial rendering of items
             renderItems();
-
 
             // Initialize modals with full data
             renderClientList(clients);

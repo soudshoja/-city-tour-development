@@ -217,7 +217,7 @@
         <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
         <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
         <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-        <input type="hidden" name="payment_method" value="payment_gateway">
+        <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
         <button type="submit" id="payNowBtn" class="btn btn-primary">
           Pay Now
         </button>

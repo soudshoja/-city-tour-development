@@ -224,6 +224,10 @@
                                         </div>
                                     </div>
                                 </div>
+                                <a href="{{ route('invoice.edit', ['invoiceNumber' => $invoice->invoice_number]) }}"
+                                class="text-sm font-medium text-blue-600 hover:underline">
+                                Edit
+                                </a>
                             </td>
 
 

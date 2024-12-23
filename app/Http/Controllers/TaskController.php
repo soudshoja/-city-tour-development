@@ -43,55 +43,47 @@ class TaskController extends Controller
         $agents = collect();
 
         if ($user->role_id == Role::ADMIN) {
-
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get(); // Retrieve all tasks for admin
-            $taskCount = Task::count(); // Total task count for admin
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get();
+            $taskCount = Task::count();
             $clients = Client::all();
             $agents = Agent::all();
         } elseif ($user->role_id == Role::COMPANY) {
-
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
-
             $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
-
-            // Get all agents for this company
-            $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
-            $taskCount = Task::whereIn('agent_id', $agentIds)->count(); // Task count for the company
-
+            $agentIds = $agents->pluck('id');
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get();
+            $taskCount = Task::whereIn('agent_id', $agentIds)->count();
         } elseif ($user->role_id == Role::AGENT) {
-
             if ($id) {
                 $agent = Agent::with('branch')->find($id);
                 if ($agent) {
-                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for a specific agent
-                    $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the specific agent
+                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
+                    $taskCount = Task::where('agent_id', $agent->id)->count();
                 } else {
                     return redirect()->back()->with('error', 'Agent not found.');
                 }
             } else {
                 $agent = $user->agent;
                 if ($agent) {
-                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get(); // Retrieve tasks for the logged-in agent
-                    $taskCount = Task::where('agent_id', $agent->id)->count(); // Task count for the logged-in agent
+                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
+                    $taskCount = Task::where('agent_id', $agent->id)->count();
                 } else {
                     return redirect()->back()->with('error', 'Agent not found.');
                 }
             }
-
             $companyId = $agent->branch->company_id;
             $agents = Agent::with(['branch', 'clients'])->where('branch_id', $agent->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
         }
 
-        $tasks = $tasks ?? collect(); // Ensure $tasks is not null
-
+        $tasks = $tasks ?? collect();
         $suppliers = Supplier::all();
-        // dd($tasks, $agent, $agents, $taskCount);
-        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
+
+        // Return the view with the required data
+        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers'));
     }
 
     public function voucher($id = null)

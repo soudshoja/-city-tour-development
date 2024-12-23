@@ -27,6 +27,7 @@ use App\Http\Controllers\WhatsappController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
+use App\Models\Task;
 
 
 
@@ -194,6 +195,17 @@ Route::group([
 ], function () {
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
 });
+
+
+// Route for fetching task details
+Route::get('/tasks/{id}', function ($id) {
+    $task = Task::with('client', 'supplier', 'agent.branch', 'invoiceDetail.invoice')->find($id);
+    if ($task) {
+        return response()->json($task);
+    }
+    return response()->json(['error' => 'Task not found'], 404);
+});
+
 
 // INVOICE
 Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgentsInvoices'])->name('invoices.company.agents');

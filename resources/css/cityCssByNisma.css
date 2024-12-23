@@ -11,6 +11,10 @@ body {
     background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
     background-repeat: no-repeat !important;
     background-attachment: fixed !important;
+    font-size: clamp(13px, 1vw, 16px); /* Smaller base font size */
+    line-height: 1.2; /* Good readability */
+    margin: 0;
+    padding: 0;
 }
 
 .group-hover\:opacity-100 {
@@ -364,78 +368,6 @@ body {
     animation: slideUp 0.3s ease-out;
 }
 
-/****** media  **********************************************************************************/
-
-@media screen and (max-width: 768px) {
-    .table-responsive {
-        overflow-x: auto;
-    }
-
-    table.dataTable {
-        width: 100% !important;
-    }
-}
-
-@media (min-width: 1024px) {
-    .custom-rounded-left {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-        border-top-left-radius: 1rem;
-        /* Custom large rounding for left side */
-        border-bottom-left-radius: 1rem;
-        /* Custom large rounding for left side */
-    }
-
-    .custom-rounded-right {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-        border-top-right-radius: 1rem;
-        /* Custom large rounding for left side */
-        border-bottom-right-radius: 1rem;
-        /* Custom large rounding for left side */
-    }
-}
-
-@media screen and (min-width: 1024px) {
-    .mt07 {
-        margin-top: 0 !important;
-    }
-}
-
-@media (max-width: 768px) {
-    #chartOfTopAgents {
-        width: 80% !important; /* Make the chart a bit smaller on mobile */
-        height: 200px !important; /* Adjust height for mobile screens */
-    }
-
-    .chart-container {
-        height: 250px; /* Set a consistent container height on mobile */
-    }
-}
-
-/* Media Query for Tablet Devices */
-@media (max-width: 1024px) and (min-width: 769px) {
-    #chartOfTopAgents {
-        width: 90% !important; /* Adjust width for tablets */
-        height: 300px !important; /* Adjust height for tablets */
-    }
-
-    .chart-container {
-        height: 350px; /* Set a consistent container height for tablets */
-    }
-}
-
-@media (max-width: 768px) {
-    .Sidebar-Nos {
-        display: none;
-    }
-}
-
-@media (max-width: 1024px) and (min-width: 769px) {
-    .Sidebar-Nos {
-    }
-}
-
 /*** menus  ************************************************************************************************/
 
 nav menuitem {
@@ -450,6 +382,7 @@ nav menuitem > menu {
     pointer-events: none;
     width: 100%;
     padding: 0px;
+    z-index: 100;
 }
 
 nav > menu {
@@ -529,4 +462,94 @@ menuitem > menu > menuitem:hover > menu > menuitem,
 menuitem > menu > menuitem.hover > menu > menuitem {
     transform: translateX(0) translateY(0%);
     opacity: 1;
+}
+
+/****** media  **********************************************************************************/
+
+@media screen and (max-width: 768px) {
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    table.dataTable {
+        width: 100% !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .custom-rounded-left {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-top-left-radius: 1rem;
+        /* Custom large rounding for left side */
+        border-bottom-left-radius: 1rem;
+        /* Custom large rounding for left side */
+    }
+
+    .custom-rounded-right {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        border-top-right-radius: 1rem;
+        /* Custom large rounding for left side */
+        border-bottom-right-radius: 1rem;
+        /* Custom large rounding for left side */
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    .mt07 {
+        margin-top: 0 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #chartOfTopAgents {
+        width: 80% !important; /* Make the chart a bit smaller on mobile */
+        height: 200px !important; /* Adjust height for mobile screens */
+    }
+
+    .chart-container {
+        height: 250px; /* Set a consistent container height on mobile */
+    }
+}
+
+/* Media Query for Tablet Devices */
+@media (max-width: 1024px) and (min-width: 769px) {
+    #chartOfTopAgents {
+        width: 90% !important; /* Adjust width for tablets */
+        height: 300px !important; /* Adjust height for tablets */
+    }
+
+    .chart-container {
+        height: 350px; /* Set a consistent container height for tablets */
+    }
+}
+
+@media (max-width: 768px) {
+    .Sidebar-Nos {
+        display: none;
+    }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .Sidebar-Nos {
+    }
+}
+
+@media (max-width: 768px) {
+    .smAside > div {
+        flex: 1; /* Make divs equally share available space */
+    }
+    .smPaddingBottom {
+        padding-bottom: 2rem;
+    }
+
+    .smJBetween {
+        justify-content: space-between;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    .smCenter {
+        text-align: center;
+    }
 }

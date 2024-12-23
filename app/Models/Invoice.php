@@ -30,6 +30,7 @@ class Invoice extends Model
         'discount',
         'shipping',
         'accept_payment',
+        'payment_type',
         
     ];
     public function client()

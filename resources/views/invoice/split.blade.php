@@ -57,7 +57,7 @@
       <div>
         <h1 class="text-3xl font-bold text-gray-800">INVOICE</h1>
         <p class="text-sm text-gray-600">Invoice #{{ $invoice->invoice_number }}</p>
-        <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
+        <p class="text-sm text-gray-600">Due Date: {{ $invoicePartial->expiry_date->format('d M, Y') }}</p>
       </div>
       <div class="text-right">
         <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name}}</h2>
@@ -70,21 +70,17 @@
     <!-- Client Details -->
     <div class="mb-8">
       <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-      <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'N/A' }}</p>
-      <p class="text-sm text-gray-600">{{ $invoice->client->address ?? 'N/A' }}</p>
-      <p class="text-sm text-gray-600">{{ $invoice->client->email ?? 'N/A' }}</p>
+      <p class="text-sm text-gray-600">{{ $invoicePartial->client->name ?? 'N/A' }}</p>
+      <p class="text-sm text-gray-600">{{ $invoicePartial->client->address ?? 'N/A' }}</p>
+      <p class="text-sm text-gray-600">{{ $invoicePartial->client->email ?? 'N/A' }}</p>
     </div>
 
-        @if($invoice->payment_type === 'full')
-    <!-- Full Payment Table -->
-    <h3 class="text-lg font-bold text-gray-800 mb-4">Full Payment</h3>
+    <!-- Invoice Items -->
     <table class="min-w-full mb-8 border border-gray-200">
       <thead>
         <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
           <th class="px-4 py-2 border">Item Description</th>
           <th class="px-4 py-2 border">Quantity</th>
-          <th class="px-4 py-2 border">Price</th>
-          <th class="px-4 py-2 border">Total</th>
         </tr>
       </thead>
       <tbody>
@@ -92,102 +88,18 @@
         <tr class="text-sm text-gray-700">
           <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }}</td>
           <td class="px-4 py-2 border">{{ $detail->quantity ?? 0 }}</td>
-          <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
-          <td class="px-4 py-2 border">{{ number_format(($detail->quantity ?? 0) * ($detail->task_price ?? 0), 2) }}</td>
         </tr>
+        <input type="hidden" name="selected_items[]" value="{{ $detail->id }}" form="paymentForm">
         @endforeach
       </tbody>
     </table>
-    @endif
-
-    @if($invoice->payment_type === 'partial')
-    <!-- Partial Payment Table -->
-    <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment</h3>
-
-    <div class="mb-4">
-      <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
-      <ul class="list-disc pl-6">
-        @foreach($invoiceDetails as $detail)
-          <li class="text-sm text-gray-700">
-            <strong>{{ $detail->task_description ?? 'N/A' }}</strong>: 
-            {{ $detail->quantity ?? 0 }}
-          </li>
-        @endforeach
-      </ul>
-  </div>
-
-    <table class="min-w-full mb-8 border border-gray-200">
-      <thead>
-        <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-          <th class="px-4 py-2 border">Select</th>
-          <th class="px-4 py-2 border">Expiry Date</th>
-          <th class="px-4 py-2 border">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($invoicePartials as $partial)
-        <tr class="text-sm text-gray-700">
-          <td class="px-4 py-2 border">
-            <input type="checkbox" name="selected_partials[]" value="{{ $partial->id }}" form="paymentForm">
-          </td>
-          <td class="px-4 py-2 border">{{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}</td>
-          <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
-        </tr>
-        @endforeach
-      </tbody>
-    </table>
-    @endif
-
-    @if($invoice->payment_type === 'split')
-    <!-- Split Payment Table -->
-    <h3 class="text-lg font-bold text-gray-800 mb-4">Split Payment</h3>
-
-    <div class="mb-4">
-      <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
-      <ul class="list-disc pl-6">
-        @foreach($invoiceDetails as $detail)
-          <li class="text-sm text-gray-700">
-            <strong>{{ $detail->task_description ?? 'N/A' }}</strong>: 
-            {{ $detail->quantity ?? 0 }}
-          </li>
-        @endforeach
-      </ul>
-  </div>
-
-    <table class="min-w-full mb-8 border border-gray-200">
-      <thead>
-        <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-          <th class="px-4 py-2 border">Link</th>
-          <th class="px-4 py-2 border">Expiry Date</th>
-          <th class="px-4 py-2 border">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($invoicePartials as $partial)
-        <tr class="text-sm text-gray-700">
-
-          <td class="px-4 py-2 border">
-              <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id) }}" class="text-blue-500 underline" target="_blank">
-                  View Details
-              </a>
-          </td>
-          <td class="px-4 py-2 border">{{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}</td>
-          <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
-        </tr>
-        @endforeach
-      </tbody>
-    </table>
-    @endif
-
-
-
 
     <!-- Totals Section -->
     <div class="flex justify-end mb-8">
       <div class="w-1/3 text-sm">
         <div class="flex justify-between py-2 border-b border-gray-200">
           <span>Subtotal:</span>
-          <span>{{ number_format($invoice->amount, 2) }}</span>
+          <span>{{ number_format($invoicePartial->amount, 2) }}</span>
         </div>
         <div class="flex justify-between py-2 border-b border-gray-200">
           <span>Tax ({{ $invoice->tax_rate }}%):</span>
@@ -195,29 +107,29 @@
         </div>
         <div class="flex justify-between py-2 font-bold text-gray-800">
           <span>Total:</span>
-          <span>{{ number_format($invoice->amount, 2) }}</span>
+          <span>{{ number_format($invoicePartial->amount, 2) }}</span>
         </div>
       </div>
     </div>
 
     <!-- Payment Details -->
     <div class="mb-8 inline-flex gap-2">
-      @if($invoice->status === 'unpaid')
+      @if($invoicePartial->status === 'unpaid')
       <form action="{{ route('whatsapp.send') }}" method="POST">
         @csrf
-        <input type="hidden" name="client" value='{{ $invoice->client }}'>
-        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number}}'>
+        <input type="hidden" name="client" value='{{ $invoicePartial->client }}'>
+        <input type="hidden" name="invoiceNumber" value='{{ $invoicePartial->invoice_number}}'>
         <button type="submit" class="btn btn-primary">
           Send Invoice To Client
         </button>
       </form>
       <form id="paymentForm" action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}" method="POST">
         @csrf
-        <input type="hidden" name="total_amount" value="{{ $invoice->amount }}">
-        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-        <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
-        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-        <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
+        <input type="hidden" name="total_amount" value="{{ $invoicePartial->amount }}">
+        <input type="hidden" name="client_email" value="{{ $invoicePartial->client->email }}">
+        <input type="hidden" name="client_name" value="{{ $invoicePartial->client->name }}">
+        <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
+        <input type="hidden" name="payment_method" value="payment_gateway">
         <button type="submit" id="payNowBtn" class="btn btn-primary">
           Pay Now
         </button>

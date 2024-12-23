@@ -28,6 +28,11 @@ class Company extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function agents()
+    {
+        return $this->hasManyThrough(Agent::class, Branch::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');

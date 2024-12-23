@@ -1,4 +1,14 @@
 <x-app-layout>
+    <style>
+        button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
@@ -27,8 +37,14 @@
                                 <p class="pl-1">{{ $company->phone }}</p>
                             </div>
                         </div>
-
-
+                        <div class="flex items-center w-full space-x-4">
+                            <label class="text-sm font-semibold">Branch</label>
+                            <select id="branch" name="branch" class=" border border-gray-300 p-2 rounded">
+                                @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <!-- invoice details -->
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
@@ -38,10 +54,12 @@
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{$invoiceNumber}}" class="w-full form-input"
                                 placeholder="Invoice Number" />
                         </div>
+
                         <div class="mt-4 flex items-center">
                             <label for="invdate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$todayDate}} disabled />
                         </div>
+
                         <div class="mt-4 flex items-center">
                             <label for="duedate" class="w-full text-sm font-semibold">Due Date</label>
                             <input id="duedate" type="date" name="duedate" class="w-full form-input" />
@@ -49,6 +67,7 @@
 
 
                     </div>
+
                     <!--./invoice details -->
                 </div>
                 <!-- ./company details -->
@@ -56,12 +75,11 @@
 
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
 
-
-
                 <!-- users details -->
                 <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
                     <!-- client details -->
                     <div class="w-full">
+
                         <!-- choose client button -->
                         <div class="flex items-center">
                             <button type="button" id="openClientModalButton"
@@ -212,15 +230,129 @@
                         <option value="USD">USD</option>
                     </select>
 
+                    <!-- Payment Type Section -->
+                    <div id="paymentMethod" class="mt-4">
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                        <div class="flex gap-4">
+                            <!-- Full Payment Tab -->
+                            <label class="cursor-pointer">
+                                <input
+                                    type="radio"
+                                    id="payment_type_full"
+                                    name="payment_type"
+                                    value="full"
+                                    onclick="hideModal()"
+                                    hidden
+                                    class="peer"
+                                    checked />
+                                <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19a1 1 0 00.76-.36l3-4a1 1 0 00-.76-1.64H12V7a1 1 0 00-2 0v6H8a1 1 0 00-.76 1.64l3 4A1 1 0 0011 19z" />
+                                    </svg>
+                                    <span class="font-medium">Full</span>
+                                    <p class="text-sm text-gray-500">Pay the total amount.</p>
+                                </div>
+                            </label>
+
+                            <!-- Partial Payment Tab -->
+                            <label class="cursor-pointer">
+                                <input
+                                    type="radio"
+                                    id="payment_type_partial"
+                                    name="payment_type"
+                                    value="partial"
+                                    onclick="showModal('partial')"
+                                    hidden
+                                    class="peer" />
+                                <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-4H5a1 1 0 01-.9-1.4L8.1 7h1.7l3 4H11v4h2a1 1 0 01.9 1.4l-3.1 5H9z" />
+                                    </svg>
+                                    <span class="font-medium">Partial</span>
+                                    <p class="text-sm text-gray-500">Split the amount into parts.</p>
+                                </div>
+                            </label>
+
+                            <!-- Split Payment Tab -->
+                            <label class="cursor-pointer">
+                                <input
+                                    type="radio"
+                                    id="payment_type_split"
+                                    name="payment_type"
+                                    value="split"
+                                    onclick="showModal('split')"
+                                    hidden
+                                    class="peer" />
+                                <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19l-3-3m0 0l3-3m-3 3h12m-9-6V5a1 1 0 011-1h2a1 1 0 011 1v6m-5-3h6" />
+                                    </svg>
+                                    <span class="font-medium">Split</span>
+                                    <p class="text-sm text-gray-500">Split and generate links.</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Payment Gateway Section -->
+                        <section id="payment_gateway_section" class="mb-6">
+                            <div class="mt-4">
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                                    @foreach($paymentGateways as $gateway)
+                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mt-4">
+                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                        <path
+                                            d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                            fill="currentColor" />
+                                        <path
+                                            d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                            fill="currentColor" />
+                                    </svg>
+                                    Update Invoice
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- Added Buttons/Links Section -->
+                        <section id="additional-actions" class="mt-6">
+                            <div class="flex flex-wrap gap-4">
+
+                                <!-- Share Buttons -->
+                                <div class="flex items-center gap-2">
+                                    <button onclick="shareViaWhatsApp()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-blue-700 rounded">
+                                        Share via WhatsApp
+                                    </button>
+                                    <button onclick="shareViaEmail()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-indigo-700 rounded">
+                                        Share via Email
+                                    </button>
+                                    <button onclick="copyLink()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-gray-700 rounded">
+                                        Copy Link
+                                    </button>
+                                </div>
+
+                                <!-- View Button -->
+                                <button onclick="viewInvoice()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded">
+                                    View
+                                </button>
+                            </div>
+                        </section>
+
+
+                    </div>
+
                 </div>
                 <div class="panel">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                        <div id="invoice-link-container" style="display: none;" class="mt-4">
-                            <label>Invoice Link:</label>
-                            <a id="invoice-link" href="#" class="text-blue-600 underline" target="_blank"></a>
-                        </div>
 
-                        <button id="generate-invoice-btn" type="button" class="btn btn-success w-full gap-2">
+                        <button id="generate-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
                                 <path d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z" stroke="currentColor" stroke-width="1.5" />
                                 <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
@@ -230,10 +362,11 @@
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
-
+                        <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
-                        <button type="button" class="btn btn-info w-full gap-2">
+                        <button id="send-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
                                 <path
@@ -245,337 +378,625 @@
                             Send Invoice
                         </button>
 
-                        <a href="#" class="btn btn-primary w-full gap-2">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path opacity="0.5"
-                                    d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                    stroke="currentColor" stroke-width="1.5"></path>
-                                <path
-                                    d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                    stroke="currentColor" stroke-width="1.5"></path>
-                            </svg>
-                            Preview
-                        </a>
 
-                        <button type="button" class="btn btn-secondary w-full gap-2">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path opacity="0.5"
-                                    d="M17 9.00195C19.175 9.01406 20.3529 9.11051 21.1213 9.8789C22 10.7576 22 12.1718 22 15.0002V16.0002C22 18.8286 22 20.2429 21.1213 21.1215C20.2426 22.0002 18.8284 22.0002 16 22.0002H8C5.17157 22.0002 3.75736 22.0002 2.87868 21.1215C2 20.2429 2 18.8286 2 16.0002L2 15.0002C2 12.1718 2 10.7576 2.87868 9.87889C3.64706 9.11051 4.82497 9.01406 7 9.00195"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                                <path d="M12 2L12 15M12 15L9 11.5M12 15L15 11.5" stroke="currentColor"
-                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                            Download
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Agents Modal -->
-        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
-                <!-- Modal Header -->
-                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
-                    <h5 class="text-lg font-bold">Agent Management</h5>
-                    <button
-                        type="button"
-                        onclick="closeAgentModal()"
-                        class="text-white-dark hover:text-dark" id="closeAgentModalButton">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                            class="h-6 w-6">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                <!-- ./Modal Header -->
-
-                <!-- Search Box -->
-                <div class="relative mb-4 px-4">
-                    <input type="text" placeholder="Search Agent..."
-                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                        id="agentSearchInput">
-                </div>
-                <!-- ./Search Box -->
-
-                <!-- List of Agents -->
-                <ul id="agentList"
-                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
-                    <!-- Dynamic list items go here -->
-                    @foreach ($agents as $agent)
-                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
-                        {{$agent->name}}
-                    </li>
-                    @endforeach
-                </ul>
-                <!-- ./List of Agents -->
-            </div>
-        </div>
-        <!-- End Agents Modal -->
-        <!-- Clients Modal -->
-        <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
-            <div class="bg-white border rounded-lg shadow-lg  w-3/4 md:w-1/2 mb-10">
-                <!-- Modal Header -->
-                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
-                    <h5 class="text-lg font-bold">Client Management</h5>
-                    <button type="button" class="text-white-dark hover:text-dark" id="closeClientModalButton">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                            class="h-6 w-6">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                <!-- ./Modal Header -->
-
-                <!-- Tabs -->
-                <div class="border-b flex justify-center">
-                    <button class="tab-button px-4 py-2 text-blue-500 border-b-2 border-blue-500" id="selectTabButton">Select Client</button>
-                    <button class="tab-button px-4 py-2 text-gray-500 hover:text-blue-500" id="addTabButton">Add New Client</button>
-                </div>
-                <!-- ./Tabs -->
-
-                <!-- Tab Content -->
-                <div id="selectTab" class="p-6">
-                    <!-- Search Box -->
-                    <div class="relative mb-4">
-                        <input type="text" placeholder="Search Client..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="clientSearchInput">
-                    </div>
-                    <!-- ./Search Box -->
-
-                    <!-- List of Clients -->
-                    <ul id="clientList"
-                        class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
-                        <!-- Dynamic list items go here -->
-                    </ul>
-                    <!-- ./List of Clients -->
-                </div>
-
-                <div id="addTab" class="p-6 hidden">
-                    <!-- Add New Client Form -->
-                    <h6 class="text-lg font-bold mb-3">Add New Client</h6>
-                    <form method="POST" action="{{ route('invoices.clientAdd') }}">
-                        @csrf
-
-                        <div class="mb-4 flex gap-4">
-                            <!-- Name Field -->
-                            <div class="w-1/2">
-                                <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                <input id="name" name="name" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Name" />
-                            </div>
-
-                            <!-- Email Field -->
-                            <div class="w-1/2">
-                                <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                <input id="email" name="email" type="email" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Email" />
-                            </div>
+                        <div id="errorMessage" class="hidden text-red-500">
+                            <!-- Error message -->
                         </div>
 
-                        <div class="mb-4 flex gap-4">
-                            <!-- Phone Field -->
-                            <div class="w-1/2">
-                                <label for="phone"
-                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                                <input id="phone" name="phone" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Phone" />
-                            </div>
+                        <!-- Modal -->
+                        <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
+                                <!-- Include your previous page content here -->
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
 
-                            <!-- Address Field -->
-                            <div class="w-1/2">
-                                <label for="address"
-                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                <input id="address" name="address" type="text"
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Address" />
-                            </div>
-                        </div>
+                                        <!-- Split Payment Tab Content -->
+                                        <div id="split-payment-container" class="tab-content">
+                                            <form>
+                                                <!-- Top Fields -->
+                                                <div class="grid grid-cols-3 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Amount *</label>
+                                                        <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Split into *</label>
+                                                        <input type="number" id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows()" />
+                                                    </div>
+                                                </div>
 
-                        <!-- Address Field -->
-                        <div class="mb-4">
-                            <label for="passport_no"
-                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                            <input id="passport_no" name="passport_no" type="text" required
-                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                placeholder="Passport Number" />
-                        </div>
+                                                <!-- Expiry and Description -->
+                                                <div class="grid grid-cols-2 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Description *</label>
+                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                                    </div>
+                                                </div>
 
-                        <!-- Email Field -->
-                        <div class="mb-4">
-                            <label for="agent_email"
-                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
-                            <input id="agent_email" name="agent_email" type="email" required
-                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                placeholder="Agent Email" />
-                        </div>
+                                                <!-- Table -->
+                                                <div class="overflow-x-auto">
+                                                    <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="border-b px-4 py-2">S.No</th>
+                                                                <th class="border-b px-4 py-2">Choose Client</th>
+                                                                <th class="border-b px-4 py-2">Expiry Date</th>
+                                                                <th class="border-b px-4 py-2">Amount</th>
+                                                                <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="split-rows">
+                                                            <!-- Dynamic rows will be generated here -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
 
-                        <!-- Status Field -->
-                        <div class="mb-4">
+                                                <!-- Buttons -->
 
-                            <div class="flex flex-col">
-                                <div class="flex items-center space-x-4">
-                                    <label class="text-lg font-semibold mb-2">status:</label>
-
-                                    <!-- Active Radio Button -->
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
-                                        <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
-                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                        </span>
-                                        <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
-                                    </label>
-
-                                    <!-- Inactive Radio Button -->
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
-                                        <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
-                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                        </span>
-                                        <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
-                                    </label>
+                                                <div>
+                                                    <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                 </div>
                             </div>
-
-
                         </div>
 
-                        <!-- Submit Button -->
-                        <div class="flex items-center justify-center">
-                            <button type="submit"
-                                class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                                Register Client
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <!-- ./Tab Content -->
-            </div>
-        </div>
+                        <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+                                        <!-- Partial Payment Tab Content -->
+                                        <div id="partial-payment-container" class="tab-content">
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Client Name</label>
+                                                    <span id="receiverName1">AHMED</span>
+                                                </div>
+                                                <div>
+                                                    <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                    <span id="subT1"> 0.00</span>
+                                                </div>
+                                            </div>
 
-        <!-- Tasks Modal -->
-        <div id="taskModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
-                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
-                    <h5 class="text-lg font-bold">Choose Task</h5>
-                    <!-- Close Modal Button -->
-                    <button type="button" class="text-white-dark hover:text-dark" id="closeTaskModalButton">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                            class="h-6 w-6">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                <div class="m-6">
-                    <!-- Search Box -->
-                    <div class="relative mb-10">
-                        <input type="text" placeholder="Search Task..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="taskSearchInput" oninput="filterTasks()">
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Split into *</label>
+                                                    <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Payment Gateway</label>
+                                                    <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                        @foreach($paymentGateways as $gateway)
+                                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                            <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="border-b px-4 py-2">S.No</th>
+                                                        <th class="border-b px-4 py-2">Expiry Date</th>
+                                                        <th class="border-b px-4 py-2">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="split-rows1">
+                                                    <!-- Dynamic rows will be generated here -->
+                                                </tbody>
+                                            </table>
+
+                                            <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+
+                                            <div class="flex space-x-4 mt-5">
+                                                <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Agents Modal -->
+                        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
+                            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
+                                <!-- Modal Header -->
+                                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                    <h5 class="text-lg font-bold">Agent Management</h5>
+                                    <button
+                                        type="button"
+                                        onclick="closeAgentModal()"
+                                        class="text-white-dark hover:text-dark" id="closeAgentModalButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                            class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Modal Header -->
+
+                                <!-- Search Box -->
+                                <div class="relative mb-4 px-4">
+                                    <input type="text" placeholder="Search Agent..."
+                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                        id="agentSearchInput">
+                                </div>
+                                <!-- ./Search Box -->
+
+                                <!-- List of Agents -->
+                                <ul id="agentList"
+                                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
+                                    <!-- Dynamic list items go here -->
+                                    @foreach ($agents as $agent)
+                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
+                                        {{$agent->name}}
+                                    </li>
+                                    @endforeach
+                                </ul>
+                                <!-- ./List of Agents -->
+                            </div>
+                        </div>
+                        <!-- End Agents Modal -->
+                        <!-- Clients Modal -->
+                        <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
+                            <div class="bg-white border rounded-lg shadow-lg  w-3/4 md:w-1/2 mb-10">
+                                <!-- Modal Header -->
+                                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                    <h5 class="text-lg font-bold">Client Management</h5>
+                                    <button type="button" class="text-white-dark hover:text-dark" id="closeClientModalButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                            class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Modal Header -->
+
+                                <!-- Tabs -->
+                                <div class="border-b flex justify-center">
+                                    <button class="tab-button px-4 py-2 text-blue-500 border-b-2 border-blue-500" id="selectTabButton">Select Client</button>
+                                    <button class="tab-button px-4 py-2 text-gray-500 hover:text-blue-500" id="addTabButton">Add New Client</button>
+                                </div>
+                                <!-- ./Tabs -->
+
+                                <!-- Tab Content -->
+                                <div id="selectTab" class="p-6">
+                                    <!-- Search Box -->
+                                    <div class="relative mb-4">
+                                        <input type="text" placeholder="Search Client..."
+                                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                            id="clientSearchInput">
+                                    </div>
+                                    <!-- ./Search Box -->
+
+                                    <!-- List of Clients -->
+                                    <ul id="clientList"
+                                        class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                                        <!-- Dynamic list items go here -->
+                                    </ul>
+                                    <!-- ./List of Clients -->
+                                </div>
+
+                                <div id="addTab" class="p-6 hidden">
+                                    <!-- Add New Client Form -->
+                                    <h6 class="text-lg font-bold mb-3">Add New Client</h6>
+                                    <form method="POST" action="{{ route('invoices.clientAdd') }}">
+                                        @csrf
+
+                                        <div class="mb-4 flex gap-4">
+                                            <!-- Name Field -->
+                                            <div class="w-1/2">
+                                                <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                                <input id="name" name="name" type="text" required
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Name" />
+                                            </div>
+
+                                            <!-- Email Field -->
+                                            <div class="w-1/2">
+                                                <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                                <input id="email" name="email" type="email" required
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Email" />
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-4 flex gap-4">
+                                            <!-- Phone Field -->
+                                            <div class="w-1/2">
+                                                <label for="phone"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                                <input id="phone" name="phone" type="text" required
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Phone" />
+                                            </div>
+
+                                            <!-- Address Field -->
+                                            <div class="w-1/2">
+                                                <label for="address"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                                <input id="address" name="address" type="text"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Address" />
+                                            </div>
+                                        </div>
+
+                                        <!-- Address Field -->
+                                        <div class="mb-4">
+                                            <label for="passport_no"
+                                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
+                                            <input id="passport_no" name="passport_no" type="text" required
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                placeholder="Passport Number" />
+                                        </div>
+
+                                        <!-- Email Field -->
+                                        <div class="mb-4">
+                                            <label for="agent_email"
+                                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
+                                            <input id="agent_email" name="agent_email" type="email" required
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                placeholder="Agent Email" />
+                                        </div>
+
+                                        <!-- Status Field -->
+                                        <div class="mb-4">
+
+                                            <div class="flex flex-col">
+                                                <div class="flex items-center space-x-4">
+                                                    <label class="text-lg font-semibold mb-2">status:</label>
+
+                                                    <!-- Active Radio Button -->
+                                                    <label class="flex items-center cursor-pointer">
+                                                        <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
+                                                        <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
+                                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                                        </span>
+                                                        <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
+                                                    </label>
+
+                                                    <!-- Inactive Radio Button -->
+                                                    <label class="flex items-center cursor-pointer">
+                                                        <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
+                                                        <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
+                                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                                        </span>
+                                                        <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+
+                                        </div>
+
+                                        <!-- Submit Button -->
+                                        <div class="flex items-center justify-center">
+                                            <button type="submit"
+                                                class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                                Register Client
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <!-- ./Tab Content -->
+                            </div>
+                        </div>
+
+                        <!-- Tasks Modal -->
+                        <div id="taskModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
+                            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
+                                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                    <h5 class="text-lg font-bold">Choose Task</h5>
+                                    <!-- Close Modal Button -->
+                                    <button type="button" class="text-white-dark hover:text-dark" id="closeTaskModalButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                            class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="m-6">
+                                    <!-- Search Box -->
+                                    <div class="relative mb-10">
+                                        <input type="text" placeholder="Search Task..."
+                                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                            id="taskSearchInput" oninput="filterTasks()">
+                                    </div>
+                                    <!-- ./Search Box -->
+                                    <!-- List of Tasks -->
+                                    <ul id="taskList" class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
+                                        <!-- Dynamic list items go here -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- end main content section -->
                     </div>
-                    <!-- ./Search Box -->
-                    <!-- List of Tasks -->
-                    <ul id="taskList" class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
-                        <!-- Dynamic list items go here -->
-                    </ul>
+
+                    <script>
+                        let selectedTasks = @json($selectedTasks);
+                        const clients = @json($clients);
+                        let items = [];
+                        const itemsBody = document.getElementById('items-body');
+                        const appUrl = @json($appUrl);
+
+                        // Handle Tab Switching
+                        const selectTabButton = document.getElementById('selectTabButton');
+                        const addTabButton = document.getElementById('addTabButton');
+                        const selectTab = document.getElementById('selectTab');
+                        const addTab = document.getElementById('addTab');
+
+                        document.getElementById("openClientModalButton").onclick = openClientModal;
+                        document.getElementById("closeClientModalButton").onclick = closeClientModal;
+                        document.getElementById('clientSearchInput').addEventListener('input', filterClients);
+
+
+                        document.getElementById("openTaskModalButton").onclick = openTaskModal;
+                        document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
+                        document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
+
+                        let selectedAgent = @json($selectedAgent);
+                        let selectedClient = @json($selectedClient);
+
+                        const generateInvoiceButton = document.getElementById('generate-invoice-btn');
+                        const buttonText = document.getElementById('button-text');
+                        const buttonLoading = document.getElementById('button-loading');
+                        const buttonSaved = document.getElementById('button-saved');
+
+
+                        const invoiceIdInput = document.getElementById('invoiceId');
+
+
+                        function checkInvoiceId() {
+                            const tabs = document.querySelectorAll('input[name="payment_type"]');
+                            const clientButton = document.getElementById("openClientModalButton");
+                            const agentButton = document.getElementById("select-agent");
+                            const taskButton = document.getElementById("openTaskModalButton");
+                            const sendInvoice = document.getElementById("send-invoice-btn");
+                            const generateInvoice = document.getElementById("generate-invoice-btn");
+                            const paymentGatewaySection = document.getElementById('payment_gateway_section');
+                            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
+
+                            if (paymentType === 'full') {
+                                paymentGatewaySection.style.display = 'block'; // Show the section
+                            } else {
+                                paymentGatewaySection.style.display = 'none'; // Hide the section
+                            }
+
+
+                            console.log(invoiceIdInput.value);
+                            if (!invoiceIdInput.value) {
+                                tabs.forEach(tab => {
+                                    tab.disabled = true;
+                                });
+                                clientButton.disabled = false;
+                                agentButton.disabled = false;
+                                taskButton.disabled = false;
+                                generateInvoiceButton.disabled = false;
+                                sendInvoice.classList.add('hidden');
+                                generateInvoice.classList.remove('hidden');
+                                document.getElementById('paymentMethod').classList.add('hidden');
+
+                            } else {
+                                tabs.forEach(tab => {
+                                    tab.disabled = false;
+                                });
+                                clientButton.disabled = true;
+                                agentButton.disabled = true;
+                                taskButton.disabled = true;
+                                generateInvoiceButton.disabled = false;
+                                sendInvoice.classList.remove('hidden');
+                                generateInvoice.classList.add('hidden');
+                                document.getElementById('paymentMethod').classList.remove('hidden');
+                            }
+                        }
+
+                        // Run the check on page load and whenever the input value changes
+                        document.addEventListener('DOMContentLoaded', checkInvoiceId);
+                        invoiceIdInput.addEventListener('input', checkInvoiceId);
+
+
+                        // Set initial states
+                        let isSaving = false;
+                        let isSaved = false;
+
+                        function showModal(type) {
+                            if (type == 'split') {
+                                document.getElementById('paymentModal').classList.remove('hidden');
+                            } else if (type == 'partial') {
+                                document.getElementById('paymentModal1').classList.remove('hidden');
+                            }
+
+                            checkInvoiceId();
+                        }
+
+                        function hideModal() {
+                            document.getElementById('paymentModal').classList.add('hidden');
+                            document.getElementById('paymentModal1').classList.add('hidden');
+                            checkInvoiceId();
+                        }
+
+
+                        function showClientModal() {
+                            // Create the modal container
+                            const modalContainer = document.createElement('div');
+                            modalContainer.id = 'clientModal';
+                            modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+
+                            // Modal content
+                            modalContainer.innerHTML = `
+                <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
+                    <!-- Close Button -->
+                    <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeClientModal1()">✕</button>
+
+                    <!-- Search Box -->
+                    <div id="selectTab" class="p-6">
+                        <div class="relative mb-4">
+                            <input type="text" placeholder="Search Client..."
+                                class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                id="clientSearchInput">
+                        </div>
+                        <!-- ./Search Box -->
+
+                        <!-- List of Clients -->
+                        <ul id="clientList1"
+                            class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                            <!-- Dynamic list items go here -->
+                        </ul>
+                        <!-- ./List of Clients -->
+                    </div>
                 </div>
-            </div>
-        </div>
-        <!-- end main content section -->
-    </div>
+            `;
 
-    <script>
-        let selectedTasks = @json($selectedTasks);
-        let items = [];
-        const itemsBody = document.getElementById('items-body');
-        const appUrl = @json($appUrl);
+                            // Append the modal to the body
+                            document.body.appendChild(modalContainer);
+                        }
 
-        // Handle Tab Switching
-        const selectTabButton = document.getElementById('selectTabButton');
-        const addTabButton = document.getElementById('addTabButton');
-        const selectTab = document.getElementById('selectTab');
-        const addTab = document.getElementById('addTab');
+                        function closeClientModal1() {
+                            // Remove the modal from the DOM
+                            const modal = document.getElementById('clientModal');
+                            if (modal) {
+                                modal.remove();
+                            }
+                        }
 
-        document.getElementById("openClientModalButton").onclick = openClientModal;
-        document.getElementById("closeClientModalButton").onclick = closeClientModal;
-        document.getElementById('clientSearchInput').addEventListener('input', filterClients);
+                        function updateRows() {
+                            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
+
+                            const tbody = document.getElementById('split-rows');
+                            tbody.innerHTML = ''; // Clear existing rows
+
+                            for (let i = 1; i <= splitInto; i++) {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                    <td class="border-b px-4 py-2">${i}</td>
+                    <td class="border-b px-4 py-2">
+                       <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
+                         ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                       </select>
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
+                              @foreach($paymentGateways as $gateway)
+                               <option value="{{ $gateway }}">{{ $gateway }}</option>
+                              @endforeach
+                         </select>
+                    </td>
+                `;
+                                tbody.appendChild(row);
+
+                                const selectElement = row.querySelector('.account-select');
+                                new TomSelect(selectElement, {
+                                    create: false,
+                                    sortField: {
+                                        field: 'text',
+                                        direction: 'asc'
+                                    }
+                                });
+
+                            }
+                        }
+
+                        function updateRows1() {
+                            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
+
+                            const tbody = document.getElementById('split-rows1');
+                            tbody.innerHTML = ''; // Clear existing rows
+
+                            for (let i = 1; i <= splitInto1; i++) {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                    <td class="border-b px-4 py-2">${i}</td>
+                    <td class="border-b px-4 py-2">
+                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
+                    </td>
+                `;
+                                tbody.appendChild(row);
+
+                            }
+                        }
 
 
-        document.getElementById("openTaskModalButton").onclick = openTaskModal;
-        document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
-        document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
+                        function updateItemPrice(itemId) {
+                            // Find the input field by ID
+                            const inputField = document.getElementById(`invprice-${itemId}`);
+                            const newPrice = parseFloat(inputField.value) || 0;
 
-        let selectedAgent = @json($selectedAgent);
-        let selectedClient = @json($selectedClient);
-
-        const generateInvoiceButton = document.getElementById('generate-invoice-btn');
-        const buttonText = document.getElementById('button-text');
-        const buttonLoading = document.getElementById('button-loading');
-        const buttonSaved = document.getElementById('button-saved');
-
-        // Set initial states
-        let isSaving = false;
-        let isSaved = false;
-
-        function updateItemPrice(itemId) {
-            // Find the input field by ID
-            const inputField = document.getElementById(`invprice-${itemId}`);
-            const newPrice = parseFloat(inputField.value) || 0;
-
-            // Update the corresponding item in the `items` array
-            const item = items.find(item => item.id === itemId);
-            if (item) {
-                item.invprice = newPrice; // Add or update the `invprice` property
-            }
-            calculateSubtotal();
-        }
+                            // Update the corresponding item in the `items` array
+                            const item = items.find(item => item.id === itemId);
+                            if (item) {
+                                item.invprice = newPrice; // Add or update the `invprice` property
+                            }
+                            calculateSubtotal();
+                        }
 
 
-        function calculateSubtotal() {
-            const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
-            document.getElementById('subT').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('subTotal').value = subtotal;
-        }
+                        function calculateSubtotal() {
+                            const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
+                            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
+                            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
+                            document.getElementById('subTotal').value = subtotal;
+                            document.getElementById('total-amount').value = subtotal;
+                        }
 
 
-        function renderItems() {
-            itemsBody.innerHTML = ''; // Clear existing rows
+                        function renderItems() {
+                            itemsBody.innerHTML = ''; // Clear existing rows
 
-            if (items.length === 0) {
-                // If no items, display the "No Item Available" row
-                const noItemsRow = document.createElement('tr');
-                noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Tasks Available</td>';
-                itemsBody.appendChild(noItemsRow);
-            } else {
-                // Iterate over items and create rows
-                items.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
+                            if (items.length === 0) {
+                                // If no items, display the "No Item Available" row
+                                const noItemsRow = document.createElement('tr');
+                                noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Tasks Available</td>';
+                                itemsBody.appendChild(noItemsRow);
+                            } else {
+                                // Iterate over items and create rows
+                                items.forEach(item => {
+                                    const row = document.createElement('tr');
+                                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
 
-                    row.innerHTML = `
+                                    row.innerHTML = `
                                 <td>
                                 <p>${item.description}</p>
                                 </td>
                                 <td>
                                 <p>${item.client_name}</p>
                                 </td>
-                                <td>
+                                <td class="border-b px-4 py-2">
                                   <p>${item.quantity}</p>
                                 </td>
-                                 <td>$${(item.total * item.quantity).toFixed(2)}</td>
-                                <td>
+                                 <td class="border-b px-4 py-2">${(item.total * item.quantity).toFixed(2)}</td>
+                                <td class="border-b px-4 py-2">
                                         <input 
                                         id="invprice-${item.id}" 
                                         type="number" 
@@ -586,7 +1007,7 @@
                                     />
                                 </td>
 
-                                <td>
+                                <td class="border-b px-4 py-2">
                                     <button id="remove-button-${item.id}" type="button" onclick="" data-id="">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" 
                                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
@@ -597,282 +1018,548 @@
                                 </td>
                             `;
 
-                    itemsBody.appendChild(row);
+                                    itemsBody.appendChild(row);
 
-                    removeButton = document.getElementById('remove-button-' + item.id);
+                                    removeButton = document.getElementById('remove-button-' + item.id);
 
-                    removeButton.addEventListener('click', function() {
-                        removeItem(item.id);
-                    });
-                });
-            }
-        }
+                                    removeButton.addEventListener('click', function() {
+                                        removeItem(item.id);
+                                    });
+                                });
+                            }
+                        }
 
-        function removeItem(itemId) {
-            items = items.filter(item => item.id !== itemId);
-            renderItems(); // Re-render the table after removal
-        }
+                        function removeItem(itemId) {
+                            items = items.filter(item => item.id !== itemId);
+                            renderItems(); // Re-render the table after removal
+                        }
 
-        function chooseTasksAgent(agent) {
+                        function chooseTasksAgent(agent) {
 
-            agent = JSON.parse(agent);
-            const agentId = agent.id;
-            const agentName = agent.name;
-            const agentEmail = agent.email;
-            const agentPhone = agent.phone_number;
+                            agent = JSON.parse(agent);
+                            const agentId = agent.id;
+                            const agentName = agent.name;
+                            const agentEmail = agent.email;
+                            const agentPhone = agent.phone_number;
 
-            itemsBody.innerHTML = '';
-            document.getElementById('agentId').value = agentId;
-            document.getElementById('agentName').value = agentName;
-            document.getElementById('agentEmail').value = agentEmail;
-            document.getElementById('agentPhone').value = agentPhone;
-            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
-            url = url.replace('_agentId_', agentId);
+                            itemsBody.innerHTML = '';
+                            document.getElementById('agentId').value = agentId;
+                            document.getElementById('agentName').value = agentName;
+                            document.getElementById('agentEmail').value = agentEmail;
+                            document.getElementById('agentPhone').value = agentPhone;
+                            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
+                            url = url.replace('_agentId_', agentId);
 
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    tasks = data;
-                    renderTaskList(tasks);
-                })
-                .catch(error => console.error(error));
+                            fetch(url)
+                                .then(response => response.json())
+                                .then(data => {
+                                    tasks = data;
+                                    renderTaskList(tasks);
+                                })
+                                .catch(error => console.error(error));
 
-            closeAgentModal();
-        }
-        // Show Select Client Tab
-        selectTabButton.addEventListener('click', () => {
-            selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
-            selectTabButton.classList.remove('text-gray-500');
-            addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
-            addTabButton.classList.add('text-gray-500');
+                            closeAgentModal();
+                        }
+                        // Show Select Client Tab
+                        selectTabButton.addEventListener('click', () => {
+                            selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+                            selectTabButton.classList.remove('text-gray-500');
+                            addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+                            addTabButton.classList.add('text-gray-500');
 
-            selectTab.classList.remove('hidden');
-            addTab.classList.add('hidden');
-        });
+                            selectTab.classList.remove('hidden');
+                            addTab.classList.add('hidden');
+                        });
 
-        // Show Add New Client Tab
-        addTabButton.addEventListener('click', () => {
-            addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
-            addTabButton.classList.remove('text-gray-500');
-            selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
-            selectTabButton.classList.add('text-gray-500');
+                        // Show Add New Client Tab
+                        addTabButton.addEventListener('click', () => {
+                            addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+                            addTabButton.classList.remove('text-gray-500');
+                            selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+                            selectTabButton.classList.add('text-gray-500');
 
-            addTab.classList.remove('hidden');
-            selectTab.classList.add('hidden');
-        });
+                            addTab.classList.remove('hidden');
+                            selectTab.classList.add('hidden');
+                        });
 
-        if (Array.isArray(selectedTasks)) {
-            // Iterate over the array and select each task
-            selectedTasks.forEach(task => selectTask(task));
-            // console.log('one', selectedTasks);
-        } else {
-            // console.log('tow', selectedTasks);
-            // If it's a single task object, select it directly
-            selectTask(selectedTasks);
-        }
+                        if (Array.isArray(selectedTasks)) {
+                            // Iterate over the array and select each task
+                            selectedTasks.forEach(task => selectTask(task));
+                            // console.log('one', selectedTasks);
+                        } else {
+                            // console.log('tow', selectedTasks);
+                            // If it's a single task object, select it directly
+                            selectTask(selectedTasks);
+                        }
 
-        // Function to select a task
-        function selectTask(task) {
-            console.log('task selected', task);
-            items.push({
-                ...task, // Spread the properties of the task object
-                remark: '', // Add default empty remark
-                quantity: 1, // Default quantity is 1
-                description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
-                client_name: task.client_name
-            });
+                        // Function to select a task
+                        function selectTask(task) {
+                            console.log('task selected', task);
+                            items.push({
+                                ...task, // Spread the properties of the task object
+                                remark: '', // Add default empty remark
+                                quantity: 1, // Default quantity is 1
+                                description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
+                                client_name: task.client_name
+                            });
 
-            // Set the selected task name
-            selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
+                            // Set the selected task name
+                            selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
-            // Call a function to update the total, passing the current items array
-            //  updateTotal(items);
+                            // Call a function to update the total, passing the current items array
+                            //  updateTotal(items);
 
-            closeTaskModal();
-            renderItems();
-        }
+                            closeTaskModal();
+                            renderItems();
+                        }
 
-        function updateTotal(items) {
-            const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
-                0); // Calculate total based on price and quantity
-            this.subtotal = total;
-            // this.updateSubTotal();
-        };
+                        function updateTotal(items) {
+                            const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
+                                0); // Calculate total based on price and quantity
+                            this.subtotal = total;
+                            // this.updateSubTotal();
+                        };
 
-        function openClientModal() {
-            const modal = document.getElementById("clientModal");
-            modal.classList.remove("hidden");
-        }
+                        function openClientModal() {
+                            const modal = document.getElementById("clientModal");
+                            modal.classList.remove("hidden");
+                        }
 
-        // Close Client Modal
-        function closeClientModal() {
-            const modal = document.getElementById("clientModal");
-            modal.classList.add("hidden");
-        }
+                        // Close Client Modal
+                        function closeClientModal() {
+                            const modal = document.getElementById("clientModal");
+                            modal.classList.add("hidden");
+                        }
 
-        function openAgentModal() {
-            const modal = document.getElementById("agentModal");
-            modal.classList.remove("hidden");
-        }
+                        function openAgentModal() {
+                            const modal = document.getElementById("agentModal");
+                            modal.classList.remove("hidden");
+                        }
 
-        // Close Agent Modal
-        function closeAgentModal() {
-            const modal = document.getElementById("agentModal");
-            modal.classList.add("hidden");
-        }
+                        // Close Agent Modal
+                        function closeAgentModal() {
+                            const modal = document.getElementById("agentModal");
+                            modal.classList.add("hidden");
+                        }
 
-        function filterClients() {
-            const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
-            const filteredClients = clients.filter(client =>
-                client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
-            );
-            renderClientList(filteredClients);
-        }
+                        function filterClients() {
+                            const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
+                            const filteredClients = clients.filter(client =>
+                                client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
+                            );
+                            renderClientList(filteredClients);
+                        }
 
-        function renderClientList(clientData) {
-            const clientList = document.getElementById('clientList');
-            clientList.innerHTML = '';
-            clientData.forEach(client => {
-                const li = document.createElement('li');
-                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                li.innerText = `${client.name} - ${client.email}`;
-                li.onclick = () => selectClient(client);
-                clientList.appendChild(li);
-            });
-        }
+                        function renderClientList(clientData) {
+                            const clientList = document.getElementById('clientList');
+                            clientList.innerHTML = '';
+                            clientData.forEach(client => {
+                                const li = document.createElement('li');
+                                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                                li.innerText = `${client.name} - ${client.email}`;
+                                li.onclick = () => selectClient(client);
+                                clientList.appendChild(li);
+                            });
+                        }
 
-        function selectClient(client) {
-            document.getElementById('receiverId').value = client.id;
+                        function selectClient(client) {
+                            document.getElementById('receiverId').value = client.id;
 
-            // Update input fields
-            document.getElementById('receiverName').value = client.name;
-            document.getElementById('receiverEmail').value = client.email;
-            document.getElementById('receiverPhone').value = client.phone;
-            closeClientModal();
-        }
+                            // Update input fields
+                            document.getElementById('receiverName').value = client.name;
+                            document.getElementById('receiverName1').textContent = client.name;
+                            document.getElementById('receiverEmail').value = client.email;
+                            document.getElementById('receiverPhone').value = client.phone;
+                            closeClientModal();
+                        }
 
-        function openTaskModal() {
-            document.getElementById('taskModal').classList.remove('hidden');
-        }
+                        function openTaskModal() {
+                            document.getElementById('taskModal').classList.remove('hidden');
+                        }
 
-        function closeTaskModal() {
-            document.getElementById('taskModal').classList.add('hidden');
-        }
+                        function closeTaskModal() {
+                            document.getElementById('taskModal').classList.add('hidden');
+                        }
 
-        function filterTasks() {
-            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
-            const filteredTasks = tasks.filter(task =>
-                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
-            );
-            renderTaskList(filteredTasks);
-        }
+                        function filterTasks() {
+                            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
+                            const filteredTasks = tasks.filter(task =>
+                                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
+                            );
+                            renderTaskList(filteredTasks);
+                        }
 
-        function renderTaskList(taskData) {
-            const taskList = document.getElementById('taskList');
-            taskList.innerHTML = '';
-            if (taskData.length == 0) {
-                const p = document.createElement('p');
-                p.className = 'text-center text-gray-500';
-                p.innerText = 'No Task Available';
-                taskList.appendChild(p);
+                        function renderTaskList(taskData) {
+                            const taskList = document.getElementById('taskList');
+                            taskList.innerHTML = '';
+                            if (taskData.length == 0) {
+                                const p = document.createElement('p');
+                                p.className = 'text-center text-gray-500';
+                                p.innerText = 'No Task Available';
+                                taskList.appendChild(p);
 
-                return;
-            }
-            taskData.forEach(task => {
-                const li = document.createElement('li');
-                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
-                li.onclick = () => selectTask(task);
-                taskList.appendChild(li);
-            });
-        }
+                                return;
+                            }
+                            taskData.forEach(task => {
+                                const li = document.createElement('li');
+                                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                                li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
+                                li.onclick = () => selectTask(task);
+                                taskList.appendChild(li);
+                            });
+                        }
 
-        // Call the function with the selectedClient object
-        if (selectedClient && selectedAgent) {
-            updateFormFields(selectedClient, selectedAgent);
-        }
+                        // Call the function with the selectedClient object
+                        if (selectedClient && selectedAgent) {
+                            updateFormFields(selectedClient, selectedAgent);
+                        }
 
-        function updateFormFields(client, agent) {
-            // Update hidden fields
-            document.getElementById('receiverId').value = client.id;
+                        function updateFormFields(client, agent) {
+                            // Update hidden fields
+                            document.getElementById('receiverId').value = client.id;
 
-            // Update input fields
-            document.getElementById('receiverName').value = client.name;
-            document.getElementById('receiverEmail').value = client.email;
-            document.getElementById('receiverPhone').value = client.phone;
+                            // Update input fields
+                            document.getElementById('receiverName').value = client.name;
+                            document.getElementById('receiverName1').textContent = client.name;
+                            document.getElementById('receiverEmail').value = client.email;
+                            document.getElementById('receiverPhone').value = client.phone;
 
-            document.getElementById('agentName').value = agent.name;
-            document.getElementById('agentEmail').value = agent.email;
-            document.getElementById('agentPhone').value = agent.phone;
-        }
+                            document.getElementById('agentName').value = agent.name;
+                            document.getElementById('agentEmail').value = agent.email;
+                            document.getElementById('agentPhone').value = agent.phone;
+                        }
 
-        generateInvoiceButton.addEventListener('click', async function(event) {
-            event.preventDefault(); // Prevent form submission or default action
-            if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
+                        generateInvoiceButton.addEventListener('click', async function(event) {
+                            event.preventDefault(); // Prevent form submission or default action
+                            if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
 
-            // Start saving
-            isSaving = true;
-            updateButtonState();
+                            // Start saving
+                            isSaving = true;
+                            updateButtonState();
 
-            try {
-                // Simulate invoice generation (replace with your actual API call)
-                await generateInvoice();
-                updateButtonState();
-            } catch (error) {
-                console.error("Error generating invoice:", error);
-                isSaving = false; // Reset saving state
-                updateButtonState();
+                            try {
+                                // Simulate invoice generation (replace with your actual API call)
+                                await generateInvoice();
+                                updateButtonState();
+                            } catch (error) {
+                                console.error("Error generating invoice:", error);
+                                isSaving = false; // Reset saving state
+                                updateButtonState();
 
-            }
-        });
+                            }
+                        });
 
-        // Function to update button state (text, loading spinner, disabled state)
-        function updateButtonState() {
-            if (isSaving) {
-                buttonText.style.display = 'none';
-                buttonLoading.style.display = 'inline-block';
-                buttonSaved.style.display = 'none';
-                generateInvoiceButton.disabled = true; // Disable button during saving
-            } else if (isSaved) {
-                buttonText.style.display = 'none';
-                buttonLoading.style.display = 'none';
-                buttonSaved.style.display = 'inline-block';
-                generateInvoiceButton.disabled = false; // Re-enable button after saved
-            } else {
-                buttonText.style.display = 'inline-block';
-                buttonLoading.style.display = 'none';
-                buttonSaved.style.display = 'none';
-                generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
-            }
-        }
+                        // Function to update button state (text, loading spinner, disabled state)
+                        function updateButtonState() {
+                            if (isSaving) {
+                                buttonText.style.display = 'none';
+                                buttonLoading.style.display = 'inline-block';
+                                buttonSaved.style.display = 'none';
+                                generateInvoiceButton.disabled = true; // Disable button during saving
+                            } else if (isSaved) {
+                                buttonText.style.display = 'none';
+                                buttonLoading.style.display = 'none';
+                                buttonSaved.style.display = 'inline-block';
+                                generateInvoiceButton.disabled = false; // Re-enable button after saved
+                            } else {
+                                buttonText.style.display = 'inline-block';
+                                buttonLoading.style.display = 'none';
+                                buttonSaved.style.display = 'none';
+                                generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
+                            }
+                        }
 
-        // Generate invoice
-        async function generateInvoice() {
+                        function savePartial(mode) {
 
-            const invoiceUrl = "{{ route('invoice.store') }}";
-            const csrfToken = "{{ csrf_token() }}";
+                            if (mode === 'full') {
+                                const gateway = document.getElementById('payment_gateway').value;
+                                const date = document.getElementById('duedate').value;
+                                const amount = document.getElementById('subTotal').value;
+                                const fullData = [];
 
-            const currency = document.getElementById('currency').value;
-            const invoiceNumber = document.getElementById('invoiceNumber').value;
-            const invdate = document.getElementById('invdate').value;
-            const duedate = document.getElementById('duedate').value;
-            const subTotal = document.getElementById('subTotal').value;
-            const tasks = items;
-            const clientId = document.getElementById('receiverId').value;
-            const agentId = document.getElementById('agentId').value;
+                                fullData.push({
+                                    date,
+                                    amount,
+                                    gateway
+                                });
+                                save('full', fullData);
+                            } else
+                            if (mode === 'split') {
+                                // Collect Split Payment Data
+                                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                                const description = document.getElementById('split-desc').value;
+                                const rows = document.querySelectorAll('#split-rows tr');
 
-            // Show loading state
-            buttonText.style.display = "none";
-            buttonLoading.style.display = "inline";
-            console.log(
-                'clientId:', clientId,
-                'agentId:', agentId,
-                'tasksLength:', tasks.length,
-            );
-            if (!clientId || !agentId || !tasks.length) {
-                console.error("Required data is missing.");
-                let errorNotification = document.createElement('div');
-                errorNotification.innerHTML = ` 
+                                const splitData = [];
+                                rows.forEach(row => {
+                                    const selectElement = row.querySelector('select');
+                                    const clientId = selectElement.value;
+                                    const date = row.querySelector('input[type="date"]').value;
+                                    const gateway = row.querySelector('#payment_gateway2').value || null;
+                                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                                    const clientName = selectElement.options[selectElement.selectedIndex].text;
+
+                                    splitData.push({
+                                        clientId,
+                                        clientName,
+                                        date,
+                                        amount,
+                                        gateway
+                                    });
+                                });
+
+                                console.log('Split Payment Data:', {
+                                    totalAmount,
+                                    splitInto,
+                                    description,
+                                    splitData
+                                });
+                                save('split', splitData);
+
+                            } else if (mode === 'partial') {
+                                // Collect Partial Payment Data
+                                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                                const partialRows = document.querySelectorAll('#split-rows1 tr');
+                                const gateway = document.getElementById('payment_gateway1').value;
+
+                                const partialData = [];
+
+                                partialRows.forEach(row => {
+                                    const date = row.querySelector('input[type="date"]').value;
+                                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                                    partialData.push({
+                                        date,
+                                        amount,
+                                        gateway
+                                    });
+                                });
+
+                                console.log('Partial Payment Data:', partialData);
+                                save('partial', partialData);
+
+                            }
+                        }
+
+                        async function save(type, data) {
+                            const invoiceUrl = "{{ route('invoice.partial') }}";
+                            const csrfToken = "{{ csrf_token() }}";
+                            const invoiceId = document.getElementById('invoiceId').value;
+                            const invoiceNumber = document.getElementById('invoiceNumber').value;
+
+                            if (type === 'full') {
+                                const clientId = document.getElementById('receiverId').value;
+
+                                try {
+                                    for (const item of data) {
+                                        const {
+                                            date,
+                                            amount,
+                                            gateway
+                                        } = item;
+
+                                        // Send POST request for each client
+                                        const response = await fetch(invoiceUrl, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': csrfToken,
+                                            },
+                                            body: JSON.stringify({
+                                                invoiceId,
+                                                invoiceNumber,
+                                                clientId,
+                                                type,
+                                                date,
+                                                amount,
+                                                gateway
+                                            }),
+                                        });
+
+                                        if (!response.ok) {
+                                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                                        }
+
+                                        const result = await response.json();
+
+                                        const generatedLink = `${appUrl}/invoice/partial/${invoiceNumber}/${clientId}`;
+                                        invoiceLinks.push({
+                                            clientId,
+                                            clientName,
+                                            link: generatedLink
+                                        });
+                                    }
+
+                                    // Display links
+
+                                } catch (error) {
+                                    console.error('Error generating invoices:', error);
+                                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                                } finally {
+                                    afterPaymentType();
+                                    hideModal();
+                                }
+                            } else
+                            if (type === 'split') {
+                                // Handle split payment, generate links for each row
+                                try {
+                                    const invoiceLinks = []; // Store links for each client
+                                    for (const item of data) {
+                                        const {
+                                            clientId,
+                                            clientName,
+                                            date,
+                                            amount,
+                                            gateway
+                                        } = item;
+
+                                        console.log(invoiceId, clientId, type, date, amount);
+                                        console.log(csrfToken);
+                                        console.log(clientName)
+                                        // Send POST request for each client
+                                        const response = await fetch(invoiceUrl, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': csrfToken,
+                                            },
+                                            body: JSON.stringify({
+                                                invoiceId,
+                                                invoiceNumber,
+                                                clientId,
+                                                type,
+                                                date,
+                                                amount,
+                                                gateway
+                                            }),
+                                        });
+
+                                        if (!response.ok) {
+                                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                                        }
+
+                                        const result = await response.json();
+                                    }
+
+                                } catch (error) {
+                                    console.error('Error generating invoices:', error);
+                                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                                } finally {
+                                    afterPaymentType();
+                                    hideModal();
+                                }
+
+                            } else if (type === 'partial') {
+                                // Handle partial payment as before
+                                const clientId = document.getElementById('receiverId').value;
+
+                                try {
+
+                                    for (const item of data) {
+                                        const {
+                                            date,
+                                            amount,
+                                            gateway
+                                        } = item;
+
+                                        const response = await fetch(invoiceUrl, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': csrfToken,
+                                            },
+                                            body: JSON.stringify({
+                                                invoiceId,
+                                                invoiceNumber,
+                                                clientId,
+                                                type,
+                                                date,
+                                                amount,
+                                                gateway
+                                            }),
+                                        });
+
+                                        if (!response.ok) {
+                                            throw new Error("Failed to generate partial invoice.");
+                                        }
+                                    }
+                                } catch (error) {
+                                    console.error('Error generating invoice:', error);
+                                    displayErrorMessage("Error generating invoice. Please try again.");
+                                } finally {
+                                    afterPaymentType();
+                                    hideModal();
+                                }
+                            }
+                        }
+
+                        function displayErrorMessage(message) {
+                            const alert = document.createElement('div');
+                            alert.innerHTML = `
+                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                    ${message}
+                    <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `;
+                            document.body.appendChild(alert);
+                        }
+
+                        function afterPaymentType() {
+                            const tabs = document.querySelectorAll('input[name="payment_type"]');
+                            const partial = document.getElementById('payment_type_partial');
+                            const split = document.getElementById('payment_type_split');
+                            const full = document.getElementById('payment_type_full');
+                            const update = document.getElementById('update-invoice-btn');
+                            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
+                            if (paymentType === 'full') {
+                                partial.disabled = true;
+                                split.disabled = true;
+                                full.disabled = false;
+                                update.disabled = true;
+                            } else if (paymentType === 'partial') {
+                                partial.disabled = false;
+                                split.disabled = true;
+                                full.disabled = true;
+                            } else if (paymentType === 'split') {
+                                partial.disabled = true;
+                                split.disabled = false;
+                                full.disabled = true;
+                            }
+
+                        }
+
+                        // Generate invoice
+                        async function generateInvoice() {
+
+                            const invoiceUrl = "{{ route('invoice.store') }}";
+                            const csrfToken = "{{ csrf_token() }}";
+
+                            const currency = document.getElementById('currency').value;
+                            const invoiceNumber = document.getElementById('invoiceNumber').value;
+                            const invdate = document.getElementById('invdate').value;
+                            const duedate = document.getElementById('duedate').value;
+                            const subTotal = document.getElementById('subTotal').value;
+                            const tasks = items;
+                            const clientId = document.getElementById('receiverId').value;
+                            const agentId = document.getElementById('agentId').value;
+
+                            // Show loading state
+                            buttonText.style.display = "none";
+                            buttonLoading.style.display = "inline";
+                            console.log(
+                                'clientId:', clientId,
+                                'agentId:', agentId,
+                                'tasksLength:', tasks.length,
+                            );
+                            if (!clientId || !agentId || !tasks.length) {
+                                console.error("Required data is missing.");
+                                let errorNotification = document.createElement('div');
+                                errorNotification.innerHTML = ` 
                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                        Please Fill In All Required Data 
                      <button type="button" class="close text-white ml-2" aria-label="Close"
@@ -881,56 +1568,51 @@
                      </button>
                  </div>
                  `
-                document.body.appendChild(errorNotification);
-                resetButtonState();
-                return;
-            }
+                                document.body.appendChild(errorNotification);
+                                resetButtonState();
+                                return;
+                            }
 
-            try {
-                const response = await fetch(invoiceUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        agentId,
-                        tasks,
-                        subTotal,
-                        invoiceNumber,
-                        currency,
-                        invdate,
-                        duedate
+                            try {
+                                const response = await fetch(invoiceUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrfToken,
+                                    },
+                                    body: JSON.stringify({
+                                        clientId,
+                                        agentId,
+                                        tasks,
+                                        subTotal,
+                                        invoiceNumber,
+                                        currency,
+                                        invdate,
+                                        duedate
 
-                    })
-                });
-                if (!response.ok) {
-                    throw new Error("Failed to reach the invoice controller.");
-                }
+                                    })
+                                });
+                                if (!response.ok) {
+                                    throw new Error("Failed to reach the invoice controller.");
+                                }
 
-                const result = await response.json();
-                //const generatedLink = `http://127.0.0.1:8000/invoice/` + invoiceNumber;
-                // const generatedLink = `https://tour.citytravelers.co/invoice/` + invoiceNumber;
-                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
+                                const result = await response.json();
+                                const {
+                                    invoiceId
+                                } = result;
+                                console.log(invoiceId);
 
-                // Invoice link elements
-                const invoiceLinkContainer = document.getElementById("invoice-link-container");
-                const invoiceLink = document.getElementById("invoice-link");
+                                document.getElementById('invoiceId').value = invoiceId;
+                                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
 
-                // Update and show the invoice link
-                invoiceLink.href = generatedLink;
-                invoiceLink.textContent = generatedLink;
-                invoiceLinkContainer.style.display = "block";
+                                // Show success state
+                                isSaved = true; // Mark as saved after generating
+                                updateButtonState();
 
-                // Show success state
-                isSaved = true; // Mark as saved after generating
-                updateButtonState();
-
-            } catch (error) {
-                console.error('Error generating invoice:', error);
-                let alert = document.createElement('div');
-                alert.innerHTML = ` 
+                            } catch (error) {
+                                console.error('Error generating invoice:', error);
+                                let alert = document.createElement('div');
+                                alert.innerHTML = ` 
                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                        Error Generating Invoice: make sure all fields are filled correctly
                      <button type="button" class="close text-white ml-2" aria-label="Close"
@@ -939,41 +1621,42 @@
                      </button>
                  </div>
                  `
-                document.body.appendChild(alert);
-                resetButtonState();
-            } finally {
-                // Reset button states
-                buttonLoading.style.display = "none";
-                setTimeout(() => {
-                    resetButtonState();
-                }, 1000);
-            }
-        };
+                                document.body.appendChild(alert);
+                                resetButtonState();
+                            } finally {
+                                // Reset button states
+                                buttonLoading.style.display = "none";
+                                setTimeout(() => {
+                                    checkInvoiceId();
+                                    resetButtonState();
+                                }, 1000);
+                            }
+                        };
 
-        function resetButtonState() {
-            isSaving = false;
-            isSaved = false;
-            updateButtonState();
-        }
+                        function resetButtonState() {
+                            isSaving = false;
+                            isSaved = false;
+                            updateButtonState();
+                        }
 
-        document.addEventListener("DOMContentLoaded", function() {
+                        document.addEventListener("DOMContentLoaded", function() {
 
-            let tasks = @json($tasks);
-            let clients = @json($clients);
-
-
-            // Initial rendering of items
-            renderItems();
+                            let tasks = @json($tasks);
+                            let clients = @json($clients);
 
 
-            // Initialize modals with full data
-            renderClientList(clients);
-            renderTaskList(tasks);
+                            // Initial rendering of items
+                            renderItems();
+
+
+                            // Initialize modals with full data
+                            renderClientList(clients);
+                            renderTaskList(tasks);
 
 
 
-        });
-    </script>
+                        });
+                    </script>
 
 
 </x-app-layout>

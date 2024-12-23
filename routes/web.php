@@ -208,17 +208,20 @@ Route::get('/tasks/{id}', function ($id) {
 
 
 // INVOICE
-Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgentsInvoices'])->name('invoices.company.agents');
-Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+Route::middleware('auth')->group(function () {
+    Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
+    Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+    Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgentsInvoices'])->name('invoices.company.agents');
+});
+
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
-Route::get('/invoice/{id}', [InvoiceController::class, 'index'])->name('invoice.index');
 Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
-Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-
+Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');   
+Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 
 // search for invoice creation

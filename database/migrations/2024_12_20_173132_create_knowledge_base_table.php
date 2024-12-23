@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('topic'); // E.g., "Pending Tasks"
             $table->text('content'); // The explanation or details
+            $table->json('embedding')->nullable(); // For storing embeddings
             $table->timestamps();
         });
 

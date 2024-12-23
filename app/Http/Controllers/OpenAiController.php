@@ -587,6 +587,10 @@ class OpenAiController extends Controller
             'OpenAI-Beta: assistants=v2',
         ];
         $data = [
+            'messages' => [
+                'role' => 'user',
+                'content' => 'You are going to help me to manage my travel business, my name is ' . $user->name . '. My id is ' . $user->id . '.',
+            ],
             'metadata' => [
                 'user_id' => (string) $user->id,
             ],
@@ -779,7 +783,13 @@ class OpenAiController extends Controller
                         'message' => 'Run completed successfully',
                         'data' => $response
                     ];
-                }
+                } if (isset($response['status']) ? $response['status'] === 'requires_action' : false) {
+                    return [
+                        'status' => 'requires_action',
+                        'message' => 'Run requires action',
+                        'data' => $response,
+                    ];
+                } else
 
                 if ($countCheck > 5) {
                     return [
@@ -811,6 +821,31 @@ class OpenAiController extends Controller
         return response()->json($response);
     }
 
+    public function cancelRun($threadId, $runId)
+    {
+        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/cancel';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'OpenAI-Beta: assistants=v2',
+        ];
+
+        $cancelRunResponse = $this->postRequest($url, $header, null);
+
+        if(isset($cancelRunResponse['error'])){
+            return [
+                'status' => 'error',
+                'message' => 'Failed to cancel run',
+                'data' => $cancelRunResponse,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Run cancelled successfully',
+            'data' => $cancelRunResponse,
+        ];
+
+    }
 
     // RUN STEP
     public function listStep(string $threadId, string $runId)
@@ -962,15 +997,30 @@ class OpenAiController extends Controller
 
             if($checkRunResponse['status'] === 'error') return $checkRunResponse;
             
-            if( isset($checkRunResponse['data']['function_call'])){
-                $functionCall = $checkRunResponse['data']['function_call'];
-                $functionName = $functionCall['name'];
-                $arguments = $functionCall['arguments'];
+            logger('check run response: ', $checkRunResponse);
 
-                $result = $this->callFunction($functionName, $arguments);
+            $toolOutputs = [];
 
-                $this->createMessage($threadId, json_encode($result));
+            if( $checkRunResponse['status']==='requires_action'){
+                foreach($checkRunResponse['data']['required_action']['submit_tool_outputs']['tool_calls'] as $tool){
+                    $toolId = $tool['id'];
+                    $toolName = $tool['function']['name'];
+                    $toolArguments = json_decode($tool['function']['arguments'], true);
+                    $functionResponse = $this->callFunction($toolName, $toolArguments);
+
+                    if(isset($functionResponse['error'])) return $functionResponse;
+
+                    $toolOutputs[] = [
+                        'tool_call_id' => $toolId,
+                        'output' => $functionResponse['success'],
+                    ];
+                }
+
+                $toolOutputResponse = $this->submitToolOutputs($threadId, $runId, $toolOutputs);
+
+                if($toolOutputResponse['status'] === 'error') return $toolOutputResponse;
             }
+
             $tokens = $checkRunResponse['data']['usage'];
 
             $messages = $this->getMessages($threadId, $assistantId, $user);
@@ -1331,37 +1381,72 @@ class OpenAiController extends Controller
         switch ($functionName) {
             case 'getPendingTasksCount':
                 return [
-                    'count' => Task::where('user_id', $arguments['user_id'])->where('status', 'pending')->count()
+                    'success' => $this->getPendingTaskCount($arguments['user_id']),
                 ];
             case 'getClient':
                 return [
-                    'balance' => $this->getClient()
+                    'success' => $this->getClient()
                 ];
             default:
                 return ['error' => 'Function not implemented.'];
         }
     }
 
-    public function submitToolOutputs($runId, $toolName, $output)
+    public function submitToolOutputs(string $threadId, string $runId, array $toolOutputs)
     {
-        $url = config('services.open-ai.url') . "/runs/{$runId}/tool_outputs";
+        $url = config('services.open-ai.url') . "/threads/{$threadId}/runs/{$runId}/submit_tool_outputs";
         $header = [
             'Authorization: Bearer ' . config('services.open-ai.key'),
             'Content-Type: application/json',
+            'OpenAI-Beta: assistants=v2',
         ];
 
+
         $data = [
-            'tool_name' => $toolName,
-            'output' => $output,
+            'tool_outputs' => $toolOutputs,
         ];
 
         $response = $this->postRequest($url, $header, json_encode($data));
+        
+        logger('submit tool outputs response: ', $response);
 
         return [
             'status' => isset($response['id']) ? 'success' : 'error',
             'message' => isset($response['id']) ? 'Tool output submitted successfully' : 'Failed to submit tool output',
             'data' => $response,
         ];
+    }
+
+    public function getPendingTaskCount(int $userId)
+    {
+        $user = User::find($userId);
+
+        if ($user->role_id == Role::ADMIN) {
+
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get(); // Retrieve all tasks for admin
+
+            $taskCount = $tasks->count(); // Task count for admin
+
+        } elseif ($user->role_id == Role::COMPANY) {
+            
+            $agents = Agent::with(['branch'=> function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get();
+
+            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
+
+            // Get all agents for this company
+            $agentIds = $agents->pluck('id'); // Get all agents for this company
+            $tasks = Task::with('agent.branch', 'client','invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
+            $taskCount = $tasks->count();
+
+        } elseif ($user->role_id == Role::AGENT) {
+            $tasks = Task::where('agent_id', $user->id)->get(); // Retrieve tasks for this agent    
+            $taskCount = $tasks->count();
+        } 
+
+        logger('task count: '.(string)$taskCount);
+        return 'You have ' . (string)$taskCount . ' pending tasks';
     }
 
 }

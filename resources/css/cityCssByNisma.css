@@ -16,7 +16,6 @@ body {
     margin: 0;
     padding: 0;
 }
-
 /* Tooltip container */
 [data-tooltip] {
     position: relative;
@@ -28,8 +27,9 @@ body {
 [data-tooltip]::before {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 90%%;
+    bottom: 110%; /* Increased to give more space above */
     left: 50%;
+    transform: translateX(-50%);
     background-color: #333;
     color: #fff;
     padding: 5px 8px;
@@ -39,11 +39,12 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
-    z-index: 9999;
+    z-index: 9999; /* Ensure the tooltip is on top */
 }
 
 /* Tooltip arrow */
 [data-tooltip]::after {
+    content: "";
     position: absolute;
     bottom: 100%;
     left: 50%;
@@ -54,13 +55,19 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
-    z-index: 9999;
+    z-index: 9999; /* Ensure the tooltip is on top */
 }
 
 /* Show tooltip on hover */
 [data-tooltip]:hover::before,
 [data-tooltip]:hover::after {
     opacity: 1;
+}
+
+/* Parent element fix */
+.parent-element {
+    overflow: visible; /* Ensure the tooltip is not hidden */
+    position: relative; /* Ensure relative positioning */
 }
 
 .group-hover\:opacity-100 {
@@ -395,6 +402,15 @@ body {
     background-color: #e5e7eb !important;
 } /* used */
 
+.TrX {
+    border-bottom: 10px !important;
+    border-color: #ffffff !important;
+}
+
+.TrX td {
+    margin-bottom: 20px !important;
+}
+
 /** tasks list page *******************************************************************************/
 
 .taskListCon {
@@ -413,11 +429,11 @@ body {
     }
 
     .taskListCon > .content-70 {
-        width: 60%;
+        width: 70%;
     }
 
     .taskListCon > .content-30 {
-        width: 40%;
+        width: 30%;
     }
 }
 

@@ -54,3 +54,8 @@ thead {
     color: white;
     background-color: #007bff;
 }
+
+.peer:checked ~ .peer-checked\:ring-blue-500 {
+    --tw-ring-opacity: 1;
+    --tw-ring-color: none !important;
+}

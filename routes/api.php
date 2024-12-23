@@ -5,6 +5,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\Auth\TwoFAController;
+use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\OpenAiController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
@@ -41,6 +42,8 @@ use App\Http\Controllers\OpenAiController;
         Route::post('/send-message', [OpenAiController::class, 'sendMessage']);
         Route::get('/list-step/{threadId}/{runId}',[OpenAiController::class, 'listStep']);
         Route::get('/step/{threadId}/{runId}/{stepId}',[OpenAiController::class, 'retrieveStep']);
+
+        Route::post('knowledge', [KnowledgeBaseController::class, 'fetchRelevantKnowledge']);
 
         Route::get('pin', function(){
             return view('auth.pin');

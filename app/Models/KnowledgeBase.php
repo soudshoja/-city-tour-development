@@ -11,6 +11,9 @@ class KnowledgeBase extends Model
 
     protected $table = 'knowledge_base';
 
-    protected $fillable = ['topic', 'content'];
+    protected $fillable = [
+        'topic',
+        'content',
+        'embedding'
+    ];
 }
-

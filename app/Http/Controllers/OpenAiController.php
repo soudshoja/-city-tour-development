@@ -657,7 +657,7 @@ class OpenAiController extends Controller
     // }
 
     // MESSAGE
-    public function createMessage(string $threadId, string $message)
+    public function createMessage(string $threadId, string $message, array $functions = [], bool $isFunctionResponse = false)
     {
         $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
         $header = [
@@ -927,7 +927,7 @@ class OpenAiController extends Controller
 
             $assistantId = $conversation->assistant_id;
             $threadId = $conversation->thread_id;
-            
+
             //Create message for thread
             $messageResponse = $this->createMessage($threadId, $content);
 
@@ -962,6 +962,15 @@ class OpenAiController extends Controller
 
             if($checkRunResponse['status'] === 'error') return $checkRunResponse;
             
+            if( isset($checkRunResponse['data']['function_call'])){
+                $functionCall = $checkRunResponse['data']['function_call'];
+                $functionName = $functionCall['name'];
+                $arguments = $functionCall['arguments'];
+
+                $result = $this->callFunction($functionName, $arguments);
+
+                $this->createMessage($threadId, json_encode($result));
+            }
             $tokens = $checkRunResponse['data']['usage'];
 
             $messages = $this->getMessages($threadId, $assistantId, $user);
@@ -990,11 +999,6 @@ class OpenAiController extends Controller
 
 
         } else if($response['data']['type'] === 'action') {
-
-            // $data[] = [
-            //     'role' => 'user',
-            //     'content' => $content,
-            // ];
 
             return [
                 'status' => 'error',
@@ -1289,6 +1293,75 @@ class OpenAiController extends Controller
             $client = Client::where('agent_id', $user->id)->get();
         }
 
-        return $client;
+        return $client->toArray();
     }
+
+    public function embedding(string $query)
+    {
+        $url = config('services.open-ai.url') . '/embeddings';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json'
+        ];
+        $data = [
+            'model' => 'text-embedding-ada-002',
+            'input' => $query,
+            'encoding_format' => 'float',
+        ];
+
+        $response = $this->postRequest($url, $header, json_encode($data));
+
+        if(isset($response['error'])){
+            return [
+                'status' => 'error',
+                'message' => 'Failed to get embeddings',
+                'data' => $response,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Embeddings retrieved successfully',
+            'data' => $response['data'],
+        ];
+    }
+
+    private function callFunction($functionName, $arguments)
+    {
+        switch ($functionName) {
+            case 'getPendingTasksCount':
+                return [
+                    'count' => Task::where('user_id', $arguments['user_id'])->where('status', 'pending')->count()
+                ];
+            case 'getClient':
+                return [
+                    'balance' => $this->getClient()
+                ];
+            default:
+                return ['error' => 'Function not implemented.'];
+        }
+    }
+
+    public function submitToolOutputs($runId, $toolName, $output)
+    {
+        $url = config('services.open-ai.url') . "/runs/{$runId}/tool_outputs";
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+
+        $data = [
+            'tool_name' => $toolName,
+            'output' => $output,
+        ];
+
+        $response = $this->postRequest($url, $header, json_encode($data));
+
+        return [
+            'status' => isset($response['id']) ? 'success' : 'error',
+            'message' => isset($response['id']) ? 'Tool output submitted successfully' : 'Failed to submit tool output',
+            'data' => $response,
+        ];
+    }
+
 }

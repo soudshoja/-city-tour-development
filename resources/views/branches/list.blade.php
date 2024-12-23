@@ -1,256 +1,251 @@
 <x-app-layout>
-    <div>
-        <!-- Breadcrumbs -->
-        <x-breadcrumbs :breadcrumbs="[
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Branches List']
-        ]" />
-
-        <!-- ./Breadcrumbs -->
-
-        <!-- session status -->
-        @if (session('success'))
-        <div class="bg-green-500 text-white p-4 rounded mb-4">
-            {{ session('success') }}
-        </div>
-        @endif
-
-        @if (session('error'))
-        <div class="bg-red-500 text-white p-4 rounded mb-4">
-            {{ session('error') }}
-        </div>
-        @endif
-
-        <!-- ./session status -->
-
-        <!-- Controls Section -->
-        <div
-            class="flex flex-col md:flex-row items-center justify-between p-3 bg-white dark:bg-gray-800 shadow rounded-lg space-y-3 md:space-y-0 text-gray-700 dark:text-gray-300">
-
-            <!-- left side -->
-            <div
-                class="flex items-start md:items-center border border-gray-300 rounded-lg p-2 space-y-3 md:space-y-0 md:space-x-3">
-                <!-- left side -->
-                <div class="flex gap-2 mr-2">
-                    <a class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
-                        href="#">
-                        <span
-                            class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Total
-                            Branches</span>
-
-
-                    </a>
-                    <a class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-info-light dark:bg-gray-700"
-                        href="#"><span id="totalBranches"></span>
-                    </a>
-                </div>
-
-            </div>
-
-
-            <!-- right side -->
-            <div class="flex items-center gap-3 space-y-3 md:space-y-0 md:space-x-2">
-                <!-- Search Box -->
-                <div class="mt07 relative flex items-center h-12">
-                    <input id="searchInput" type="text" placeholder="Search"
-                        class="w-full h-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-300">
-                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2"
-                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-4.35-4.35M9.5 17A7.5 7.5 0 109.5 2a7.5 7.5 0 000 15z" />
-                    </svg>
-                </div>
 
 
 
-                <!-- Add User Button -->
+    <!-- page title -->
+    <div class="flex justify-between items-center gap-5 my-3 ">
 
-                <button type="button" onclick="addBranch()"
-                    class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
-                    <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Branch
-                </button>
+
+        <div class="flex items-center gap-5 ">
+            <h2 class="text-3xl font-bold">Branches List</h2>
+            <!-- total branch number -->
+            <div data-tooltip="number of branches" class="relative w-12 h-12 flex items-center justify-center DarkBCcolor rounded-full shadow-sm">
+                <span class="text-xl font-bold text-white">{{ $branchesCount }}</span>
             </div>
         </div>
-        <!-- ./Controls Section -->
-
-
-        <div class="bg-white rounded-md shadow-md p-2 flex justify-start gap-2 my-2">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="">
-                <path d="M12 17V11" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                <circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="#1C274C" />
-                <path d="M7 3.33782 C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-            User with this icon is a new user and has not logged in yet. Please inform the user to login and change the password.
-        </div>
-        <!-- Table Section -->
-        <div class=" overflow-x-auto bg-white shadow rounded-lg">
-            <div class="max-h-96 overflow-y-auto custom-scrollbar">
-                <table class="AgentTable CityMobileTable w-full">
-                    <thead class="sticky top-0">
-                        <tr>
-                            <th class="px-4 py-2">
-                                <svg id="selectAllSVG" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
-                                    <path
-                                        d="M8.0374 14.1437C7.78266 14.2711 7.47314 14.1602 7.35714 13.9001L3.16447 4.49844C2.49741 3.00261 3.97865 1.45104 5.36641 2.19197L11.2701 5.344C11.7293 5.58915 12.2697 5.58915 12.7289 5.344L18.6326 2.19197C20.0204 1.45104 21.5016 3.00261 20.8346 4.49844L19.2629 8.02275C19.0743 8.44563 18.7448 8.78997 18.3307 8.99704L8.0374 14.1437Z"
-                                        fill="#1C274C" class="dark:fill-white" />
-                                    <path opacity="0.5"
-                                        d="M8.6095 15.5342C8.37019 15.6538 8.26749 15.9407 8.37646 16.185L10.5271 21.0076C11.1174 22.3314 12.8818 22.3314 13.4722 21.0076L17.4401 12.1099C17.6313 11.6812 17.1797 11.2491 16.7598 11.459L8.6095 15.5342Z"
-                                        fill="#1C274C" class="dark:fill-gray-400" />
-                                </svg>
-
-                                <input type="checkbox" id="selectAll" class="form-checkbox CheckBoxColor hidden">
-                            </th>
-                            <th class="flex px-4 py-2 cursor-pointer" id="nameHeader">
-
-                                <svg id="sortIcon" class="mr-1 w-5 w-5" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M13 7L3 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                    <path d="M10 12H3" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                    <path d="M8 17H3" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                    <path
-                                        d="M11.3161 16.6922C11.1461 17.07 11.3145 17.514 11.6922 17.6839C12.07 17.8539 12.514 17.6855 12.6839 17.3078L11.3161 16.6922ZM16.5 7L17.1839 6.69223C17.0628 6.42309 16.7951 6.25 16.5 6.25C16.2049 6.25 15.9372 6.42309 15.8161 6.69223L16.5 7ZM20.3161 17.3078C20.486 17.6855 20.93 17.8539 21.3078 17.6839C21.6855 17.514 21.8539 17.07 21.6839 16.6922L20.3161 17.3078ZM19.3636 13.3636L20.0476 13.0559L19.3636 13.3636ZM13.6364 12.6136C13.2222 12.6136 12.8864 12.9494 12.8864 13.3636C12.8864 13.7779 13.2222 14.1136 13.6364 14.1136V12.6136ZM12.6839 17.3078L17.1839 7.30777L15.8161 6.69223L11.3161 16.6922L12.6839 17.3078ZM21.6839 16.6922L20.0476 13.0559L18.6797 13.6714L20.3161 17.3078L21.6839 16.6922ZM20.0476 13.0559L17.1839 6.69223L15.8161 7.30777L18.6797 13.6714L20.0476 13.0559ZM19.3636 12.6136H13.6364V14.1136H19.3636V12.6136Z"
-                                        fill="#1C274C" />
-                                </svg>
-                                <span>Name</span>
-                            </th>
-                            <th class="px-4 py-2">Email</th>
-                            <th class="px-4 py-2">phone number</th>
-
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
-                        @foreach ($branches as $branch)
-                        <tr class="">
-                            <td class="px-4 py-2">
-                                <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
-                            </td>
-                            <td class="px-4 py-2">{{ $branch->name }}</td>
-                            <td class="px-4 py-2">{{ $branch->email }}</td>
-                            <td class="px-4 py-2 inline-flex justify-between w-full">
-                                {{ $branch->phone }}
-                            </td>
-                        </tr>
-
-
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- ./Table Section -->
-
-    <!-- add company modal -->
-    <div id="addBranchModal" onclick="closeModalIbg(event)"
-        class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
-
-            <!-- Close Button (Top Right) -->
-            <button onclick="closeAddBranchModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                    stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        <!-- add new branch & refresh page -->
+        <div class="flex items-center gap-5">
+            <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                    <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
                 </svg>
-            </button>
-
-            <!-- Modal Title -->
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Add New Branch
-            </h2>
-
-            <!-- Modal Form -->
-            <!-- Registration Form -->
-            <!-- Registration Form -->
-            <form method="POST" action="{{ route('branches.store') }}">
-                @csrf
-
-                <!-- Name Field -->
-                <div class="mb-4">
-                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                    <input id="name" name="name" type="text" :value="old('name')" required autofocus autocomplete="name"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="branch Name" />
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
-
-                <!-- Email Field -->
-                <div class="mb-4">
-                    <label for="email"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                    <input id="email" type="email" name="email" :value="old('email')" required autocomplete="username"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="branch Email" />
-                    <x-input-error :messages="$errors->get('email')" class="mt-2" />
-                </div>
-                <!-- phone Field -->
-                <div class="mb-4">
-                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
-                        Number</label>
-                    <input id="phone" name="phone" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="branch Contact" />
-                </div>
-
-                <!-- Address Field -->
-                <div class="mb-4">
-                    <label for="address"
-                        class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                    <input id="address" name="address" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="branch Address" />
-                    <x-input-error :messages="$errors->get('address')" class="mt-2" />
-                </div>
+            </div>
 
 
+            <!-- add new branch -->
+            <a href="{{ route('companies.showCreateOptions') }}">
+                <div data-tooltip="Create new branch" class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
 
 
-
-                <!-- Already Registered Link -->
-                <div class="flex items-center justify-between mt-4">
-
-                    <!-- Submit Button -->
-                    <x-primary-button class="px-8">
-                        {{ __('Register') }}
-                    </x-primary-button>
-
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
 
                 </div>
-            </form>
-            <!-- ./Registration Form -->
+            </a>
 
         </div>
+
+
     </div>
-    <!-- ./add company modal -->
+    <!-- ./page title -->
 
 
+
+
+    <!-- page content -->
+    <div class="tableCon">
+        <div class="content-70">
+            <!-- Table  -->
+            <div class="panel oxShadow rounded-lg">
+                <!--  search icon -->
+                <div class="relative">
+                    <!-- Search Input -->
+                    <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
+
+                    <!-- Search Button with SVG Icon -->
+                    <button type="button" class="btn DarkBCcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                        id="searchButton">
+                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
+                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- ./search icon -->
+                <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
+                    <div class="dataTable-top"></div>
+                    <!-- table -->
+                    <div class="dataTable-container h-max">
+                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" id="selectAll" class="form-checkbox hidden">
+                                            <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </label>
+                                    </th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Branch Name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Branch Email</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">phone number</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if ($branches->isEmpty())
+                                <tr>
+                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No data for now.... Create new!</td>
+                                </tr>
+                                @else
+                                @foreach ($branches as $branch)
+                                <tr>
+                                    <td>
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </label>
+                                    </td>
+                                    <td class="p-3 text-sm">
+                                        <a href="javascript:void(0);" class="viewbranch text-blue-500 hover:underline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <g fill="none" stroke="#333333" stroke-width="1.5">
+                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
+                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                                </g>
+                                            </svg>
+                                        </a>
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->name }}</td>
+
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->email }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500"> {{ $branch->phone }}</td>
+
+                                </tr>
+                                @endforeach
+                                @endif
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- ./table -->
+
+
+                    <!-- pagination -->
+                    @if ($branches->count() > 15)
+                    <div class="dataTable-bottom justify-center">
+                        <nav class="dataTable-pagination">
+                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
+                                <li class="pager" id="prevPage">
+                                    <a href="#">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </svg>
+                                    </a>
+                                </li>
+                                <!-- Dynamic page numbers will be injected here -->
+                                <li class="pager" id="nextPage">
+                                    <a href="#">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </svg>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    @endif
+                    <!-- ./pagination -->
+                </div>
+            </div>
+
+            <!-- ./Table  -->
+
+        </div>
+        <!-- right -->
+        <div class="content-30">
+
+            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
+                <!-- customize -->
+                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                        <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                    </svg>
+                    <span class="text-sm">Customize</span>
+                </button>
+                <!-- ./customize -->
+
+                <!-- filter -->
+                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                    </svg>
+                    <span class="text-sm">Filter</span>
+                </button>
+                <!-- ./filter -->
+
+                <!-- export -->
+                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                    </svg>
+                    <span class="text-sm">Export</span>
+                </button>
+                <!-- ./export -->
+            </div>
+            <div class="mt-5 ">
+                <!-- display branch details here-->
+                <div id="branchDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div> <!-- display branch details here-->
+
+            </div>
+        </div>
+        <!-- ./right -->
+    </div>
+    <!--./page content-->
+
+
+
+
+    <!-- search script -->
     <script>
-        // BSZ95 New code
-        document.addEventListener("DOMContentLoaded", function() {
-            // Access the data passed from the controller
-            const companiesCount = @json($branchesCount);
-            document.getElementById("totalBranches").innerText = companiesCount;
-        });
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const table = document.getElementById('myTable');
+            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
 
-        // Add Company Modal
-        function addBranch() {
-            document.getElementById("addBranchModal").classList.remove("hidden");
-        }
-
-        function closeAddBranchModal() {
-            document.getElementById("addBranchModal").classList.add("hidden");
-        }
-
-        function closeModalIbg(event) {
-            if (event.target.id === "addBranchModal") {
-                document.getElementById("addBranchModal").classList.add("hidden");
+            // Function to filter rows based on search input
+            function filterTable() {
+                const query = searchInput.value.toLowerCase(); // Get the search query
+                rows.forEach(row => {
+                    const cells = Array.from(row.cells); // Get all cells in the row
+                    const rowText = cells.map(cell => cell.textContent.toLowerCase()).join(' '); // Combine text from all cells
+                    if (rowText.includes(query)) {
+                        row.style.display = ''; // Show row if it matches the query
+                    } else {
+                        row.style.display = 'none'; // Hide row if it doesn't match
+                    }
+                });
             }
-        }
+
+            // Event listener for the search input
+            searchInput.addEventListener('input', filterTable);
+        });
+    </script>
+
+
+    <!-- refresh page script -->
+    <script>
+        document.querySelectorAll('.refresh-icon').forEach((icon) => {
+            icon.addEventListener('click', () => {
+                window.location.href = window.location.href; // Forces a fresh request to the server
+
+                const svg = icon.querySelector('svg');
+                svg.classList.add('rotate');
+                setTimeout(() => {
+                    svg.classList.remove('rotate');
+                    console.log('Content refreshed!');
+                }, 1000);
+            });
+        });
     </script>
 
 </x-app-layout>

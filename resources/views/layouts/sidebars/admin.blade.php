@@ -2,14 +2,12 @@
     <!-- sidebar menu -->
     <div class="flex flex-col justify-between items-center space-y-4">
         <!-- quick actions icon -->
-        <div class="flex flex-col items-center heartbeat-container tooltip">
-            <span class="tooltiptext">
-                quick actions
-            </span>
+        <div data-tooltip="Quick Actions" class="flex flex-col items-center heartbeat-container">
+            <!-- Menu item -->
             <div class="relative">
                 <!-- Icon Button -->
                 <div
-                    class="p-3 LightBCcolor rounded-full shadow-md flex items-center justify-center heartbeat">
+                    class="p-3 DarkBCcolor  rounded-full shadow-md flex items-center justify-center heartbeat">
                     <!-- SVG Icon -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
                         <path fill="#FFC107" d="M33 22h-9.4L30 5H19l-6 21h8.6L17 45z" />

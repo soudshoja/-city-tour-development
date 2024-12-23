@@ -413,7 +413,7 @@ body {
 
 /** tasks list page *******************************************************************************/
 
-.taskListCon {
+.tableCon {
     width: 100%;
     display: flex;
     margin-top: 20px;
@@ -424,41 +424,41 @@ body {
 
 /* Laptop View */
 @media (min-width: 1024px) {
-    .taskListCon {
+    .tableCon {
         flex-direction: row;
     }
 
-    .taskListCon > .content-70 {
+    .tableCon > .content-70 {
         width: 70%;
     }
 
-    .taskListCon > .content-30 {
+    .tableCon > .content-30 {
         width: 30%;
     }
 }
 
 /* pads view */
 @media (min-width: 768px) and (max-width: 1023px) {
-    .taskListCon {
+    .tableCon {
         flex-direction: row;
     }
 
-    .taskListCon > .content-70 {
+    .tableCon > .content-70 {
         width: 50%;
     }
 
-    .taskListCon > .content-30 {
+    .tableCon > .content-30 {
         width: 50%;
     }
 }
 
 /* Mobile View */
 @media (min-width: 320px) and (max-width: 426px) {
-    .taskListCon {
+    .tableCon {
         flex-direction: column;
     }
 
-    .taskListCon > .content-30 {
+    .tableCon > .content-30 {
         order: -1; /* Ensure the 30% div is on top */
     }
 

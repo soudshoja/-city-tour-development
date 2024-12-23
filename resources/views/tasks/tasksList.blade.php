@@ -17,18 +17,28 @@
             </div>
             <!-- add new task & refresh page -->
             <div class="flex items-center gap-5">
-                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
                         <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
                     </svg>
                 </div>
 
+
                 <!-- add invoice icon -->
                 <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
-                    </svg>
+                    <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
+                        enctype="multipart/form-data">
+                        @csrf
+                        <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden"
+                            onchange="uploadTask()" />
+                        <button id="uploadTaskButton" type="button"
+                            onclick="document.getElementById('pdfInput').click();">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="#333333" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                            </svg>
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -38,8 +48,8 @@
 
 
         <!-- actions -->
-        <div class="w-full justify-between flex flex-col gap-5 mt-5 md:flex-row">
-            <div class="w-[70%]">
+        <div class="taskListCon">
+            <div class="content-70">
                 <!-- Table  -->
                 <div class="panel oxShadow rounded-lg">
                     <!--  search icon -->
@@ -73,11 +83,12 @@
                                                 </svg>
                                             </label>
                                         </th>
-
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
-
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Client Name</th>
+
                                         @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Branch Name</th>
+
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Agent Name</th>
                                         @endif
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
@@ -89,8 +100,6 @@
                                 <tbody>
                                     @foreach($tasks as $task)
                                     <tr>
-
-                                        <!-- checkbox -->
                                         <td>
                                             <label class="custom-checkbox">
                                                 <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
@@ -98,28 +107,31 @@
                                                     <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                                 </svg>
                                             </label>
-
                                         </td>
                                         <td class="p-3 text-sm">
-                                            <a href="javascript:void(0);" id="viewTask" class="text-blue-500 hover:underline">
+                                            <a href="javascript:void(0);" class="viewTask text-blue-500 hover:underline" data-task-id="{{ $task->id }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                    <path fill="#1e40af" d="M17.994 20.79q-.16.062-.303-.043q-.145-.105-.181-.276q-.031-.16.049-.31t.239-.217q1.027-.348 1.657-1.217t.63-1.958t-.62-1.957t-1.648-1.218q-.165-.067-.242-.217t-.046-.31q.036-.17.18-.276q.145-.105.304-.043q1.321.396 2.139 1.508q.817 1.111.817 2.513t-.817 2.514t-2.158 1.507m-2.525-.05q-.48-.161-.899-.417t-.774-.611t-.621-.794t-.408-.937q-.061-.16.034-.295t.26-.17q.16-.031.298.061t.205.252q.125.377.322.704t.48.61q.263.263.593.47t.682.331q.159.068.248.208q.09.14.04.3q-.056.165-.178.258q-.122.092-.282.03m.747-2.49q-.106.056-.215.013t-.109-.175V15.45q0-.13.109-.174q.108-.043.214.013l2.01 1.319q.106.055.106.161t-.106.162zm-3.154-2.266q-.166-.036-.261-.17q-.095-.135-.034-.295q.143-.48.408-.908q.266-.428.621-.784t.794-.621q.437-.265.937-.427q.16-.062.291.03q.132.093.169.258q.03.16-.059.31q-.09.15-.25.217q-.37.125-.7.322q-.33.198-.612.48q-.283.283-.48.6q-.197.318-.322.695q-.068.159-.205.242t-.297.052M10.902 21q-.348 0-.576-.229t-.29-.571l-.263-2.092q-.479-.145-1.035-.454q-.557-.31-.948-.664l-1.915.824q-.317.14-.644.03t-.504-.415L3.648 15.57q-.177-.305-.104-.638t.348-.546l1.672-1.25q-.045-.272-.073-.559q-.03-.288-.03-.559q0-.252.03-.53q.028-.278.073-.626l-1.672-1.25q-.275-.213-.338-.555t.113-.648l1.06-1.8q.177-.287.504-.406t.644.021l1.896.804q.448-.373.97-.673q.52-.3 1.013-.464l.283-2.092q.061-.342.318-.571T10.96 3h2.08q.349 0 .605.229q.257.229.319.571l.263 2.112q.575.202 1.016.463t.909.654l1.992-.804q.318-.14.645-.021t.503.406l1.06 1.819q.177.306.104.638t-.348.547l-1.216.911q-.17.14-.36.136q-.188-.005-.347-.176q-.16-.171-.148-.38t.182-.347l1.225-.908l-.994-1.7l-2.552 1.07q-.454-.499-1.193-.935q-.74-.435-1.4-.577L13 4h-1.994l-.312 2.689q-.756.161-1.39.52q-.633.358-1.26.985L5.55 7.15l-.994 1.7l2.169 1.62q-.125.336-.175.73t-.05.82q0 .38.05.755t.156.73l-2.15 1.645l.994 1.7l2.475-1.05q.483.483 1.009.82q.526.338 1.139.544q.044.907.324 1.731t.74 1.515q.123.184.013.387t-.348.203m1.071-11.5q-1.046 0-1.773.724T9.473 12q0 .467.16.89t.479.777q.16.183.366.206q.207.023.384-.136q.177-.154.181-.355t-.154-.347q-.208-.2-.312-.47T10.473 12q0-.625.438-1.063t1.062-.437q.289 0 .565.116q.276.117.476.324q.146.148.338.134q.192-.015.346-.191q.154-.177.134-.381t-.198-.364q-.311-.3-.753-.469t-.908-.169" />
+                                                    <g fill="none" stroke="#333333" stroke-width="1.5">
+                                                        <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
+                                                        <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                                    </g>
                                                 </svg>
                                             </a>
                                         </td>
                                         <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->client_name }}</td>
                                         @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
+                                        <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->branch_name }}</td>
                                         <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent_name }}</td>
                                         @endif
                                         <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->type }}</td>
                                         <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->price }}</td>
                                         <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->status }}</td>
                                         <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->supplier->name }}</td>
-
                                     </tr>
                                     @endforeach
                                 </tbody>
                             </table>
+
                         </div>
                         <!-- ./table -->
 
@@ -158,12 +170,12 @@
 
             </div>
             <!-- right -->
-            <div class="w-[30%]">
+            <div class="content-30">
 
-                <div class="flex flex-col md:flex-row justify-center text-center gap-5">
+                <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
                     <!-- customize -->
                     <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32">
+                        <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                             <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
                         </svg>
                         <span class="text-sm">Customize</span>
@@ -171,8 +183,8 @@
                     <!-- ./customize -->
 
                     <!-- filter -->
-                    <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                        <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
                         </svg>
                         <span class="text-sm">Filter</span>
@@ -181,7 +193,7 @@
 
                     <!-- export -->
                     <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
                         </svg>
                         <span class="text-sm">Export</span>
@@ -190,8 +202,7 @@
                 </div>
                 <div class="mt-5 ">
                     <!-- display task details here-->
-                    <div id="taskDetails" class="panel w-full xl:mt-0  rounded-lg h-96"></div>
-                    <!-- display task details here-->
+                    <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div> <!-- display task details here-->
 
                 </div>
             </div>
@@ -339,26 +350,73 @@
 
     <!-- show task details script -->
     <script>
-        // show task details
         document.addEventListener("DOMContentLoaded", function() {
-            // Get references to the elements
-            const viewTaskLink = document.getElementById("viewTask");
+            const viewTaskLinks = document.querySelectorAll(".viewTask");
             const taskDetailsDiv = document.getElementById("taskDetails");
 
-            // Check if the elements exist
-            if (viewTaskLink && taskDetailsDiv) {
-                // Add event listener to the 'View' link
-                viewTaskLink.addEventListener("click", function(event) {
-                    event.preventDefault(); // Prevent default link behavior
-                    console.log("View Task clicked!"); // Debug log
-                    taskDetailsDiv.textContent =
-                        "This is some dummy task detail text shown when you click the link.";
+            viewTaskLinks.forEach(link => {
+                link.addEventListener("click", function(event) {
+                    event.preventDefault();
+                    const taskId = this.getAttribute("data-task-id");
+
+                    fetch(`/tasks/${taskId}`)
+                        .then(response => {
+                            console.log('Response:', response);
+                            if (!response.ok) {
+                                throw new Error('Failed to fetch task details. Status: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Data:', data); // Log the data
+                            if (data && data.client_name) {
+                                taskDetailsDiv.innerHTML = `
+                            <h3 class='text-lg font-bold mb-2'>Task Details</h3>
+                            <div class='flex flex-col rounded-md border border-[#e0e6ed] dark:border-[#1b2e4b]'>
+                            
+                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
+                            <p><strong>Client Name:</strong> ${data.client_name}</p>
+                            </div>
+
+                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
+                            <p><strong>Agent Name:</strong> ${data.agent_name || 'N/A'}</p>
+                            </div>
+
+                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
+                            <p><strong>Type:</strong> ${data.type}</p>
+                            </div>
+
+                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
+                            <p><strong>Price:</strong> $${data.price}</p>
+                            </div>
+
+                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
+                            <p><strong>Status:</strong> ${data.status}</p>
+                            </div>
+
+                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
+                            <p><strong>Supplier:</strong> ${data.supplier.name}</p>
+                            </div>
+
+                            
+                            </div>
+                        `;
+                                taskDetailsDiv.classList.remove('hidden');
+                            } else {
+                                taskDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid task data received.</p>";
+                                taskDetailsDiv.classList.remove('hidden');
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching task details:", error);
+                            taskDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load task details.</p>";
+                            taskDetailsDiv.classList.remove('hidden');
+                        });
                 });
-            } else {
-                console.error("One or more elements were not found. Check your IDs.");
-            }
+            });
         });
     </script>
+
 
     <!-- search script -->
     <script>
@@ -449,6 +507,22 @@
         // Close the floating div when the "X" button is clicked
         closeFloatingActions.addEventListener("click", function() {
             floatingActions.classList.add("hidden");
+        });
+    </script>
+
+    <!-- refresh page script -->
+    <script>
+        document.querySelectorAll('.refresh-icon').forEach((icon) => {
+            icon.addEventListener('click', () => {
+                window.location.href = window.location.href; // Forces a fresh request to the server
+
+                const svg = icon.querySelector('svg');
+                svg.classList.add('rotate');
+                setTimeout(() => {
+                    svg.classList.remove('rotate');
+                    console.log('Content refreshed!');
+                }, 1000);
+            });
         });
     </script>
 

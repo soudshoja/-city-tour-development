@@ -192,8 +192,8 @@
 
                         </div>
                         <div class="sm:w-2/5">
-                            <div class="mt-4 flex items-center justify-between font-semibold">
-                                <div>Total</div>
+                            <div class="mt-4 flex gap-3 items-center justify-end font-semibold">
+                                <div>Total:</div>
                                 <span id="subT">$0.00</span>
                                 <input id="subTotal" type="hidden" name="subTotal" />
                             </div>

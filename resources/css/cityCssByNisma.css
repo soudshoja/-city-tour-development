@@ -17,6 +17,52 @@ body {
     padding: 0;
 }
 
+/* Tooltip container */
+[data-tooltip] {
+    position: relative;
+    cursor: pointer;
+    z-index: 1;
+}
+
+/* Tooltip text style */
+[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 90%%;
+    left: 50%;
+    background-color: #333;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999;
+}
+
+/* Tooltip arrow */
+[data-tooltip]::after {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999;
+}
+
+/* Show tooltip on hover */
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
 .group-hover\:opacity-100 {
     opacity: 1; /* Makes the tooltip visible on hover */
 }
@@ -351,6 +397,82 @@ body {
 
 /** tasks list page *******************************************************************************/
 
+.taskListCon {
+    width: 100%;
+    display: flex;
+    margin-top: 20px;
+    gap: 10px; /* Adds space between the divs */
+}
+
+/* Tablet View */
+
+/* Laptop View */
+@media (min-width: 1024px) {
+    .taskListCon {
+        flex-direction: row;
+    }
+
+    .taskListCon > .content-70 {
+        width: 60%;
+    }
+
+    .taskListCon > .content-30 {
+        width: 40%;
+    }
+}
+
+/* pads view */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .taskListCon {
+        flex-direction: row;
+    }
+
+    .taskListCon > .content-70 {
+        width: 50%;
+    }
+
+    .taskListCon > .content-30 {
+        width: 50%;
+    }
+}
+
+/* Mobile View */
+@media (min-width: 320px) and (max-width: 426px) {
+    .taskListCon {
+        flex-direction: column;
+    }
+
+    .taskListCon > .content-30 {
+        order: -1; /* Ensure the 30% div is on top */
+    }
+
+    .content-30 {
+        display: inline;
+        margin-bottom: 20px;
+        margin-top: 20px;
+    }
+}
+
+@media (max-width: 320px) {
+    .content-30 {
+        display: inline;
+        margin-bottom: 20px;
+        margin-top: 20px;
+    }
+    .content-30 span {
+        font-size: 10px;
+    }
+    .svgW {
+        width: 10px !important;
+    }
+}
+
+.svgW {
+    width: 20px;
+}
+
+/**********************************************************************************/
+
 /* Add the slide-up animation */
 @keyframes slideUp {
     from {
@@ -360,6 +482,19 @@ body {
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+.refresh-icon svg.rotate {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
     }
 }
 

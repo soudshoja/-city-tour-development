@@ -7,6 +7,7 @@ export default defineConfig({
             input: [
                 "resources/css/app.css",
                 "resources/css/cityCssByNisma.css",
+                "resources/css/style.css",
                 "resources/js/jsbyNisma.js",
                 "resources/js/app.js",
             ],

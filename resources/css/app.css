@@ -14,3 +14,43 @@ thead {
 [x-cloak] {
     display: none !important;
 }
+
+.chat-box {
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-end;
+}
+
+.chat-box > .chat-message {
+    padding: 1rem;
+}
+.chat-box-user {
+    flex-direction: row-reverse;
+}
+
+.chat-box-user > div {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.chat-box-user > .chat-message {
+    border-radius: 10px 10px 0 10px;
+}
+
+.chat-box-assistant {
+    flex-direction: row;
+}
+
+.chat-box-assistant div {
+    background-color: #f1f0f0;
+    color: #000;
+}
+
+.chat-box-assistant > .chat-message {
+    border-radius: 10px 10px 10px 0;
+}
+
+.chat-container .send {
+    color: white;
+    background-color: #007bff;
+}

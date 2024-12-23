@@ -37,9 +37,9 @@ class AgentController extends Controller
             // Company can only see their agents
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('id', $user->company_id);
-            }])->get();
+            }])->with('agentType')->get();
+        
         }
-
         $AgentsData = [
             'agentsCount' => $agentCount,
         ];

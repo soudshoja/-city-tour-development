@@ -4,6 +4,43 @@
     <div class="mx-auto">
 
 
+        @if($importedTask = session('importedTask'))
+        <div
+            x-show="importModal"
+            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+            <div
+                @click.away="importModal = false"
+                class="bg-white rounded-md border-2 justify-center align-middles p-4 w-80">
+                <form action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2">
+                    @csrf
+                    @method('PUT')
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
+                    <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                        @foreach($clients as $client)
+                        <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                        @foreach($agents as $agent)
+                        <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                        @foreach($suppliers as $supplier)
+                        <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                        @endforeach
+                    </select>
+                    <x-primary-button type="submit" class="w-full mt-4"> Update </x-primary-button>
+                </form>
+            </div>
+        </div>
+        @endif
+
+
         <!-- page title -->
         <div class="flex justify-between items-center gap-5 my-3 ">
 
@@ -11,7 +48,7 @@
             <div class="flex items-center gap-5 ">
                 <h2 class="text-3xl font-bold">Tasks List</h2>
                 <!-- total task number -->
-                <div class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                <div data-tooltip="" class="relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                     <span class="text-xl font-bold text-slate-700">{{ $taskCount }}</span>
                 </div>
             </div>
@@ -25,8 +62,8 @@
                 </div>
 
 
-                <!-- add invoice icon -->
-                <div class="relative">
+                <!-- add task icon -->
+                <div class="relative" data-tooltip="upload task">
                     <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
                         enctype="multipart/form-data">
                         @csrf

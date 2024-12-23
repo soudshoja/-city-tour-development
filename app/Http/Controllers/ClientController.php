@@ -36,7 +36,16 @@ class ClientController extends Controller
     public function list()
     {
         $user = Auth::user();
-        $clientsCount = Client::count();
+        if ($user->role_id == Role::COMPANY) {
+            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+            $clientsCount = Client::whereIn('agent_id', $agentIds)->count();
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = Agent::where('user_id', $user->id)->first();
+            $clientsCount = Client::where('agent_id', $agent->id)->count();
+        } else {
+            $clientsCount = Client::count();
+        }
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
@@ -62,9 +71,8 @@ class ClientController extends Controller
             )->paginate(6);
         }
 
-        $clientsNo = $clientsCount;
 
-        return view('clients.list', compact('clients', 'clientsNo'));
+        return view('clients.list', compact('clients', 'clientsCount'));
     }
 
 
@@ -123,7 +131,7 @@ class ClientController extends Controller
         Gate::authorize('edit', [Client::class, Client::findOrFail($id)]);
 
         $agents = [];
-        if(Gate::allows('clientAgent', Client::class)) {
+        if (Gate::allows('clientAgent', Client::class)) {
             $agents = Agent::with('branch')->get();
         }
 

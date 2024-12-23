@@ -114,7 +114,7 @@
                     </div>
 
                     <!-- Dropdown Menu -->
-                    <div x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-64 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    <div x-cloak x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-64 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                         <!-- User Information & Profile -->
                         <a href="{{ route('profile.edit') }}">
                             <div class="flex items-center p-2 border-b border-gray-200 hover:bg-gray-300 hover:rounded-t">

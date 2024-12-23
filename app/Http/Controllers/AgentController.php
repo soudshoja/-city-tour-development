@@ -27,26 +27,31 @@ class AgentController extends Controller
 
     public function index()
     {
-        $agentCount = Agent::count();
         $user = Auth::user();
+        $agents = collect();
+        $agentCount = 0;
 
-        if ($user->role_id == Role::ADMIN) {
+        if ($user->role_id == Role::COMPANY) {
+            // Get agents belonging to the company
+            $company_id = $user->company_id;
+            $agents = Agent::where('company_id', $user->company->id)->get();
+            $agentCount = $agents->count();
+        } elseif ($user->role_id == Role::BRANCH) {
+            // Get agents belonging to the branch
+            $branch_id = $user->branch_id;
+            $agents = Agent::where('branch_id', $branch_id)->get();
+            $agentCount = $agents->count();
+        } elseif ($user->role_id == Role::ADMIN) {
             // Admin can see all agents
-            $agents = Agent::with('company')->get();
-        } elseif ($user->role_id == Role::COMPANY) {
-            // Company can only see their agents
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('id', $user->company_id);
-            }])->with('agentType')->get();
-        
+            $agents = Agent::all();
+            $agentCount = $agents->count();
         }
-        $AgentsData = [
-            'agentsCount' => $agentCount,
-        ];
 
-        // Pass both 'agents' and 'AgentsData' to the view
-        return view('agents.agentsList', compact('agents', 'AgentsData'));
+        // Pass both 'agents' and 'agentCount' to the view
+        return view('agents.agentsList', compact('agents', 'agentCount'));
     }
+
+
 
 
     public function new()

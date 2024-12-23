@@ -37,6 +37,7 @@ use App\Http\Controllers\OpenAiController;
         Route::get('/create-thread',[OpenAiController::class, 'createThread']);
         Route::delete('/delete-thread/{id}',[OpenAiController::class, 'deleteThread']);
         Route::get('/thread/{threadId}/run/{runId}',[OpenAiController::class, 'checkRun']);
+        Route::get('/thread/{threadId}/run/{runId}/cancel',[OpenAiController::class, 'cancelRun']);
         Route::get('/thread/{threadId}/messages', [OpenAiController::class, 'getMessages']);
         Route::get('/list-run/{threadId}', [OpenAiController::class, 'listRun']);
         Route::post('/send-message', [OpenAiController::class, 'sendMessage']);

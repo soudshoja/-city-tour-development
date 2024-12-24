@@ -61,7 +61,14 @@
                             <input id="duedate" type="date" name="duedate" class="w-full form-input" />
                         </div>
 
-
+                        <!-- Refresh Button -->
+                        <div class="mt-6 flex justify-end">
+                            <button type="button" onclick="location.reload()" class="px-4 py-2 city-light-yellow text-white rounded hover:text-[#004c9e] flex items-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 1 1 2.026 5.255M3 12H8m-5 0V7" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <!--./invoice details -->
@@ -180,6 +187,8 @@
                                 <tr>
                                     <th>Task</th>
                                     <th>Client</th>
+                                    <th>Agent</th>
+                                    <th>Branch</th>
                                     <th class="w-1">Quantity</th>
                                     <th class="w-1">Task Price</th>
                                     <th>Invoice Price</th>
@@ -732,7 +741,8 @@
 
     <script>
         let selectedTasks = @json($selectedTasks);
-        const clients = @json($clients);
+        let clients = @json($clients);
+        let agents = @json($agents);
         let items = [];
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
@@ -993,6 +1003,12 @@
                                 <td>
                                 <p>${item.client_name}</p>
                                 </td>
+                                <td>
+                                <p>${item.agent_name}</p>
+                                </td>
+                                <td>
+                                <p>${item.branch_name}</p>
+                                </td>
                                 <td class="border-b px-4 py-2">
                                   <p>${item.quantity}</p>
                                 </td>
@@ -1108,6 +1124,7 @@
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
+            updateClientAgent(task.client_id, task.agent_id);
             // Call a function to update the total, passing the current items array
             //  updateTotal(items);
             renderTaskList(tasks);
@@ -1197,7 +1214,7 @@
             taskData = taskData.filter(task => 
              !items.some(selectedTask => selectedTask.id === task.id)
              );
-             
+
             taskList.innerHTML = '';
             if (taskData.length == 0) {
                 const p = document.createElement('p');
@@ -1220,6 +1237,33 @@
         if (selectedClient && selectedAgent) {
             updateFormFields(selectedClient, selectedAgent);
         }
+
+        function updateClientAgent(clientId, agentId) {
+                // Find the client by clientId
+                let client = clients.find(c => c.id === clientId);
+                
+                // Find the agent by agentId
+                let agent = agents.find(a => a.id === agentId);
+
+                // Check if client and agent exist
+                if (client && agent) {
+                    // Update hidden fields
+                    document.getElementById('receiverId').value = client.id;
+
+                    // Update input fields for client
+                    document.getElementById('receiverName').value = client.name;
+                    document.getElementById('receiverName1').textContent = client.name;
+                    document.getElementById('receiverEmail').value = client.email;
+                    document.getElementById('receiverPhone').value = client.phone;
+
+                    // Update input fields for agent
+                    document.getElementById('agentName').value = agent.name;
+                    document.getElementById('agentEmail').value = agent.email;
+                    document.getElementById('agentPhone').value = agent.phone;
+                } else {
+                    console.error('Client or Agent not found');
+                }
+            }
 
         function updateFormFields(client, agent) {
             // Update hidden fields

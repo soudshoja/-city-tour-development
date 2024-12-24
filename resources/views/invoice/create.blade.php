@@ -1077,6 +1077,7 @@
                 .catch(error => console.error(error));
 
             closeAgentModal();
+            items = [];
         }
         // Show Select Client Tab
         selectTabButton.addEventListener('click', () => {
@@ -1190,6 +1191,7 @@
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
+
         }
 
         function openTaskModal() {
@@ -1256,6 +1258,7 @@
                     document.getElementById('receiverEmail').value = client.email;
                     document.getElementById('receiverPhone').value = client.phone;
 
+                    document.getElementById('agentId').value = agent.id;
                     // Update input fields for agent
                     document.getElementById('agentName').value = agent.name;
                     document.getElementById('agentEmail').value = agent.email;
@@ -1275,6 +1278,7 @@
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 
+            document.getElementById('agentId').value = agent.id;
             document.getElementById('agentName').value = agent.name;
             document.getElementById('agentEmail').value = agent.email;
             document.getElementById('agentPhone').value = agent.phone;

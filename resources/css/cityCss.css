@@ -2,66 +2,9 @@
 
 /** custom city style **/
 
-/** body **/
-html,
-body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
-    background-repeat: no-repeat !important;
-    background-attachment: fixed !important;
-    font-size: clamp(13px, 1vw, 16px); /* Smaller base font size */
-    line-height: 1.2; /* Good readability */
-    margin: 0;
-    padding: 0;
-}
-/* Tooltip container */
-[data-tooltip] {
-    position: relative;
-    cursor: pointer;
-    z-index: 1;
-}
-
-/* Tooltip text style */
-[data-tooltip]::before {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 110%; /* Increased to give more space above */
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #333;
-    color: #fff;
-    padding: 5px 8px;
-    border-radius: 4px;
-    font-size: 9px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    z-index: 9999; /* Ensure the tooltip is on top */
-}
-
-/* Tooltip arrow */
-[data-tooltip]::after {
-    content: "";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 5px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    z-index: 9999; /* Ensure the tooltip is on top */
-}
-
-/* Show tooltip on hover */
-[data-tooltip]:hover::before,
-[data-tooltip]:hover::after {
-    opacity: 1;
+.peer:checked ~ .peer-checked\:ring-blue-500 {
+    --tw-ring-opacity: 1;
+    --tw-ring-color: none !important;
 }
 
 /* Parent element fix */
@@ -86,6 +29,14 @@ body {
     transition-duration: 200ms; /* Sets transition speed */
 }
 
+.bg-lime-200 {
+    background-color: rgb(212, 247, 148);
+}
+
+thead {
+    border-radius: 999px !important;
+}
+
 /* Define the heartbeat animation */
 @keyframes heartbeat {
     0% {
@@ -107,7 +58,7 @@ body {
     animation: heartbeat 1s infinite;
 }
 
-/********************************************************************/
+/** Colors *******************************************************************************/
 .dataTable-pagination .active a {
     background-color: #1e40af !important;
 }
@@ -125,6 +76,43 @@ body {
 }
 .DarkBCcolor:hover {
     background-color: #1c3a9e60 !important;
+}
+
+.city-light-yellow {
+    background-color: #ffb958 !important;
+}
+.city-light-yellow:hover {
+    background-color: #f7b14f !important;
+}
+
+.liabilitiesText {
+    color: #ffc107;
+}
+
+.liabilitiesBorder {
+    border-color: #ffc107;
+}
+
+.incomeText {
+    color: #1e40af;
+}
+
+.incomeBorder {
+    border-color: #1e40af;
+}
+
+.expenseText {
+    color: #af1740;
+}
+
+.expenseBorder {
+    border-color: #af1740;
+}
+
+/*****************************************************************************************************************/
+
+.BoxShadow {
+    box-shadow: 2px 4px 12px #00000014;
 }
 
 /* Hide the default checkbox */
@@ -155,10 +143,6 @@ body {
     bottom: 80px;
     right: 50%;
 }
-/* needed  ***************************************************/
-[x-cloak] {
-    display: none !important;
-}
 
 /* auth pages */
 
@@ -170,17 +154,6 @@ body {
 .custom-rounded-right {
     border-radius: 0.5rem;
     /* Default for mobile: fully rounded */
-}
-
-.city-light-yellow {
-    background-color: #ffb958 !important;
-}
-.city-light-yellow:hover {
-    background-color: #f7b14f !important;
-}
-
-.BoxShadow {
-    box-shadow: 2px 4px 12px #00000014;
 }
 
 ::-webkit-scrollbar {
@@ -224,6 +197,8 @@ body {
     display: block; /* Block level element to fill container */
 }
 
+/**** chart of account page **************************************************************************************/
+
 /* Adjust the chart container for mobile devices */
 .chart-container {
     width: 100%;
@@ -232,6 +207,27 @@ body {
     padding: 0; /* Remove container padding */
     box-sizing: border-box; /* Ensures consistent sizing */
 }
+
+.AddNewSamePage {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-in-out;
+}
+
+.AddNewSamePageVisible {
+    max-height: 1000px;
+    transition: max-height 0.5s ease-in-out;
+}
+
+/**** chart of account page END  **************************************************************************************/
+
+/**** charges page **************************************************************************************/
+
+#searchInput:focus {
+    outline: none !important; /* focus:outline-none */
+    box-shadow: 0 0 4px 2px rgba(31, 45, 61, 0.1) !important; /* focus:shadow */
+}
+/**** charges page END **************************************************************************************/
 
 /* company dashboard CSS ends */
 
@@ -318,15 +314,6 @@ body {
     max-width: 100vw; /* Prevent it from exceeding the viewport width */
     overflow-x: hidden; /* Hide horizontal overflow if it exists */
     box-sizing: border-box; /* Ensure padding and border are included in the width */
-}
-
-#searchInput:focus {
-    outline: none !important;
-    /* Removes the blue outline */
-    box-shadow: none !important;
-    /* Removes any focus box-shadow */
-    border-color: inherit !important;
-    /* Keeps the border color unchanged */
 }
 
 .CheckBoxColor {
@@ -703,4 +690,46 @@ menuitem > menu > menuitem.hover > menu > menuitem {
     .smCenter {
         text-align: center;
     }
+}
+
+/***********************************************************************************************/
+
+.chat-box {
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-end;
+}
+
+.chat-box > .chat-message {
+    padding: 1rem;
+}
+.chat-box-user {
+    flex-direction: row-reverse;
+}
+
+.chat-box-user > div {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.chat-box-user > .chat-message {
+    border-radius: 10px 10px 0 10px;
+}
+
+.chat-box-assistant {
+    flex-direction: row;
+}
+
+.chat-box-assistant div {
+    background-color: #f1f0f0;
+    color: #000;
+}
+
+.chat-box-assistant > .chat-message {
+    border-radius: 10px 10px 10px 0;
+}
+
+.chat-container .send {
+    color: white;
+    background-color: #007bff;
 }

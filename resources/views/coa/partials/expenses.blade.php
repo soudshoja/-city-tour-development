@@ -1,6 +1,6 @@
 <!-- Expenses Section Overview -->
 <div
-    class="ExpensesToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg shadow-sm border border-gray-200">
+    class="ExpensesToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg BoxShadow border border-gray-200">
     <div class="flex items-center space-x-3">
         <!-- Expenses Icon -->
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -43,8 +43,8 @@
                 @foreach ($expenses as $expense)
                 <li class="relative w-full">
                     <a href="javascript:;"
-                        class="flex items-center justify-between px-4 py-2 w-full hover:text-[#1c274c] transition-all"
-                        :class="{'border-l-4 border-[#1c274c] text-[#1c274c]': openLevels['{{ $expense->id }}']}"
+                        class="flex items-center justify-between px-4 py-2 w-full  transition-all"
+                        :class="{'border-l-4 expenseBorder expenseText': openLevels['{{ $expense->id }}']}"
                         @click="openLevels = { ['{{ $expense->id }}']: !openLevels['{{ $expense->id }}'] }">
                         <span>{{ $expense->name }}</span>
                         <svg x-show="!openLevels['{{ $expense->id }}']" width="24" height="24" viewBox="0 0 24 24"
@@ -69,8 +69,8 @@
                         class="mt-2 space-y-2 bg-gray-100 rounded-lg p-4 w-full">
                         @foreach ($expense->level3expenses as $level3expense)
                         <a href="javascript:;"
-                            class="flex items-center justify-between px-4 py-2 w-full hover:text-[#1c274c] transition-all"
-                            :class="{'border-l-4 border-[#1c274c] text-[#1c274c]': openLevels['{{ $expense->id }}']}"
+                            class="flex items-center justify-between px-4 py-2 w-full transition-all"
+                            :class="{'border-l-4 expenseBorder expenseText': openLevels['{{ $expense->id }}']}"
                             @click="openLevels['{{ $level3expense->id }}'] = !openLevels['{{ $level3expense->id }}']">
                             <span>{{ $level3expense->name }}</span>
                             <svg x-show="!openLevels['{{ $level3expense->id }}']" width="24" height="24"
@@ -147,51 +147,51 @@
 </div>
 
 <script>
-// Toggle Expenses Details
-const ExpensesToggleButton = document.querySelectorAll('.ExpensesToggleButton');
-const contentExpensesDiv = document.getElementById('ExpensesDetails');
+    // Toggle Expenses Details
+    const ExpensesToggleButton = document.querySelectorAll('.ExpensesToggleButton');
+    const contentExpensesDiv = document.getElementById('ExpensesDetails');
 
-contentExpensesDiv.style.display = 'none'; // Initially hide
+    contentExpensesDiv.style.display = 'none'; // Initially hide
 
-ExpensesToggleButton.forEach(button => {
-    button.addEventListener('click', () => {
-        contentExpensesDiv.style.display = (contentExpensesDiv.style.display === 'none') ? 'block' :
-            'none';
-    });
-});
-
-
-
-
-
-function saveCode(income, value) {
-    if (value.trim() === '') {
-        showMessage('Code cannot be empty!');
-        return; // Prevent saving if the input is empty
-    }
-
-    // Make an AJAX request to save the new code
-    fetch(`/updateCode/${income}`, { // Update with your save route
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
-            },
-            body: JSON.stringify({
-                code: value
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            showMessage(data.message);
-        })
-        .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
+    ExpensesToggleButton.forEach(button => {
+        button.addEventListener('click', () => {
+            contentExpensesDiv.style.display = (contentExpensesDiv.style.display === 'none') ? 'block' :
+                'none';
         });
-}
+    });
+
+
+
+
+
+    function saveCode(income, value) {
+        if (value.trim() === '') {
+            showMessage('Code cannot be empty!');
+            return; // Prevent saving if the input is empty
+        }
+
+        // Make an AJAX request to save the new code
+        fetch(`/updateCode/${income}`, { // Update with your save route
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
+                },
+                body: JSON.stringify({
+                    code: value
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                showMessage(data.message);
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+    }
 </script>

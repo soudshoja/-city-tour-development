@@ -22,7 +22,6 @@
                 </svg>
             </div>
 
-
             <!-- add new branch -->
             <a href="{{ route('companies.showCreateOptions') }}">
                 <div data-tooltip="Create new branch" class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
@@ -97,14 +96,14 @@
                                 <tr>
                                     <td>
                                         <label class="custom-checkbox">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $branch->id }}" {{ $branch-> branchDetail ? 'disabled' : '' }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
                                                 <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
                                     </td>
                                     <td class="p-3 text-sm">
-                                        <a href="javascript:void(0);" class="viewbranch text-blue-500 hover:underline">
+                                        <a href="javascript:void(0);" class="viewBranch text-blue-500 hover:underline" data-branch-id="{{ $branch->id }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="#333333" stroke-width="1.5">
                                                     <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
@@ -114,7 +113,6 @@
                                         </a>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->name }}</td>
-
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->email }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500"> {{ $branch->phone }}</td>
 
@@ -202,50 +200,128 @@
     </div>
     <!--./page content-->
 
+    <!-- Floating Actions div-->
+    <div>
+        <div id="floatingActions" class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)]  rounded-lg w-auto h-auto z-50 p-3">
 
+            <div class="flex justify-between gap-5 items-center h-full">
 
+                <button class="flex px-5 py-3 gap-3 btn-danger hover:bg-[#e7515aa8] rounded-lg shadow-sm items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#ffffff" d="M12 2c5.53 0 10 4.47 10 10s-4.47 10-10 10S2 17.53 2 12S6.47 2 12 2m5 5h-2.5l-1-1h-3l-1 1H7v2h10zM9 18h6a1 1 0 0 0 1-1v-7H8v7a1 1 0 0 0 1 1" />
+                    </svg>
+                    <span class="text-sm">Delete</span>
+                </button>
+            </div>
+            <div id="closeFloatingActions" class="flex cursor-pointer items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
+                    <path fill="#E53935" d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
+                </svg>
+            </div>
+        </div>
 
-    <!-- search script -->
+    </div>
+
+    <!-- ./Floating Actions div -->
+
+    <!-- select all & create invoice script -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchInput');
-            const table = document.getElementById('myTable');
-            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
+        const floatingActions = document.getElementById("floatingActions");
+        const closeFloatingActions = document.getElementById("closeFloatingActions");
+        const selectAllCheckbox = document.getElementById("selectAll");
+        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
 
-            // Function to filter rows based on search input
-            function filterTable() {
-                const query = searchInput.value.toLowerCase(); // Get the search query
-                rows.forEach(row => {
-                    const cells = Array.from(row.cells); // Get all cells in the row
-                    const rowText = cells.map(cell => cell.textContent.toLowerCase()).join(' '); // Combine text from all cells
-                    if (rowText.includes(query)) {
-                        row.style.display = ''; // Show row if it matches the query
-                    } else {
-                        row.style.display = 'none'; // Hide row if it doesn't match
-                    }
-                });
+        // Select/Deselect all checkboxes
+        selectAllCheckbox.addEventListener("change", function() {
+            rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+            toggleFloatingActions(); // Update floating actions visibility
+        });
+
+        // Function to toggle the visibility of the floating actions div
+        function toggleFloatingActions() {
+            const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+            if (anyChecked) {
+                floatingActions.classList.remove("hidden");
+            } else {
+                floatingActions.classList.add("hidden");
             }
+        }
 
-            // Event listener for the search input
-            searchInput.addEventListener('input', filterTable);
+        // Add change event to each row checkbox
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function() {
+                // Update the "Select All" checkbox state
+                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                selectAllCheckbox.checked = allChecked;
+                toggleFloatingActions(); // Update floating actions visibility
+            });
+        });
+
+        // Close the floating div when the "X" button is clicked
+        closeFloatingActions.addEventListener("click", function() {
+            floatingActions.classList.add("hidden");
         });
     </script>
 
 
-    <!-- refresh page script -->
-    <script>
-        document.querySelectorAll('.refresh-icon').forEach((icon) => {
-            icon.addEventListener('click', () => {
-                window.location.href = window.location.href; // Forces a fresh request to the server
 
-                const svg = icon.querySelector('svg');
-                svg.classList.add('rotate');
-                setTimeout(() => {
-                    svg.classList.remove('rotate');
-                    console.log('Content refreshed!');
-                }, 1000);
+
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const viewBranchLinks = document.querySelectorAll(".viewBranch");
+            const branchDetailsDiv = document.getElementById("branchDetails");
+
+            viewBranchLinks.forEach(link => {
+                link.addEventListener("click", function(event) {
+                    event.preventDefault();
+                    const branchId = this.getAttribute("data-branch-id");
+
+                    fetch(`/branches/${branchId}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Failed to fetch branch details. Status: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data && data.id) {
+                                branchDetailsDiv.innerHTML = `
+                                    <h3 class='text-lg font-bold mb-2'>Branch Details</h3>
+                                    <div class='flex flex-col rounded-md border border-[#e0e6ed] dark:border-[#1b2e4b]'>
+                                        <div class='border-b px-4 py-4 hover:bg-gray-200 dark:hover:bg-[#eee]/10'>
+                                            <p><strong>Branch Name:</strong> ${data.name}</p>
+                                        </div>
+                                        <div class='border-b px-4 py-4 hover:bg-gray-200 dark:hover:bg-[#eee]/10'>
+                                            <p><strong>Email:</strong> ${data.email}</p>
+                                        </div>
+                                        <div class='border-b px-4 py-4 hover:bg-gray-200 dark:hover:bg-[#eee]/10'>
+                                            <p><strong>Phone Number:</strong> ${data.phone}</p>
+                                        </div>
+                                        <div class='border-b px-4 py-4 hover:bg-gray-200 dark:hover:bg-[#eee]/10'>
+                                            <p><strong>Address:</strong> ${data.address}</p>
+                                        </div>
+                                    </div>
+                                `;
+                                branchDetailsDiv.classList.remove('hidden');
+                            } else {
+                                branchDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid branch data received.</p>";
+                                branchDetailsDiv.classList.remove('hidden');
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching branch details:", error);
+                            branchDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load branch details.</p>";
+                            branchDetailsDiv.classList.remove('hidden');
+                        });
+                });
             });
         });
     </script>
+
+
+
+
 
 </x-app-layout>

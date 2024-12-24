@@ -5,7 +5,7 @@
             <!-- Logo Image & home link -->
             <a href="{{ url('/') }}" class="flex items-center">
                 <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-8 mr-4">
-                <span class="text-lg font-bold text-gray-800">City Tour</span>
+                <span class="text-lg font-bold text-gray-800 dark:text-white">City Tour</span>
             </a>
 
             <div class="ml-5 hidden lg:block xl:block">

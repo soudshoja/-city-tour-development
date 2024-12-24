@@ -2,18 +2,18 @@
 
 
   <div
-      class="LiabilitiesToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg shadow-sm border border-gray-200">
+      class="LiabilitiesToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg BoxShadow border border-gray-200">
       <div class="flex items-center space-x-3 ">
 
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                   d="M4.97883 9.68508C2.99294 8.89073 2 8.49355 2 8C2 7.50645 2.99294 7.10927 4.97883 6.31492L7.7873 5.19153C9.77318 4.39718 10.7661 4 12 4C13.2339 4 14.2268 4.39718 16.2127 5.19153L19.0212 6.31492C21.0071 7.10927 22 7.50645 22 8C22 8.49355 21.0071 8.89073 19.0212 9.68508L16.2127 10.8085C14.2268 11.6028 13.2339 12 12 12C10.7661 12 9.77318 11.6028 7.7873 10.8085L4.97883 9.68508Z"
-                  stroke="#f7c157" stroke-width="1.5" />
+                  stroke="#ffc107" stroke-width="1.5" />
               <path opacity="0.5"
                   d="M5.76613 10L4.97883 10.3149C2.99294 11.1093 2 11.5065 2 12C2 12.4935 2.99294 12.8907 4.97883 13.6851L7.7873 14.8085C9.77318 15.6028 10.7661 16 12 16C13.2339 16 14.2268 15.6028 16.2127 14.8085L19.0212 13.6851C21.0071 12.8907 22 12.4935 22 12C22 11.5065 21.0071 11.1093 19.0212 10.3149L18.2339 10M5.76613 14L4.97883 14.3149C2.99294 15.1093 2 15.5065 2 16C2 16.4935 2.99294 16.8907 4.97883 17.6851L7.7873 18.8085C9.77318 19.6028 10.7661 20 12 20C13.2339 20 14.2268 19.6028 16.2127 18.8085L19.0212 17.6851C21.0071 16.8907 22 16.4935 22 16C22 15.5065 21.0071 15.1093 19.0212 14.3149L18.2339 14"
-                  stroke="#f7c157" stroke-width="1.5" />
+                  stroke="#000" stroke-width="1.5" />
           </svg>
-          <h3 class="font-semibold text-lg text-[#FCCD2A]">Liabilities</h3>
+          <h3 class="font-semibold text-lg text-[#ffc107]">Liabilities</h3>
       </div>
       <!-- Status Badge -->
       <span class="px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full">Code</span>
@@ -43,8 +43,8 @@
                   @foreach ($liabilities as $liability)
                   <li class="relative w-full">
                       <a href="javascript:;"
-                          class="flex items-center justify-between px-4 py-2 w-full hover:text-secondary transition-all"
-                          :class="{'border-l-4 border-secondary text-secondary': openLevels['{{ $liability->id }}']}"
+                          class="flex items-center justify-between px-4 py-2 w-full  transition-all"
+                          :class="{'border-l-4 liabilitiesBorder liabilitiesText': openLevels['{{ $liability->id }}']}"
                           @click="openLevels = { ['{{ $liability->id }}']: !openLevels['{{ $liability->id }}'] }">
                           <span>{{ $liability->name }}</span>
                           <svg x-show="!openLevels['{{ $liability->id }}']" width="24" height="24" viewBox="0 0 24 24"
@@ -69,8 +69,8 @@
                           class="mt-2 space-y-2 bg-gray-100 rounded-lg p-4 w-full">
                           @foreach ($liability->level3liabilities as $level3liability)
                           <a href="javascript:;"
-                              class="flex items-center justify-between px-4 py-2 w-full hover:text-secondary transition-all"
-                              :class="{'border-l-4 border-secondary text-secondary': openLevels['{{ $liability->id }}']}"
+                              class="flex items-center justify-between px-4 py-2 w-full transition-all"
+                              :class="{'border-l-4 liabilitiesBorder liabilitiesText': openLevels['{{ $liability->id }}']}"
                               @click="openLevels['{{ $level3liability->id }}'] = !openLevels['{{ $level3liability->id }}']">
                               <span>{{ $level3liability->name }}</span>
                               <svg x-show="!openLevels['{{ $level3liability->id }}']" width="24" height="24"
@@ -150,80 +150,80 @@
 
 
   <script>
-// open and close the liabilities section details function
+      // open and close the liabilities section details function
 
-const LiabilitiesToggleButton = document.querySelectorAll('.LiabilitiesToggleButton');
-const contentLiabilitiesDiv = document.getElementById('LiabilitiesDetails');
-console.log(LiabilitiesToggleButton);
+      const LiabilitiesToggleButton = document.querySelectorAll('.LiabilitiesToggleButton');
+      const contentLiabilitiesDiv = document.getElementById('LiabilitiesDetails');
+      console.log(LiabilitiesToggleButton);
 
-// Initially hide the content div
-contentLiabilitiesDiv.style.display = 'none';
+      // Initially hide the content div
+      contentLiabilitiesDiv.style.display = 'none';
 
-// Add click event listener to the button
-LiabilitiesToggleButton.forEach(function(button) {
-    console.log(button);
-    button.addEventListener('click', function() {
-        // Toggle the content div visibility
-        if (contentLiabilitiesDiv.style.display === 'none' || contentLiabilitiesDiv.style.display ===
-            '') {
-            contentLiabilitiesDiv.style.display = 'block'; // Show the content
-        } else {
-            contentLiabilitiesDiv.style.display = 'none'; // Hide the content
-        }
-    });
-});
+      // Add click event listener to the button
+      LiabilitiesToggleButton.forEach(function(button) {
+          console.log(button);
+          button.addEventListener('click', function() {
+              // Toggle the content div visibility
+              if (contentLiabilitiesDiv.style.display === 'none' || contentLiabilitiesDiv.style.display ===
+                  '') {
+                  contentLiabilitiesDiv.style.display = 'block'; // Show the content
+              } else {
+                  contentLiabilitiesDiv.style.display = 'none'; // Hide the content
+              }
+          });
+      });
 
 
-// update the liabilities code function
+      // update the liabilities code function
 
-function checkEnter(event, liabilityId, value) {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent form submission if it's in a form
-        saveLiabilityCode(liabilityId, value);
-    }
-}
+      function checkEnter(event, liabilityId, value) {
+          if (event.key === 'Enter') {
+              event.preventDefault(); // Prevent form submission if it's in a form
+              saveLiabilityCode(liabilityId, value);
+          }
+      }
 
-function saveLiabilityCode(liabilityId, value) {
-    if (value.trim() === '') {
-        showMessage('Code cannot be empty!');
-        return; // Prevent saving if the input is empty
-    }
+      function saveLiabilityCode(liabilityId, value) {
+          if (value.trim() === '') {
+              showMessage('Code cannot be empty!');
+              return; // Prevent saving if the input is empty
+          }
 
-    // Make an AJAX request to save the new code
-    fetch(`/updateCode/${liabilityId}`, { // Update with your save route
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
-            },
-            body: JSON.stringify({
-                code: value
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            showMessage(data.message);
-        })
-        .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
-        });
-}
+          // Make an AJAX request to save the new code
+          fetch(`/updateCode/${liabilityId}`, { // Update with your save route
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
+                  },
+                  body: JSON.stringify({
+                      code: value
+                  })
+              })
+              .then(response => {
+                  if (!response.ok) {
+                      throw new Error('Network response was not ok');
+                  }
+                  return response.json();
+              })
+              .then(data => {
+                  showMessage(data.message);
+              })
+              .catch(error => {
+                  console.error('There was a problem with the fetch operation:', error);
+              });
+      }
 
-function showMessage(message) {
-    const messageArea = document.getElementById('message-area');
-    const messageDiv = document.getElementById('message');
+      function showMessage(message) {
+          const messageArea = document.getElementById('message-area');
+          const messageDiv = document.getElementById('message');
 
-    messageDiv.innerText = message; // Set the message text
-    messageArea.classList.remove('hidden'); // Make the message area visible
+          messageDiv.innerText = message; // Set the message text
+          messageArea.classList.remove('hidden'); // Make the message area visible
 
-    // Optionally, set a timeout to hide the message after a few seconds
-    setTimeout(() => {
-        messageArea.classList.add('hidden');
-    }, 3000); // Adjust the duration as needed (3000ms = 3 seconds)
-}
+          // Optionally, set a timeout to hide the message after a few seconds
+          setTimeout(() => {
+              messageArea.classList.add('hidden');
+          }, 3000); // Adjust the duration as needed (3000ms = 3 seconds)
+      }
   </script>

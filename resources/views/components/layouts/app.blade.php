@@ -23,8 +23,8 @@
     @include('layouts.links')
     <!-- CSS -->
 
-    @vite(['resources/css/app.css', 'resources/css/cityCssByNisma.css', 'resources/css/style.css'])
-    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/cityCss.css', 'resources/css/style.css'])
+    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js', 'resources/js/tools.js'])
 
     @livewireStyles
 

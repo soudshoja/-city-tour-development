@@ -167,7 +167,12 @@ class InvoiceController extends Controller
         $tasks = null;
         if ($user->role_id == Role::AGENT) {
             $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
+        }else{
+            $tasks = $agentId 
+                ? Task::whereIn('agent_id', (array)$agentId)->get() 
+                : collect();
         }
+
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
@@ -325,7 +330,49 @@ class InvoiceController extends Controller
             }
 
     }
+
+    public function removePartial(Request $request)
+    {
+        $request->validate([
+            'invoiceId' => 'required',
+            'invoiceNumber' => 'required|string',
+        ]);
     
+        $invoiceId = $request->input('invoiceId');
+        $invoiceNumber = $request->input('invoiceNumber');
+    
+        try {
+            // Find the invoice partial to be deleted
+            $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)
+                ->first();
+    
+            // Check if the partial exists
+            if (!$invoicePartial) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invoice partial not found!',
+                ]);
+            }
+    
+            // Delete the invoice partial
+            $invoicePartial->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice partial removed successfully!',
+                'invoiceId' => $invoiceId,
+            ]);
+    
+        } catch (Exception $e) {
+            Log::error('Failed to remove InvoicePartial: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove invoice partial!',
+            ]);
+        }
+    }
+    
+
     /**
      * Store a newly created resource in storage.
      */

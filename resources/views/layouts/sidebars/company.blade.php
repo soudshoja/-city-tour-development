@@ -132,34 +132,18 @@
     </div>
 
     <!-- mode switchers -->
-    <div class="flex flex-col justify-between items-center space-y-4">
-        <div class="flex flex-col items-center">
-            <!-- Menu item -->
-            <div class="relative">
-                <!-- Icon Button -->
-                <div
-                    class="p-3 bg-white rounded-full shadow-md flex items-center justify-center heartbeat">
-                    <!-- SVG Icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 21a9 9 0 0 0 8.997-9.252a7 7 0 0 1-10.371-8.643A9 9 0 0 0 12 21" />
-                    </svg>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex flex-col items-center ">
-            <!-- Menu item -->
-            <div class="relative">
-                <!-- Icon Button -->
-                <div
-                    class="p-3 bg-black rounded-full shadow-md flex items-center justify-center heartbeat">
-                    <!-- SVG Icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#ffffff" d="M12 15q1.25 0 2.125-.875T15 12t-.875-2.125T12 9t-2.125.875T9 12t.875 2.125T12 15m0 2q-2.075 0-3.537-1.463T7 12t1.463-3.537T12 7t3.538 1.463T17 12t-1.463 3.538T12 17m-7-4H1v-2h4zm18 0h-4v-2h4zM11 5V1h2v4zm0 18v-4h2v4zM6.4 7.75L3.875 5.325L5.3 3.85l2.4 2.5zm12.3 12.4l-2.425-2.525L17.6 16.25l2.525 2.425zM16.25 6.4l2.425-2.525L20.15 5.3l-2.5 2.4zM3.85 18.7l2.525-2.425L7.75 17.6l-2.425 2.525zM12 12" />
-                    </svg>
-                </div>
-            </div>
+    <div id="switchContainer" class="flex flex-col justify-between items-center space-y-4">
+        <!-- Theme Toggle Button -->
+        <div id="themeToggle" class="mode-item">
+            <button class="p-3 bg-white rounded-full shadow-md flex items-center justify-center heartbeat">
+                <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    <!-- Initial light mode icon (sun icon) -->
+                    <path fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 21a9 9 0 0 0 8.997-9.252a7 7 0 0 1-10.371-8.643A9 9 0 0 0 12 21" />
+                </svg>
+            </button>
         </div>
     </div>
+
+
 
 </div>

@@ -18,14 +18,14 @@
         <!-- ./quick actions icon -->
 
         <!--   dashboard -->
-        <div class="flex flex-col items-center ">
+        <div class="flex flex-col items-center">
             <!-- Menu item-->
             <div class="relative group">
                 <!-- Icon Button -->
                 <div
-                    class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                    class="p-3 bg-gray-800 rounded-full shadow-md hover:bg-gray-700 flex cursor-pointer items-center justify-center transition-all duration-200">
                     <!-- SVG Icon -->
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                         <g fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="19" cy="5" r="2.5" />
                             <path stroke-linecap="round" d="M21.25 10v5.25a6 6 0 0 1-6 6h-6.5a6 6 0 0 1-6-6v-6.5a6 6 0 0 1 6-6H14" />
@@ -34,15 +34,13 @@
                     </svg>
                 </div>
 
-
                 <a
                     href="{{ route('dashboard') }}"
-                    class="p-3 absolute left-full top-1/2 hover:bg-gray-300 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 bg-white text-gray-800 text-sm rounded-full shadow-md transition-all duration-200">
+                    class="p-3 absolute left-full top-1/2 hover:bg-gray-700 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 bg-gray-800 text-white text-sm rounded-full shadow-md transition-all duration-200">
                     Dashboard
                 </a>
             </div>
         </div>
-
         <!-- ./  dashboard -->
 
         <!-- Add New -->

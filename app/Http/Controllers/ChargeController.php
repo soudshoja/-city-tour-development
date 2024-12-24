@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Charge;
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Exception;
 
 class ChargeController extends Controller
@@ -12,8 +14,38 @@ class ChargeController extends Controller
     public function index()
     {
         $charges = Charge::all();
-        return view('charges.index', compact('charges'));
+
+        if (Auth::user()->role == 'company') {
+            $totalCharges = Charge::where('company_id', Auth::user()->company_id)->sum('amount');
+        } elseif (Auth::user()->role == 'branch') {
+            $totalCharges = Charge::where('branch_id', Auth::user()->branch_id)->sum('amount');
+        } else {
+            $totalCharges = 0;
+        }
+
+
+
+        return view('charges.index', compact('charges', 'totalCharges'));
     }
+
+
+    public function show($id)
+    {
+        $charge = Charge::find($id);
+
+        if (!$charge) {
+            return response()->json(['error' => 'Charge not found'], 404);
+        }
+
+        return response()->json([
+            'id' => $charge->id,
+            'name' => $charge->name,
+            'type' => $charge->type,
+            'description' => $charge->description,
+            'amount' => $charge->amount,
+        ]);
+    }
+
 
     public function create()
     {

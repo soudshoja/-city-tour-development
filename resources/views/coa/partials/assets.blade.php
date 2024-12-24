@@ -1,8 +1,9 @@
   <!-- Assets Section overview -->
 
 
+  <!-- Assets Toggle Button -->
   <div
-      class="AssetsToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg shadow-sm border border-gray-200">
+      class="AssetsToggleButton main-container cursor-pointer items-center justify-between bg-white p-4  flex w-full rounded-lg BoxShadow border border-gray-200">
       <div class="flex items-center space-x-3 ">
 
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -14,12 +15,12 @@
                   stroke="currentColor" stroke-width="1.5"></path>
               <path
                   d="M2.5 17.5C2.5 15.2909 4.29086 13.5 6.5 13.5H8.9C9.46005 13.5 9.74008 13.5 9.95399 13.609C10.1422 13.7049 10.2951 13.8578 10.391 14.046C10.5 14.2599 10.5 14.5399 10.5 15.1V17.5C10.5 19.7091 8.70914 21.5 6.5 21.5C4.29086 21.5 2.5 19.7091 2.5 17.5Z"
-                  stroke="#1A5319" stroke-width="1.5"></path>
+                  stroke="#00ab55" stroke-width="1.5"></path>
               <path
                   d="M13.5 6.5C13.5 4.29086 15.2909 2.5 17.5 2.5C19.7091 2.5 21.5 4.29086 21.5 6.5C21.5 8.70914 19.7091 10.5 17.5 10.5H14.6429C14.5102 10.5 14.4438 10.5 14.388 10.4937C13.9244 10.4415 13.5585 10.0756 13.5063 9.61196C13.5 9.55616 13.5 9.48982 13.5 9.35714V6.5Z"
-                  stroke="#1A5319" stroke-width="1.5"></path>
+                  stroke="#00ab55" stroke-width="1.5"></path>
           </svg>
-          <h3 class="font-semibold text-lg text-[#1A5319]">Assets</h3>
+          <h3 class="font-semibold text-lg text-[#00ab55]">Assets</h3>
       </div>
       <!-- Status Badge -->
       <span class="px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full">Code</span>
@@ -36,13 +37,10 @@
           </svg>
       </button>
   </div>
+  <!--./Assets Toggle Button-->
 
 
-
-
-
-
-
+  <!-- Assets Details -->
   <div id="AssetsDetails" class="rounded-lg shadow-sm ">
       <div class="mb-5" x-data="{ openLevels: {} }">
           <!-- Vertical layout for top-level assets -->
@@ -127,23 +125,23 @@
 
 
                                   <!-- Actual Balance -->
-                                   <div @click="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
-                                  <input type="text" name="actual_balance"
-                                      class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full"
-                                      value="{{ number_format($level4asset->actual_balance, 2) }}" readonly
-                                      style="pointer-events: none; cursor: default;">
-                                   </div>
+                                  <div @click="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
+                                      <input type="text" name="actual_balance"
+                                          class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full"
+                                          value="{{ number_format($level4asset->actual_balance, 2) }}" readonly
+                                          style="pointer-events: none; cursor: default;">
+                                  </div>
 
 
 
                                   <!-- Action Icons -->
                                   <div class="flex items-center space-x-3 text-gray-500">
 
-                                         <button class="hover:text-blue-500" onclick="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" fill="blue"/>
-                                            </svg>
-                                        </button>
+                                      <button class="hover:text-blue-500" onclick="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
+                                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" fill="blue" />
+                                          </svg>
+                                      </button>
 
                                       <!-- Icon  (Delete) -->
                                       <button class="hover:text-red-500">
@@ -175,83 +173,83 @@
 
 
   </div>
-
+  <!--./Assets Details-->
 
 
   <script>
-// open and close assets details function
-const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
-const contentAssetsDiv = document.getElementById('AssetsDetails');
-console.log(AssetsToggleButton);
-// Initially hide the content div
-contentAssetsDiv.style.display = 'none';
+      // open and close assets details function
+      const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
+      const contentAssetsDiv = document.getElementById('AssetsDetails');
+      console.log(AssetsToggleButton);
+      // Initially hide the content div
+      contentAssetsDiv.style.display = 'none';
 
-// Add click event listener to the button
-AssetsToggleButton.forEach(function(button) {
-    console.log(button);
-    button.addEventListener('click', function() {
-        // Toggle the content div visibility
-        if (contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '') {
-            contentAssetsDiv.style.display = 'block'; // Show the content
-        } else {
-            contentAssetsDiv.style.display = 'none'; // Hide the content
-        }
-    });
-});
-
-
+      // Add click event listener to the button
+      AssetsToggleButton.forEach(function(button) {
+          console.log(button);
+          button.addEventListener('click', function() {
+              // Toggle the content div visibility
+              if (contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '') {
+                  contentAssetsDiv.style.display = 'block'; // Show the content
+              } else {
+                  contentAssetsDiv.style.display = 'none'; // Hide the content
+              }
+          });
+      });
 
 
-// update code function
 
-function checkEnter(event, assetId, value) {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent form submission if it's in a form
-        saveCode(assetId, value);
-    }
-}
 
-function saveCode(assetId, value) {
-    if (value.trim() === '') {
-        showMessage('Code cannot be empty!');
-        return; // Prevent saving if the input is empty
-    }
+      // update code function
 
-    // Make an AJAX request to save the new code
-    fetch(`/updateCode/${assetId}`, { // Update with your save route
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
-            },
-            body: JSON.stringify({
-                code: value
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            showMessage(data.message);
-        })
-        .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
-        });
-}
+      function checkEnter(event, assetId, value) {
+          if (event.key === 'Enter') {
+              event.preventDefault(); // Prevent form submission if it's in a form
+              saveCode(assetId, value);
+          }
+      }
 
-function showMessage(message) {
-    const messageArea = document.getElementById('message-area');
-    const messageDiv = document.getElementById('message');
+      function saveCode(assetId, value) {
+          if (value.trim() === '') {
+              showMessage('Code cannot be empty!');
+              return; // Prevent saving if the input is empty
+          }
 
-    messageDiv.innerText = message; // Set the message text
-    messageArea.classList.remove('hidden'); // Make the message area visible
+          // Make an AJAX request to save the new code
+          fetch(`/updateCode/${assetId}`, { // Update with your save route
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
+                  },
+                  body: JSON.stringify({
+                      code: value
+                  })
+              })
+              .then(response => {
+                  if (!response.ok) {
+                      throw new Error('Network response was not ok');
+                  }
+                  return response.json();
+              })
+              .then(data => {
+                  showMessage(data.message);
+              })
+              .catch(error => {
+                  console.error('There was a problem with the fetch operation:', error);
+              });
+      }
 
-    // Optionally, set a timeout to hide the message after a few seconds
-    setTimeout(() => {
-        messageArea.classList.add('hidden');
-    }, 3000); // Adjust the duration as needed (3000ms = 3 seconds)
-}
+      function showMessage(message) {
+          const messageArea = document.getElementById('message-area');
+          const messageDiv = document.getElementById('message');
+
+          messageDiv.innerText = message; // Set the message text
+          messageArea.classList.remove('hidden'); // Make the message area visible
+
+          // Optionally, set a timeout to hide the message after a few seconds
+          setTimeout(() => {
+              messageArea.classList.add('hidden');
+          }, 3000); // Adjust the duration as needed (3000ms = 3 seconds)
+      }
   </script>

@@ -163,7 +163,8 @@ class MobileController extends Controller
         $clientId = $request->input('clientId');
         $currency = $request->input('currency');
         $agentId = Agent::where('user_id', Auth::id())->first() ? Agent::where('user_id', Auth::id())->first()->id : null;
-    
+        $duedate = $request->input('duedate');
+        $invdate = $request->input('invdate');
         // Create a new invoice
         try {
             $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
@@ -181,27 +182,55 @@ class MobileController extends Controller
             $invoiceSequence->current_sequence++;
             $invoiceSequence->save();
     
+
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
-                'client_id' => $clientId,
                 'agent_id' => $agentId,
+                'client_id' => $clientId,
+                'sub_amount' => $amount,
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'unpaid',
+                'invoice_date' => $invdate,
+                'due_date' => $duedate,
+                'payment_type' => 'full',
             ]);
+
     
             if (is_array($tasks) && !empty($tasks)) {
                 foreach ($tasks as $task) {
                     try {
-                        // Try to create each invoice detail
-                        InvoiceDetail::create([
+
+                        $selectedtask = Task::where('id', operator: $task['id'])->first();
+                        $supplier = Supplier::where('id', operator: $task['supplier_id'])->first();
+                        $client = Client::where('id', operator: $task['client_id'])->first();
+                        $agent = Agent::where('id', operator: $task['agent_id'])->first();
+                           
+                        $invoiceDetail =  InvoiceDetail::create([
                             'invoice_id' => $invoice->id,
                             'invoice_number' => $invoiceNumber,
-                            'task_id' => $task['taskId'],
-                            'task_description' => $task['taskName'],
+                            'task_id' => $task['id'],
+                            'task_description' => $task['description'],
                             'task_remark' => $task['remark'],
-                            'task_price' => $task['price'],
+                            'task_price' =>  $task['invprice'],
+                            'client_notes' => $task['notes'],
+                            'supplier_price' => $selectedtask->total,
+                            'markup_price' => $task['invprice'] - $selectedtask->total,
+                            'paid' => false,
                         ]);
+
+                        $transaction = Transaction::create([
+                            'entity_id' => $companyId,
+                            'entity_type' => 'company',
+                            'transaction_type' => 'credit',
+                            'amount' =>  $task['invprice'],
+                            'date' => Carbon::now(),
+                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                            'invoice_id' => $invoice->id,
+                            'reference_type' => 'Invoice',
+                        ]);
+                        
+
                     } catch (Exception $e) {
                         // Log the error if something goes wrong with a specific task
                         Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());

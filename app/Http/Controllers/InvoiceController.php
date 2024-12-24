@@ -101,15 +101,19 @@ class InvoiceController extends Controller
         }
         $user = Auth::user();
         $agents = collect();
+        $clients = collect();
+
         if ($user->role_id == Role::COMPANY) {
             $company = $user->company;
             $company = Company::with('branches.agents')->find($company->id);
             $agents = $company->branches->flatMap->agents;
+            $clients = $agents->flatMap->clients;
             $branches = $company->branches;
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $agents = $company->branches->flatMap->agents;
+            $clients = $agents->flatMap->clients;
             $branches = $company->branches;
         }
 
@@ -155,23 +159,31 @@ class InvoiceController extends Controller
 
         $clientId = $selectedClient ? $selectedClient->id : null;
 
-        $clients = Client::with(['agent.branch' => function ($query) {
-            if (auth()->user()->role_id == Role::COMPANY) {
-                $companyId = auth()->user()->company->id;
-            } elseif (auth()->user()->role_id == Role::AGENT) {
-                $companyId = auth()->user()->agent->branch->company_id;
-            }
-            $query->where('company_id', $companyId);
-        }])->get();
-
         $tasks = null;
         if ($user->role_id == Role::AGENT) {
-            $tasks = $agentId ? Task::where('agent_id', $agentId)->get() : collect();
-        }else{
             $tasks = $agentId 
-                ? Task::whereIn('agent_id', (array)$agentId)->get() 
+                ? Task::with('agent.branch') // Include agent and branch relationships
+                    ->where('agent_id', $agentId)
+                    ->get()
+                    ->map(function ($task) {
+                        $task->agent_name = $task->agent->name ?? null;
+                        $task->branch_name = $task->agent->branch->name ?? null;
+                        return $task;
+                    })
+                : collect();
+        } else {
+            $tasks = $agentId 
+                ? Task::with('agent.branch') // Include agent and branch relationships
+                    ->whereIn('agent_id', (array)$agentId)
+                    ->get()
+                    ->map(function ($task) {
+                        $task->agent_name = $task->agent->name ?? null;
+                        $task->branch_name = $task->agent->branch->name ?? null;
+                        return $task;
+                    })
                 : collect();
         }
+        
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
@@ -235,7 +247,11 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;
         $clientId = $invoice->client_id;
-        $tasks = $agents->flatMap->tasks;
+        $tasks = $agents->flatMap->tasks->map(function ($task) {
+            $task->agent_name = $task->agent->name ?? null; // Add agent_name dynamically
+            $task->branch_name = $task->agent->branch->name ?? null; // Add branch_name dynamically
+            return $task;
+        });
         $selectedTasks = $invoice->invoiceDetails->map(function ($invoiceDetail) use ($invoice) {
             $task = $invoiceDetail->task;
             $task->task_price = $invoiceDetail->task_price;

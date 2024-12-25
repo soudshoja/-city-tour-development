@@ -18,8 +18,9 @@ body {
     padding: 0;
 }
 
+html.dark,
 body.dark {
-    background: linear-gradient(0deg, #2c3e50 0%, #4a4a4a 100%) !important;
+    background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
     color: #ffffff;
 }
 
@@ -37,7 +38,7 @@ body.dark {
     bottom: 110%; /* Increased to give more space above */
     left: 50%;
     transform: translateX(-50%);
-    background-color: #333;
+    background-color: #0e1726;
     color: #fff;
     padding: 5px 8px;
     border-radius: 4px;
@@ -69,6 +70,16 @@ body.dark {
 [data-tooltip]:hover::before,
 [data-tooltip]:hover::after {
     opacity: 1;
+}
+
+/* Dark mode tooltip */
+html.dark [data-tooltip]::before {
+    background-color: #0e1726; /* Fixed solid dark background */
+    color: #fff;
+}
+
+html.dark [data-tooltip]::after {
+    border-color: #0e1726 transparent transparent transparent; /* Matches tooltip background */
 }
 
 [x-cloak] {

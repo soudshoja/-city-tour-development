@@ -83,7 +83,7 @@
         <!-- ./cards -->
 
         <!-- second container -->
-        <div class="my-5 w-full p-5 bg-opacity-50 bg-white">
+        <div class="my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800">
             <!-- Income chart -->
 
             <h2 class="text-3xl font-bold">Earnings</h2>

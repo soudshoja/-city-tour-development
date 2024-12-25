@@ -7,6 +7,11 @@
     --tw-ring-color: none !important;
 }
 
+:is(.dark .panel) {
+    --tw-bg-opacity: 1;
+    background-color: rgb(31 41 55 / var(--tw-bg-opacity)) !important;
+}
+
 /* Parent element fix */
 .parent-element {
     overflow: visible; /* Ensure the tooltip is not hidden */
@@ -75,7 +80,7 @@ thead {
     background-color: #1e40af !important;
 }
 .DarkBCcolor:hover {
-    background-color: #1c3a9e60 !important;
+    background-color: #1c3a9ecb !important;
 }
 
 .city-light-yellow {

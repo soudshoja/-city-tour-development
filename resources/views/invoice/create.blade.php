@@ -33,17 +33,29 @@
                         <div class="flex">
                             <p class="pl-1">{{ $company->phone }}</p>
                         </div>
-                        <div class="flex items-center w-full space-x-4">
-                         <label class="text-sm font-semibold">Branch</label>
-                            <select id="branch" name="branch" class=" border border-gray-300 p-2 rounded">
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                        <!-- Branch Select Dropdown -->
+                        <div class="custom-select w-full border rounded-lg mt-4">
+                            <!-- Trigger -->
+                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
+
+                            <!-- Options Container -->
+                            <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                @foreach ($branches as $branch)
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
+                                    border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
+                                    {{ $branch->name }}
+                                </div>
                                 @endforeach
-                            </select>
+                            </div>
+
+                            <!-- Hidden input to store selected value -->
+                            <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
+                        <!-- ./Branch Selection -->
+
                     </div>
                     <!-- invoice details -->
-                    <div class="space-y-1 text-gray-500 dark:text-gray-400">
+                    <div class="space-y-1 text-gray-900 dark:text-gray-400">
 
                         <div class="flex items-center w-full">
                             <label for="invoiceNumber" class="w-full text-sm font-semibold">Invoice Number</label>
@@ -52,23 +64,22 @@
                         </div>
                         
                         <div class="mt-4 flex items-center">
-                            <label for="invdate" class="w-full text-sm font-semibold">Invoice Date</label>
-                            <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$todayDate}} disabled />
+                            <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
+                            <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value={{$todayDate}} disabled />
                         </div>
                   
                         <div class="mt-4 flex items-center">
-                            <label for="duedate" class="w-full text-sm font-semibold">Due Date</label>
-                            <input id="duedate" type="date" name="duedate" class="w-full form-input" />
+                            <label for="dueDate" class="w-full text-sm font-semibold">Due Date</label>
+                            <input id="dueDate" type="date" name="dueDate" class="w-full form-input" />
+
+                            <script>
+
+                            </script>
+
+
                         </div>
 
-                        <!-- Refresh Button -->
-                        <div class="mt-6 flex justify-end">
-                            <button type="button" onclick="location.reload()" class="px-4 py-2 city-light-yellow text-white rounded hover:text-[#004c9e] flex items-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 1 1 2.026 5.255M3 12H8m-5 0V7" />
-                                </svg>
-                            </button>
-                        </div>
+
                     </div>
 
                     <!--./invoice details -->
@@ -182,20 +193,18 @@
                 <div class="mt-8">
                     <!-- choose items -->
                     <div class="table-responsive">
-                        <table id="itemsTable">
+                        <table id="itemsTable" class="text-left w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th>Task</th>
-                                    <th>Client</th>
-                                    <th>Agent</th>
-                                    <th>Branch</th>
-                                    <th class="w-1">Quantity</th>
-                                    <th class="w-1">Task Price</th>
-                                    <th>Invoice Price</th>
-                                    <th class="w-1"></th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Task</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Client</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Quantity</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Task Price</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="items-body">
+                            <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
                                 <!-- Items will be added dynamically here -->
                                 <!-- "No Item Available" row will show if items.length <= 0 -->
                             </tbody>
@@ -234,71 +243,63 @@
                         <option value="USD">USD</option>
                     </select>
 
-                     <!-- Payment Type Section -->
-                     <div  id="paymentMethod" class="mt-4">
-                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
-                            <div class="flex gap-4">
-                                <!-- Full Payment Tab -->
-                                <label class="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        id="payment_type_full"
-                                        name="payment_type"
-                                        value="full"
-                                        onclick="hideModal()"
-                                        hidden
-                                        class="peer"
-                                        checked
-                                    />
-                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19a1 1 0 00.76-.36l3-4a1 1 0 00-.76-1.64H12V7a1 1 0 00-2 0v6H8a1 1 0 00-.76 1.64l3 4A1 1 0 0011 19z" />
-                                        </svg>
-                                        <span class="font-medium">Full</span>
-                                        <p class="text-sm text-gray-500">Pay the total amount.</p>
-                                    </div>
-                                </label>
+                    <!-- Payment Type Section -->
+                    <div id="paymentMethod" class="mt-4">
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
+                            <!-- Full Payment Tab -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input
+                                    type="radio"
+                                    id="payment_type_full"
+                                    name="payment_type"
+                                    value="full"
+                                    onclick="hideModal()"
+                                    hidden
+                                    class="peer"
+                                    checked />
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    <span class="font-medium">Fully Payment</span>
+                                </div>
+                            </label>
 
-                                <!-- Partial Payment Tab -->
-                                <label class="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        id="payment_type_partial"
-                                        name="payment_type"
-                                        value="partial"
-                                        onclick="showModal('partial')"
-                                        hidden
-                                        class="peer"
-                                    />
-                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-4H5a1 1 0 01-.9-1.4L8.1 7h1.7l3 4H11v4h2a1 1 0 01.9 1.4l-3.1 5H9z" />
-                                        </svg>
-                                        <span class="font-medium">Partial</span>
-                                        <p class="text-sm text-gray-500">Split the amount into parts.</p>
-                                    </div>
-                                </label>
+                            <!-- Partial Payment Tab -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input
+                                    type="radio"
+                                    id="payment_type_partial"
+                                    name="payment_type"
+                                    value="partial"
+                                    onclick="showModal('partial')"
+                                    hidden
+                                    class="peer"
+                                    checked />
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    <span class="font-medium">Partially Payment</span>
+                                </div>
+                            </label>
 
-                                <!-- Split Payment Tab -->
-                                <label class="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        id="payment_type_split"
-                                        name="payment_type"
-                                        value="split"
-                                        onclick="showModal('split')"
-                                        hidden
-                                        class="peer"
-                                    />
-                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19l-3-3m0 0l3-3m-3 3h12m-9-6V5a1 1 0 011-1h2a1 1 0 011 1v6m-5-3h6" />
-                                        </svg>
-                                        <span class="font-medium">Split</span>
-                                        <p class="text-sm text-gray-500">Split and generate links.</p>
-                                    </div>
-                                </label>
-                            </div>
+
+
+                            <!-- Split Payment Tab -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input
+                                    type="radio"
+                                    id="payment_type_split"
+                                    name="payment_type"
+                                    value="split"
+                                    onclick="showModal('split')"
+                                    hidden
+                                    class="peer"
+                                    checked />
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    <span class="font-medium">Split Payment</span>
+                                </div>
+                            </label>
+
+
+
+                        </div>
 
                                                 <!-- Payment Gateway Section -->
                                 <section  id="payment_gateway_section" class="mb-6">
@@ -329,29 +330,42 @@
                                     </div>
                                 </section>
 
-                                <!-- Added Buttons/Links Section -->
-                            <section id="additional-actions" class="mt-6">
-                                <div class="flex flex-wrap gap-4">
+                        <!-- Added Buttons/Links Section -->
+                        <section id="additional-actions" class="mt-6">
+                            <div class="flex flex-wrap gap-4">
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
 
-                                    <!-- Share Buttons -->
-                                    <div class="flex items-center gap-2">
-                                        <button onclick="shareViaWhatsApp()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-blue-700 rounded">
-                                            Share via WhatsApp
-                                        </button>
-                                        <button onclick="shareViaEmail()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-indigo-700 rounded">
-                                            Share via Email
-                                        </button>
-                                        <button onclick="copyLink()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-gray-600 hover:bg-gray-700 rounded">
-                                            Copy Link
-                                        </button>
-                                    </div>
-
-                                    <!-- View Button -->
-                                    <button onclick="viewInvoice()" class="inline-flex items-center px-4 py-2 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded">
-                                        View
+                                <!-- Share Buttons -->
+                                <div class="flex items-center gap-2 w-full">
+                                    <button onclick="shareViaWhatsApp()" class="w-full items-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                        Share via WhatsApp
                                     </button>
+                                    <button onclick="shareViaEmail()" class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
+                                        Share via Email
+                                    </button>
+
                                 </div>
-                            </section>
+
+                                <button onclick="copyLink()" class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBCcolor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                        <g fill="none" stroke="#ffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+                                            <path d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
+                                            <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
+                                        </g>
+                                    </svg>
+                                    Copy Link
+                                </button>
+
+                                <!-- View Button -->
+                                <button onclick="viewInvoice()" class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBCcolor">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
+                                        <path opacity="0.5" d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z" stroke="currentColor" stroke-width="1.5"></path>
+                                        <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" stroke-width="1.5"></path>
+                                    </svg>
+                                    View
+                                </button>
+                            </div>
+                        </section>
 
 
                         </div>
@@ -985,16 +999,19 @@
         function renderItems() {
             itemsBody.innerHTML = ''; // Clear existing rows
 
-            if (items.length === 0) {
-                // If no items, display the "No Item Available" row
-                const noItemsRow = document.createElement('tr');
-                noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Item Available</td>';
-                itemsBody.appendChild(noItemsRow);
-            } else {
-                // Iterate over items and create rows
-                items.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
+                            if (items.length === 0) {
+                                // If no items, display the "No Item Available" row
+                                const noItemsRow = document.createElement('tr');
+                                noItemsRow.innerHTML = '<td colspan="6" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                                itemsBody.appendChild(noItemsRow);
+
+
+                            } else {
+                                // Iterate over items and create rows
+                                items.forEach(item => {
+                                    const row = document.createElement('tr');
+                                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
+                                    row.classList.add('TrX');
 
                     row.innerHTML = `
                                 <td>
@@ -1003,34 +1020,26 @@
                                 <td>
                                 <p>${item.client_name}</p>
                                 </td>
-                                <td>
-                                <p>${item.agent_name}</p>
-                                </td>
-                                <td>
-                                <p>${item.branch_name}</p>
-                                </td>
-                                <td class="border-b px-4 py-2">
+                                <td class="px-4 py-2">
                                   <p>${item.quantity}</p>
                                 </td>
-                                 <td class="border-b px-4 py-2">${(item.total * item.quantity).toFixed(2)}</td>
-                                <td class="border-b px-4 py-2">
+                                 <td class=px-4 py-2">${(item.total * item.quantity).toFixed(2)}</td>
+                                <td class="px-4 py-2">
                                         <input 
                                         id="invprice-${item.id}" 
                                         type="number" 
                                         name="invprice" 
                                         placeholder="Invoice Price" 
-                                        class="form-input w-2/3 lg:w-[150px]" 
+                                        class="form-input" 
                                         oninput="updateItemPrice(${item.id})"
                                     />
                                 </td>
 
-                                <td class="border-b px-4 py-2">
-                                    <button id="remove-button-${item.id}" type="button" onclick="" data-id="">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" 
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
+                                <td class="px-4 py-2">
+                                    <button id="remove-button-${item.id}" type="button" onclick="" data-id="" class="mt-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="#e11d48" d="M2.75 6.167c0-.46.345-.834.771-.834h2.665c.529-.015.996-.378 1.176-.916l.03-.095l.115-.372c.07-.228.131-.427.217-.605c.338-.702.964-1.189 1.687-1.314c.184-.031.377-.031.6-.031h3.478c.223 0 .417 0 .6.031c.723.125 1.35.612 1.687 1.314c.086.178.147.377.217.605l.115.372l.03.095c.18.538.74.902 1.27.916h2.57c.427 0 .772.373.772.834S20.405 7 19.979 7H3.52c-.426 0-.771-.373-.771-.833"/><path fill="#e11d48" d="M11.607 22h.787c2.707 0 4.06 0 4.941-.863c.88-.864.97-2.28 1.15-5.111l.26-4.081c.098-1.537.147-2.305-.295-2.792s-1.187-.487-2.679-.487H8.23c-1.491 0-2.237 0-2.679.487s-.392 1.255-.295 2.792l.26 4.08c.18 2.833.27 4.248 1.15 5.112S8.9 22 11.607 22" opacity=".5"/></svg>
+
+                                       
                                     </button>
                                 </td>
                             `;

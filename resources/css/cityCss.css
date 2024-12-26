@@ -18,6 +18,10 @@
     position: relative; /* Ensure relative positioning */
 }
 
+.btn-success:hover {
+    background-color: #159153 !important;
+}
+
 .group-hover\:opacity-100 {
     opacity: 1; /* Makes the tooltip visible on hover */
 }
@@ -90,6 +94,10 @@ thead {
     background-color: #f7b14f !important;
 }
 
+:is(.dark .city-light-yellow) {
+    background-color: #f3a126d4 !important;
+}
+
 .liabilitiesText {
     color: #ffc107;
 }
@@ -133,14 +141,14 @@ thead {
 
 /* When checkbox is checked, change SVG appearance */
 .custom-checkbox input[type="checkbox"]:checked + .checkbox-svg rect {
-    fill: #1e40af; /* Green when checked */
-    stroke: #1e40af; /* Green border when checked */
+    fill: #159153; /* Green when checked */
+    stroke: #159153; /* Green border when checked */
 }
 
 /* Optional: Style the checkbox when disabled */
 .custom-checkbox input[type="checkbox"]:disabled + .checkbox-svg rect {
-    stroke: #ccc; /* Light gray stroke when disabled */
-    fill: #f0f0f0; /* Light gray fill when disabled */
+    stroke: #191e3a; /* Light gray stroke when disabled */
+    fill: #191e3a; /* Light gray fill when disabled */
     cursor: not-allowed;
 }
 
@@ -164,7 +172,6 @@ thead {
 ::-webkit-scrollbar {
     width: 10px;
 }
-
 /* Track */
 ::-webkit-scrollbar-track {
     box-shadow: inset 0 0 5px #bec7e3;
@@ -179,7 +186,7 @@ thead {
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-    background: #1e40af;
+    background: #bec7e3;
 }
 
 .mt07 {
@@ -251,6 +258,90 @@ thead {
 /* add company css page ends */
 
 /* add new for company css page */
+
+/* Custom Select Container */
+.custom-select {
+    position: relative;
+}
+
+/* Trigger */
+.select-trigger {
+    color: black;
+    transition: all 0.3s ease;
+}
+
+/* Options Container */
+.select-options {
+    display: none; /* Initially hidden */
+    max-height: 200px;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+/* Options */
+.select-option {
+    padding: 10px;
+    border: 1px solid gray;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* Selected Option */
+.select-option.selected {
+    background-color: #00ab55;
+    border-color: #159153;
+    color: white;
+    box-shadow: 2px 4px 12px #00000014;
+}
+
+/* Hover Effect */
+.select-option:hover {
+    background-color: #00ab55;
+    color: white;
+}
+
+.custom-input {
+    width: 100%; /* Full width */
+    padding: 10px; /* Padding inside the input */
+    border: 1px solid #d1d5db !important; /* Gray border */
+    border-radius: 9999px;
+    color: black; /* Light mode text color */
+    transition: all 0.3s ease; /* Smooth transition for dark mode */
+    background: transparent;
+}
+
+/* Placeholder style */
+.custom-input::placeholder {
+    color: #747985; /* Placeholder color */
+    opacity: 0.7; /* Slightly faded */
+}
+
+/* Focus effect */
+.custom-input:focus {
+    outline: none; /* Remove default outline */
+    box-shadow: 2px 4px 12px #00000014;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .custom-input {
+        background-color: #1e1e1e; /* Dark background */
+        color: white; /* Light text color */
+        border-color: #d1d5db; /* Dark gray border */
+    }
+
+    .custom-input::placeholder {
+        color: #000; /* Lighter gray placeholder in dark mode */
+    }
+
+    .custom-input:focus {
+        border-color: cyan; /* Cyan focus color in dark mode */
+        box-shadow: 0 0 5px rgba(0, 255, 255, 0.5); /* Subtle glow effect */
+    }
+}
 
 .SVGsColor {
     color: #086ad9 !important;
@@ -404,42 +495,47 @@ thead {
 }
 
 /** tasks list page *******************************************************************************/
-
 .tableCon {
     width: 100%;
     display: flex;
     margin-top: 20px;
-    gap: 10px; /* Adds space between the divs */
+    gap: 10px;
 }
 
+/* Default - Full width */
+.content-70 {
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+/* Show Details - Switch to 70% width */
+.content-70.show-details {
+    width: 70%;
+}
+
+.content-30 {
+    width: 30%;
+    transition: all 0.3s ease;
+}
+
+/* Hide initially */
+.hidden {
+    display: none;
+}
+
+.bgGradient {
+    background-color: #b1c0db;
+}
+.bgGradient .dark {
+    background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
+}
 /* Tablet View */
-
-/* Laptop View */
-@media (min-width: 1024px) {
-    .tableCon {
-        flex-direction: row;
-    }
-
-    .tableCon > .content-70 {
-        width: 70%;
-    }
-
-    .tableCon > .content-30 {
-        width: 30%;
-    }
-}
-
-/* pads view */
 @media (min-width: 768px) and (max-width: 1023px) {
-    .tableCon {
-        flex-direction: row;
-    }
-
-    .tableCon > .content-70 {
+    .content-70.show-details {
         width: 50%;
     }
 
-    .tableCon > .content-30 {
+    .content-30 {
         width: 50%;
     }
 }
@@ -450,33 +546,16 @@ thead {
         flex-direction: column;
     }
 
-    .tableCon > .content-30 {
-        order: -1; /* Ensure the 30% div is on top */
-    }
-
     .content-30 {
-        display: inline;
+        width: 100%;
+        order: -1;
         margin-bottom: 20px;
         margin-top: 20px;
     }
-}
 
-@media (max-width: 320px) {
-    .content-30 {
-        display: inline;
-        margin-bottom: 20px;
-        margin-top: 20px;
+    .content-70.show-details {
+        width: 100%;
     }
-    .content-30 span {
-        font-size: 10px;
-    }
-    .svgW {
-        width: 10px !important;
-    }
-}
-
-.svgW {
-    width: 20px;
 }
 
 /**********************************************************************************/
@@ -495,6 +574,7 @@ thead {
 
 .refresh-icon svg.rotate {
     animation: spin 1s linear infinite;
+    color: #159153;
 }
 
 @keyframes spin {

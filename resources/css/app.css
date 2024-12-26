@@ -6,24 +6,29 @@
 /** body **/
 html,
 body {
-    height: 100%;
     margin: 0;
     padding: 0;
-    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
+    font-size: clamp(13px, 1vw, 16px);
+    line-height: 1.2;
     background-repeat: no-repeat !important;
     background-attachment: fixed !important;
-    font-size: clamp(13px, 1vw, 16px); /* Smaller base font size */
-    line-height: 1.2; /* Good readability */
-    margin: 0;
-    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden; /* Prevent horizontal overflow */
+    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+}
+
+html.light,
+body.light {
+    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
+    color: #000000;
 }
 
 html.dark,
 body.dark {
     background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
-    color: #ffffff;
+    color: #ffffff !important;
 }
-
 /* Tooltip container */
 [data-tooltip] {
     position: relative;
@@ -84,10 +89,6 @@ html.dark [data-tooltip]::after {
 
 [x-cloak] {
     display: none !important;
-}
-
-[type="text"] {
-    border-width: 0px !important;
 }
 
 /**** theme modes ****/

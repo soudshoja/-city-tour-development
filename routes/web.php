@@ -28,6 +28,7 @@ use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
+use App\Models\Charge;
 
 
 
@@ -169,6 +170,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/branches/create', [BranchController::class, 'create'])->name('create');
     });
 
+    Route::get('/branches/{id}', [BranchController::class, 'show']);
+
 
 
     // whatsapp
@@ -205,6 +208,7 @@ Route::get('/tasks/{id}', function ($id) {
     }
     return response()->json(['error' => 'Task not found'], 404);
 });
+
 
 
 // INVOICE
@@ -301,10 +305,11 @@ Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('to
 //CHARGES
 Route::get('/charges', [ChargeController::class, 'index'])->name('charges.index');
 Route::get('/charges/create', [ChargeController::class, 'create'])->name('charges.create');
-Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.show');
 Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
 Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
 Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.update');
+Route::get('/charges/{id}', [ChargeController::class, 'show']);
+
 
 // NOIFICATIONS
 Route::group([

@@ -39,6 +39,23 @@ class BranchController extends Controller
         }
     }
 
+
+    // Display the specified branch
+    public function show($id)
+    {
+        $branch = Branch::findOrFail($id);
+        if (!$branch) {
+            return response()->json(['error' => 'branch not found'], 404);
+        }
+
+        return response()->json([
+            'id' => $branch->id,
+            'name' => $branch->name,
+            'email' => $branch->email,
+            'phone' => $branch->phone,
+        ]);
+    }
+
     // Show the form to create a new branch
     public function create()
     {

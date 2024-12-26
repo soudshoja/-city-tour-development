@@ -25,11 +25,15 @@ class Agent extends Model
         'branch_id',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
     }
-
     public function agentType()
     {
         return $this->belongsTo(AgentType::class, 'type_id');
@@ -38,17 +42,14 @@ class Agent extends Model
     {
         return $this->hasMany(Task::class);
     }
-
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
     }
-
     public function clients()
     {
         return $this->hasMany(Client::class);
     }
-
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');

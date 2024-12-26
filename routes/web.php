@@ -28,6 +28,7 @@ use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
+use App\Models\Charge;
 
 
 
@@ -169,6 +170,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/branches/create', [BranchController::class, 'create'])->name('create');
     });
 
+    Route::get('/branches/{id}', [BranchController::class, 'show']);
+
 
 
     // whatsapp
@@ -207,6 +210,7 @@ Route::get('/tasks/{id}', function ($id) {
 });
 
 
+
 // INVOICE
 Route::middleware('auth')->group(function () {
     Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
@@ -220,7 +224,7 @@ Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');   
+Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
 Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 
@@ -300,10 +304,11 @@ Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('to
 //CHARGES
 Route::get('/charges', [ChargeController::class, 'index'])->name('charges.index');
 Route::get('/charges/create', [ChargeController::class, 'create'])->name('charges.create');
-Route::get('/charges/{id}', [ChargeController::class, 'show'])->name('charges.show');
 Route::get('/charges/{id}/edit', [ChargeController::class, 'edit'])->name('charges.edit');
 Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
 Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.update');
+Route::get('/charges/{id}', [ChargeController::class, 'show']);
+
 
 // NOIFICATIONS
 Route::group([

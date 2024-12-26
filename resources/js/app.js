@@ -65,3 +65,41 @@ document.addEventListener("mouseout", (e) => {
         target.classList.remove("tooltip-active");
     }
 });
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// custom select js
+
+document.querySelectorAll(".custom-select").forEach((select) => {
+    const trigger = select.querySelector(".select-trigger");
+    const options = select.querySelectorAll(".select-option");
+    const hiddenInput = select.querySelector('input[type="hidden"]');
+    const optionsContainer = select.querySelector(".select-options");
+
+    // Toggle dropdown visibility
+    trigger.addEventListener("click", () => {
+        optionsContainer.classList.toggle("hidden"); // Show or hide options
+    });
+
+    // Handle option selection
+    options.forEach((option) => {
+        option.addEventListener("click", () => {
+            // Remove "selected" class from all options
+            options.forEach((opt) => opt.classList.remove("selected"));
+            // Mark clicked option as selected
+            option.classList.add("selected");
+            // Update trigger text
+            trigger.textContent = option.textContent;
+            // Update hidden input value
+            hiddenInput.value = option.getAttribute("data-value");
+            // Hide options
+            optionsContainer.classList.add("hidden");
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!select.contains(e.target)) {
+            optionsContainer.classList.add("hidden");
+        }
+    });
+});

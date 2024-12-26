@@ -47,31 +47,27 @@
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Tasks List</h2>
             <!-- total task number -->
-            <div data-tooltip="number of tasks" class="relative w-12 h-12 flex items-center justify-center DarkBCcolor rounded-full shadow-sm">
+            <div data-tooltip="number of tasks" class="relative w-12 h-12 flex items-center justify-center DarkBCcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 rounded-full shadow-sm">
                 <span class="text-xl font-bold text-white">{{ $taskCount }}</span>
             </div>
         </div>
         <!-- add new task & refresh page -->
         <div class="flex items-center gap-5">
-            <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+            <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
                     <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
                 </svg>
             </div>
 
-
             <!-- add task icon -->
-            <div class="relative !bg-[#b1c0db] !hover:bg-gray-300 rounded-full shadow-sm" data-tooltip="upload task">
-                <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
-                    enctype="multipart/form-data">
+            <div class="relative w-12 h-12 flex items-center justify-center btn-success dark:bg-green-700 rounded-full shadow-sm" data-tooltip="upload task">
+                <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST" enctype="multipart/form-data">
                     @csrf
-                    <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden"
-                        onchange="uploadTask()" />
-                    <button id="uploadTaskButton" type="button" class="flex items-center justify-center w-12 h-12 "
-                        onclick="document.getElementById('pdfInput').click();">
+                    <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden" onchange="uploadTask()" />
+                    <button id="uploadTaskButton" type="button" class="flex items-center justify-center w-12 h-12" onclick="document.getElementById('pdfInput').click();">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="#333333" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                            <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
                         </svg>
                     </button>
                 </form>
@@ -85,25 +81,59 @@
 
     <!-- page content -->
     <div class="tableCon">
-        <div class="content-70">
+        <div class="content-70" id="taskListContainer">
             <!-- Table  -->
-            <div class="panel oxShadow rounded-lg">
-                <!--  search icon -->
-                <div class="relative">
-                    <!-- Search Input -->
-                    <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
+            <div class="panel BoxShadow rounded-lg">
+                <div class="flex flex-col sm:flex-row justify-between p-2 gap-3">
+                    <!--  search icon -->
+                    <div class="relative w-full">
+                        <!-- Search Input -->
+                        <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
 
-                    <!-- Search Button with SVG Icon -->
-                    <button type="button" class="btn DarkBCcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                        id="searchButton">
-                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
-                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
-                        </svg>
-                    </button>
+                        <!-- Search Button with SVG Icon -->
+                        <button type="button" class="btn DarkBCcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                            id="searchButton">
+                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5" class="dark:stroke-gray-300"></circle>
+                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round" class="dark:stroke-gray-300"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- ./search icon -->
+
+                    <!-- filter & export buttons -->
+                    <div class="flex lg:flex-col md:flex-row gap-5 w-full justify-end hidden md:flex">
+                        <!-- customize -->
+                        <button class="flex px-5 py-3 gap-3 city-light-yellow rounded-lg shadow-sm items-center">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                            </svg>
+                            <span class="text-sm dark:text-black">Customize</span>
+                        </button>
+                        <!-- ./customize -->
+
+                        <!-- filter -->
+                        <button class="flex px-5 py-3 gap-2 city-light-yellow rounded-lg shadow-sm items-center">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                            </svg>
+                            <span class="text-sm dark:text-black">Filter</span>
+                        </button>
+                        <!-- ./filter -->
+
+                        <!-- export -->
+                        <button class="flex px-5 py-3 gap-3 city-light-yellow rounded-lg shadow-sm items-center">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                            </svg>
+                            <span class="text-sm dark:text-black">Export</span>
+                        </button>
+                        <!-- ./export -->
+                    </div>
+                    <!-- ./filter & export buttons -->
+
                 </div>
 
-                <!-- ./search icon -->
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
                     <!-- table -->
@@ -113,9 +143,9 @@
                                 <tr>
                                     <th>
                                         <label class="custom-checkbox">
-                                            <input type="checkbox" id="selectAll" class="form-checkbox hidden">
+                                            <input type="checkbox" id="selectAll" class="text-gray-500 hidden">
                                             <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
                                     </th>
@@ -138,16 +168,16 @@
                                 <tr>
                                     <td>
                                         <label class="custom-checkbox">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-500" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
                                     </td>
                                     <td class="p-3 text-sm">
                                         <a href="javascript:void(0);" class="viewTask text-blue-500 hover:underline" data-task-id="{{ $task->id }}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <g fill="none" stroke="#333333" stroke-width="1.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                <g fill="none" stroke="currentColor" stroke-width="1">
                                                     <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
                                                     <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
                                                 </g>
@@ -201,46 +231,13 @@
                     <!-- ./pagination -->
                 </div>
             </div>
-
             <!-- ./Table  -->
 
         </div>
         <!-- right -->
-        <div class="content-30">
-
-            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
-                <!-- customize -->
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                        <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                    </svg>
-                    <span class="text-sm">Customize</span>
-                </button>
-                <!-- ./customize -->
-
-                <!-- filter -->
-                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
-                    </svg>
-                    <span class="text-sm">Filter</span>
-                </button>
-                <!-- ./filter -->
-
-                <!-- export -->
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
-                    </svg>
-                    <span class="text-sm">Export</span>
-                </button>
-                <!-- ./export -->
-            </div>
-            <div class="mt-5 ">
-                <!-- display task details here-->
-                <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div> <!-- display task details here-->
-
-            </div>
+        <div class="content-30 hidden" id="taskDetailsContainer">
+            <!-- display task details here-->
+            <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div> <!-- display task details here-->
         </div>
         <!-- ./right -->
     </div>
@@ -380,64 +377,85 @@
         document.addEventListener("DOMContentLoaded", function() {
             const viewTaskLinks = document.querySelectorAll(".viewTask");
             const taskDetailsDiv = document.getElementById("taskDetails");
+            const taskListContainer = document.getElementById("taskListContainer"); // content-70
+            const taskDetailsContainer = document.getElementById("taskDetailsContainer"); // content-30
+
+            // Track the currently opened task ID
+            let currentlyOpenTaskId = null;
 
             viewTaskLinks.forEach(link => {
                 link.addEventListener("click", function(event) {
                     event.preventDefault();
-                    const taskId = this.getAttribute("data-task-id");
 
+                    const taskId = this.getAttribute("data-task-id");
+                    console.log("Fetching details for Task ID:", taskId); // Debugging log
+
+                    // Toggle close if the same task is clicked
+                    if (currentlyOpenTaskId === taskId) {
+                        console.log("Closing task details..."); // Debugging log
+
+                        // Reset styles to make content-70 full width
+                        taskListContainer.classList.remove("show-details"); // Remove class
+                        taskDetailsContainer.classList.add("hidden"); // Hide details
+                        taskDetailsDiv.innerHTML = ""; // Clear details content
+                        currentlyOpenTaskId = null; // Reset tracking variable
+                        return; // Stop execution
+                    }
+
+                    // Update the currently open task ID
+                    currentlyOpenTaskId = taskId;
+
+                    // Fetch task details
                     fetch(`/tasks/${taskId}`)
                         .then(response => {
-                            console.log('Response:', response);
+                            console.log("Response Status:", response.status); // Debugging log
                             if (!response.ok) {
                                 throw new Error('Failed to fetch task details. Status: ' + response.status);
                             }
                             return response.json();
                         })
                         .then(data => {
-                            console.log('Data:', data); // Log the data
+                            console.log("Fetched Data:", data); // Debugging log
+
+                            // Ensure valid data
                             if (data && data.client_name) {
+                                // Populate task details
                                 taskDetailsDiv.innerHTML = `
                             <h3 class='text-lg font-bold mb-2'>Task Details</h3>
-                            <div class='flex flex-col rounded-md border border-[#e0e6ed] dark:border-[#1b2e4b]'>
-                            
-                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
-                            <p><strong>Client Name:</strong> ${data.client_name}</p>
-                            </div>
-
-                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
-                            <p><strong>Agent Name:</strong> ${data.agent_name || 'N/A'}</p>
-                            </div>
-
-                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
-                            <p><strong>Type:</strong> ${data.type}</p>
-                            </div>
-
-                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
-                            <p><strong>Price:</strong> $${data.price}</p>
-                            </div>
-
-                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
-                            <p><strong>Status:</strong> ${data.status}</p>
-                            </div>
-
-                            <div class='border-b border-[#e0e6ed] px-4 py-4 hover:bg-gray-200 dark:border-[#1b2e4b] dark:hover:bg-[#eee]/10'>
-                            <p><strong>Supplier:</strong> ${data.supplier.name}</p>
-                            </div>
-
-                            
+                            <div class='flex flex-col rounded-md border border-[#e0e6ed]'>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Client Name:</strong> ${data.client_name}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Agent Name:</strong> ${data.agent_name || 'N/A'}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Type:</strong> ${data.type}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Price:</strong> $${data.price}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Status:</strong> ${data.status}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Supplier:</strong> ${data.supplier.name}</p>
+                                </div>
                             </div>
                         `;
-                                taskDetailsDiv.classList.remove('hidden');
+                                // Show task details and adjust styles
+                                taskListContainer.classList.add("show-details"); // Shrink content-70
+                                taskDetailsContainer.classList.remove("hidden"); // Show details
                             } else {
+                                console.warn("Invalid Data:", data); // Debugging log
                                 taskDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid task data received.</p>";
-                                taskDetailsDiv.classList.remove('hidden');
+                                taskDetailsContainer.classList.remove("hidden");
                             }
                         })
                         .catch(error => {
                             console.error("Error fetching task details:", error);
                             taskDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load task details.</p>";
-                            taskDetailsDiv.classList.remove('hidden');
+                            taskDetailsContainer.classList.remove("hidden");
                         });
                 });
             });

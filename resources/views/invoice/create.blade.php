@@ -37,16 +37,29 @@
                                 <p class="pl-1">{{ $company->phone }}</p>
                             </div>
                         </div>
-                        <div class="flex items-center w-full space-x-4 mt-4">
-                            <select id="branch" name="branch" class=" border border-gray-300 px-8 py-2 rounded">
-                                @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                        <!-- Branch Select Dropdown -->
+                        <div class="custom-select w-full border rounded-lg mt-4">
+                            <!-- Trigger -->
+                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
+
+                            <!-- Options Container -->
+                            <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                @foreach ($branches as $branch)
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
+                                    border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
+                                    {{ $branch->name }}
+                                </div>
                                 @endforeach
-                            </select>
+                            </div>
+
+                            <!-- Hidden input to store selected value -->
+                            <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
+                        <!-- ./Branch Selection -->
+
                     </div>
                     <!-- invoice details -->
-                    <div class="space-y-1 text-gray-500 dark:text-gray-400">
+                    <div class="space-y-1 text-gray-900 dark:text-gray-400">
 
                         <div class="flex items-center w-full">
                             <label for="invoiceNumber" class="w-full text-sm font-semibold">Invoice Number</label>
@@ -55,13 +68,19 @@
                         </div>
 
                         <div class="mt-4 flex items-center">
-                            <label for="invdate" class="w-full text-sm font-semibold">Invoice Date</label>
-                            <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$todayDate}} disabled />
+                            <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
+                            <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value={{$todayDate}} disabled />
                         </div>
 
                         <div class="mt-4 flex items-center">
-                            <label for="duedate" class="w-full text-sm font-semibold">Due Date</label>
-                            <input id="duedate" type="date" name="duedate" class="w-full form-input" />
+                            <label for="dueDate" class="w-full text-sm font-semibold">Due Date</label>
+                            <input id="dueDate" type="date" name="dueDate" class="w-full form-input" />
+
+                            <script>
+
+                            </script>
+
+
                         </div>
 
 
@@ -183,15 +202,15 @@
                         <table id="itemsTable" class="text-left w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th class="whitespace-nowrap">Task</th>
-                                    <th class="whitespace-nowrap">Client</th>
-                                    <th class="whitespace-nowrap">Quantity</th>
-                                    <th class="whitespace-nowrap">Task Price</th>
-                                    <th class="whitespace-nowrap">Invoice Price</th>
-                                    <th class="whitespace-nowrap">Action</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Task</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Client</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Quantity</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Task Price</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="items-body" class="divide-y divide-gray-200">
+                            <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
                                 <!-- Items will be added dynamically here -->
                                 <!-- "No Item Available" row will show if items.length <= 0 -->
                             </tbody>
@@ -985,9 +1004,8 @@
                             if (items.length === 0) {
                                 // If no items, display the "No Item Available" row
                                 const noItemsRow = document.createElement('tr');
-                                noItemsRow.innerHTML = '<td colspan="5" class="!text-center font-semibold">No Tasks Available</td>';
+                                noItemsRow.innerHTML = '<td colspan="6" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                                 itemsBody.appendChild(noItemsRow);
-
 
 
                             } else {

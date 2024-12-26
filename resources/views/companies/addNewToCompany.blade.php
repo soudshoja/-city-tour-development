@@ -12,112 +12,124 @@
     <!-- page content -->
 
     <!-- add & forms -->
-    <div class="w-full grid grid-cols-3 mt-5 gap-5">
+    <div class="w-full grid grid-cols-1 md:grid-cols-3 mt-5 gap-5">
         <!-- first div -->
         <div class="grid grid-cols-2 gap-5 col-span-1">
             <div class="w-full space-y-4">
-                <div data-form="branchForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+
+                <!-- add branch-->
+                <div data-form="branchForm" class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                     <button class="text-left flex rounded-lg w-full ">
-                        <span class="text-md font-bold">Branch</span>
+                        <span class="text-md font-bold dark:text-white">Branch</span>
                     </button>
                     <img src="{{ asset('images/BranchPic.png') }}" alt="Branch" class="w-10 h-10">
                 </div>
+                <!-- ./add branch -->
 
-                <div data-form="agentForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                <!-- add agent -->
+                <div data-form="agentForm" class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                     <button class="text-left flex rounded-lg w-full ">
-                        <span class="text-md font-bold">Agent</span>
+                        <span class="text-md font-bold dark:text-white">Agent</span>
                     </button>
-                    <img src="{{ asset('images/AgentPic.png') }}" alt="Accountant" class="w-10 h-10">
+                    <img src="{{ asset('images/AgentPic.png') }}" alt="Agent" class="w-10 h-10">
                 </div>
+                <!-- ./add agent -->
 
             </div>
+
             <div class="w-full space-y-4">
-                <div data-form="accountantForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+
+                <!-- add accountant -->
+                <div data-form="accountantForm" class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                     <button class="text-left flex rounded-lg w-full ">
-                        <span class="text-md font-bold">Accountant</span>
+                        <span class="text-md md:text-sm font-bold dark:text-white">Accountant</span>
                     </button>
                     <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant" class="w-10 h-10">
                 </div>
+                <!-- ./add accountant -->
 
-                <div data-form="clientForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                <!-- add client -->
+                <div data-form="clientForm" class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                     <button class="text-left flex rounded-lg w-full ">
-                        <span class="text-md font-bold">Client</span>
+                        <span class="text-md font-bold dark:text-white">Client</span>
                     </button>
-                    <img src="{{ asset('images/ClientPic.png') }}" alt="Accountant" class="w-10 h-10">
-
+                    <img src="{{ asset('images/ClientPic.png') }}" alt="Client" class="w-10 h-10">
                 </div>
+                <!-- ./add client -->
             </div>
         </div>
         <!-- ./first div -->
 
         <!-- second div -->
-        <div class="col-span-2">
+        <div class="col-span-1 md:col-span-2">
             <!-- Div to Show the Forms -->
-            <div id="initialDiv" class="panel BoxShadow h-full p-5 shadow">
-                <div class="justify-between items-center flex">
-                    <div class=" items-center gap-5">
-                        <h1 class="text-xl font-bold text-gray-800">
+            <div id="initialDiv" class="panel BoxShadow h-full p-5 shadow bg-white dark:bg-gray-700">
+                <div class="justify-between items-center flex flex-col md:flex-row">
+                    <div class="items-center gap-5 text-center md:text-left">
+                        <h1 class="text-xl font-bold text-gray-800 dark:text-white">
                             Who’s Joining The Company Today?
                         </h1>
-                        <p class="text-gray-500 mt-2">
+                        <p class="text-gray-500 mt-4 dark:text-gray-300">
                             Add new Branch, Agent, Accountant or Client to your company
+                        </p>
                     </div>
-
-                    <img src="{{ asset('images/AddnewPic.png') }}">
-
+                    <img src="{{ asset('images/AddnewPic.png') }}" alt="Add New" class="mt-4 md:mt-0">
                 </div>
             </div>
             <!-- ./div to show the forms -->
 
             <!--  Forms -->
-            <div id="formDiv" class="hidden h-auto bg-white rounded-lg p-3 BoxShadow  flex flex-col justify-between w-full">
+            <div id="formDiv" class="hidden h-auto bg-white dark:bg-gray-700 rounded-lg p-3 BoxShadow flex flex-col justify-between w-full">
                 <!-- forms to display -->
-                <div class="mt-2">
+                <div class="my-5">
                     <!-- Branch Form -->
                     <div id="branchForm" class="form hidden flex w-full h-auto">
                         <div class="w-full h-auto">
-                            <h2 class="font-bold mb-3 text-xl">Adding New Branch</h2>
+                            <div class="flex items-center mb-5">
+                                <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
+                                    <img src="{{ asset('images/BranchPic.png') }}" alt="Branch" class="w-10 h-10">
+                                </div>
+                                <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Branch</h2>
+                            </div>
+
                             <form action="{{ route('companies.createBranch') }}" method="POST" class="w-full">
-
-
                                 @csrf
                                 <!-- Hidden Company ID -->
                                 <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
                                 <!-- Branch Name -->
-                                <div class="mb-4 flex items-center ">
-                                    <input type="text" name="name" id="branch_name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" required placeholder="Branch name ">
+                                <div class="mb-4 flex items-center">
+                                    <input type="text" name="name" id="branch_name"
+                                        class="custom-input"
+                                        required placeholder="Branch name ">
                                 </div>
 
                                 <!-- Email -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="email" name="email" id="branch_email" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                        required placeholder=" Branch Email">
+                                    <input type="email" name="email" id="branch_email"
+                                        class="custom-input" required placeholder="Branch Email">
                                 </div>
 
                                 <!-- Password -->
                                 <div class="mb-6">
-                                    <input type="password" name="password"
-                                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder=" Agent Password">
+                                    <input type="password" name="password" class="custom-input" required placeholder="Branch Password">
                                 </div>
 
 
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="mb-6">
-                                        <input type="text" name="phone" id="branch_phone"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder=" phone number">
+                                        <input type="tel" name="phone" id="branch_phone" class="custom-input" placeholder="phone number" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                     </div>
 
 
                                     <!-- Address -->
                                     <div class="mb-6">
-                                        <input type="text" name="address" id="branch_address"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder=" Address">
+                                        <input type="text" name="address" id="branch_address" class="custom-input" placeholder=" Address">
                                     </div>
                                 </div>
 
                                 <!-- Submit Button -->
-                                <button type="submit" class="btnCityGrayColor mt-3 w-full text-white px-4 py-2 rounded-lg ">
+                                <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                     Submit
                                 </button>
                             </form>
@@ -127,12 +139,17 @@
                     <!-- Agent Form -->
                     <div id="agentForm" class="form hidden flex w-full h-auto">
                         <!-- Right Section: Form -->
-                        <div class="w-full h-auto flex items-center justify-center">
-                            <form action="{{ route('companies.createAgent') }}" method="POST" class="w-full p-2">
-                                <h2 class="text-white font-bold text-center my-3 text-xl">Add New
-                                    <span class="text-blue-500 dark:text-blue-400">Agent</span> Here
-                                </h2>
+                        <div class="w-full h-auto">
 
+                            <!-- Form Header -->
+                            <div class="flex items-center mb-5">
+                                <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
+                                    <img src="{{ asset('images/AgentPic.png') }}" alt="Branch" class="w-10 h-10">
+                                </div>
+                                <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Agent</h2>
+                            </div>
+
+                            <form action="{{ route('companies.createAgent') }}" method="POST" class="w-full p-2">
                                 @csrf
                                 <!-- Hidden Company ID -->
                                 <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
@@ -140,83 +157,101 @@
 
                                 <!-- Agent Name -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="name" name="name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                        required placeholder=" Agent Name">
+                                    <input type="name" name="name" class="custom-input"
+                                        required placeholder="Agent Name">
                                 </div>
 
                                 <!-- Email & phone number -->
                                 <div class="grid grid-cols-2 gap-4">
-
                                     <!-- Email -->
                                     <div class="mb-4 flex items-center">
                                         <input type="email" name="email"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                            required placeholder=" Agent Email">
+                                            class="custom-input"
+                                            required placeholder="Agent Email">
                                     </div>
 
 
                                     <!-- Phone -->
                                     <div class="mb-4">
-                                        <input type="phone" name="phone"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder=" agent Number">
+                                        <input type="tel" name="phone"
+                                            class="custom-input" placeholder="Agent Number" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                     </div>
-
-
                                 </div>
 
 
                                 <!-- Password -->
                                 <div class="mb-6">
                                     <input type="password" name="password"
-                                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder=" Agent Password">
+                                        class="custom-input" placeholder="Agent Password">
                                 </div>
 
 
-                                <!-- Agent Type -->
-                                <div class="flex w-full my-3">
-                                    <!-- Label -->
-                                    <div
-                                        class="w-[40%] flex items-center justify-center border border-[#e0e6ed] bg-[#eee] px-4 py-2 rounded-l-md dark:border-[#17263c] dark:bg-[#1b2e4b]">
-                                        Select Agent Type
+                                <div class="flex w-full my-3 gap-5">
+
+                                    <!-- Agent Type -->
+                                    <div class="custom-select w-full border rounded-lg">
+                                        <!-- Trigger -->
+                                        <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Agent Type</div>
+
+                                        <!-- Options Container -->
+                                        <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid grid-cols-2 gap-2 py-3">
+                                            @foreach ($agentTypes as $type)
+                                            <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
+                             border border-gray-300 cursor-pointer" data-value="{{ $type->id }}">
+                                                {{ $type->name }}
+                                            </div>
+                                            @endforeach
+                                        </div>
+
+                                        <!-- Hidden input to store selected value -->
+                                        <input type="hidden" name="type_id" id="selectedType">
                                     </div>
-                                    <!-- Select Box -->
-                                    <select
-                                        name="type_id"
-                                        class="w-[60%] px-4 py-2 rounded-r-md border-l-0 flex items-center justify-center border border-[#e0e6ed] dark:border-[#17263c] dark:bg-[#1b2e4b]"
-                                        required>
-                                        @foreach ($agentTypes as $type)
-                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <!-- ./Agent Type -->
+
+
+                                    <!-- Branch Selection -->
+                                    <div class="custom-select w-full border rounded-lg">
+                                        <!-- Trigger -->
+                                        <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
+
+                                        <!-- Options Container -->
+                                        <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                            @foreach ($branches as $branch)
+                                            <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
+                             border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
+                                                {{ $branch->name }}
+                                            </div>
+                                            @endforeach
+                                        </div>
+
+                                        <!-- Hidden input to store selected value -->
+                                        <input type="hidden" name="branch_id" id="selectedBranch">
+                                    </div>
+                                    <!-- ./Branch Selection -->
+
                                 </div>
 
-
-
-                                <!-- Branch Selection -->
-                                <div class="mb-4">
-                                    <select name="branch_id" id="agent_branch" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
-                                        <option value="">Select Branch</option>
-                                        @foreach ($branches as $branch)
-                                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
 
                                 <!-- Submit Button -->
-                                <button type="submit" class="btnCityGrayColor mt-3 w-full text-white px-4 py-2 rounded-lg">
+                                <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                     Submit
                                 </button>
                             </form>
+
                         </div>
                     </div>
-
 
                     <!-- Accountant Form -->
                     <div id="accountantForm" class="form hidden flex w-full h-auto">
 
-                        <div class="w-full h-auto flex items-center justify-center">
-                            <form action="{{ route('companies.createAccountant') }}" method="POST" class="w-full p-2">
-                                <h2 class="text-white font-bold text-center my-3 text-xl">Add New <span class="text-red-500 dark:text-red-400">Accountant</span> Here</h2>
+                        <div class="w-full h-auto">
+                            <div class="flex items-center mb-5">
+                                <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
+                                    <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant" class="w-10 h-10">
+                                </div>
+                                <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Accountant</h2>
+                            </div>
+                            <form action="{{ route('companies.createAccountant') }}" method="POST" class="w-full">
 
                                 @csrf
                                 <!-- Hidden Company ID -->
@@ -224,28 +259,27 @@
 
                                 <!-- Accountant Name -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="name" name="name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
+                                    <input type="name" name="name" class="custom-input"
                                         required placeholder="Accountant Name">
                                 </div>
 
 
                                 <!-- Accountant Email -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="email" name="email" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
+                                    <input type="email" name="email" class="custom-input"
                                         required placeholder="Accountant Email">
                                 </div>
 
 
                                 <!-- Accountant Phone -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="phone" name="phone" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                        required placeholder="Accountant Email">
+                                    <input type="tel" name="phone" class="custom-input"
+                                        required placeholder="Accountant Email" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                 </div>
 
 
-
                                 <!-- Submit Button -->
-                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg   ">
+                                <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                     Submit
                                 </button>
                             </form>
@@ -254,40 +288,38 @@
 
                     <!-- Client Form -->
                     <div id="clientForm" class="form hidden flex w-full h-auto">
-
-                        <div class="w-full h-auto flex items-center justify-center">
-                            <form action="{{ route('companies.createClient') }}" method="POST" class="w-full p-2">
-                                <h2 class="text-white font-bold text-center my-3 text-xl">Add New <span class="text-green-500 dark:text-green-400">Client</span> Here</h2>
-
+                        <div class="w-full h-auto">
+                            <div class="flex items-center mb-5">
+                                <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
+                                    <img src="{{ asset('images/ClientPic.png') }}" alt="Client" class="w-10 h-10">
+                                </div>
+                                <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Client</h2>
+                            </div>
+                            <form action="{{ route('companies.createClient') }}" method="POST" class="w-full">
                                 @csrf
                                 <!-- Hidden Company ID -->
                                 <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
-
                                 <!-- Client Name -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="name" name="name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
+                                    <input type="text" name="name" class="custom-input"
                                         required placeholder="Client Name">
                                 </div>
 
-
                                 <!-- Client Email -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="email" name="email" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                        required placeholder="Client email">
+                                    <input type="email" name="email" class="custom-input"
+                                        required placeholder="Client Email">
                                 </div>
-
 
                                 <!-- Client Phone -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="phone" name="phone" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                        required placeholder="Client phone">
+                                    <input type="tel" name="phone" class="custom-input"
+                                        required placeholder="Client Phone" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                 </div>
 
-
-
                                 <!-- Submit Button -->
-                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg   ">
+                                <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                     Submit
                                 </button>
                             </form>

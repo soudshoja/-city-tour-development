@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AIService;
 use App\Http\Requests\OpenAiRequest;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Client;
@@ -28,6 +29,14 @@ class OpenAiController extends Controller
 {
 
     use HttpRequestTrait;
+    
+    private $aiService;
+
+    public function __construct(AIService $aiService)
+    {
+        $this->aiService =  $aiService;
+    }
+
     public function index()
     {
         return view('ai.openai.index');
@@ -533,381 +542,6 @@ class OpenAiController extends Controller
         return view('ai.openai.fine-tuning');
     }
 
-
-    // THREAD
-    public function createThreadRun(string $assistantId, User $user)
-    {
-        if ($assistantId == null) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Assistant ID is required',
-            ]);
-        }
-
-        $url = config('services.open-ai.url') . '/threads/runs';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-        $data = [
-            'assistant_id' => $assistantId,
-            'additional_instructions' => 'Address the user as' . $user->name . ', but you dont need to call his name every time you respond.',
-            'metadata' => [
-                'user_id' => (string) $user->id,
-            ],
-        ];
-
-        $response = $this->postRequest($url, $header, json_encode($data));
-
-        logger('create thread run response: ', $response);
-
-        if (isset($response['id'])) {
-            return [
-                'status' => 'success',
-                'message' => 'Thread run created successfully',
-                'data' => $response,
-            ];
-        } else {
-
-            return [
-                'status' => 'error',
-                'message' => 'Failed to create thread run',
-                'data' => $response,
-            ];
-        }
-    }
-
-    public function createThread(User $user)
-    {
-        $url = config('services.open-ai.url') . '/threads';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-        $data = [
-            'messages' => [
-                'role' => 'user',
-                'content' => 'You are going to help me to manage my travel business, my name is ' . $user->name . '. My id is ' . $user->id . '.',
-            ],
-            'metadata' => [
-                'user_id' => (string) $user->id,
-            ],
-        ];
-
-        $response = $this->postRequest($url, $header, json_encode($data));
-
-        logger('create thread response: ', $response);
-
-        return [
-            'status' => isset($response['id']) ? 'success' : 'error',
-            'message' => isset($response['id']) ? 'Thread created successfully' : 'Failed to create thread',
-            'data' => $response,
-        ];
-    }
-
-    public function retrieveThread($id)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $id;
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $response = $this->getRequest($url, $header);
-
-        return response()->json($response);
-    }
-
-    public function deleteThread(string $threadId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId;
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $response = $this->deleteRequest($url, $header);
-
-        return response()->json($response);
-    }
-
-    // public function createAssistant()
-    // {
-    //     $url = config('services.open-ai.url') . '/assistants';
-    //     $header = [
-    //         'Authorization: Bearer ' . config('services.open-ai.key'),
-    //         'Content-Type: application/json',
-    //         'OpenAI-Beta: assistants=v2',
-    //     ];
-
-    //     $data = [
-    //         'model' => 'gpt-4o-mini',
-    //         'name' => 'City Tour Travel Assistant',
-    //         'description' => 'Assistant for City Tour travel agency system',
-    //         'instructions' => 'You are an assistant in a travel agency system. You will learn everything about this system and help users to get the information they need. You can ask for help if you need it.',
-    //         'metadata' => [
-    //             'user_id' => 'user-test',
-    //         ],
-    //         'temperature' => 0.5,
-    //     ];
-
-    //     $response = $this->postRequest($url, $header, json_encode($data));
-
-    //     return response()->json($response);
-    // }
-
-    // MESSAGE
-    public function createMessage(string $threadId, string $message, array $functions = [], bool $isFunctionResponse = false)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-        $data = [
-            'role' => 'user',
-            'content' => $message,
-        ];
-
-        $messageResponse =  $this->postRequest($url, $header, json_encode($data)); 
-
-        return [
-            'status' => isset($messageResponse['id']) ? 'success' : 'error',
-            'message' => isset($messageResponse['id']) ? 'Message created successfully' : 'Failed to create message',
-            'data' => $messageResponse,
-        ];
-    }
-
-    public function getMessages(string $threadId, string $assistantId, User $user)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-
-        $response = $this->getRequest($url, $header);
-        logger('get messages response: ', $response);
-        if(isset($response['error']['message'])){
-            if(str_contains($response['error']['message'], 'No thread found')){
-               
-                $createThread = $this->createThread($user);
-
-                if($createThread['status'] == 'error'){
-                    return $createThread;
-                }
-                logger('create thread response: ', $createThread['data']);
-
-                $threadId = $createThread['data']['id'];
-
-                Conversation::updateOrCreate([
-                    'user_id' => $user->id,
-                    'assistant_id' => env('OPENAI_ASSISTANT_ID'),
-                    'thread_id' => $threadId,
-                ]);
-
-                $response = $this->getMessages($threadId, $assistantId, $user);
-
-            } else {
-                return [
-                    'status' => 'error',
-                    'message' => 'Failed to retrieve messages',
-                    'data' => $response,
-                ];
-            }
-        }
-
-        return [
-            'status' => 'success',
-            'message' => 'Messages retrieved successfully',
-            'data' => $response['data']
-        ];
-    }
-
-    // RUN
-    public function createRun(string $assistantId, string $threadId, User $user)
-    {
-
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-        $data = [
-            'assistant_id' => $assistantId,
-            'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond.",
-            'metadata' => [
-                'user_id' => (string) $user->id,
-            ],
-        ];
-
-        $response = $this->postRequest($url, $header, json_encode($data));
-        
-        return [
-            'status' => isset($response['id']) ? 'success' : 'error',
-            'message' => isset($response['id']) ? 'Run created successfully' : 'Failed to create run',
-            'data' => $response,
-        ];
-    }
-
-    public function checkRun(string $threadId, string $runId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId;
-
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-
-        $countCheck = 0;
-
-        while (true) {
-
-            try {
-
-                $response = $this->getRequest($url, $header);
-
-                if (isset($response['status']) ? $response['status'] === 'completed' : false) {
-                    return [
-                        'status' => 'success',
-                        'message' => 'Run completed successfully',
-                        'data' => $response
-                    ];
-                } if (isset($response['status']) ? $response['status'] === 'requires_action' : false) {
-                    return [
-                        'status' => 'requires_action',
-                        'message' => 'Run requires action',
-                        'data' => $response,
-                    ];
-                } else
-
-                if ($countCheck > 5) {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Run is taking too long to complete',
-                        'data' => $response,
-                    ];
-                }
-            } catch (Exception $e) {
-                throw $e;
-            }
-
-            sleep(1);
-            $countCheck++;
-        }
-    }
-
-    public function listRun($threadId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $response = $this->getRequest($url, $header);
-
-        return response()->json($response);
-    }
-
-    public function cancelRun($threadId, $runId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/cancel';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $cancelRunResponse = $this->postRequest($url, $header, null);
-
-        if(isset($cancelRunResponse['error'])){
-            return [
-                'status' => 'error',
-                'message' => 'Failed to cancel run',
-                'data' => $cancelRunResponse,
-            ];
-        }
-
-        return [
-            'status' => 'success',
-            'message' => 'Run cancelled successfully',
-            'data' => $cancelRunResponse,
-        ];
-
-    }
-
-    // RUN STEP
-    public function listStep(string $threadId, string $runId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/steps';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $response = $this->getRequest($url, $header);
-
-        if(isset($response['error'])){
-            return [
-                'status' => 'error',
-                'message' => 'Failed to step run',
-                'data' => $response,
-            ];
-        }
-
-        return [
-            'status' => 'success',
-            'message' => 'Run stepped successfully',
-            'data' => $response['data']
-        ];
-    }
-
-    public function retrieveStep(string $threadId, string $runId, string $stepId)
-    {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/steps/' . $stepId;
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-        $response = $this->getRequest($url, $header);
-
-        if(isset($response['error'])){
-            return [
-                'status' => 'error',
-                'message' => 'Failed to retrieve run',
-                'data' => $response,
-            ];
-        }
-
-        return [
-            'status' => 'success',
-            'message' => 'Run retrieved successfully',
-            'data' => $response['data']
-        ];
-    }
-
-    public function sendMessage(Request $request)
-    {
-
-        $response = $this->askOpenAi($request->input('prompt'), $request->input('user_id'));
-
-        return response()->json($response);
-    }
-
     /**
      * Ask the AI system
      * 
@@ -942,7 +576,7 @@ class OpenAiController extends Controller
 
             if ($createNewThread) {
 
-                $threadRunResponse = $this->createThread($user);
+                $threadRunResponse = $this->aiService->createThread($user);
 
                 if ($threadRunResponse['status'] == 'error') {
                     return $threadRunResponse;
@@ -964,7 +598,7 @@ class OpenAiController extends Controller
             $threadId = $conversation->thread_id;
 
             //Create message for thread
-            $messageResponse = $this->createMessage($threadId, $content);
+            $messageResponse = $this->aiService->createMessage($threadId, $content);
 
             if($messageResponse['status'] == 'error') return $messageResponse;
             
@@ -982,18 +616,18 @@ class OpenAiController extends Controller
             );
 
             //Run thread
-            $runResponse = $this->createRun($assistantId, $threadId, $user);
+            $runResponse = $this->aiService->createRun($assistantId, $threadId, $user);
 
             if($runResponse['status'] === 'error') return $runResponse; 
 
             $runId = $runResponse['data']['id'];
 
-            logger('run response: ', $runResponse);
+            logger('create run response: ', $runResponse);
 
             $this->updateMessageDB($createdMessageId, ['run_id' => $runId]);
 
             //Run status check, if status is complete, get messages and show to user
-            $checkRunResponse = $this->checkRun($threadId, $runId);
+            $checkRunResponse = $this->aiService->checkRun($threadId, $runId);
 
             if($checkRunResponse['status'] === 'error') return $checkRunResponse;
             
@@ -1012,18 +646,18 @@ class OpenAiController extends Controller
 
                     $toolOutputs[] = [
                         'tool_call_id' => $toolId,
-                        'output' => $functionResponse['success'],
+                        'output' => (string)$functionResponse['success'],
                     ];
                 }
 
-                $toolOutputResponse = $this->submitToolOutputs($threadId, $runId, $toolOutputs);
+                $toolOutputResponse = $this->aiService->submitToolOutputs($threadId, $runId, $toolOutputs);
 
                 if($toolOutputResponse['status'] === 'error') return $toolOutputResponse;
             }
 
-            $tokens = $checkRunResponse['data']['usage'];
+            $tokens = $checkRunResponse['data']['usage'] ?? [];
 
-            $messages = $this->getMessages($threadId, $assistantId, $user);
+            $messages = $this->aiService->getMessages($threadId, $assistantId, $user);
 
             if($messages['status'] === 'error') return $messages;
 
@@ -1128,154 +762,7 @@ class OpenAiController extends Controller
         }
     }
 
-    /**
-     * Ask a question to the AI system
-     * 
-     * @param array $data
-     * @param int $userId
-     * 
-     * @return array ['status', 'message', 'data']
-     */
-    public function askQuestion($data, $userId)
-    {
-
-        $data =  [];
-
-        $pastConversation = Conversation::with('messages')->where('user_id', $userId)->get();
-
-        if (count($pastConversation) > 0) {
-
-            foreach ($pastConversation as $conversation) {
-                $data[] = [
-                    'role' => 'user',
-                    'content' => 'my question: ' . $conversation->messages->where('type', 'question')->first()->content . ' and your answer: ' . $conversation->messages->where('type', 'answer')->first()->content,
-                ];
-            }
-        } else {
-
-            $response = $this->teachAiSystem($userId);
-
-            $conversationId = $response['data']['conversation_id'];
-
-            $conversation = Conversation::with('messages')->where('id', $conversationId)->first();
-
-            $data[] = [
-                'role' => 'user',
-                'content' => 'my question: ' . $conversation->messages->where('type', 'question')->first()->content . ' and your answer: ' . $conversation->messages->where('type', 'answer')->first()->content,
-            ];
-        }
-
-        $response = $this->chatCompletion($data);
-
-        if (isset($response['choices'][0]['message']['content'])) {
-
-            $message = $response['choices'][0]['message']['content'];
-            return $message;
-            $message = $this->cleanJsonResponse($message);
-
-            $conversationId = Conversation::create([
-                'user_id' => $userId,
-            ])->id;
-
-            $this->saveMessagesToDB($conversationId, 'question', $data);
-
-            // $this->saveMessages($conversationId, 'answer', $message);
-
-            $recordChat = ChatCompletion::create([
-                'conversation_id' => $conversationId,
-                'chat_id' => $response['id'],
-                'object' => $response['object'],
-                'created' => $response['created'],
-                'model' => $response['model'],
-                'system_fingerprint' => $response['system_fingerprint'],
-                'prompt_tokens' => $response['usage']['prompt_tokens'],
-                'completion_tokens' => $response['usage']['completion_tokens'],
-                'total_tokens' => $response['usage']['total_tokens'],
-                'reasoning_tokens' => $response['usage']['completion_tokens_details']['reasoning_tokens'],
-                'accepted_prediction_tokens' => $response['usage']['completion_tokens_details']['accepted_prediction_tokens'],
-                'rejected_prediction_tokens' => $response['usage']['completion_tokens_details']['rejected_prediction_tokens'],
-
-            ]);
-
-            return [
-                'status' => 'success',
-                'message' => 'Question answer successfully',
-                'data' => $message,
-            ];
-        } else {
-            $message = $response;
-
-            return [
-                'status' => 'error',
-                'message' => 'Question failed. No content returned from OpenAI.',
-                'data' => $message,
-            ];
-        }
-    }
-
-
-    /**
-     * Teach the AI system
-     * 
-     * @param int $userId
-     * 
-     * @return array ['status', 'message', 'data' => ['conversation_id']]
-     */
-    public function teachAiSystem($userId)
-    {
-        $content = [
-            [
-                'role' => 'user',
-                'content' => 'You are an assistant in a travel agency system. You will learn everything about this system and help users to get the information they need. You can ask for help if you need it.,
-                our system is cather for business. It is b2b system. We have three types of users: company, branch and agent. Each user has different roles and permissions. The company is the main user and has the highest permissions. The branch is the second user and has the second highest permissions. The agent is the third user and has the lowest permissions.,
-                The company can create branches and agents. The branch can create agents. The agent can create tasks. The company can see all the tasks created by the agents. The branch can see all the tasks created by the agents. The agent can see only the tasks created by him.,
-                The company can see all the tasks created by the agents. The branch can see all the tasks created by the agents. The agent can see only the tasks created by him.,
-                the main purpose of the system is to help the agents to create tasks and manage them. The task got from various suppliers. The task can be flight, hotel, car rental, etc. The agent can create a task and assign it to a client,
-                Users then will create invoice for the task and send payment link to client to pay for the task'
-            ],
-            [
-                'role' => 'user',
-                'content' => 'Now you understand the system, users will ask you questions about the system. You need to answer them correctly and provide them with the information they need.',
-            ]
-        ];
-
-        $response = $this->chatCompletion($content);
-
-        if (isset($response['error'])) {
-            return $response;
-        }
-
-        if (isset($response['choices'][0]['message']['content'])) {
-            $message = $response['choices'][0]['message']['content'];
-
-            $message = json_decode($message);
-
-            if ($message !== 'action' && $message !== 'question') {
-                return [
-                    'status' => 'error',
-                    'message' => 'Invalid response. Please provide a valid response: action or question',
-                    'data' => $message
-                ];
-            }
-
-            $conversationId = Conversation::create([
-                'user_id' => $userId,
-            ])->id;
-
-            // $this->saveMessages($conversationId, 'question', $content);
-
-            // $this->saveMessages($conversationId, 'answer', $message);
-
-            return [
-                'status' => 'success',
-                'message' => 'Teaching the system successfully',
-                'data' => [
-                    'conversation_id' => $conversationId
-                ]
-            ];
-        }
-    }
-
+ 
     /**
      * @param int $conversationId
      * @param string $type of content
@@ -1325,14 +812,44 @@ class OpenAiController extends Controller
         return response()->json($response);
     }
 
-    public function getClient()
+    public function addFunctionTool()
+    { 
+        return view('ai.openai.tools');
+    }
+
+    public function storeFunctionTool(Request $request)
     {
-        $user = auth()->user();
+        $request->validate($request, [
+            'type' => 'required|string',
+            'name' => 'required|string',
+            'description' => 'required|string',
+            'strict' => 'nullable|boolean',
+            'parameters' => 'nullable|array',
+            'parameters.type' => 'required if parameters|string',
+            'parameters.properties' => 'required if parameters|array', 
+            'additionalProperties' => 'nullable|boolean',
+            'required' => 'nullable|array',
+        ]);
+
+        $assistantId = Conversation::where('user_id', auth()->id())->latest()->first()->assistant_id;
+        $response = $this->aiService->modifyAssistant($assistantId, $request->all());
+
+        if(isset($response['error'])) {
+            logger('error: ', $response['error']);
+            return Redirect::back()->with('error', 'Failed to add function tool');
+        }
+
+        return Redirect::back()->with('success', 'Function tool added successfully');
+    }
+
+    public function getClient(int $userId)
+    {
+        $user = User::find($userId);
 
         if($user->role_id == Role::ADMIN){
             $client = Client::all();
         } else if ($user->role_id == Role::COMPANY) {
-            $client = Client::with(['agent.branch' => function ($query) use ($user) {
+            $client = Client::select('name')->with(['agent.branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
         } else if ($user->role_id == Role::BRANCH) {
@@ -1343,78 +860,7 @@ class OpenAiController extends Controller
             $client = Client::where('agent_id', $user->id)->get();
         }
 
-        return $client->toArray();
-    }
-
-    public function embedding(string $query)
-    {
-        $url = config('services.open-ai.url') . '/embeddings';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json'
-        ];
-        $data = [
-            'model' => 'text-embedding-ada-002',
-            'input' => $query,
-            'encoding_format' => 'float',
-        ];
-
-        $response = $this->postRequest($url, $header, json_encode($data));
-
-        if(isset($response['error'])){
-            return [
-                'status' => 'error',
-                'message' => 'Failed to get embeddings',
-                'data' => $response,
-            ];
-        }
-
-        return [
-            'status' => 'success',
-            'message' => 'Embeddings retrieved successfully',
-            'data' => $response['data'],
-        ];
-    }
-
-    private function callFunction($functionName, $arguments)
-    {
-        switch ($functionName) {
-            case 'getPendingTasksCount':
-                return [
-                    'success' => $this->getPendingTaskCount($arguments['user_id']),
-                ];
-            case 'getClient':
-                return [
-                    'success' => $this->getClient()
-                ];
-            default:
-                return ['error' => 'Function not implemented.'];
-        }
-    }
-
-    public function submitToolOutputs(string $threadId, string $runId, array $toolOutputs)
-    {
-        $url = config('services.open-ai.url') . "/threads/{$threadId}/runs/{$runId}/submit_tool_outputs";
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-            'OpenAI-Beta: assistants=v2',
-        ];
-
-
-        $data = [
-            'tool_outputs' => $toolOutputs,
-        ];
-
-        $response = $this->postRequest($url, $header, json_encode($data));
-        
-        logger('submit tool outputs response: ', $response);
-
-        return [
-            'status' => isset($response['id']) ? 'success' : 'error',
-            'message' => isset($response['id']) ? 'Tool output submitted successfully' : 'Failed to submit tool output',
-            'data' => $response,
-        ];
+        return json_encode($client->toArray());
     }
 
     public function getPendingTaskCount(int $userId)
@@ -1446,7 +892,52 @@ class OpenAiController extends Controller
         } 
 
         logger('task count: '.(string)$taskCount);
-        return 'You have ' . (string)$taskCount . ' pending tasks';
+
+        return (string)$taskCount;
     }
+
+    public function callFunction($functionName, $arguments)
+    {
+        switch ($functionName) {
+            case 'getPendingTasksCount':
+                return [
+                    'success' => $this->getPendingTaskCount($arguments['user_id']),
+                ];
+            case 'getClient':
+                return [
+                    'success' => $this->getClient($arguments['user_id']),
+                ];
+            default:
+                return ['error' => 'Function not implemented.'];
+        }
+    }
+
+    public function steps()
+    {
+        $runsId = [];
+        $runs = [];
+        
+        if ($conversation = Conversation::where('user_id', auth()->id())->latest()->first()) {
+            $threadId = $conversation->thread_id;
+        }
+        
+        if($threadId){
+            $runsId = $this->aiService->listRun($threadId)['data'];
+        }
+
+        if(count($runsId) > 0)
+        {
+            foreach($runsId as $run){
+                $runId = $run['id'];
+                $this->aiService->listStep($threadId, $runId);
+
+                $runs[$runId] = $this->aiService->listStep($threadId, $runId)['data'];
+            }
+        }
+
+        return view('ai.openai.steps', compact('runs'));
+      
+    }
+
 
 }

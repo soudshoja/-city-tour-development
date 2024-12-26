@@ -1,236 +1,84 @@
 <x-app-layout>
-    <div class="container mx-auto mt-2">
-        <!-- Title -->
-        <div class="panel">
-            <h1 class="text-center font-bold mb-2 text-md sm:text-lg md:text-xl lg:text-3xl">
-                Choose a Record To Add New
-            </h1>
+
+
+    <!-- page title -->
+    <div class="flex justify-between items-center gap-5 my-3">
+        <div class="flex items-center gap-5 ">
+            <h2 class="text-3xl font-bold">Add New</h2>
         </div>
+    </div>
+    <!-- ./page title -->
 
-        <!-- Options Buttons -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center my-4">
-            <!-- cards -->
-            <div class="w-full">
-                <!--Up Cards div -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                    <!-- Branch card -->
-                    <div class="bg-yellow-100/50 rounded-xl p-6 shadow relative flex flex-col justify-between">
-                        <div>
-                            <div class="text-xs uppercase font-medium text-yellow-500 dark:text-yellow-400 mb-2">Branches</div>
-                            <button data-form="branchForm" class="text-center flex items-center justify-center border rounded-lg border-yellow-800 p-2 w-full mt-8">
-                                <span class="text-lg font-bold text-yellow-800">Add New Branch</span>
-                                <svg
-                                    class="w-6 h-6 text-yellow-800 ml-2"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <path
-                                        d="M17 14.5L12 19.5L7 14.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round" />
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                </svg>
-                            </button>
+    <!-- page content -->
 
-                        </div>
-                        <div class="flex items-center justify-between mt-4">
-                            <span class="text-gray-500 dark:text-gray-400 text-sm">Total Company Branches</span>
-                            <span class="text-yellow-500 dark:text-yellow-400 text-sm">360</span>
-                        </div>
-                        <div class="absolute top-4 right-4 bg-white p-2 rounded-full shadow">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path opacity="0.5" fill-rule="evenodd" clip-rule="evenodd" d="M14.2788 2.15224C13.9085 2 13.439 2 12.5 2C11.561 2 11.0915 2 10.7212 2.15224C10.2274 2.35523 9.83509 2.74458 9.63056 3.23463C9.53719 3.45834 9.50065 3.7185 9.48635 4.09799C9.46534 4.65568 9.17716 5.17189 8.69017 5.45093C8.20318 5.72996 7.60864 5.71954 7.11149 5.45876C6.77318 5.2813 6.52789 5.18262 6.28599 5.15102C5.75609 5.08178 5.22018 5.22429 4.79616 5.5472C4.47814 5.78938 4.24339 6.1929 3.7739 6.99993C3.30441 7.80697 3.06967 8.21048 3.01735 8.60491C2.94758 9.1308 3.09118 9.66266 3.41655 10.0835C3.56506 10.2756 3.77377 10.437 4.0977 10.639C4.57391 10.936 4.88032 11.4419 4.88029 12C4.88026 12.5581 4.57386 13.0639 4.0977 13.3608C3.77372 13.5629 3.56497 13.7244 3.41645 13.9165C3.09108 14.3373 2.94749 14.8691 3.01725 15.395C3.06957 15.7894 3.30432 16.193 3.7738 17C4.24329 17.807 4.47804 18.2106 4.79606 18.4527C5.22008 18.7756 5.75599 18.9181 6.28589 18.8489C6.52778 18.8173 6.77305 18.7186 7.11133 18.5412C7.60852 18.2804 8.2031 18.27 8.69012 18.549C9.17714 18.8281 9.46533 19.3443 9.48635 19.9021C9.50065 20.2815 9.53719 20.5417 9.63056 20.7654C9.83509 21.2554 10.2274 21.6448 10.7212 21.8478C11.0915 22 11.561 22 12.5 22C13.439 22 13.9085 22 14.2788 21.8478C14.7726 21.6448 15.1649 21.2554 15.3694 20.7654C15.4628 20.5417 15.4994 20.2815 15.5137 19.902C15.5347 19.3443 15.8228 18.8281 16.3098 18.549C16.7968 18.2699 17.3914 18.2804 17.8886 18.5412C18.2269 18.7186 18.4721 18.8172 18.714 18.8488C19.2439 18.9181 19.7798 18.7756 20.2038 18.4527C20.5219 18.2105 20.7566 17.807 21.2261 16.9999C21.6956 16.1929 21.9303 15.7894 21.9827 15.395C22.0524 14.8691 21.9088 14.3372 21.5835 13.9164C21.4349 13.7243 21.2262 13.5628 20.9022 13.3608C20.4261 13.0639 20.1197 12.558 20.1197 11.9999C20.1197 11.4418 20.4261 10.9361 20.9022 10.6392C21.2263 10.4371 21.435 10.2757 21.5836 10.0835C21.9089 9.66273 22.0525 9.13087 21.9828 8.60497C21.9304 8.21055 21.6957 7.80703 21.2262 7C20.7567 6.19297 20.522 5.78945 20.2039 5.54727C19.7799 5.22436 19.244 5.08185 18.7141 5.15109C18.4722 5.18269 18.2269 5.28136 17.8887 5.4588C17.3915 5.71959 16.7969 5.73002 16.3099 5.45096C15.8229 5.17191 15.5347 4.65566 15.5136 4.09794C15.4993 3.71848 15.4628 3.45833 15.3694 3.23463C15.1649 2.74458 14.7726 2.35523 14.2788 2.15224Z" fill="#1C274C"></path>
-                                <path d="M15.5227 12C15.5227 13.6569 14.1694 15 12.4999 15C10.8304 15 9.47705 13.6569 9.47705 12C9.47705 10.3431 10.8304 9 12.4999 9C14.1694 9 15.5227 10.3431 15.5227 12Z" fill="#1C274C"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- ./Branch card -->
-
-                    <!-- Agent card -->
-                    <div class="bg-blue-100/50 rounded-xl p-6 shadow relative flex flex-col justify-between">
-                        <div>
-                            <div class="text-xs uppercase font-medium text-blue-500 dark:text-blue-400 mb-2">Agents</div>
-                            <button data-form="agentForm" class="text-center flex items-center justify-center border rounded-lg  border-blue-800 p-2 w-full mt-8">
-                                <span class="text-lg font-bold text-blue-800 dark:text-blue-300">Add New Agent</span>
-
-                                <svg
-                                    class="w-6 h-6 text-blue-800 dark:text-blue-300 ml-2"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <path
-                                        d="M17 14.5L12 19.5L7 14.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round" />
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                </svg>
-
-                            </button>
-
-                        </div>
-                        <div class="flex items-center justify-between mt-4">
-                            <span class="text-gray-500 dark:text-gray-400 text-sm">Total Company Agents</span>
-                            <span class="text-blue-500 dark:text-blue-400 text-sm">580</span>
-                        </div>
-                        <div class="absolute top-4 right-4 bg-white p-2 rounded-full shadow">
-                            <a href="{{ route('agentsetting') }}">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path opacity="0.5" fill-rule="evenodd" clip-rule="evenodd" d="M14.2788 2.15224C13.9085 2 13.439 2 12.5 2C11.561 2 11.0915 2 10.7212 2.15224C10.2274 2.35523 9.83509 2.74458 9.63056 3.23463C9.53719 3.45834 9.50065 3.7185 9.48635 4.09799C9.46534 4.65568 9.17716 5.17189 8.69017 5.45093C8.20318 5.72996 7.60864 5.71954 7.11149 5.45876C6.77318 5.2813 6.52789 5.18262 6.28599 5.15102C5.75609 5.08178 5.22018 5.22429 4.79616 5.5472C4.47814 5.78938 4.24339 6.1929 3.7739 6.99993C3.30441 7.80697 3.06967 8.21048 3.01735 8.60491C2.94758 9.1308 3.09118 9.66266 3.41655 10.0835C3.56506 10.2756 3.77377 10.437 4.0977 10.639C4.57391 10.936 4.88032 11.4419 4.88029 12C4.88026 12.5581 4.57386 13.0639 4.0977 13.3608C3.77372 13.5629 3.56497 13.7244 3.41645 13.9165C3.09108 14.3373 2.94749 14.8691 3.01725 15.395C3.06957 15.7894 3.30432 16.193 3.7738 17C4.24329 17.807 4.47804 18.2106 4.79606 18.4527C5.22008 18.7756 5.75599 18.9181 6.28589 18.8489C6.52778 18.8173 6.77305 18.7186 7.11133 18.5412C7.60852 18.2804 8.2031 18.27 8.69012 18.549C9.17714 18.8281 9.46533 19.3443 9.48635 19.9021C9.50065 20.2815 9.53719 20.5417 9.63056 20.7654C9.83509 21.2554 10.2274 21.6448 10.7212 21.8478C11.0915 22 11.561 22 12.5 22C13.439 22 13.9085 22 14.2788 21.8478C14.7726 21.6448 15.1649 21.2554 15.3694 20.7654C15.4628 20.5417 15.4994 20.2815 15.5137 19.902C15.5347 19.3443 15.8228 18.8281 16.3098 18.549C16.7968 18.2699 17.3914 18.2804 17.8886 18.5412C18.2269 18.7186 18.4721 18.8172 18.714 18.8488C19.2439 18.9181 19.7798 18.7756 20.2038 18.4527C20.5219 18.2105 20.7566 17.807 21.2261 16.9999C21.6956 16.1929 21.9303 15.7894 21.9827 15.395C22.0524 14.8691 21.9088 14.3372 21.5835 13.9164C21.4349 13.7243 21.2262 13.5628 20.9022 13.3608C20.4261 13.0639 20.1197 12.558 20.1197 11.9999C20.1197 11.4418 20.4261 10.9361 20.9022 10.6392C21.2263 10.4371 21.435 10.2757 21.5836 10.0835C21.9089 9.66273 22.0525 9.13087 21.9828 8.60497C21.9304 8.21055 21.6957 7.80703 21.2262 7C20.7567 6.19297 20.522 5.78945 20.2039 5.54727C19.7799 5.22436 19.244 5.08185 18.7141 5.15109C18.4722 5.18269 18.2269 5.28136 17.8887 5.4588C17.3915 5.71959 16.7969 5.73002 16.3099 5.45096C15.8229 5.17191 15.5347 4.65566 15.5136 4.09794C15.4993 3.71848 15.4628 3.45833 15.3694 3.23463C15.1649 2.74458 14.7726 2.35523 14.2788 2.15224Z" fill="#1C274C"></path>
-                                    <path d="M15.5227 12C15.5227 13.6569 14.1694 15 12.4999 15C10.8304 15 9.47705 13.6569 9.47705 12C9.47705 10.3431 10.8304 9 12.4999 9C14.1694 9 15.5227 10.3431 15.5227 12Z" fill="#1C274C"></path>
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-                    <!-- ./Agent card -->
+    <!-- add & forms -->
+    <div class="w-full grid grid-cols-3 mt-5 gap-5">
+        <!-- first div -->
+        <div class="grid grid-cols-2 gap-5 col-span-1">
+            <div class="w-full space-y-4">
+                <div data-form="branchForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                    <button class="text-left flex rounded-lg w-full ">
+                        <span class="text-md font-bold">Branch</span>
+                    </button>
+                    <img src="{{ asset('images/BranchPic.png') }}" alt="Branch" class="w-10 h-10">
                 </div>
-                <!-- ./Up Cards div-->
 
-                <!-- down Cards div -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                    <!-- Accountant card -->
-                    <div class="bg-red-100/50 dark:bg-red-900/50 rounded-xl p-6 shadow relative flex flex-col justify-between">
-                        <div>
-                            <div class="text-xs uppercase font-medium text-red-500 dark:text-red-400 mb-2">Accountants</div>
-                            <button data-form="accountantForm" class="text-center flex items-center justify-center border rounded-lg border-yellow-800 p-2 w-full mt-8">
-                                <span class="text-lg font-bold text-red-800 dark:text-red-300">Add New Accountant</span>
-                                <svg
-                                    class="w-6 h-6 text-red-800 ml-2"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <path
-                                        d="M17 14.5L12 19.5L7 14.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round" />
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                </svg>
-                            </button>
-
-                        </div>
-                        <div class="flex items-center justify-between mt-4">
-                            <span class="text-gray-500 dark:text-gray-400 text-sm">Total Company Accountants</span>
-                            <span class="text-red-500 dark:text-red-400 text-sm">80</span>
-                        </div>
-                        <div class="absolute top-4 right-4 bg-white p-2 rounded-full shadow">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path opacity="0.5" fill-rule="evenodd" clip-rule="evenodd" d="M14.2788 2.15224C13.9085 2 13.439 2 12.5 2C11.561 2 11.0915 2 10.7212 2.15224C10.2274 2.35523 9.83509 2.74458 9.63056 3.23463C9.53719 3.45834 9.50065 3.7185 9.48635 4.09799C9.46534 4.65568 9.17716 5.17189 8.69017 5.45093C8.20318 5.72996 7.60864 5.71954 7.11149 5.45876C6.77318 5.2813 6.52789 5.18262 6.28599 5.15102C5.75609 5.08178 5.22018 5.22429 4.79616 5.5472C4.47814 5.78938 4.24339 6.1929 3.7739 6.99993C3.30441 7.80697 3.06967 8.21048 3.01735 8.60491C2.94758 9.1308 3.09118 9.66266 3.41655 10.0835C3.56506 10.2756 3.77377 10.437 4.0977 10.639C4.57391 10.936 4.88032 11.4419 4.88029 12C4.88026 12.5581 4.57386 13.0639 4.0977 13.3608C3.77372 13.5629 3.56497 13.7244 3.41645 13.9165C3.09108 14.3373 2.94749 14.8691 3.01725 15.395C3.06957 15.7894 3.30432 16.193 3.7738 17C4.24329 17.807 4.47804 18.2106 4.79606 18.4527C5.22008 18.7756 5.75599 18.9181 6.28589 18.8489C6.52778 18.8173 6.77305 18.7186 7.11133 18.5412C7.60852 18.2804 8.2031 18.27 8.69012 18.549C9.17714 18.8281 9.46533 19.3443 9.48635 19.9021C9.50065 20.2815 9.53719 20.5417 9.63056 20.7654C9.83509 21.2554 10.2274 21.6448 10.7212 21.8478C11.0915 22 11.561 22 12.5 22C13.439 22 13.9085 22 14.2788 21.8478C14.7726 21.6448 15.1649 21.2554 15.3694 20.7654C15.4628 20.5417 15.4994 20.2815 15.5137 19.902C15.5347 19.3443 15.8228 18.8281 16.3098 18.549C16.7968 18.2699 17.3914 18.2804 17.8886 18.5412C18.2269 18.7186 18.4721 18.8172 18.714 18.8488C19.2439 18.9181 19.7798 18.7756 20.2038 18.4527C20.5219 18.2105 20.7566 17.807 21.2261 16.9999C21.6956 16.1929 21.9303 15.7894 21.9827 15.395C22.0524 14.8691 21.9088 14.3372 21.5835 13.9164C21.4349 13.7243 21.2262 13.5628 20.9022 13.3608C20.4261 13.0639 20.1197 12.558 20.1197 11.9999C20.1197 11.4418 20.4261 10.9361 20.9022 10.6392C21.2263 10.4371 21.435 10.2757 21.5836 10.0835C21.9089 9.66273 22.0525 9.13087 21.9828 8.60497C21.9304 8.21055 21.6957 7.80703 21.2262 7C20.7567 6.19297 20.522 5.78945 20.2039 5.54727C19.7799 5.22436 19.244 5.08185 18.7141 5.15109C18.4722 5.18269 18.2269 5.28136 17.8887 5.4588C17.3915 5.71959 16.7969 5.73002 16.3099 5.45096C15.8229 5.17191 15.5347 4.65566 15.5136 4.09794C15.4993 3.71848 15.4628 3.45833 15.3694 3.23463C15.1649 2.74458 14.7726 2.35523 14.2788 2.15224Z" fill="#1C274C"></path>
-                                <path d="M15.5227 12C15.5227 13.6569 14.1694 15 12.4999 15C10.8304 15 9.47705 13.6569 9.47705 12C9.47705 10.3431 10.8304 9 12.4999 9C14.1694 9 15.5227 10.3431 15.5227 12Z" fill="#1C274C"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- ./Accountant card -->
-
-                    <!-- Client card -->
-                    <div class="bg-green-100/50 dark:bg-green-900/50 rounded-xl p-6 shadow relative flex flex-col justify-between">
-                        <div>
-                            <div class="text-xs uppercase font-medium text-green-500 dark:text-green-400 mb-2">Clients</div>
-                            <button data-form="clientForm" class="text-center flex items-center justify-center border rounded-lg 
-                            border-green-800 p-2 w-full mt-8">
-                                <span class="text-lg font-bold text-green-800 dark:text-green-300">Add New Client</span>
-                                <svg
-                                    class="w-6 h-6 text-green-800 dark:text-green-300 ml-2"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <path
-                                        d="M17 14.5L12 19.5L7 14.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round" />
-                                    <path
-                                        opacity="0.5"
-                                        d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                </svg>
-                            </button>
-
-                        </div>
-                        <div class="flex items-center justify-between mt-4">
-                            <span class="text-gray-500 dark:text-gray-400 text-sm">Total Company Clients</span>
-                            <span class="text-green-500 dark:text-green-400 text-sm">6980</span>
-                        </div>
-                        <div class="absolute top-4 right-4 bg-white p-2 rounded-full shadow">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path opacity="0.5" fill-rule="evenodd" clip-rule="evenodd" d="M14.2788 2.15224C13.9085 2 13.439 2 12.5 2C11.561 2 11.0915 2 10.7212 2.15224C10.2274 2.35523 9.83509 2.74458 9.63056 3.23463C9.53719 3.45834 9.50065 3.7185 9.48635 4.09799C9.46534 4.65568 9.17716 5.17189 8.69017 5.45093C8.20318 5.72996 7.60864 5.71954 7.11149 5.45876C6.77318 5.2813 6.52789 5.18262 6.28599 5.15102C5.75609 5.08178 5.22018 5.22429 4.79616 5.5472C4.47814 5.78938 4.24339 6.1929 3.7739 6.99993C3.30441 7.80697 3.06967 8.21048 3.01735 8.60491C2.94758 9.1308 3.09118 9.66266 3.41655 10.0835C3.56506 10.2756 3.77377 10.437 4.0977 10.639C4.57391 10.936 4.88032 11.4419 4.88029 12C4.88026 12.5581 4.57386 13.0639 4.0977 13.3608C3.77372 13.5629 3.56497 13.7244 3.41645 13.9165C3.09108 14.3373 2.94749 14.8691 3.01725 15.395C3.06957 15.7894 3.30432 16.193 3.7738 17C4.24329 17.807 4.47804 18.2106 4.79606 18.4527C5.22008 18.7756 5.75599 18.9181 6.28589 18.8489C6.52778 18.8173 6.77305 18.7186 7.11133 18.5412C7.60852 18.2804 8.2031 18.27 8.69012 18.549C9.17714 18.8281 9.46533 19.3443 9.48635 19.9021C9.50065 20.2815 9.53719 20.5417 9.63056 20.7654C9.83509 21.2554 10.2274 21.6448 10.7212 21.8478C11.0915 22 11.561 22 12.5 22C13.439 22 13.9085 22 14.2788 21.8478C14.7726 21.6448 15.1649 21.2554 15.3694 20.7654C15.4628 20.5417 15.4994 20.2815 15.5137 19.902C15.5347 19.3443 15.8228 18.8281 16.3098 18.549C16.7968 18.2699 17.3914 18.2804 17.8886 18.5412C18.2269 18.7186 18.4721 18.8172 18.714 18.8488C19.2439 18.9181 19.7798 18.7756 20.2038 18.4527C20.5219 18.2105 20.7566 17.807 21.2261 16.9999C21.6956 16.1929 21.9303 15.7894 21.9827 15.395C22.0524 14.8691 21.9088 14.3372 21.5835 13.9164C21.4349 13.7243 21.2262 13.5628 20.9022 13.3608C20.4261 13.0639 20.1197 12.558 20.1197 11.9999C20.1197 11.4418 20.4261 10.9361 20.9022 10.6392C21.2263 10.4371 21.435 10.2757 21.5836 10.0835C21.9089 9.66273 22.0525 9.13087 21.9828 8.60497C21.9304 8.21055 21.6957 7.80703 21.2262 7C20.7567 6.19297 20.522 5.78945 20.2039 5.54727C19.7799 5.22436 19.244 5.08185 18.7141 5.15109C18.4722 5.18269 18.2269 5.28136 17.8887 5.4588C17.3915 5.71959 16.7969 5.73002 16.3099 5.45096C15.8229 5.17191 15.5347 4.65566 15.5136 4.09794C15.4993 3.71848 15.4628 3.45833 15.3694 3.23463C15.1649 2.74458 14.7726 2.35523 14.2788 2.15224Z" fill="#1C274C"></path>
-                                <path d="M15.5227 12C15.5227 13.6569 14.1694 15 12.4999 15C10.8304 15 9.47705 13.6569 9.47705 12C9.47705 10.3431 10.8304 9 12.4999 9C14.1694 9 15.5227 10.3431 15.5227 12Z" fill="#1C274C"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- ./Client card -->
+                <div data-form="agentForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                    <button class="text-left flex rounded-lg w-full ">
+                        <span class="text-md font-bold">Agent</span>
+                    </button>
+                    <img src="{{ asset('images/AgentPic.png') }}" alt="Accountant" class="w-10 h-10">
                 </div>
-                <!-- ./down div Cards -->
-
 
             </div>
-            <!-- ./cards -->
+            <div class="w-full space-y-4">
+                <div data-form="accountantForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                    <button class="text-left flex rounded-lg w-full ">
+                        <span class="text-md font-bold">Accountant</span>
+                    </button>
+                    <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant" class="w-10 h-10">
+                </div>
 
-            <!-- Right card -->
+                <div data-form="clientForm" class="flex items-center justify-between px-5 py-2 bg-white BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                    <button class="text-left flex rounded-lg w-full ">
+                        <span class="text-md font-bold">Client</span>
+                    </button>
+                    <img src="{{ asset('images/ClientPic.png') }}" alt="Accountant" class="w-10 h-10">
+
+                </div>
+            </div>
+        </div>
+        <!-- ./first div -->
+
+        <!-- second div -->
+        <div class="col-span-2">
             <!-- Div to Show the Forms -->
-            <div id="initialDiv" class="relative w-full h-96 bg-blue-100/50 bg-cover bg-center rounded-lg flex justify-center items-center">
-                <div class="bg-white p-6 rounded-lg shadow-lg text-center flex flex-col items-center">
-                    <!-- Header -->
-                    <h1 class="text-xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800">
-                        Who’s To Add Today?
-                    </h1>
+            <div id="initialDiv" class="panel BoxShadow h-full p-5 shadow">
+                <div class="justify-between items-center flex">
+                    <div class=" items-center gap-5">
+                        <h1 class="text-xl font-bold text-gray-800">
+                            Who’s Joining The Company Today?
+                        </h1>
+                        <p class="text-gray-500 mt-2">
+                            Add new Branch, Agent, Accountant or Client to your company
+                    </div>
 
-                    <!-- Description -->
-                    <p class="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mt-4">
-                        Choose what your company needs, and the form will appear here.
-                    </p>
+                    <img src="{{ asset('images/AddnewPic.png') }}">
+
                 </div>
             </div>
-
             <!-- ./div to show the forms -->
 
             <!--  Forms -->
-            <div id="formDiv" class="hidden h-auto bg-[#1C274C] rounded-xl p-5 shadow relative flex flex-col justify-between w-full">
+            <div id="formDiv" class="hidden h-auto bg-white rounded-lg p-3 BoxShadow  flex flex-col justify-between w-full">
                 <!-- forms to display -->
-                <div class="mt-3">
+                <div class="mt-2">
                     <!-- Branch Form -->
                     <div id="branchForm" class="form hidden flex w-full h-auto">
-                        <div class="w-full h-auto flex items-center justify-center ">
+                        <div class="w-full h-auto">
+                            <h2 class="font-bold mb-3 text-xl">Adding New Branch</h2>
                             <form action="{{ route('companies.createBranch') }}" method="POST" class="w-full">
-                                <h2 class="text-white font-bold text-center my-3 text-xl">Add New <span class="text-yellow-500 dark:text-yellow-400">Branch</span> Here</h2>
+
 
                                 @csrf
                                 <!-- Hidden Company ID -->
@@ -451,14 +299,16 @@
 
             </div>
             <!-- ./ Forms -->
-
-
-            <!-- ./Right card -->
         </div>
-        <!-- ./ Options Buttons -->
-
+        <!-- ./second div -->
     </div>
 
+    <!-- ./add & forms -->
+
+
+
+
+    <!--./ page content -->
     <script>
         // Add event listeners for all data-form buttons
         document.querySelectorAll('[data-form]').forEach((button) => {
@@ -487,6 +337,5 @@
             });
         });
     </script>
-
 
 </x-app-layout>

@@ -2,14 +2,12 @@
     <!-- sidebar menu -->
     <div class="flex flex-col justify-between items-center space-y-4">
         <!-- quick actions icon -->
-        <div class="flex flex-col items-center heartbeat-container tooltip">
-            <span class="tooltiptext">
-                quick actions
-            </span>
+        <div data-tooltip="Quick Actions" class="flex flex-col items-center heartbeat-container">
+            <!-- Menu item -->
             <div class="relative">
                 <!-- Icon Button -->
                 <div
-                    class="p-3 LightBCcolor rounded-full shadow-md flex items-center justify-center heartbeat">
+                    class="p-3 DarkBCcolor  rounded-full shadow-md flex items-center justify-center heartbeat">
                     <!-- SVG Icon -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
                         <path fill="#FFC107" d="M33 22h-9.4L30 5H19l-6 21h8.6L17 45z" />
@@ -20,14 +18,14 @@
         <!-- ./quick actions icon -->
 
         <!--   dashboard -->
-        <div class="flex flex-col items-center ">
+        <div class="flex flex-col items-center">
             <!-- Menu item-->
             <div class="relative group">
                 <!-- Icon Button -->
                 <div
-                    class="p-3 bg-white rounded-full shadow-md hover:bg-gray-300/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                    class="p-3 bg-gray-800 rounded-full shadow-md hover:bg-gray-700 flex cursor-pointer items-center justify-center transition-all duration-200">
                     <!-- SVG Icon -->
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                         <g fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="19" cy="5" r="2.5" />
                             <path stroke-linecap="round" d="M21.25 10v5.25a6 6 0 0 1-6 6h-6.5a6 6 0 0 1-6-6v-6.5a6 6 0 0 1 6-6H14" />
@@ -36,15 +34,13 @@
                     </svg>
                 </div>
 
-
                 <a
                     href="{{ route('dashboard') }}"
-                    class="p-3 absolute left-full top-1/2 hover:bg-gray-300 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 bg-white text-gray-800 text-sm rounded-full shadow-md transition-all duration-200">
+                    class="p-3 absolute left-full top-1/2 hover:bg-gray-700 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 bg-gray-800 text-white text-sm rounded-full shadow-md transition-all duration-200">
                     Dashboard
                 </a>
             </div>
         </div>
-
         <!-- ./  dashboard -->
 
         <!-- Add New -->

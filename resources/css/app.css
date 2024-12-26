@@ -3,54 +3,91 @@
 @tailwind utilities;
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
-.bg-lime-200 {
-    background-color: rgb(212, 247, 148);
+/** body **/
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(0deg, #b1c0db 0%, #f5f5f7 100%) !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    font-size: clamp(13px, 1vw, 16px); /* Smaller base font size */
+    line-height: 1.2; /* Good readability */
+    margin: 0;
+    padding: 0;
 }
 
-thead {
-    border-radius: 999px !important;
+html.dark,
+body.dark {
+    background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
+    color: #ffffff;
+}
+
+/* Tooltip container */
+[data-tooltip] {
+    position: relative;
+    cursor: pointer;
+    z-index: 1;
+}
+
+/* Tooltip text style */
+[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 110%; /* Increased to give more space above */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #0e1726;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999; /* Ensure the tooltip is on top */
+}
+
+/* Tooltip arrow */
+[data-tooltip]::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999; /* Ensure the tooltip is on top */
+}
+
+/* Show tooltip on hover */
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
+/* Dark mode tooltip */
+html.dark [data-tooltip]::before {
+    background-color: #0e1726; /* Fixed solid dark background */
+    color: #fff;
+}
+
+html.dark [data-tooltip]::after {
+    border-color: #0e1726 transparent transparent transparent; /* Matches tooltip background */
 }
 
 [x-cloak] {
     display: none !important;
 }
 
-.chat-box {
-    display: flex;
-    gap: 0.8rem;
-    align-items: flex-end;
+[type="text"] {
+    border-width: 0px !important;
 }
 
-.chat-box > .chat-message {
-    padding: 1rem;
-}
-.chat-box-user {
-    flex-direction: row-reverse;
-}
-
-.chat-box-user > div {
-    background-color: #007bff;
-    color: #fff;
-}
-
-.chat-box-user > .chat-message {
-    border-radius: 10px 10px 0 10px;
-}
-
-.chat-box-assistant {
-    flex-direction: row;
-}
-
-.chat-box-assistant div {
-    background-color: #f1f0f0;
-    color: #000;
-}
-
-.chat-box-assistant > .chat-message {
-    border-radius: 10px 10px 10px 0;
-}
-
-.chat-container .send {
-    color: white;
-    background-color: #007bff;
-}
+/**** theme modes ****/

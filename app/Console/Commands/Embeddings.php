@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\AIService;
 use App\Http\Controllers\OpenAiController;
 use App\Models\KnowledgeBase;
 use Illuminate\Console\Command;
@@ -28,9 +29,10 @@ class Embeddings extends Command
     public function handle()
     {
         $knowledgeBaseEntries = KnowledgeBase::all();
+        $aiService = new AIService();
         foreach ($knowledgeBaseEntries as $entry) {
-            $openAIController = new OpenAiController();
-            $embedding = $openAIController->embedding($entry->content);
+            
+            $embedding = $aiService->embedding($entry->content);
 
             $entry->embedding = $embedding['data'][0]['embedding'];
             $entry->save();

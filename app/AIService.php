@@ -93,12 +93,6 @@ class AIService
             'OpenAI-Beta: assistants=v2',
         ];
         $data = [
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => 'You are going to help me to manage my travel business, my name is ' . $user->name . '. My id is ' . $user->id . '.',
-                ],
-            ],
             'metadata' => [
                 'user_id' => (string) $user->id,
             ],
@@ -252,7 +246,8 @@ class AIService
         ];
         $data = [
             'assistant_id' => $assistantId,
-            'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond.",
+            'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond. My user id is " . $user->id . ".
+                                        Today's date is " . date('Y-m-d') . ".",
             'metadata' => [
                 'user_id' => (string) $user->id,
             ],

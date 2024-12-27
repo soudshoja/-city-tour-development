@@ -12,13 +12,16 @@ use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Airline;
 use App\Models\ChatCompletion;
+use App\Models\Company;
 use App\Models\Conversation;
 use App\Models\Country;
 use App\Models\Hotel;
+use App\Models\InvoiceSequence;
 use App\Models\Message;
 use App\Models\Role;
 use App\Models\TaskHotelDetail;
 use App\Models\User;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -640,7 +643,7 @@ class OpenAiController extends Controller
                     $toolId = $tool['id'];
                     $toolName = $tool['function']['name'];
                     $toolArguments = json_decode($tool['function']['arguments'], true);
-                    $functionResponse = $this->callFunction($toolName, $toolArguments);
+                    $functionResponse = $this->callFunction($toolName, $toolArguments, $userId);
 
                     if(isset($functionResponse['error'])) return $functionResponse;
 
@@ -842,39 +845,49 @@ class OpenAiController extends Controller
         return Redirect::back()->with('success', 'Function tool added successfully');
     }
 
-    public function getClient(int $userId)
+    public function getClient(array $arguments)
     {
-        $user = User::find($userId);
+        $user = User::find($arguments['user_id']);
 
         if($user->role_id == Role::ADMIN){
-            $client = Client::all();
+            $client = Client::select('id','name')->all();
         } else if ($user->role_id == Role::COMPANY) {
-            $client = Client::select('name')->with(['agent.branch' => function ($query) use ($user) {
+            $client = Client::select('id','name')->with(['agent.branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
-            }])->get();
+            }]);
+
+            if(isset($arguments['limit'])){
+                $client = $client->limit($arguments['limit']);
+            }
+
+            $client = $client->get();
         } else if ($user->role_id == Role::BRANCH) {
-            $client = Client::with(['agent' => function ($query) use ($user) {
+            $client = Client::select('id','name')->with(['agent' => function ($query) use ($user) {
                 $query->where('branch_id', $user->branch_id);
             }])->get();
         } else {
-            $client = Client::where('agent_id', $user->id)->get();
+            $client = Client::select('id','name')->where('agent_id', $user->id)->get();
         }
 
         return json_encode($client->toArray());
     }
 
-    public function getPendingTaskCount(int $userId)
+    public function getUserTask(array $arguments,int $userId)
     {
         $user = User::find($userId);
-
+        $dateFrom = $arguments['date_from'] . ' 00:00:00';
+        $dateTo = $arguments['date_to'] . ' 23:59:59';
+        
         if ($user->role_id == Role::ADMIN) {
 
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get(); // Retrieve all tasks for admin
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+                ->where('created_at', '>=', $dateFrom)
+                ->where('created_at', '<=', $dateTo)
+                ->get(); // Retrieve all tasks
 
-            $taskCount = $tasks->count(); // Task count for admin
 
         } elseif ($user->role_id == Role::COMPANY) {
-            
+          
             $agents = Agent::with(['branch'=> function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
@@ -883,29 +896,134 @@ class OpenAiController extends Controller
 
             // Get all agents for this company
             $agentIds = $agents->pluck('id'); // Get all agents for this company
-            $tasks = Task::with('agent.branch', 'client','invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get(); // Retrieve tasks for the company’s agents
-            $taskCount = $tasks->count();
+
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)
+                ->where('created_at', '>=', $dateFrom)
+                ->where('created_at', '<=', $dateTo)
+                ->get(); // Retrieve tasks for this company
+
 
         } elseif ($user->role_id == Role::AGENT) {
             $tasks = Task::where('agent_id', $user->id)->get(); // Retrieve tasks for this agent    
-            $taskCount = $tasks->count();
+ 
         } 
 
-        logger('task count: '.(string)$taskCount);
+        // if(isset($arguments['task_type'])){
+        //     $tasks = $tasks->where('type', $arguments['task_type']);
+        // }
 
-        return (string)$taskCount;
+        if(isset($arguments['task_status'])){
+            $tasks = $tasks->where('status', $arguments['task_status']);
+        }
+
+        if(isset($arguments['task_output'])){
+            $tasks = $arguments['task_output'] == 'list' ? $tasks : $tasks->count();
+            logger('count task: ' . (string)$tasks);
+            return (string)$tasks;
+        }
+
+        logger('list task: ', $tasks->toArray());
+
+        return json_encode($tasks->toArray());
     }
 
-    public function callFunction($functionName, $arguments)
+    public function createInvoice(array $arguments)
+    {
+
+        $taskIds = $arguments['task_ids'];
+
+        if (gettype($taskIds) == 'string') {
+            $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+        } else {
+            $taskIdsArray = $taskIds; // Single task
+        }
+
+        $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
+
+        foreach ($selectedTasks as $task) {
+            if ($task->invoiceDetail) {
+                return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
+            }
+        }
+
+            $user = User::find($arguments['user_id']);
+
+        $agents = collect();
+        if ($user->role_id == Role::COMPANY) {
+            $company = $user->company;
+
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->get();
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = $user->agent;
+            $company = Company::find($agent->branch->company_id);
+        }
+
+        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceController = new InvoiceController();
+        $invoiceNumber = $invoiceController->generateInvoiceNumber($currentSequence);
+
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
+
+        $invoiceController->storeNotification([
+            'user_id' => $user->id,
+            'title' => 'Invoice' . $invoiceNumber . ' Created By ' . $user->name,
+            'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
+        ]);
+
+        // Fetch tasks
+        // Handle client association
+        if ($selectedTasks->count() > 0) {
+            $clientIds = $selectedTasks->pluck('client_id')->unique();
+            $agentIds =  $selectedTasks->pluck('agent_id')->unique();
+            $selectedAgent = Agent::find($agentIds->first());
+
+            if ($clientIds->count() >= 1) {
+                $selectedClient = Client::find($clientIds->first());
+            } else {
+                $selectedClient = null; // Handle multi-client case
+            }
+        } else {
+            $selectedClient = null; // No tasks selected
+            $selectedAgent = null;
+        }
+
+        // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
+        $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
+            return $agent['id'];
+        }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
+
+        $clientId = $selectedClient ? $selectedClient->id : null;
+
+
+        return 'invoice created: ' . $invoiceNumber;
+    
+    }
+
+    public function callFunction($functionName, $arguments,int $userId)
     {
         switch ($functionName) {
-            case 'getPendingTasksCount':
+            case 'get_user_tasks':
                 return [
-                    'success' => $this->getPendingTaskCount($arguments['user_id']),
+                    'success' => $this->getUserTask($arguments,$userId),
                 ];
-            case 'getClient':
+            case 'get_clients':
                 return [
-                    'success' => $this->getClient($arguments['user_id']),
+                    'success' => $this->getClient($arguments),
+                ];
+            case 'create_invoice':
+                
+
+                return [
+                    'success' => $this->createInvoice($arguments),
                 ];
             default:
                 return ['error' => 'Function not implemented.'];

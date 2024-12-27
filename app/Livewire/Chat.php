@@ -61,11 +61,8 @@ class Chat extends Component
            
             logger('error',$response);
 
-            $this->error = $response['message'];
-            return;
+            return $this->error = $response['message'];
         }
-
-        logger('response: \n',$response);
 
         $this->messages = $response['data'];
     }

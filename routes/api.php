@@ -32,6 +32,7 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::get('/test-get-client', [MobileController::class, 'clientTest']);
         Route::get('/thread/{threadId}',[MobileController::class, 'retrieveThread']);
         Route::get('/create-assistant',[MobileController::class, 'createAssistant']);
+        Route::put('/assistant/{assistantId}',[MobileController::class, 'modifyAssistant']);
         Route::get('/send-client-data',[MobileController::class, 'sendDataToThread']);
         Route::get('/create-thread',[MobileController::class, 'createThread']);
         Route::delete('/thread/{id}',[MobileController::class, 'deleteThread']);
@@ -42,6 +43,7 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::post('/send-message', [MobileController::class, 'sendMessage']);
         Route::get('/list-step/{threadId}/{runId}',[MobileController::class, 'listStep']);
         Route::get('/step/{threadId}/{runId}/{stepId}',[MobileController::class, 'retrieveStep']);
+        Route::post('/test-user-task/{userId}', [MobileController::class, 'getUserTask']);
 
         Route::post('knowledge', [KnowledgeBaseController::class, 'fetchRelevantKnowledge']);
 

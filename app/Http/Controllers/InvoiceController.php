@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use App\Models\InvoiceSequence;
 use App\Models\Role;
 use App\Models\Supplier;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
@@ -90,8 +91,15 @@ class InvoiceController extends Controller
 
     public function create(Request $request)
     {
+
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
-        $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+
+        if (gettype($taskIds) == 'string') {
+            $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+        } else {
+            $taskIdsArray = $taskIds; // Single task
+        }
+
         $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
 
         foreach ($selectedTasks as $task) {
@@ -99,7 +107,12 @@ class InvoiceController extends Controller
                 return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
             }
         }
-        $user = Auth::user();
+        if ($request->input('user_id') != null) {
+            $user = User::find($request->input('user_id'));
+        } else {
+            $user = Auth::user();
+        }
+
         $agents = collect();
         if ($user->role_id == Role::COMPANY) {
             $company = $user->company;
@@ -501,7 +514,7 @@ class InvoiceController extends Controller
     }
 
 
-    private function generateInvoiceNumber($sequence)
+    public function generateInvoiceNumber($sequence)
     {
         $year = now()->year;
         return sprintf('INV-%s-%05d', $year, $sequence);

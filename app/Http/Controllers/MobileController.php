@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\InvoiceDetail;
+use App\Models\KnowledgeBase;
+use DateTime;
 use Exception;
 
 class MobileController extends Controller
@@ -420,6 +422,77 @@ class MobileController extends Controller
         $response = $openAiController->askOpenAi($request->input('prompt'), $request->input('user_id'));
 
         return response()->json($response);
+    }
+
+    public function modifyAssistant($assistantId)
+    {
+        $knowledgeBaseEntries = KnowledgeBase::select('topic','content')->get();
+
+        $instruction = 'You are an assistant in a travel agency system. You will learn everything about this system and help users to get the information they need. You can ask for help if you need it. Below are the features that exist in the system:';
+
+        foreach ($knowledgeBaseEntries as $entry) {
+            $instruction .= $entry->topic . ': ' . $entry->content . '.';
+        }
+
+        $instruction .= 'You will use this information to help users managed their business in the travel agency system.\nYou will also help users to get the information they need.';
+
+        $instruction .= 'For Example: \n\nUser: How many pending task do i have for today? \nAssistant: You have 3 pending tasks for today.';
+
+        $instruction .= 'User: How much is the total amount of my invoices? \nAssistant: The total amount of your invoices is $1000.';
+
+        $instruction .= 'User: Can you show me the details of my invoice? \nAssistant: Sure, here are the details of your invoice.';
+
+        $instruction .= 'User: Please create invoice for client A. \nAssistant: Sure, I will create invoice for client A.';
+
+        $instruction .= 'You also will use tools that exist such as functions to help you to get the information you need and to perform the task.';
+
+        $data = [
+            'description' => 'Travel Agency Assistant',
+            'name' => 'Travel Agency Assistant',
+            'instructions' => $instruction,
+        ];
+
+        return $this->aiService->modifyAssistant($assistantId, $data);
+    }
+
+    public function getUserTask($userId, Request $request)
+    {
+        $user = User::find($userId);
+        $arguments = $request->input('arguments');
+
+        $dateFrom = date('Y-m-d H:i:s', strtotime($arguments['date_from']));
+        $dateTo = date('Y-m-d H:i:s', strtotime($arguments['date_to']));
+
+        // $dateFrom = $arguments['date_from'];
+        // $dateTo = $arguments['date_to'];
+        return [
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ];
+
+        $agents = Agent::with(['branch' => function ($query) use ($user) {
+            $query->where('company_id', $user->company_id);
+        }])->get();
+
+        // $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
+
+        // Get all agents for this company
+        $agentIds = $agents->pluck('id'); // Get all agents for this company
+
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)
+            ->where('created_at', '>=', $dateFrom)
+            ->where('created_at', '<=', $dateTo)
+            ->get(); // Retrieve tasks for this company
+
+        if (isset($arguments['task_status'])) {
+            $tasks = $tasks->where('status', $arguments['task_status']);
+        }
+
+        if (isset($arguments['task_output'])) {
+            $tasks = $arguments['task_output'] == 'list' ? $tasks : $tasks->count();
+            return (string)$tasks;
+        }
+        return response()->json($tasks);
     }
 }
 

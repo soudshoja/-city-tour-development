@@ -91,4 +91,20 @@ html.dark [data-tooltip]::after {
     display: none !important;
 }
 
-/**** theme modes ****/
+/**** mobile classes ****/
+
+@media screen and (max-width: 426px) and (min-width: 319px) {
+    .hide-on-mobile {
+        display: none !important;
+    }
+
+    .padding-mobile {
+        padding: 15px 0px !important;
+    }
+}
+
+@media screen and (max-width: 426px) and (min-width: 319px) {
+    input {
+        font-size: 12px !important;
+    }
+}

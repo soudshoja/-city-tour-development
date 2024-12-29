@@ -152,6 +152,13 @@ thead {
     cursor: not-allowed;
 }
 
+/* Dark mode: Style the checkbox when disabled */
+.dark .custom-checkbox input[type="checkbox"]:disabled + .checkbox-svg rect {
+    stroke: #ffffff; /* White stroke when disabled in dark mode */
+    fill: #ffffff; /* White fill when disabled in dark mode */
+    cursor: not-allowed;
+}
+
 .CuzPostion {
     bottom: 80px;
     right: 50%;
@@ -495,6 +502,58 @@ thead {
 }
 
 /** tasks list page *******************************************************************************/
+.priceDiv {
+    --tw-bg-opacity: 1;
+    background-color: rgb(229 231 235 / var(--tw-bg-opacity));
+}
+
+:is(.dark .priceDiv) {
+    --tw-bg-opacity: 1;
+    background-color: rgb(55 65 81 / var(--tw-bg-opacity));
+}
+.priceRangeCon {
+    width: 100%;
+}
+
+#priceRange {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: 0.2s;
+    transition: opacity 0.2s;
+    border-radius: 0.5rem;
+    margin: 20px;
+}
+
+#priceRange:hover {
+    opacity: 1;
+}
+
+#priceRange::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #1e40af;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+#filterstBox {
+    width: 100%;
+    text-align: center;
+    margin-top: 20px;
+    display: none;
+    border-radius: 0.5rem;
+}
+.dataTable-pagination nav a:hover {
+    background-color: transparent !important;
+    position: relative;
+    border-radius: 0.5rem; /* 8px */
+}
+
 .tableCon {
     width: 100%;
     display: flex;
@@ -649,17 +708,6 @@ nav > menu > menuitem menuitem menu {
 nav a {
     transition: background 0.5s, color 0.5s, transform 0.5s;
     position: relative;
-    border-radius: 0.5rem; /* 8px */
-}
-
-nav a:hover:before {
-    content: "";
-    top: 0;
-    left: 0;
-    position: absolute;
-    background: rgba(0, 0, 0, 0.2);
-    width: 100%;
-    height: 100%;
     border-radius: 0.5rem; /* 8px */
 }
 

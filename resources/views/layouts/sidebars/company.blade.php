@@ -92,7 +92,7 @@
     <!-- mode switchers -->
     <div class="flex flex-col justify-between items-center space-y-4">
         <!-- Theme Toggle Button -->
-        <div id="themeToggle">
+        <div id="themeToggle" data-tooltip="switch theme">
             <!-- Button with SVG icons -->
             <button id="themeButton" class="p-3 rounded-full shadow-md flex items-center justify-center bg-black hover:bg-gray-700 dark:bg-gray-600  dark:hover:bg-gray-900/50 transition-all duration-200">
                 <!-- Default SVG for light mode -->

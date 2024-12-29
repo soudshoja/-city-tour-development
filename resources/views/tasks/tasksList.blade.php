@@ -78,11 +78,9 @@
     </div>
     <!-- ./page title -->
 
-
     <!-- page content -->
     <div class="tableCon">
         <div class="content-70" id="taskListContainer">
-            <!-- Table  -->
             <div class="panel BoxShadow rounded-lg">
                 <div class="flex flex-col sm:flex-row justify-between p-2 gap-3">
                     <!--  search icon -->
@@ -91,7 +89,7 @@
                         <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
 
                         <!-- Search Button with SVG Icon -->
-                        <button type="button" class="btn DarkBCcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                        <button data-tooltip="start searching" type="button" class="DarkBCcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
                             id="searchButton">
                             <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5" class="dark:stroke-gray-300"></circle>
@@ -105,18 +103,20 @@
                     <div class="flex lg:flex-col md:flex-row gap-5 w-full justify-end hidden md:flex">
                         <!-- customize -->
                         <button class="flex px-5 py-3 gap-3 city-light-yellow rounded-lg shadow-sm items-center">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
                             </svg>
                             <span class="text-sm dark:text-black">Customize</span>
                         </button>
                         <!-- ./customize -->
 
                         <!-- filter -->
-                        <button class="flex px-5 py-3 gap-2 city-light-yellow rounded-lg shadow-sm items-center">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                        <button onclick="getFilters()" class="flex px-5 py-3 gap-2 city-light-yellow rounded-lg shadow-sm items-center">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
                             </svg>
+
+
                             <span class="text-sm dark:text-black">Filter</span>
                         </button>
                         <!-- ./filter -->
@@ -129,53 +129,79 @@
                             <span class="text-sm dark:text-black">Export</span>
                         </button>
                         <!-- ./export -->
+
                     </div>
                     <!-- ./filter & export buttons -->
 
                 </div>
 
+                <!-- opened filters div -->
+
+                <div id="filterstBox" class="priceDiv">
+                    <div class="pt-5 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                        <div>
+                            <h1>Custom Range Slider</h1>
+                            <div class="priceRangeCon">
+                                <input type="range" min="1" max="1000" value="500" id="priceRange">
+                                <p>Price: <span id="demo"></span></p>
+                            </div>
+
+
+                        </div>
+                        <div>02</div>
+                        <div>03</div>
+                    </div>
+
+
+
+                </div>
+
+                <!-- ./opened filters  div -->
+
+
+                <!-- Table -->
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
-                    <!-- table -->
+
                     <div class="dataTable-container h-max">
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
                                     <th>
                                         <label class="custom-checkbox">
-                                            <input type="checkbox" id="selectAll" class="text-gray-500 hidden">
+                                            <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
                                             <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
                                                 <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
                                     </th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Client Name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
 
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Branch Name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</th>
 
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Agent Name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</th>
                                     @endif
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Price</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Supplier</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($tasks as $task)
-                                <tr>
+                                <tr data-price="{{ $task->price }}">
                                     <td>
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-500" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
+                                        <label class="custom-checkbox" data-tooltip="select task">
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
                                                 <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
                                     </td>
                                     <td class="p-3 text-sm">
-                                        <a href="javascript:void(0);" class="viewTask text-blue-500 hover:underline" data-task-id="{{ $task->id }}">
+                                        <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300 hover:underline" data-task-id="{{ $task->id }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
                                                     <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
@@ -184,22 +210,37 @@
                                             </svg>
                                         </a>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->client_name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->branch_name }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent_name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->branch_name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->agent_name }}</td>
                                     @endif
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->type }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->price }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->status }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->supplier->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->price }}</td>
+                                    <td>
+                                        <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                        {{ $task->status === 'Completed' ? 'badge-outline-success' : '' }}
+                                        {{ $task->status === 'Assigned' ? 'badge-outline-assigned' : '' }}
+                                        {{ $task->status === 'Booked' ? 'badge-outline-booked' : '' }}
+
+                                            {{ $task->status === 'Pending' ? 'badge-outline-danger' : '' }}
+
+                                            {{ $task->status === 'Confirmed' ? 'badge-outline-primary' : '' }}
+                                            {{ $task->status === 'Cancelled' ? 'badge-outline-danger' : '' }}
+                                            {{ $task->status === 'Hold' ? 'badge-outline-danger' : '' }}">
+                                            {{ $task->status }}
+                                        </span>
+                                    </td>
+
+                                    <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->supplier->name }}
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
                         </table>
 
                     </div>
-                    <!-- ./table -->
+
 
 
                     <!-- pagination -->
@@ -230,8 +271,10 @@
                     </div>
                     <!-- ./pagination -->
                 </div>
+                <!-- ./Table  -->
+
             </div>
-            <!-- ./Table  -->
+
 
         </div>
         <!-- right -->
@@ -242,9 +285,6 @@
         <!-- ./right -->
     </div>
     <!--./page content-->
-
-
-
 
 
     <!-- Floating Actions div-->
@@ -277,8 +317,6 @@
     <!-- ./Floating Actions div -->
 
 
-
-
     <!-- table pagination script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -298,7 +336,7 @@
                 for (let i = 1; i <= totalPages; i++) {
                     const li = document.createElement('li');
                     li.className = `page-number ${i === currentPage ? 'active' : ''}`;
-                    li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+                    li.innerHTML = `<a href="#"  data-page="${i}">${i}</a>`;
 
                     const nextPageElement = paginationContainer.querySelector('#nextPage');
 
@@ -419,30 +457,76 @@
 
                             // Ensure valid data
                             if (data && data.client_name) {
+                                const taskIcon = data.type === 'Flight' ?
+                                    `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <path fill="#1e40af" fill-rule="evenodd"
+                                                    d="m14.014 17l-.006 2.003c-.001.47-.002.705-.149.851s-.382.146-.854.146h-3.01c-3.78 0-5.67 0-6.845-1.172c-.81-.806-1.061-1.951-1.14-3.817c-.015-.37-.023-.556.046-.679c.07-.123.345-.277.897-.586a1.999 1.999 0 0 0 0-3.492c-.552-.308-.828-.463-.897-.586s-.061-.308-.045-.679c.078-1.866.33-3.01 1.139-3.817C4.324 4 6.214 4 9.995 4h3.51a.5.5 0 0 1 .501.499L14.014 7c0 .552.449 1 1.002 1v2c-.553 0-1.002.448-1.002 1v2c0 .552.449 1 1.002 1v2c-.553 0-1.002.448-1.002 1"
+                                                    clip-rule="evenodd" />
+                                                <path fill="#1e40af"
+                                                    d="M15.017 16c.553 0 1.002.448 1.002 1v1.976c0 .482 0 .723.155.87c.154.148.39.138.863.118c1.863-.079 3.007-.331 3.814-1.136c.809-.806 1.06-1.952 1.139-3.818c.015-.37.023-.555-.046-.678c-.069-.124-.345-.278-.897-.586a1.999 1.999 0 0 1 0-3.492c.552-.309.828-.463.897-.586c.07-.124.061-.309.046-.679c-.079-1.866-.33-3.011-1.14-3.818c-.877-.875-2.154-1.096-4.322-1.152a.497.497 0 0 0-.509.497V7c0 .552-.449 1-1.002 1v2a1 1 0 0 1 1.002 1v2c0 .552-.449 1-1.002 1z"
+                                                    opacity=".5" />
+                                            </svg>` :
+                                    `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <path fill="#1e40af"
+                                                    d="M17 19h2v-8h-6v8h2v-6h2zM3 19V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v5h2v10h1v2H2v-2zm4-8v2h2v-2zm0 4v2h2v-2zm0-8v2h2V7z" />
+                                            </svg>`;
+
+                                const taskDescription = data.type === 'Flight' ? 'Kuala Lumpur ------->> Landon' : 'Hotel Name/ London';
                                 // Populate task details
                                 taskDetailsDiv.innerHTML = `
-                            <h3 class='text-lg font-bold mb-2'>Task Details</h3>
-                            <div class='flex flex-col rounded-md border border-[#e0e6ed]'>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Client Name:</strong> ${data.client_name}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Agent Name:</strong> ${data.agent_name || 'N/A'}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Type:</strong> ${data.type}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Price:</strong> $${data.price}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Status:</strong> ${data.status}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Supplier:</strong> ${data.supplier.name}</p>
-                                </div>
-                            </div>
-                        `;
+                                            <div class="justify-center flex items-center mb-5">
+                                                <span
+                                                    class="text-center px-5 py-3 w-full text-lg badge bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600
+                                                                            shadow-md dark:group-hover:bg-transparent rounded-lg text-black dark:text-gray-300">
+                                                    ${data.supplier.name}
+                                                </span>
+                                            </div>
+
+                                            <div class="p-4 justify-between flex items-center gap-5">
+                                                <div class='flex gap-2'>
+                                                    <h3 class='text-lg font-bold mb-2'>Task Details</h3>
+                                                </div>
+                                                <p><span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                                                                ${data.status === 'Completed' ? 'badge-outline-success' : ''}
+                                                                                ${data.status === 'Assigned' ? 'badge-outline-assigned' : ''}
+                                                                                ${data.status === 'Booked' ? 'badge-outline-booked' : ''}
+                                                                                ${data.status === 'Pending' ? 'badge-outline-danger' : ''}
+                                                                                ${data.status === 'Confirmed' ? 'badge-outline-primary' : ''}
+                                                                                ${data.status === 'Cancelled' ? 'badge-outline-danger' : ''}
+                                                                                ${data.status === 'Hold' ? 'badge-outline-danger' : ''}">
+                                                        <strong>${data.status}</strong>
+                                                    </span></p>
+
+                                            </div>
+
+                                            <div class='flex flex-col'>
+                                                <div class="p-4 justify-between flex items-center gap-5">
+                                                    <h3 class='text-md font-bold mb-2'>${data.client_name}</h3>
+                                                    <p>${data.price} - <span class='text-[#1e40af]'>KWD</span></p>
+
+                                                </div>
+
+                                                <!-- flight details -->
+                                                <div class="p-4 justify-between flex items-center gap-5">
+                                                    <div class="flex gap-2 items-center">
+                                                        ${taskIcon}
+                                                        <p>${data.type}</p>
+                                                    </div>
+                                                    <div>${taskDescription}</div>
+                                                </div>
+                                                <!-- ./flight details -->
+                                                <span class='border-b-2 border-[#b1c0db] mb-5'></span>
+                                                    <div class='border border-gray-200 rounded-md hover:bg-gray-200 flex items-center'>
+                                                        <p class='p-3 rounded-l-md bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 w-24'>Agent:</p>
+                                                        <p class="ml-2 flex-1">${data.agent_name || 'Agent name'}</p>
+                                                    </div>
+                                                     <div class='mt-3 border border-gray-200 rounded-md  hover:bg-gray-200 flex items-center'>
+                                                        <p class='p-3 rounded-l-md bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 w-24'>Branch:</p>
+                                                        <p class="ml-2 flex-1">${data.agent_name || 'Branch name'}</p>
+                                                    </div>
+
+                                            </div>
+                                            `;
                                 // Show task details and adjust styles
                                 taskListContainer.classList.add("show-details"); // Shrink content-70
                                 taskDetailsContainer.classList.remove("hidden"); // Show details
@@ -461,9 +545,6 @@
             });
         });
     </script>
-
-
-
 
 
     <!-- select all & create invoice script -->
@@ -532,6 +613,34 @@
     </script>
 
 
+    <!-- filter script -->
+    <script>
+        function getFilters() {
+            var x = document.getElementById("filterstBox");
+            x.style.display = x.style.display === "none" ? "block" : "none";
+        }
+
+        const slider = document.getElementById("priceRange");
+        const output = document.getElementById("demo");
+        const tableRows = document.querySelectorAll("#myTable tbody tr");
+
+        output.innerHTML = slider.value;
+
+        slider.addEventListener('input', function() {
+            const maxPrice = parseFloat(this.value);
+            output.innerHTML = maxPrice;
+
+
+            tableRows.forEach(row => {
+                const price = parseFloat(row.getAttribute('data-price'));
+                if (!isNaN(price) && price <= maxPrice) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        });
+    </script>
 
 
 </x-app-layout>

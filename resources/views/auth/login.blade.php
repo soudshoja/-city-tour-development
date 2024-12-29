@@ -4,7 +4,7 @@
         <div class="rounded-lg flex items-stretch w-[80%] justify-center">
             <!-- Left Side - Login Form -->
             <div
-                class="w-full lg:w-1/2 p-8 bg-primary text-white flex flex-col justify-center items-center mx-auto rounded-md custom-rounded-left">
+                class="font-size-on-mobile-320 padding-mobile w-full lg:w-1/2 lg:p-8 md:p-8 xl:p-8 bg-primary text-white flex flex-col justify-center items-center mx-auto rounded-md custom-rounded-left">
 
                 <h2 class="text-2xl font-semibold mb-4 text-left w-3/4 max-w-sm">Let's you sign in it ...</h2>
                 <p class="text-sm mb-8 text-left w-3/4 max-w-sm">It's great to have you back!!</p>
@@ -67,9 +67,8 @@
                         <span class="absolute end-4 top-1/2 -translate-y-1/2 cursor-pointer"
                             onclick="togglePasswordVisibility()">
                             <!-- Eye SVG -->
-                            <svg id="eyeIcon" class="blackCity w-5 h-5" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                class="feather feather-eye">
+                            <svg id="eyeIcon" class="w-5 h-5 text-black dark:text-white" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
@@ -110,10 +109,9 @@
 
             <!-- Right Side - Image/Illustration -->
             <div
-                class="hidden sm:rounded-lg lg:flex w-full lg:w-1/2 bg-white items-center justify-center custom-rounded-right">
-                <img src="{{ asset('images/LoginPic02.svg') }}" alt="Illustration"
+                class="hide-on-mobile sm:rounded-lg lg:flex w-full lg:w-1/2 bg-white items-center justify-center custom-rounded-right">
+                <img src="{{ asset('images/LoginPic550px.png') }}" alt="Illustration"
                     class="-mt-10 object-contain max-h-[600px]">
-
             </div>
         </div>
     </div>

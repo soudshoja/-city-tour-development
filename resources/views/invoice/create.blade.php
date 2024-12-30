@@ -5,6 +5,34 @@
             cursor: not-allowed;
             pointer-events: none;
         }
+
+        /* Highlight selected button */
+        .highlight-selected {
+            background-color: #e0f2ff; /* Light blue background for the selected option */
+            border-color: #3b82f6; /* Blue border */
+            opacity: 1; /* Fully visible */
+            transition: all 0.3s ease-in-out;
+            pointer-events: none; 
+        }
+
+        /* Fade unchecked buttons */
+        .fade-unchecked {
+            opacity: 0.5; /* Reduce visibility for unselected options */
+            pointer-events: none; /* Prevent interactions */
+            transition: all 0.3s ease-in-out;
+        }
+
+        #coa-activities-container {
+            padding: 20px;
+            background-color: #f8f9fa; /* Light background for activities */
+            display: none; /* Initially hide */
+        }
+
+        #invoice-container {
+            position: relative;
+            z-index: 1; /* Ensure invoice content is above activities */
+        }
+
     </style>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
@@ -232,8 +260,17 @@
                     </div>
                 </div>
 
+                <div class="panel flex-1 px-6 py-6 lg:mr-6" id="coa-activities-container">
+                    <h3 class="font-bold text-xl mb-4">COA Activities:</h3>
+                    <ul id="coa-activities-list" class="list-disc pl-6 space-y-2">
+                        <!-- COA activities will be inserted here by the coaActivites function -->
+                    </ul>
+                </div>
 
             </div>
+
+
+
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
                 <div class="panel mb-5">
                     <select id="currency" name="currency" class="form-select">
@@ -273,7 +310,7 @@
                                     onclick="showModal('partial')"
                                     hidden
                                     class="peer"
-                                    checked />
+                                     />
                                 <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
                                     <span class="font-medium">Partially Payment</span>
                                 </div>
@@ -291,7 +328,7 @@
                                     onclick="showModal('split')"
                                     hidden
                                     class="peer"
-                                    checked />
+                                     />
                                 <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
                                     <span class="font-medium">Split Payment</span>
                                 </div>
@@ -753,8 +790,11 @@
         <!-- end main content section -->
     </div>
 
+
+
     <script>
         let selectedTasks = @json($selectedTasks);
+        let branches = @json($branches);
         let clients = @json($clients);
         let agents = @json($agents);
         let items = [];
@@ -798,6 +838,24 @@
         const generateInvoice = document.getElementById("generate-invoice-btn");
         const paymentGatewaySection = document.getElementById('payment_gateway_section');
         const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
+        const options = document.querySelectorAll('.select-option');
+        const selectedBranchInput = document.getElementById('selectedBranch');
+
+        // Add click event listener to each option
+        options.forEach(option => {
+            option.addEventListener('click', function () {
+                // Get the data-value attribute from the clicked option
+                const branchId = this.getAttribute('data-value');
+
+                // Update the hidden input value
+                selectedBranchInput.value = branchId;
+                console.log(selectedBranchInput.value);
+                // Optional: Add active styling to the selected option
+                options.forEach(opt => opt.classList.remove('active')); // Remove active class from others
+                this.classList.add('active'); // Add active class to clicked option
+            });
+        });
 
 
         if (paymentType === 'full') {
@@ -1130,7 +1188,7 @@
                 description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
                 client_name: task.client_name
             });
-
+            console.log('items', items);
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
@@ -1255,9 +1313,11 @@
                 
                 // Find the agent by agentId
                 let agent = agents.find(a => a.id === agentId);
-
+                // Find the branch associated with the agent
+                let branch = branches.find(b => b.id === agent.branch_id);
+                console.log('branch', branch);
                 // Check if client and agent exist
-                if (client && agent) {
+                if (client && agent && branch) {
                     // Update hidden fields
                     document.getElementById('receiverId').value = client.id;
 
@@ -1272,6 +1332,13 @@
                     document.getElementById('agentName').value = agent.name;
                     document.getElementById('agentEmail').value = agent.email;
                     document.getElementById('agentPhone').value = agent.phone;
+
+                     // Update the selected branch
+                    document.getElementById('selectedBranch').value = branch.id;
+
+                      // Update the trigger text for branch selection
+                    document.querySelector('.select-trigger').textContent = branch.name;
+
                 } else {
                     console.error('Client or Agent not found');
                 }
@@ -1336,6 +1403,9 @@
         function savePartial(mode) {
      
             if (mode === 'full') {
+
+                if (!validateFullPayment()) return;
+
                     const gateway = document.getElementById('payment_gateway').value;
                     const date = document.getElementById('duedate').value;
                     const amount = document.getElementById('subTotal').value;
@@ -1345,6 +1415,9 @@
                     save('full', fullData);
             }else
             if (mode === 'split') {
+
+                if (!validateSplitPayment()) return;
+
                 // Collect Split Payment Data
                 const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
                 const splitInto = parseInt(document.getElementById('split-into').value) || 0;
@@ -1363,10 +1436,11 @@
                     splitData.push({ clientId, clientName, date, amount, gateway });
                 });
 
-                console.log('Split Payment Data:', { totalAmount, splitInto, description, splitData });
                 save('split', splitData);
 
             } else if (mode === 'partial') {
+                if (!validatePartialPayment()) return;
+
                 // Collect Partial Payment Data
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
@@ -1381,8 +1455,7 @@
 
                     partialData.push({ date, amount, gateway });
                 });
-   
-                console.log('Partial Payment Data:', partialData);
+
                 save('partial', partialData);
 
             }
@@ -1520,6 +1593,87 @@
             }
         }
 
+
+        function validateFullPayment() {
+                const gateway = document.getElementById('payment_gateway').value;
+                const date = document.getElementById('duedate').value;
+                const amount = parseFloat(document.getElementById('subTotal').value) || 0;
+
+                if (!gateway || !date || amount <= 0) {
+                    displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
+                    return false;
+                }
+                return true;
+            }
+            function validateSplitPayment() {
+            const rows = document.querySelectorAll('#split-rows tr');
+            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+            let totalAmount = 0;
+
+            for (const row of rows) {
+                const selectElement = row.querySelector('select');
+                const clientId = selectElement.value;
+                const date = row.querySelector('input[type="date"]').value;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                if (!clientId || !date || amount <= 0) {
+                    displayErrorMessage("Each split payment row must have a client, valid date, and amount greater than 0.");
+                    return false;
+                }
+
+                totalAmount += amount;
+            }
+
+            if (totalAmount > subTotal) {
+                displayErrorMessage(`The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            if (totalAmount < subTotal) {
+                displayErrorMessage(`The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            return true;
+        }
+
+        function validatePartialPayment() {
+            const rows = document.querySelectorAll('#split-rows1 tr');
+            const gateway = document.getElementById('payment_gateway1').value;
+            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+            let totalAmount = 0;
+
+            for (const row of rows) {
+                const date = row.querySelector('input[type="date"]').value;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                if (!date || amount <= 0) {
+                    displayErrorMessage("Each partial payment row must have a valid date and amount greater than 0.");
+                    return false;
+                }
+
+                totalAmount += amount;
+            }
+
+            if (!gateway) {
+                displayErrorMessage("Payment gateway is required for partial payment.");
+                return false;
+            }
+
+            if (totalAmount > subTotal) {
+                displayErrorMessage(`The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            if (totalAmount < subTotal) {
+                displayErrorMessage(`The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            return true;
+        }
+
+
         function displayErrorMessage(message) {
             const alert = document.createElement('div');
             alert.innerHTML = `
@@ -1534,27 +1688,31 @@
         }
 
         function afterPaymentType(){
-            const tabs = document.querySelectorAll('input[name="payment_type"]');
             const partial = document.getElementById('payment_type_partial');
             const split = document.getElementById('payment_type_split');
             const full = document.getElementById('payment_type_full');
             const update = document.getElementById('update-invoice-btn');
             const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+            // Get all payment type inputs
+            const paymentOptions = document.querySelectorAll('input[name="payment_type"]');
 
-            if (paymentType === 'full') {
-                partial.disabled = true;
-                split.disabled = true;
-                full.disabled = false;
-                update.disabled = true;
-            } else if (paymentType === 'partial') {
-                partial.disabled = false;
-                split.disabled = true;
-                full.disabled = true;
-            } else if(paymentType === 'split') {
-                partial.disabled = true;
-                split.disabled = false;
-                full.disabled = true;
-            }
+            // Get the selected payment type
+            const selectedOption = document.querySelector('input[name="payment_type"]:checked');
+
+            update.disabled = true;
+
+            // Disable all options
+            paymentOptions.forEach(option => {
+                    option.disabled = true; // Disable the radio button
+                    const label = option.closest('label'); // Find the parent label
+                    if (option === selectedOption) {
+                        // Highlight the selected label
+                        label.classList.add('highlight-selected');
+                    } else {
+                        // Fade the unselected labels
+                        label.classList.add('fade-unchecked');
+                    }
+                });
             
         }
           
@@ -1564,39 +1722,78 @@
             const invoiceUrl = "{{ route('invoice.store') }}";
             const csrfToken = "{{ csrf_token() }}";
 
-            const currency = document.getElementById('currency').value;
-            const invoiceNumber = document.getElementById('invoiceNumber').value;
-            const invdate = document.getElementById('invdate').value;
-            const duedate = document.getElementById('duedate').value;
-            const subTotal = document.getElementById('subTotal').value;
-            const tasks = items;
-            const clientId = document.getElementById('receiverId').value;
-            const agentId = document.getElementById('agentId').value;
+            const currencyElement = document.getElementById('currency');
+            const invoiceNumberElement = document.getElementById('invoiceNumber');
+            const invdateElement = document.getElementById('invoiceDate');
+            const duedateElement = document.getElementById('dueDate');
+            const subTotalElement = document.getElementById('subTotal');
+            const clientIdElement = document.getElementById('receiverId');
+            const agentIdElement = document.getElementById('agentId');
+            const selectedBranch = document.getElementById('selectedBranch');
 
+            const currency = currencyElement ? currencyElement.value : null;
+            const invoiceNumber = invoiceNumberElement ? invoiceNumberElement.value : null;
+            const invdate = invdateElement ? invdateElement.value : null;
+            const duedate = duedateElement ? duedateElement.value : null;
+            const subTotal = subTotalElement ? subTotalElement.value : null;
+            const clientId = clientIdElement ? clientIdElement.value : null;
+            const agentId = agentIdElement ? agentIdElement.value : null;
+            const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
+            const tasks = items;
             // Show loading state
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
+
             console.log(
                 'clientId:', clientId,
                 'agentId:', agentId,
                 'tasksLength:', tasks.length,
+                'selectedBranchValue:', selectedBranchValue,
+                'currency:', currency,
+                'invoiceNumber:', invoiceNumber,
+                'invdate:', invdate,
+                'duedate:', duedate,
+                'subTotal:', subTotal,
             );
-            if (!clientId || !agentId || !tasks.length) {
-                console.error("Required data is missing.");
+
+            let errorMessages = [];
+
+            // Validate all inputs and add specific messages
+            if (!currency) errorMessages.push("Currency is missing.");
+            if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
+            if (!invdate) errorMessages.push("Invoice date is missing.");
+            if (!duedate) errorMessages.push("Due date is missing.");
+            if (!subTotal) errorMessages.push("Subtotal is missing.");
+            if (!clientId) errorMessages.push("Client ID is missing.");
+            if (!agentId) errorMessages.push("Agent ID is missing.");
+            if (!items.length) errorMessages.push("No tasks have been selected.");
+            if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
+
+            // Check if there are any errors
+            if (errorMessages.length > 0) {
+                // Create the error notification element
                 let errorNotification = document.createElement('div');
-                errorNotification.innerHTML = ` 
-                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                       Please Fill In All Required Data 
-                     <button type="button" class="close text-white ml-2" aria-label="Close"
-                         onclick="this.parentElement.style.display='none';">
-                         <span aria-hidden="true">&times;</span>
-                     </button>
-                 </div>
-                 `
+                errorNotification.className = "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
+                errorNotification.innerHTML = `
+                    <ul>
+                        ${errorMessages.map(message => `<li>${message}</li>`).join('')}
+                    </ul>
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                `;
+
+                // Append the error notification to the body
                 document.body.appendChild(errorNotification);
+
+                // Reset button state or perform any cleanup
                 resetButtonState();
                 return;
             }
+
+            // Proceed with the form submission or further processing
+            console.log("All required data is provided. Proceeding...");
 
             try {
                 const response = await fetch(invoiceUrl, {
@@ -1632,6 +1829,9 @@
                 isSaved = true; // Mark as saved after generating
                 updateButtonState();
 
+                coaActivites(items, subTotal);
+
+
             } catch (error) {
                 console.error('Error generating invoice:', error);
                 let alert = document.createElement('div');
@@ -1652,9 +1852,67 @@
                 setTimeout(() => {  
                     checkInvoiceId();
                     resetButtonState();
+                   // Show COA activities container
+                   document.getElementById("coa-activities-container").style.display = "block";
                 }, 1000);
             }
         };
+
+
+        function coaActivites(items, subTotal) {
+            const supplierTotals = new Map(); // To track cumulative amounts for each supplier
+            let cumulativeMarkup = 0; // Total markup income
+
+            const clientNameInput = document.getElementById("receiverName");
+            const defaultClientName = "Unknown Client"; // Fallback if input is empty or unavailable
+            const clientNameFromInput = clientNameInput ? clientNameInput.value.trim() : defaultClientName;
+
+            const activities = items.map(item => {
+                // Extract relevant details for each activity
+                const taskId = item.id || "Unknown Task ID"; // Task ID
+                const supplierName = item.supplier_name || "Unknown Supplier";
+                const agentName = item.agent_name || "Unknown Agent";
+                const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
+                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.price || 0); // Markup = invprice - price
+
+                // Update cumulative totals per supplier
+                if (!supplierTotals.has(supplierName)) {
+                    supplierTotals.set(supplierName, 0);
+                }
+                supplierTotals.set(supplierName, supplierTotals.get(supplierName) + totalAmount);
+
+                // Update cumulative markup
+                cumulativeMarkup += markupValue;
+
+                // Construct the activities
+                return [
+                    `Task ID: ${taskId} - Income of KWD${markupValue.toFixed(2)} from agent: ${agentName}`
+                ];
+            }).flat(); // Flatten the array since map creates a nested array for each item
+
+            activities.push(`Payments to receive from: ${clientNameFromInput} amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`);
+            // Add cumulative totals for each supplier
+            supplierTotals.forEach((total, supplierName) => {
+                activities.push(`Payment need to be made to ${supplierName}: KWD${total.toFixed(2)}`);
+            });
+
+            // Add overall cumulative totals
+            activities.push(`Total markup income: KWD${cumulativeMarkup.toFixed(2)}`);
+
+            // Get the container where activities will be displayed
+            const activitiesList = document.getElementById("coa-activities-list");
+
+            // Clear any previous content
+            activitiesList.innerHTML = "";
+
+            // Display the activities
+            activities.forEach(activity => {
+                const listItem = document.createElement("li");
+                listItem.textContent = activity;
+                activitiesList.appendChild(listItem);
+            });
+        }
+
 
         function resetButtonState() {
             isSaving = false;

@@ -1869,7 +1869,7 @@
 
             const activities = items.map(item => {
                 // Extract relevant details for each activity
-                const taskId = item.id || "Unknown Task ID"; // Task ID
+                const taskId = item.reference || "Unknown Task ID"; // Task ID
                 const supplierName = item.supplier_name || "Unknown Supplier";
                 const agentName = item.agent_name || "Unknown Agent";
                 const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier

@@ -181,6 +181,7 @@ class InvoiceController extends Controller
                     ->map(function ($task) {
                         $task->agent_name = $task->agent->name ?? null;
                         $task->branch_name = $task->agent->branch->name ?? null;
+                        $task->supplier_name = $task->supplier->name ?? null;
                         return $task;
                     })
                 : collect();
@@ -192,6 +193,7 @@ class InvoiceController extends Controller
                     ->map(function ($task) {
                         $task->agent_name = $task->agent->name ?? null;
                         $task->branch_name = $task->agent->branch->name ?? null;
+                        $task->supplier_name = $task->supplier->name ?? null;
                         return $task;
                     })
                 : collect();

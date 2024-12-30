@@ -19,6 +19,7 @@ class Invoice extends Model
         'amount',
         'status',
         'invoice_date',
+        'paid_date',
         'due_date',
         'label',
         'account_number',
@@ -51,6 +52,11 @@ class Invoice extends Model
     public function invoiceDetails()
     {
         return $this->hasMany(InvoiceDetail::class);
+    }
+
+    public function invoicePartials()
+    {
+        return $this->hasMany(InvoicePartial::class);
     }
 
 

@@ -11,11 +11,13 @@ use App\Models\TaskFlightDetail;
 use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Airline;
+use App\Models\Branch;
 use App\Models\ChatCompletion;
 use App\Models\Company;
 use App\Models\Conversation;
 use App\Models\Country;
 use App\Models\Hotel;
+use App\Models\Invoice;
 use App\Models\InvoiceSequence;
 use App\Models\Message;
 use App\Models\Role;
@@ -618,8 +620,28 @@ class OpenAiController extends Controller
                 $tokens = []
             );
 
+        $agents = json_encode($this->getAgents($user));
+        $branch = json_encode($this->getBranches($user));
+        $clients = json_encode($this->getClients($user));
+        $invoices = json_encode($this->getInvoices($user));
+        $tasks = json_encode($this->getTasks($user));
+
+
+        $data = [
+            'assistant_id' => $assistantId,
+            'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond. My user id is " . $user->id . ".
+                                        Today's date is " . date('Y-m-d') . ".
+                                        This is the list of agents for this user: " . $agents . ".
+                                        This is the list of branches for this user: " . $branch . ".
+                                        This is the list of clients for this user: " . $clients . ".
+                                        This is the list of invoices for this user: " . $invoices . ".
+                                        This is the list of tasks for this user: " . $tasks . ".",
+            'metadata' => [
+                'user_id' => (string) $user->id,
+            ],
+        ];
             //Run thread
-            $runResponse = $this->aiService->createRun($assistantId, $threadId, $user);
+            $runResponse = $this->aiService->createRun($threadId, $data);
 
             if($runResponse['status'] === 'error') return $runResponse; 
 
@@ -845,32 +867,6 @@ class OpenAiController extends Controller
         return Redirect::back()->with('success', 'Function tool added successfully');
     }
 
-    public function getClient(array $arguments)
-    {
-        $user = User::find($arguments['user_id']);
-
-        if($user->role_id == Role::ADMIN){
-            $client = Client::select('id','name')->all();
-        } else if ($user->role_id == Role::COMPANY) {
-            $client = Client::select('id','name')->with(['agent.branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company_id);
-            }]);
-
-            if(isset($arguments['limit'])){
-                $client = $client->limit($arguments['limit']);
-            }
-
-            $client = $client->get();
-        } else if ($user->role_id == Role::BRANCH) {
-            $client = Client::select('id','name')->with(['agent' => function ($query) use ($user) {
-                $query->where('branch_id', $user->branch_id);
-            }])->get();
-        } else {
-            $client = Client::select('id','name')->where('agent_id', $user->id)->get();
-        }
-
-        return json_encode($client->toArray());
-    }
 
     public function getUserTask(array $arguments,int $userId)
     {
@@ -1057,5 +1053,96 @@ class OpenAiController extends Controller
       
     }
 
+    // FUNCTION FOR GETTING INFORMATION
+    public function getAgents(User $user) : array
+    {
+        if($user->role_id == Role::ADMIN){
+            return Agent::get()->select('id', 'name', 'branch_id')->toArray();
+        } else if($user->role_id == Role::COMPANY) {
+
+            return Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get()->select('id', 'name', 'branch_id')->toArray();
+
+        } else if ($user->role_id == Role::AGENT) {
+            return Agent::where('id', $user->agent->id)->get();
+        } else {
+            return [];
+        }
+    }
+
+    public function getBranches(User $user) : array
+    {
+        if($user->role_id == Role::ADMIN){
+            return Branch::select('id', 'name', 'company_id')->toArray();
+        } else if($user->role_id == Role::COMPANY) {
+            return Branch::where('company_id', $user->company->id)->get('id', 'name', 'company_id')->toArray();
+        } else if ($user->role_id == Role::BRANCH) {
+            return Branch::where('id', $user->branch->id)->get('id', 'name', 'company_id')->toArray();
+        } else {
+            return [];
+        }
+    }
+
+    public function getClients(User $user) : array
+    {
+
+        if($user->role_id == Role::ADMIN){
+            $client = Client::select('id','name')->all();
+        } else if ($user->role_id == Role::COMPANY) {
+            $client = Client::select('id','name')->with(['agent.branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }]);
+
+
+            $client = $client->get();
+        } else if ($user->role_id == Role::BRANCH) {
+            $client = Client::select('id','name')->with(['agent' => function ($query) use ($user) {
+                $query->where('branch_id', $user->branch_id);
+            }])->get();
+        } else {
+            $client = Client::select('id','name')->where('agent_id', $user->id)->get();
+        }
+
+        return $client->toArray();
+    }
+
+    public function getInvoices(User $user) : array
+    {
+
+        if($user->role_id == Role::ADMIN){
+            return Invoice::with('invoiceDetails','invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails')->toArray();
+        } else if($user->role_id == Role::COMPANY) {
+
+            $agentsId = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get()->pluck('id');
+            return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->whereIn('agent_id', $agentsId)->toArray();
+
+        } else if ($user->role_id == Role::AGENT) {
+            return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->where('agent_id', $user->agent->id)->toArray();
+        } else {
+            return [];
+        }
+   }
+
+   public function getTasks(User $user) : array
+   {
+        if($user->role_id == Role::ADMIN){
+            return Task::get()->select('id', 'agent_id', 'client_id', 'agent_id', 'type', 'status', 'reference', 'price', 'tax', 'total')->toArray();
+        } else if($user->role_id == Role::COMPANY) {
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get();
+
+            $agentIds = $agents->pluck('id');
+
+            return Task::whereIn('agent_id', $agentIds)->get()->select('id', 'agent_id', 'client_id', 'agent_id', 'type', 'status', 'reference', 'price', 'tax', 'total')->toArray();
+        } else if ($user->role_id == Role::AGENT) {
+            return Task::where('agent_id', $user->agent->id)->get()->select('id', 'agent_id', 'client_id', 'agent_id', 'type', 'status', 'reference', 'price', 'tax', 'total')->toArray();
+        } else {
+            return [];
+        }
+   }
 
 }

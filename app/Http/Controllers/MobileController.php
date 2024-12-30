@@ -27,8 +27,10 @@ use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\InvoiceDetail;
 use App\Models\KnowledgeBase;
+use App\Models\Role;
 use DateTime;
 use Exception;
+use PDO;
 
 class MobileController extends Controller
 {
@@ -493,6 +495,26 @@ class MobileController extends Controller
             return (string)$tasks;
         }
         return response()->json($tasks);
+    }
+
+    public function getInvoices(int $userId)
+    {
+        $user = User::find($userId);
+
+        if($user->role_id == Role::ADMIN){
+            return Invoice::with('invoiceDetails','invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails')->toArray();
+        } else if($user->role_id == Role::COMPANY) {
+
+            $agentsId = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get()->pluck('id');
+            return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->whereIn('agent_id', $agentsId)->toArray();
+
+        } else if ($user->role_id == Role::AGENT) {
+            return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->where('agent_id', $user->agent->id)->toArray();
+        } else {
+            return [];
+        }
     }
 }
 

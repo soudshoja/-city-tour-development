@@ -12,7 +12,7 @@
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
-            <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
+            <div class="bg-white rounded-md shadow-md flex-1 px-0 py-6 lg:mr-6 ">
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-4">
                     <div class=" shrink-0 items-center text-black dark:text-white">

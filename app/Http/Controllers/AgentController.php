@@ -196,6 +196,7 @@ class AgentController extends Controller
         return redirect()->route('companiesshow.show', ['id' => $request->company_id])
             ->with('success', 'Agent registered successfully');
     }
+
     public function getTasks($id)
     {
         $tasks = Task::where('agent_id', $id)->get();

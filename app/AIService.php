@@ -3,7 +3,9 @@
 namespace App;
 
 use App\Http\Traits\HttpRequestTrait;
+use App\Models\Agent;
 use App\Models\Conversation;
+use App\Models\Role;
 use App\Models\User;
 use Exception;
 
@@ -88,11 +90,17 @@ class AIService
     {
         $url = $this->apiUrl . '/threads';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
         $data = [
+            'messages' => [
+                [
+                    'role' => 'assistant',
+                    'content' => 'Hello, I am your assistant. How can I help you today?',
+                ],
+            ],
             'metadata' => [
                 'user_id' => (string) $user->id,
             ],
@@ -113,7 +121,7 @@ class AIService
     {
         $url = $this->apiUrl . '/threads/' . $threadId;
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -137,9 +145,9 @@ class AIService
     
     public function deleteThread(string $threadId) : array
     {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId;
+        $url = $this->apiUrl . '/threads/' . $threadId;
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -163,9 +171,9 @@ class AIService
 
     public function createMessage(string $threadId, string $message) : array
     {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/messages';
+        $url = $this->apiUrl . '/threads/' . $threadId . '/messages';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -235,22 +243,13 @@ class AIService
         ];
     }
 
-    public function createRun(string $assistantId, string $threadId, User $user): array
+    public function createRun(string $threadId, array $data): array
     {
-
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs';
+        $url = $this->apiUrl . '/threads/' . $threadId . '/runs';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
-        ];
-        $data = [
-            'assistant_id' => $assistantId,
-            'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond. My user id is " . $user->id . ".
-                                        Today's date is " . date('Y-m-d') . ".",
-            'metadata' => [
-                'user_id' => (string) $user->id,
-            ],
         ];
 
         $response = $this->postRequest($url, $header, json_encode($data));
@@ -264,10 +263,10 @@ class AIService
 
     public function checkRun(string $threadId, string $runId): array
     {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId;
+        $url = $this->apiUrl . '/threads/' . $threadId . '/runs/' . $runId;
 
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -313,9 +312,9 @@ class AIService
     
     public function listRun($threadId): array
     {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs?limit=10';
+        $url = $this->apiUrl . '/threads/' . $threadId . '/runs?limit=10';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -339,9 +338,9 @@ class AIService
     
     public function cancelRun($threadId, $runId): array
     {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/cancel';
+        $url = $this->apiUrl . '/threads/' . $threadId . '/runs/' . $runId . '/cancel';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'OpenAI-Beta: assistants=v2',
         ];
 
@@ -367,7 +366,7 @@ class AIService
     {
         $url = $this->apiUrl . '/threads/' . $threadId . '/runs/' . $runId . '/steps';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -391,9 +390,9 @@ class AIService
     
     public function retrieveStep(string $threadId, string $runId, string $stepId): array
     {
-        $url = config('services.open-ai.url') . '/threads/' . $threadId . '/runs/' . $runId . '/steps';
+        $url = $this->apiUrl . '/threads/' . $threadId . '/runs/' . $runId . '/steps';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
             'OpenAI-Beta: assistants=v2',
         ];
@@ -417,9 +416,9 @@ class AIService
 
     public function embedding(string $query)
     {
-        $url = config('services.open-ai.url') . '/embeddings';
+        $url = $this->apiUrl . '/embeddings';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json'
         ];
         $data = [

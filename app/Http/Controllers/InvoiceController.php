@@ -489,6 +489,7 @@ class InvoiceController extends Controller
                             'task_id' => $task['id'],
                             'task_description' => $task['description'],
                             'task_remark' => $task['remark'],
+                            'client_notes' => $task['note'],
                             'task_price' =>  $task['invprice'],
                             'supplier_price' => $selectedtask->total,
                             'markup_price' => $task['invprice'] - $selectedtask->total,

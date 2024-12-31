@@ -33,6 +33,20 @@
             z-index: 1; /* Ensure invoice content is above activities */
         }
 
+        .table-container {
+            overflow-x: auto; /* Enable horizontal scrolling */
+            overflow-y: auto; /* Enable vertical scrolling if needed */
+            max-height: 500px; /* Adjust height as per your layout */
+            max-width: 1000px;
+            border: 1px solid #e0e6ed; /* Optional: add border around the scroll area */
+        }
+
+        table {
+            width: 100%; /* Ensure table takes up full width */
+            border-spacing: 0; /* Remove extra spacing between cells */
+            border-collapse: collapse; /* Merge borders */
+        }
+
     </style>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
@@ -40,9 +54,9 @@
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
-            <div class="bg-white rounded-md shadow-md flex-1 px-0 py-6 lg:mr-6 ">
+            <div class="panel flex-1 px-0 py-6 lg:mr-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]">
                 <!-- company details -->
-                <div class="flex flex-wrap justify-between px-4">
+                <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white">
                         <x-application-logo class="custom-logo-size" />
 
@@ -99,14 +113,15 @@
                         <div class="mt-4 flex items-center">
                             <label for="dueDate" class="w-full text-sm font-semibold">Due Date</label>
                             <input id="dueDate" type="date" name="dueDate" class="w-full form-input" />
-
-                            <script>
-
-                            </script>
-
-
                         </div>
-
+                        <!-- Refresh Button -->
+                        <div class="mt-6 flex justify-end">
+                            <button type="button" onclick="location.reload()" class="px-2 py-2 city-light-yellow text-white rounded hover:text-[#004c9e] flex items-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 1 1 2.026 5.255M3 12H8m-5 0V7" />
+                                </svg>
+                            </button>
+                        </div>
 
                     </div>
 
@@ -220,24 +235,34 @@
                 <!-- choose items -->
                 <div class="mt-8">
                     <!-- choose items -->
-                    <div class="table-responsive">
-                        <table id="itemsTable" class="text-left w-full border-collapse">
-                            <thead>
-                                <tr>
-                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Task</th>
-                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Client</th>
-                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Quantity</th>
-                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Task Price</th>
-                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Invoice Price</th>
-                                    <th class="whitespace-nowrap text-gray-900 dark:text-gray-100">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
-                                <!-- Items will be added dynamically here -->
-                                <!-- "No Item Available" row will show if items.length <= 0 -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="overflow-x-scroll max-w-[1100px] border border-gray-200">
+                    <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
+                                <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Venue</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Quantity</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
+                                <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Remark</th>
+                                <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Note to Client</th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <!-- Dynamically populated rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+
+
+
                     <!-- ./choose items -->
 
                     <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
@@ -425,20 +450,7 @@
                         <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
-                        <button id="send-invoice-btn" type="button"  class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path
-                                    d="M17.4975 18.4851L20.6281 9.09373C21.8764 5.34874 22.5006 3.47624 21.5122 2.48782C20.5237 1.49939 18.6511 2.12356 14.906 3.37189L5.57477 6.48218C3.49295 7.1761 2.45203 7.52305 2.13608 8.28637C2.06182 8.46577 2.01692 8.65596 2.00311 8.84963C1.94433 9.67365 2.72018 10.4495 4.27188 12.0011L4.55451 12.2837C4.80921 12.5384 4.93655 12.6658 5.03282 12.8075C5.22269 13.0871 5.33046 13.4143 5.34393 13.7519C5.35076 13.9232 5.32403 14.1013 5.27057 14.4574C5.07488 15.7612 4.97703 16.4131 5.0923 16.9147C5.32205 17.9146 6.09599 18.6995 7.09257 18.9433C7.59255 19.0656 8.24576 18.977 9.5522 18.7997L9.62363 18.79C9.99191 18.74 10.1761 18.715 10.3529 18.7257C10.6738 18.745 10.9838 18.8496 11.251 19.0285C11.3981 19.1271 11.5295 19.2585 11.7923 19.5213L12.0436 19.7725C13.5539 21.2828 14.309 22.0379 15.1101 21.9985C15.3309 21.9877 15.5479 21.9365 15.7503 21.8474C16.4844 21.5244 16.8221 20.5113 17.4975 18.4851Z"
-                                    stroke="currentColor" stroke-width="1.5" />
-                                <path opacity="0.5" d="M6 18L21 3" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                            </svg>
-                            Send Invoice
-                        </button>
-
-                
+              
                             <div id="errorMessage" class="hidden text-red-500">
                                 <!-- Error message -->
                             </div>
@@ -461,9 +473,21 @@
                                                                 <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled/>
                                                             </div>
                                                             <div>
-                                                                <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                                <input type="number" id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows()" />
-                                                            </div>
+                                                                <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
+                                                                <select id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
+                                                                    <option value="" disabled selected>Select a value</option>
+                                                                    <option value="1">1</option>
+                                                                    <option value="2">2</option>
+                                                                    <option value="3">3</option>
+                                                                    <option value="4">4</option>
+                                                                    <option value="5">5</option>
+                                                                    <option value="6">6</option>
+                                                                    <option value="7">7</option>
+                                                                    <option value="8">8</option>
+                                                                    <option value="9">9</option>
+                                                                    <option value="10">10</option>
+                                                                </select>
+                                                                </div>
                                                         </div>
 
                                                         <!-- Expiry and Description -->
@@ -522,15 +546,24 @@
                                                         </div>
                                                         <div>
                                                             <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
-                                                            <span id="subT1">             0.00</span>
+                                                            <span id="subT1">0.00</span>
                                                         </div>
                                                      </div>
     
                                                    <div class="grid grid-cols-3 gap-4 mb-5">
-                                                         <div>
-                                                            <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                            <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
-                                                        </div>
+                                                   <div>
+                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
+                                                    <select id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
+                                                        <option value="" disabled selected>Select a value</option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                        <option value="3">3</option>
+                                                        <option value="4">4</option>
+                                                        <option value="5">5</option>
+                                                        <option value="6">6</option>
+                                                    </select>
+                                                    </div>
+
                                                         <div>
                                                             <label  class="block text-sm font-medium mb-1">Payment Gateway</label>
                                                             <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
@@ -834,7 +867,6 @@
         const clientButton = document.getElementById("openClientModalButton");
         const agentButton = document.getElementById("select-agent");
         const taskButton = document.getElementById("openTaskModalButton");
-        const sendInvoice = document.getElementById("send-invoice-btn");
         const generateInvoice = document.getElementById("generate-invoice-btn");
         const paymentGatewaySection = document.getElementById('payment_gateway_section');
         const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
@@ -874,7 +906,6 @@
             agentButton.disabled = false;
             taskButton.disabled = false;
             generateInvoiceButton.disabled = false;
-            sendInvoice.classList.add('hidden');
             generateInvoice.classList.remove('hidden');
             document.getElementById('paymentMethod').classList.add('hidden');
 
@@ -886,7 +917,6 @@
             agentButton.disabled = true;
             taskButton.disabled = true;
             generateInvoiceButton.disabled = false;
-            sendInvoice.classList.remove('hidden');
             generateInvoice.classList.add('hidden');
             document.getElementById('paymentMethod').classList.remove('hidden');
         }
@@ -991,6 +1021,7 @@
                               @endforeach
                          </select>
                     </td>
+                    <td class="px-4 py-2 border"></td>
                 `;
                 tbody.appendChild(row);
 
@@ -1031,6 +1062,30 @@
         }
 
 
+        function updateRemark(itemId) {
+            // Find the input field by ID
+            const inputField = document.getElementById(`remark-${itemId}`);
+            const newRemark = inputField.value || NULL;
+
+            // Update the corresponding item in the `items` array
+            const item = items.find(item => item.id === itemId);
+            if (item) {
+                item.remark = newRemark; // Add or update the `invprice` property
+            }
+        }
+
+        function updateNote(itemId) {
+            // Find the input field by ID
+            const inputField = document.getElementById(`note-${itemId}`);
+            const newNote = inputField.value || NULL;
+
+            // Update the corresponding item in the `items` array
+            const item = items.find(item => item.id === itemId);
+            if (item) {
+                item.note = newNote; // Add or update the `invprice` property
+            }
+        }
+
         function updateItemPrice(itemId) {
             // Find the input field by ID
             const inputField = document.getElementById(`invprice-${itemId}`);
@@ -1060,7 +1115,7 @@
                             if (items.length === 0) {
                                 // If no items, display the "No Item Available" row
                                 const noItemsRow = document.createElement('tr');
-                                noItemsRow.innerHTML = '<td colspan="6" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                                noItemsRow.innerHTML = '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                                 itemsBody.appendChild(noItemsRow);
 
 
@@ -1072,11 +1127,26 @@
                                     row.classList.add('TrX');
 
                     row.innerHTML = `
-                                <td>
+                                <td class="flex-grow">
                                 <p>${item.description}</p>
                                 </td>
                                 <td>
+                                <p>${item.type}</p>
+                                </td>
+                                <td class="flex-grow">
+                                <p>${item.venue}</p>
+                                </td>
+                                <td>
+                                <p>${item.supplier_name}</p>
+                                </td>
+                                <td>
                                 <p>${item.client_name}</p>
+                                </td>
+                                <td>
+                                <p>${item.agent_name}</p>
+                                </td>
+                                <td>
+                                <p>${item.branch_name}</p>
                                 </td>
                                 <td class="px-4 py-2">
                                   <p>${item.quantity}</p>
@@ -1090,6 +1160,26 @@
                                         placeholder="Invoice Price" 
                                         class="form-input" 
                                         oninput="updateItemPrice(${item.id})"
+                                    />
+                                </td>
+                                <td class="px-4 py-2">
+                                        <input 
+                                        id="remark-${item.id}" 
+                                        type="text" 
+                                        name="remark" 
+                                        placeholder="Remark" 
+                                        class="form-input" 
+                                        oninput="updateRemark(${item.id})"
+                                    />
+                                </td>
+                                 <td class="px-4 py-2">
+                                        <input 
+                                        id="note-${item.id}" 
+                                        type="test" 
+                                        name="note" 
+                                        placeholder="Note to Client" 
+                                        class="form-input" 
+                                        oninput="updateNote(${item.id})"
                                     />
                                 </td>
 
@@ -1185,7 +1275,7 @@
                 ...task, // Spread the properties of the task object
                 remark: '', // Add default empty remark
                 quantity: 1, // Default quantity is 1
-                description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
+                description: `${task.reference} - ${task.additional_info}`, // Custom description format
                 client_name: task.client_name
             });
             console.log('items', items);
@@ -1544,13 +1634,20 @@
 
                 const result = await response.json();
             }
+
+                    // Set the linkVisible flag to true
+                    //linkVisible = true;
+
+                    // Update the visibility of the link
+                    updateLinkVisibility(invoiceNumber);
+
            
         } catch (error) {
             console.error('Error generating invoices:', error);
             displayErrorMessage("Error generating one or more invoices. Please check your data.");
         } finally {
             afterPaymentType();
-            hideModal();
+            //hideModal();
         }
 
             } else if (type === 'partial') {
@@ -1716,6 +1813,27 @@
             
         }
           
+        function updateLinkVisibility(invoiceNumber) {
+            const rows = document.querySelectorAll("#split-rows tr");
+            rows.forEach(row => {
+                // Get the clientId from the select element or hidden input
+                const clientIdSelect = row.querySelector("select[name^='customer_name_']");
+                const clientId = clientIdSelect ? clientIdSelect.value : null;
+
+                // Update the link only if clientId is available
+                if (clientId) {
+                    const linkCell = row.querySelector("td:last-child");
+                    linkCell.innerHTML = `
+                        <a href="/invoice/partial/${invoiceNumber}/${clientId}" 
+                        class="text-blue-500 underline" 
+                        target="_blank">
+                        View Details
+                        </a>
+                    `;
+                }
+            });
+        }
+
         // Generate invoice
         async function generateInvoice() {
 
@@ -1740,6 +1858,7 @@
             const agentId = agentIdElement ? agentIdElement.value : null;
             const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
             const tasks = items;
+
             // Show loading state
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";

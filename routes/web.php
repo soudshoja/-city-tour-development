@@ -24,6 +24,7 @@ use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\ChatController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
@@ -185,6 +186,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/testclient',[OpenAiController::class, 'getClient']);
     Route::get('/openai/steps', [OpenAiController::class, 'steps'])->name('steps');
     Route::get('/openai/function-tools', [OpenAiController::class, 'addFunctionTool'])->name('function-tools');
+
+    Route::post('/chat', [ChatController::class, 'chat'])->name('chat.send');;
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');

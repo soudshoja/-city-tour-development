@@ -15,6 +15,7 @@ class InvoiceDetail extends Model
         'task_id',
         'task_description',
         'task_remark',
+        'client_notes',
         'task_price',
         'supplier_price',
         'markup_price',

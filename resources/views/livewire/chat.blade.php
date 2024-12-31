@@ -1,49 +1,62 @@
-<div
-    wire:init="loadMessages"
-    class="bg-white rounded-lg h-auto overflow-y-auto chat-container">
-    @if($error)
-    <div class="z-20 fixed top-5 right-10 bg-red-500 text-white p-4 text-center rounded-md font-semibold">
-        <p>{{ $error }}</p>
-    </div>
-    @endif
-    <div class="flex flex-col-reverse gap-8 px-2 pb-8 pt-4">
-        @if(count($messages) == 0)
-        <div class="chat-box chat-box-assistant">
-            <div class="rounded-full translate-y-6 h-10 p-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="6" r="4" stroke="#000000" stroke-width="1.5" />
-                    <path d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18" stroke="#000000" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
-            </div>
-            <div class="chat-message">
-                Hi! I'm an AI assistant. How can I help you today?
-            </div>
-        </div>
-        @endif
-        @foreach($messages as $message)
 
-        <div class="chat-box {{ $message['role'] == 'user' ? 'chat-box-user ' : 'chat-box-assistant' }}">
-            <div class="rounded-full translate-y-6 h-10 p-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="6" r="4" stroke="{{ $message['role'] == 'user' ? '#fff' : '#000000' }}" stroke-width="1.5" />
-                    <path d="M15 20.6151C14.0907 20.8619 13.0736 21 12 21C8.13401 21 5 19.2091 5 17C5 14.7909 8.13401 13 12 13C15.866 13 19 14.7909 19 17C19 17.3453 18.9234 17.6804 18.7795 18" stroke="{{ $message['role'] == 'user' ? '#fff' : '#000000' }}" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
-            </div>
-            <div class="chat-message">
-                {{$message['content'][0]['text']['value']}}
+    <div class="bg-white rounded-lg h-auto overflow-y-auto chat-container">
+        <div class="max-w-md mx-auto bg-white shadow-md rounded-lg">
+            <div class="p-4">
+                <div id="chat-window" class="mb-3 h-64 overflow-y-scroll border border-gray-300 p-4 rounded-lg bg-gray-50">
+                    <!-- Chat messages will be appended here -->
+                </div>
+                <textarea id="user-input" 
+                          class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400" 
+                          rows="2" 
+                          placeholder="Type your message"></textarea>
+                <button id="send-btn" 
+                        class="w-full bg-blue-500 text-white py-2 px-4 mt-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    Send
+                </button>
             </div>
         </div>
-        @endforeach
     </div>
-    <div class="chat p-2 w-full bg-white rounded-b-lg flex justify-between sticky bottom-0">
-        <form wire:submit.prevent="sendMessage" class="w-full flex gap-2">
-            <div class="flex justify-center items-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 invisible" wire:loading.class.remove="invisible"></div>
-            </div>
-            <input type="text" wire:model='prompt' name="" id="" class="w-full p-2 border-none bg-gray-200 rounded-lg" placeholder="Type a message...">
-            <button type="submit" class="send p-2 rounded-lg">Send</button>
-        </form>
-    </div>
+
     <script>
+        $(document).ready(function () {
+            const chatWindow = $('#chat-window');
+
+            function appendMessage(role, content) {
+                const messageClass = role === 'user' ? 'text-end text-primary' : 'text-start text-success';
+                chatWindow.append(`<div class="${messageClass}"><strong>${role}:</strong> ${content}</div>`);
+                chatWindow.scrollTop(chatWindow[0].scrollHeight);
+            }
+
+            $('#send-btn').on('click', function () {
+                const userInput = $('#user-input').val().trim();
+
+                if (!userInput) return;
+
+                // Append user message
+                appendMessage('user', userInput);
+
+                // Clear input
+                $('#user-input').val('');
+
+                // Send AJAX request
+                $.ajax({
+                    url: "{{ route('chat.send') }}",
+                    method: "POST",
+                    data: {
+                        messages: [{ role: 'user', content: userInput }],
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    },
+                    success: function (response) {
+                        const botMessage = response.choices[0].message.content;
+                        appendMessage('cityTour', botMessage);
+                    },
+                    error: function (error) {
+                        console.error(error);
+                        appendMessage('cityTour', 'Error: Could not connect to the chatbot.');
+                    }
+                });
+            });
+        });
     </script>
-</div>

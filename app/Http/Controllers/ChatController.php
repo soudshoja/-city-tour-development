@@ -29,10 +29,7 @@ class ChatController extends Controller
         ]);
     
         try {
-            // Extract the user message from the validated input
             $userMessage = collect($validated['messages'])->last()['content'];
-            
-            // Fetch user-specific data based on their role
             $userData = $this->fetchUserBasedData();
     
             // Check if there was an error in fetching user data
@@ -40,11 +37,11 @@ class ChatController extends Controller
                 return response()->json(['error' => $userData['error']], 403);
             }
     
-            // Prepare the messages for OpenAI
+            // Prepare messages for OpenAI with the user's role-based data
             $messages = [
                 [
                     'role' => 'system',
-                    'content' => "You are a chatbot for a travel agency. Please use the following data based on the user's role to answer any questions about companies, branches, agents, and clients.",
+                    'content' => "You are a chatbot for a travel agency. Please use the following data based to answer any questions.",
                 ],
                 [
                     'role' => 'user',
@@ -52,25 +49,107 @@ class ChatController extends Controller
                 ],
             ];
     
-            // Dynamically add user data context to the system message (e.g., clients, agents, etc.)
-            if ($userData) {
-                $messages[] = [
-                    'role' => 'system',
-                    'content' => json_encode($userData)  // Send user data as JSON to OpenAI
-                ];
+            // Add user data context dynamically
+            $messages[] = [
+                'role' => 'system',
+                'content' => json_encode($userData)  // Send user data as JSON to OpenAI
+            ];
+    
+            // First, detect the type of message (Data Query or Action Request)
+            if ($this->isDataQuery($userMessage)) {
+                // Handle data query
+                return $this->handleDataQuery($userMessage, $userData);
+            } elseif ($this->isActionRequest($userMessage)) {
+                // Handle action request (like create invoice, send message)
+                return $this->handleActionRequest($userMessage, $userData);
+            } else {
+                // Pass the message to OpenAI if it's not recognized as data or action
+                $response = $this->openAIService->getChatResponse($messages);
+                return response()->json($response, 200);
             }
     
-            // Get the response from OpenAI using the OpenAIService
-            $response = $this->openAIService->getChatResponse($messages);
-    
-            // Return the response from OpenAI
-            return response()->json($response, 200);
         } catch (\Exception $e) {
             \Log::error('Chatbot error: ' . $e->getMessage());
             return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
         }
     }
     
+
+    private function handleDataQuery($userMessage, $userData)
+    {
+        // Check for specific data request in the message and return corresponding data
+        if (stripos($userMessage, 'clients') !== false) {
+            $clients = $userData['clients']->pluck('name'); // Assuming name is the relevant column
+            return response()->json(['clients' => $clients], 200);
+        } elseif (stripos($userMessage, 'invoices') !== false) {
+            $invoices = $userData['invoices']->pluck('invoice_number'); // Assuming invoice_number is the relevant column
+            return response()->json(['invoices' => $invoices], 200);
+        } elseif (stripos($userMessage, 'tasks') !== false) {
+            $tasks = $userData['tasks']->pluck('task_name'); // Assuming task_name is the relevant column
+            return response()->json(['tasks' => $tasks], 200);
+        }
+        // Add more conditions based on other data
+    }
+
+    private function handleActionRequest($userMessage, $userData)
+    {
+        // Check if the action is 'create invoice'
+        if (stripos($userMessage, 'create invoice') !== false) {
+            $invoiceDetails = $this->extractInvoiceDetailsFromMessage($userMessage);
+    
+            // Validate and create the invoice
+            if (empty($invoiceDetails['client_id']) || empty($invoiceDetails['amount'])) {
+                return response()->json(['error' => 'Please provide complete invoice details.'], 400);
+            }
+    
+            $invoice = $this->createInvoice($invoiceDetails);
+            return response()->json(['invoice' => $invoice], 200);
+        }
+    
+        // Handle other actions like sending a message
+        if (stripos($userMessage, 'send message') !== false) {
+            $messageDetails = $this->extractMessageDetailsFromMessage($userMessage);
+    
+            if (empty($messageDetails['recipient_id']) || empty($messageDetails['content'])) {
+                return response()->json(['error' => 'Please provide recipient and message content.'], 400);
+            }
+    
+            $this->sendMessage($messageDetails);
+            return response()->json(['message' => 'Message sent successfully.'], 200);
+        }
+    }
+
+    
+    
+    private function isDataQuery($message)
+    {
+        // Basic keyword matching for data-related queries
+        $dataKeywords = ['clients', 'invoices', 'tasks', 'agents', 'branches'];
+    
+        foreach ($dataKeywords as $keyword) {
+            if (stripos($message, $keyword) !== false) {
+                return true;
+            }
+        }
+    
+        return false;
+    }
+    
+
+    private function isActionRequest($message)
+    {
+        // Basic keyword matching for action requests
+        $actionKeywords = ['create invoice', 'send message', 'update task'];
+
+        foreach ($actionKeywords as $keyword) {
+            if (stripos($message, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
 
     private function fetchUserBasedData()
@@ -212,6 +291,36 @@ class ChatController extends Controller
         }
     }
     
+
+    private function extractInvoiceDetailsFromMessage($message)
+{
+    preg_match('/client (\d+)/', $message, $clientMatches);
+    preg_match('/amount (\d+(\.\d{1,2})?)/', $message, $amountMatches);
+    preg_match('/due date (\d{4}-\d{2}-\d{2})/', $message, $dueDateMatches);
+
+    return [
+        'client_id' => $clientMatches[1] ?? null,
+        'amount' => $amountMatches[1] ?? null,
+        'due_date' => $dueDateMatches[1] ?? null,
+    ];
+}
+
+private function extractMessageDetailsFromMessage($message)
+{
+    preg_match('/to (\d+)/', $message, $recipientMatches);
+    preg_match('/message (.+)/', $message, $contentMatches);
+
+    return [
+        'recipient_id' => $recipientMatches[1] ?? null,
+        'content' => $contentMatches[1] ?? null,
+    ];
+}
+
+private function sendMessage($messageDetails)
+{
+    // Send the message to the recipient (You need to implement this method based on your system)
+    // Example: Message::create($messageDetails);
+}
 
    
 }

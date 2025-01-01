@@ -8,10 +8,14 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Traits\HttpRequestTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Traits\NotificationTrait;
 
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 use App\Models\Agent;
 use App\Models\Client;
+use App\Models\Supplier;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Task;
 use App\Models\Company;
@@ -25,6 +29,7 @@ use App\Models\InvoiceSequence;
 use Illuminate\Support\Facades\Log;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use App\Models\GeneralLedger;
 use App\Models\InvoiceDetail;
 use App\Models\KnowledgeBase;
 use App\Models\Role;
@@ -34,6 +39,7 @@ use PDO;
 
 class MobileController extends Controller
 {
+    use NotificationTrait;
     use HttpRequestTrait;
 
     private $aiService;
@@ -169,15 +175,122 @@ class MobileController extends Controller
         return response()->json(Client::all(), 200);
     }
 
+    public function create(Request $request)
+    {
+        $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
+    
+        if (gettype($taskIds) == 'string') {
+            $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+        } else {
+            $taskIdsArray = $taskIds; // Single task
+        }
+    
+        $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
+    
+        foreach ($selectedTasks as $task) {
+            if ($task->invoiceDetail) {
+                return response()->json(['error' => 'Task already invoiced!'], 400);
+            }
+        }
+    
+        if ($request->input('user_id') != null) {
+            $user = User::find($request->input('user_id'));
+        } else {
+            $user = Auth::user();
+        }
+    
+        $agents = collect();
+        $clients = collect();
+        $branches = collect();
+        $company = null;
+    
+        if ($user->role_id == Role::COMPANY) {
+            $company = $user->company;
+            $company = Company::with('branches.agents')->find($company->id);
+            $agents = $company->branches->flatMap->agents;
+            $clients = $agents->flatMap->clients;
+            $branches = $company->branches;
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = $user->agent;
+            $company = $agent->branch->company;
+            $agents = $company->branches->flatMap->agents;
+            $clients = $agents->flatMap->clients;
+            $branches = $company->branches;
+        }
+    
+        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+    
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+    
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+    
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
+    
+        $this->storeNotification([
+            'user_id' => $user->id,
+            'title' => 'Invoice ' . $invoiceNumber . ' Created By ' . $user->name,
+            'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
+        ]);
+    
+        $clientIds = $selectedTasks->pluck('client_id')->unique();
+        $agentIds =  $selectedTasks->pluck('agent_id')->unique();
+        $selectedAgent = Agent::find($agentIds->first());
+        $selectedClient = $clientIds->count() >= 1 ? Client::find($clientIds->first()) : null;
+    
+        $agentId = $selectedAgent ? $selectedAgent->id : ($user->role_id == Role::COMPANY 
+            ? $agents->pluck('id')->toArray() 
+            : $user->agent->id);
+    
+        $tasks = $agentId 
+            ? Task::with('agent.branch')
+                ->whereIn('agent_id', (array)$agentId)
+                ->get()
+                ->map(function ($task) {
+                    $task->agent_name = $task->agent->name ?? null;
+                    $task->branch_name = $task->agent->branch->name ?? null;
+                    $task->supplier_name = $task->supplier->name ?? null;
+                    return $task;
+                })
+            : collect();
+    
+        $suppliers = Supplier::all();
+        $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
+        $todayDate = Carbon::now()->format('Y-m-d');
+        $appUrl = config('app.url');
+    
+        return response()->json([
+            'clients' => $clients,
+            'agents' => $agents,
+            'branches' => $branches,
+            'agentId' => $agentId,
+            'clientId' => $selectedClient?->id,
+            'tasks' => $tasks,
+            'company' => $company,
+            'suppliers' => $suppliers,
+            'invoiceNumber' => $invoiceNumber,
+            'selectedTasks' => $selectedTasks,
+            'selectedAgent' => $selectedAgent,
+            'selectedClient' => $selectedClient,
+            'paymentGateways' => $paymentGateways,
+            'todayDate' => $todayDate,
+            'appUrl' => $appUrl
+        ]);
+    }
+    
 
     public function store(Request $request)
     {
+
         $request->validate([
             'tasks' => 'required|array',
             'tasks.*.id' => 'required|integer',
             'tasks.*.description' => 'required|string',
             'tasks.*.remark' => 'nullable|string',
-            'tasks.*.invprice' => 'required|numeric',
+            'tasks.*.price' => 'required|numeric',
             'tasks.*.supplier_id' => 'required|integer',
             'tasks.*.client_id' => 'required|integer',
             'tasks.*.agent_id' => 'required|integer',
@@ -252,9 +365,10 @@ class MobileController extends Controller
                             'task_id' => $task['id'],
                             'task_description' => $task['description'],
                             'task_remark' => $task['remark'],
-                            'task_price' =>  $task['invprice'], 
+                            'client_notes' => $task['note'],
+                            'task_price' =>  $task['price'],
                             'supplier_price' => $selectedtask->total,
-                            'markup_price' => $task['invprice'] - $selectedtask->total,
+                            'markup_price' => $task['price'] - $selectedtask->total,
                             'paid' => false,
                         ]);
 
@@ -262,7 +376,7 @@ class MobileController extends Controller
                             'entity_id' => $companyId,
                             'entity_type' => 'company',
                             'transaction_type' => 'credit',
-                            'amount' =>  $task['invprice'],
+                            'amount' =>  $task['price'],
                             'date' => Carbon::now(),
                             'description' => 'Invoice:' . $invoiceNumber . ' Generated',
                             'invoice_id' => $invoice->id,
@@ -318,8 +432,8 @@ class MobileController extends Controller
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be received from: ' . $client->name,
                             'debit' => 0,
-                            'credit' => $task['invprice'],
-                            'balance' => $task['invprice'],
+                            'credit' => $task['price'],
+                            'balance' => $task['price'],
                             'name' =>  $client->name,
                             'type' => 'receivable',
                             'type_reference_id' => $client->id
@@ -327,7 +441,7 @@ class MobileController extends Controller
 
 
 
-                        $markup = $task['invprice'] - $selectedtask->total;
+                        $markup = $task['price'] - $selectedtask->total;
                         // Try to create income
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
@@ -370,6 +484,7 @@ class MobileController extends Controller
             return response()->json('Invoice creation failed!');
         }
     }
+
 
     private function generateInvoiceNumber($sequence)
     {

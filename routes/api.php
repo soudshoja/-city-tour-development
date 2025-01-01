@@ -20,7 +20,7 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::get('/tasks/{agentId}', [MobileController::class, 'getTasksByAgentId']);
         Route::get('/tasks', [MobileController::class, 'task']);
 
-
+        Route::get('/invoice/create', [MobileController::class, 'create'])->name('invoice.create');
         Route::post('/invoice', [MobileController::class, 'store']);
         Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);

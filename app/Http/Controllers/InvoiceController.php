@@ -100,7 +100,9 @@ class InvoiceController extends Controller
             $taskIdsArray = $taskIds; // Single task
         }
 
-        $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
+        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails');
+        
+        $selectedTasks = $tasks->whereIn('id', $taskIdsArray)->get();
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
@@ -144,7 +146,7 @@ class InvoiceController extends Controller
 
         $this->storeNotification([
             'user_id' => $user->id,
-            'title' => 'Invoice' . $invoiceNumber . ' Created By ' . $user->name,
+            'title' => 'Invoice ' . $invoiceNumber . ' Created By ' . $user->name,
             'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
         ]);
 
@@ -172,10 +174,11 @@ class InvoiceController extends Controller
 
         $clientId = $selectedClient ? $selectedClient->id : null;
 
-        $tasks = null;
+        
+
         if ($user->role_id == Role::AGENT) {
             $tasks = $agentId 
-                ? Task::with('agent.branch') // Include agent and branch relationships
+                ? $tasks
                     ->where('agent_id', $agentId)
                     ->get()
                     ->map(function ($task) {
@@ -187,7 +190,7 @@ class InvoiceController extends Controller
                 : collect();
         } else {
             $tasks = $agentId 
-                ? Task::with('agent.branch') // Include agent and branch relationships
+                ? $tasks
                     ->whereIn('agent_id', (array)$agentId)
                     ->get()
                     ->map(function ($task) {
@@ -205,7 +208,7 @@ class InvoiceController extends Controller
         $todayDate = Carbon::now()->format('Y-m-d');
 
         $appUrl = config('app.url');
-
+        
         return view('invoice.create', compact(
             'clients',
             'agents',

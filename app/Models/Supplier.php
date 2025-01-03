@@ -29,4 +29,9 @@ class Supplier extends Model
         return $this->belongsTo(Country::class);
     }
 
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
+
 }

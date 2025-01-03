@@ -128,8 +128,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
 
     // verdors routes
-    Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
-
+    Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+    Route::get('/suppliers/{suppliersId}',[SupplierController::class, 'show'])->name('suppliers.show');
 
     //ROLE
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');

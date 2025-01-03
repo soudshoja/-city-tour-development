@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GeneralLedger;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -15,7 +16,7 @@ class SupplierController extends Controller
     public function index(Request $request)
     {
         // Check if the user has an admin role
-        if (Auth::user()->role_id !== Role::ADMIN) {
+        if (Auth::user()->role_id !== Role::ADMIN && Auth::user()->role_id !== Role::COMPANY) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -26,7 +27,20 @@ class SupplierController extends Controller
         $SuppliersCount = Supplier::count();
 
         // Return view with suppliers and the count
-        return view('suppliers.SuppliersList', compact('suppliers', 'SuppliersCount'));
+        return view('suppliers.index', compact('suppliers', 'SuppliersCount'));
+    }
+
+    public function show($suppliersId)
+    {
+        if (Auth::user()->role_id !== Role::ADMIN && Auth::user()->role_id !== Role::COMPANY) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $generalLedger = GeneralLedger::select('debit','credit')->limit(20)->get();
+
+        $supplier = Supplier::with('tasks')->findOrFail($suppliersId);
+
+        return view('suppliers.show', compact('supplier', 'generalLedger'));
     }
 
     public function create()

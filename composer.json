@@ -9,6 +9,7 @@
         "bacon/bacon-qr-code": "^3.0",
         "convertapi/convertapi-php": "^3.0",
         "google/cloud-vision": "^1.10",
+        "guzzlehttp/guzzle": "^7.9",
         "laravel/breeze": "^2.1",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",

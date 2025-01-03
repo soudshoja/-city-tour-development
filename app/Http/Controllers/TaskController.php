@@ -45,6 +45,7 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
+        $tasks = collect();
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get();
@@ -83,9 +84,7 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
         }
 
-        $tasks = $tasks ?? collect();
         $suppliers = Supplier::all();
-
         // Return the view with the required data
         return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers'));
     }

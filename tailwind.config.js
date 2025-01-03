@@ -30,10 +30,21 @@ export default {
             },
             width: {
                 120: "30rem",
+                160: "40rem",
+            },
+            maxWidth: {
+                120: "30rem",
+                160: "40rem",
             },
             height: {
                 120: "30rem",
                 160: "40rem",
+                'near-full' : "80%",
+            },
+            maxHeight: {
+                120: "30rem",
+                160: "40rem",
+                'near-full' : "80%",
             },
         },
     },

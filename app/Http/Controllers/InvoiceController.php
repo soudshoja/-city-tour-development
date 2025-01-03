@@ -100,7 +100,7 @@ class InvoiceController extends Controller
             $taskIdsArray = $taskIds; // Single task
         }
 
-        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails');
+        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
         
         $selectedTasks = $tasks->whereIn('id', $taskIdsArray)->get();
 

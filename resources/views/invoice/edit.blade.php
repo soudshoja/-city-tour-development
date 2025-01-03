@@ -286,13 +286,32 @@
                             </div>
 
                                                 <!-- Payment Gateway Section -->
-                                <section id="payment_gateway_section" class="mb-6">
+                              <section  id="payment_gateway_section" class="mb-6">
+                                    <div class="mt-4">
                                     <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
                                     <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
                                         @foreach($paymentGateways as $gateway)
                                             <option value="{{ $gateway }}">{{ $gateway }}</option>
                                         @endforeach
                                     </select>
+                                  </div>
+                                   <div class="mt-4">
+                                    <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                            <path
+                                                d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                                fill="currentColor"
+                                            />
+                                            <path
+                                                d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                                fill="currentColor"
+                                            />
+                                        </svg>
+                                        Save Payment Gateway
+                                    </button>
+                                    </div>
                                 </section>
 
                         </div>
@@ -343,126 +362,131 @@
                                 <!-- Error message -->
                             </div>
 
-                            <!-- Modal -->
-                            <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
-                                <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
-                                    <h3 class="text-xl font-bold mb-4">Split/Partial Payment Details</h3>
-                                    <!-- Include your previous page content here -->
-                                    <div class="bg-gray-100 p-5">
-                                            <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
-                                                <!-- Tabs Navigation -->
-                                                <div class="flex border-b mb-6">
-                                                    <button id="tab-split" class="text-gray-800 px-4 py-2 border-b-2 font-medium" onclick="showTab('split')">Split Payment</button>
-                                                    <button id="tab-partial" class="text-gray-800 px-4 py-2 border-b-2 font-medium" onclick="showTab('partial')">Partial Payment</button>
-                                                </div>
+                               <!-- Modal -->
+                        <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
+                                <!-- Include your previous page content here -->
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
 
-                                                <!-- Split Payment Tab Content -->
-                                                <div id="split-payment-container" class="tab-content hidden">
-                                                    <form>
-                                                        <!-- Top Fields -->
-                                                        <div class="grid grid-cols-3 gap-4 mb-5">
-                                                            <div>
-                                                                <label class="block text-sm font-medium mb-1">Amount *</label>
-                                                                <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="0" />
-                                                            </div>
-                                                            <div>
-                                                                <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                                <input type="number" id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows()" />
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Expiry and Description -->
-                                                        <div class="grid grid-cols-2 gap-4 mb-5">
-                                                            <div>
-                                                                <label class="block text-sm font-medium mb-1">Description *</label>
-                                                                <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Table -->
-                                                        <div class="overflow-x-auto">
-                                                        <table class="min-w-full bg-white border border-gray-300 text-center">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th class="border-b px-4 py-2">S.No</th>
-                                                                        <th class="border-b px-4 py-2">Choose Client</th>
-                                                                        <th class="border-b px-4 py-2">Expiry Date</th>
-                                                                        <th class="border-b px-4 py-2">Amount</th>
-                                                                        <th class="border-b px-4 py-2">Payment Gateway</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody id="split-rows">
-                                                                    <!-- Dynamic rows will be generated here -->
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-
-                                                        <!-- Buttons -->
-                                                         
-                                                         <div >
-                                                            <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-
-                                                <!-- Partial Payment Tab Content -->
-                                                <div id="partial-payment-container" class="tab-content hidden">
-                                                <div class="mt-4 flex items-center">
-                                                        <label for="receiverName1" class="mb-0 w-1/3 mr-2 ">Client Name</label>
-                                                        <input id="receiverName1" type="text" name="receiverName1" class="form-input flex-1"
-                                                            placeholder="Enter Name" disabled />
+                                        <!-- Split Payment Tab Content -->
+                                        <div id="split-payment-container" class="tab-content">
+                                            <form>
+                                                <!-- Top Fields -->
+                                                <div class="grid grid-cols-3 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Amount *</label>
+                                                        <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
                                                     </div>
-                                                    <div class="grid grid-cols-3 gap-4 mb-5">
                                                     <div>
                                                         <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                        <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
+                                                        <input type="number" id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows()" />
                                                     </div>
-                                                    <div class="mt-4 flex items-center">
-                                                        <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
-                                                        <span id="subT1">$0.00</span>
-                                                    </div>
-                                                  </div>
-                                                  <div class="mt-4 flex items-center">
-                                                        <label for="receiverName1" class="mb-0 w-1/3 mr-2 ">Payment Gateway</label>
-                                                        <select id="payment_gateway1" name="payment_gateway1" class="border border-gray-300 p-2 rounded w-full">
-                                                            @foreach($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                  </div>
-                                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
-                                                    <table class="min-w-full bg-white border border-gray-300 text-center">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th class="border-b px-4 py-2">S.No</th>
-                                                                        <th class="border-b px-4 py-2">Expiry Date</th>
-                                                                        <th class="border-b px-4 py-2">Amount</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody id="split-rows1">
-                                                                    <!-- Dynamic rows will be generated here -->
-                                                                </tbody>
-                                                     </table>
-
-                                                    <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
-
-                                                    <div class="flex space-x-4 mt-5">
-                                                            <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
-                                                        </div>
                                                 </div>
-                                            </div>
+
+                                                <!-- Expiry and Description -->
+                                                <div class="grid grid-cols-2 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Description *</label>
+                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Table -->
+                                                <div class="overflow-x-auto">
+                                                    <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="border-b px-4 py-2">S.No</th>
+                                                                <th class="border-b px-4 py-2">Choose Client</th>
+                                                                <th class="border-b px-4 py-2">Expiry Date</th>
+                                                                <th class="border-b px-4 py-2">Amount</th>
+                                                                <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="split-rows">
+                                                            <!-- Dynamic rows will be generated here -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                <!-- Buttons -->
+
+                                                <div>
+                                                    <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                </div>
+                                            </form>
                                         </div>
-                                    <div class="mt-4 flex justify-end">
-                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                     </div>
                                 </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                </div>
                             </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        </div>
+
+                        <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+                                        <!-- Partial Payment Tab Content -->
+                                        <div id="partial-payment-container" class="tab-content">
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Client Name</label>
+                                                    <span id="receiverName1">AHMED</span>
+                                                </div>
+                                                <div>
+                                                    <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                    <span id="subT1"> 0.00</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Split into *</label>
+                                                    <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Payment Gateway</label>
+                                                    <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                        @foreach($paymentGateways as $gateway)
+                                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                            <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="border-b px-4 py-2">S.No</th>
+                                                        <th class="border-b px-4 py-2">Expiry Date</th>
+                                                        <th class="border-b px-4 py-2">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="split-rows1">
+                                                    <!-- Dynamic rows will be generated here -->
+                                                </tbody>
+                                            </table>
+
+                                            <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+
+                                            <div class="flex space-x-4 mt-5">
+                                                <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                </div>
+                            </div>
+                        </div>
 
         <!-- Agents Modal -->
         <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
@@ -691,6 +715,7 @@
         const clients = @json($clients);
         const invoice = @json($invoice);
         let items = [];
+        let tasks = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
 
@@ -753,15 +778,20 @@
         let isSaved = false;
 
         function showModal(type) {
-        document.getElementById('paymentModal').classList.remove('hidden');
-        this.showTab(type);
-        checkInvoiceId();
-        }
+              if (type == 'split') {
+                  document.getElementById('paymentModal').classList.remove('hidden');
+              } else if (type == 'partial') {
+                  document.getElementById('paymentModal1').classList.remove('hidden');
+              }
 
-        function hideModal() {
-            document.getElementById('paymentModal').classList.add('hidden');
-            checkInvoiceId();
-        }
+              checkInvoiceId();
+          }
+
+          function hideModal() {
+                document.getElementById('paymentModal').classList.add('hidden');
+                document.getElementById('paymentModal1').classList.add('hidden');
+                checkInvoiceId();
+            }
 
         
         function showClientModal() {
@@ -917,6 +947,7 @@
 
 
         function renderItems() {
+          const t = tasks;
             itemsBody.innerHTML = ''; // Clear existing rows
 
             if (items.length === 0) {
@@ -979,6 +1010,7 @@
         function removeItem(itemId) {
             items = items.filter(item => item.id !== itemId);
             renderItems(); // Re-render the table after removal
+            renderTaskList(tasks);
         }
 
         function chooseTasksAgent(agent) {        
@@ -1029,19 +1061,12 @@
             selectTab.classList.add('hidden');
         });
 
-        if (Array.isArray(selectedTasks)) {
-            // Iterate over the array and select each task
-            selectedTasks.forEach(task => selectTask(task));
-            // console.log('one', selectedTasks);
-        } else {
-            // console.log('tow', selectedTasks);
-            // If it's a single task object, select it directly
-            selectTask(selectedTasks);
-        }
+
 
         // Function to select a task
         function selectTask(task) {
-            console.log('task selected', task);
+
+            const t = tasks;
             items.push({
                 ...task, // Spread the properties of the task object
                 remark: '', // Add default empty remark
@@ -1055,7 +1080,7 @@
 
             // Call a function to update the total, passing the current items array
             //  updateTotal(items);
-
+            renderTaskList(t);
             closeTaskModal();
             renderItems();
             calculateSubtotal();
@@ -1137,7 +1162,26 @@
             renderTaskList(filteredTasks);
         }
 
+        if (Array.isArray(items)) {
+            // Iterate over the array and select each task
+            selectedTasks.forEach(task => selectTask(task));
+        } else {
+            console.log('tow', items);
+            // If it's a single task object, select it directly
+            selectTask(items);
+            tasks = tasks.filter(task => task.id !== items.id);
+        }
+
+
         function renderTaskList(taskData) {
+          console.log('items', items);
+
+            taskData = taskData.filter(task => 
+             !items.some(selectedTask => selectedTask.id === task.id)
+             );
+
+
+            console.log('items2', taskData);
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = '';
             if (taskData.length == 0) {
@@ -1219,170 +1263,262 @@
         }
 
         function savePartial(mode) {
-     
-            if (mode === 'split') {
-                // Collect Split Payment Data
-                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                const description = document.getElementById('split-desc').value;
-                const rows = document.querySelectorAll('#split-rows tr');
 
-                const splitData = [];
-                rows.forEach(row => {
-                    const selectElement = row.querySelector('select');
-                    const clientId = selectElement.value;
-                    const date = row.querySelector('input[type="date"]').value;
-                    const gateway = row.querySelector('#payment_gateway').value || null;
-                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-                    const clientName = selectElement.options[selectElement.selectedIndex].text;
+                      if (mode === 'full') {
+                          const gateway = document.getElementById('payment_gateway').value;
+                          const date = document.getElementById('duedate').value;
+                          const amount = document.getElementById('subTotal').value;
+                          const fullData = [];
 
-                    splitData.push({ clientId, clientName, date, amount, gateway });
-                });
+                          fullData.push({
+                              date,
+                              amount,
+                              gateway
+                          });
+                          save('full', fullData);
+                      } else
+                      if (mode === 'split') {
+                          // Collect Split Payment Data
+                          const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                          const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                          const description = document.getElementById('split-desc').value;
+                          const rows = document.querySelectorAll('#split-rows tr');
 
-                console.log('Split Payment Data:', { totalAmount, splitInto, description, splitData });
-                save('split', splitData);
+                          const splitData = [];
+                          rows.forEach(row => {
+                              const selectElement = row.querySelector('select');
+                              const clientId = selectElement.value;
+                              const date = row.querySelector('input[type="date"]').value;
+                              const gateway = row.querySelector('#payment_gateway2').value || null;
+                              const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                              const clientName = selectElement.options[selectElement.selectedIndex].text;
 
-            } else if (mode === 'partial') {
-                // Collect Partial Payment Data
-                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-                const partialRows = document.querySelectorAll('#split-rows1 tr');
-                const gateway = document.getElementById('payment_gateway1').value;
+                              splitData.push({
+                                  clientId,
+                                  clientName,
+                                  date,
+                                  amount,
+                                  gateway
+                              });
+                          });
 
-                const partialData = [];
+                          console.log('Split Payment Data:', {
+                              totalAmount,
+                              splitInto,
+                              description,
+                              splitData
+                          });
+                          save('split', splitData);
 
-                partialRows.forEach(row => {
-                    const date = row.querySelector('input[type="date"]').value;
-                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                      } else if (mode === 'partial') {
+                          // Collect Partial Payment Data
+                          const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                          const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                          const partialRows = document.querySelectorAll('#split-rows1 tr');
+                          const gateway = document.getElementById('payment_gateway1').value;
 
-                    partialData.push({ date, amount, gateway });
-                });
-   
-                console.log('Partial Payment Data:', partialData);
-                save('partial', partialData);
+                          const partialData = [];
 
-            }
-        }
+                          partialRows.forEach(row => {
+                              const date = row.querySelector('input[type="date"]').value;
+                              const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
 
-        async function save(type, data) {   
-            const invoiceUrl = "{{ route('invoice.partial') }}"; 
-            const csrfToken = "{{ csrf_token() }}";
-            const invoiceId = document.getElementById('invoiceId').value;
-            const invoiceNumber = document.getElementById('invoiceNumber').value;
+                              partialData.push({
+                                  date,
+                                  amount,
+                                  gateway
+                              });
+                          });
 
-    if (type === 'split') {  
-        // Handle split payment, generate links for each row
-        try {
-            const invoiceLinks = []; // Store links for each client
-            for (const item of data) {
-                const { clientId, clientName, date, amount, gateway } = item;
+                          console.log('Partial Payment Data:', partialData);
+                          save('partial', partialData);
 
-                console.log(invoiceId,clientId,type,date,amount);
-                console.log(csrfToken);
-                console.log(clientName)
-                // Send POST request for each client
-                const response = await fetch(invoiceUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                    },
-                    body: JSON.stringify({
-                        invoiceId,
-                        invoiceNumber,
-                        clientId, 
-                        type,
-                        date, 
-                        amount,
-                        gateway
-                    }),
-                });
+                      }
+                  }
 
-                if (!response.ok) {
-                    throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                }
+            async function save(type, data) {
+                const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
 
-                const result = await response.json();
+                const invoiceUrl = "{{ route('invoice.partial') }}";
+                const csrfToken = "{{ csrf_token() }}";
+                const invoiceId = document.getElementById('invoiceId').value;
+                const invoiceNumber = document.getElementById('invoiceNumber').value;
 
-                const generatedLink = `${appUrl}/invoice/partial/${invoiceNumber}/${clientId}`;
-                invoiceLinks.push({ clientId, clientName, link: generatedLink });
-            }
-           
-            // Display links
-            const invoiceLinkContainer = document.getElementById("invoice-link-container1");
-            invoiceLinkContainer.innerHTML = `<label>Split Invoice Links:</label>`;
-            invoiceLinks.forEach(({ clientName, clientId, link }) => {
-                const linkElement = document.createElement('a');
-                linkElement.href = link;
-                linkElement.textContent = `Client ${clientName}: ${link}`;
-                linkElement.target = "_blank";
-                linkElement.classList.add('text-blue-600', 'underline', 'block', 'mt-2');
-                invoiceLinkContainer.appendChild(linkElement);
-            });
 
-            invoiceLinkContainer.style.display = "block";
+                const response1 = await fetch(invoiceUrl1, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({
+                                    invoiceId,
+                                    invoiceNumber,
+                                }),
+                            });
 
-        } catch (error) {
-            console.error('Error generating invoices:', error);
-            displayErrorMessage("Error generating one or more invoices. Please check your data.");
-        } finally {
-            resetButtonState();
-            hideModal();
-        }
 
-            } else if (type === 'partial') {
-                // Handle partial payment as before
-               const clientId = document.getElementById('receiverId').value;
+                if (type === 'full') {
+                    const clientId = document.getElementById('receiverId').value;
 
-                try { 
+                    try {
+                        for (const item of data) {
+                            const {
+                                date,
+                                amount,
+                                gateway
+                            } = item;
 
-                    for (const item of data) {
-                        const { date, amount, gateway } = item;
+                            // Send POST request for each client
+                            const response = await fetch(invoiceUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({
+                                    invoiceId,
+                                    invoiceNumber,
+                                    clientId,
+                                    type,
+                                    date,
+                                    amount,
+                                    gateway
+                                }),
+                            });
 
-                    const response = await fetch(invoiceUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: JSON.stringify({
-                            invoiceId,
-                            invoiceNumber,
-                            clientId, 
-                            type,
-                            date, 
-                            amount,
-                            gateway
-                        }),
-                    });
+                            if (!response.ok) {
+                                throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                            }
 
-                    if (!response.ok) {
-                        throw new Error("Failed to generate partial invoice.");
+                            const result = await response.json();
+                        }
+
+                        // Display links
+
+                    } catch (error) {
+                        console.error('Error generating invoices:', error);
+                        displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                    } finally {
+                        afterPaymentType();
+                        hideModal();
                     }
+                } else
+                if (type === 'split') {
+                    // Handle split payment, generate links for each row
+                    try {
+                        const invoiceLinks = []; // Store links for each client
+                        for (const item of data) {
+                            const {
+                                clientId,
+                                clientName,
+                                date,
+                                amount,
+                                gateway
+                            } = item;
+
+                            console.log(invoiceId, clientId, type, date, amount);
+                            console.log(csrfToken);
+                            console.log(clientName)
+                            // Send POST request for each client
+                            const response = await fetch(invoiceUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({
+                                    invoiceId,
+                                    invoiceNumber,
+                                    clientId,
+                                    type,
+                                    date,
+                                    amount,
+                                    gateway
+                                }),
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                            }
+
+                            const result = await response.json();
+                        }
+
+                    } catch (error) {
+                        console.error('Error generating invoices:', error);
+                        displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                    } finally {
+                        afterPaymentType();
+                        hideModal();
                     }
-                } catch (error) {
-                    console.error('Error generating invoice:', error);
-                    displayErrorMessage("Error generating invoice. Please try again.");
-                } finally {
-                    resetButtonState();
-                    hideModal();
+
+                } else if (type === 'partial') {
+                    // Handle partial payment as before
+                    const clientId = document.getElementById('receiverId').value;
+
+                    try {
+
+                        for (const item of data) {
+                            const {
+                                date,
+                                amount,
+                                gateway
+                            } = item;
+
+                            const response = await fetch(invoiceUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({
+                                    invoiceId,
+                                    invoiceNumber,
+                                    clientId,
+                                    type,
+                                    date,
+                                    amount,
+                                    gateway
+                                }),
+                            });
+
+                            if (!response.ok) {
+                                throw new Error("Failed to generate partial invoice.");
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error generating invoice:', error);
+                        displayErrorMessage("Error generating invoice. Please try again.");
+                    } finally {
+                        afterPaymentType();
+                        hideModal();
+                    }
                 }
             }
-        }
 
-        function displayErrorMessage(message) {
-            const alert = document.createElement('div');
-            alert.innerHTML = `
-                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                    ${message}
-                    <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(alert);
-        }
+            function displayErrorMessage(message) {
+                const alert = document.createElement('div');
+                alert.innerHTML = `
+                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                      ${message}
+                      <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
+                          <span aria-hidden="true">&times;</span>
+                      </button>
+                  </div>
+              `;
+                document.body.appendChild(alert);
+            }
 
+            function afterPaymentType() {
+                const tabs = document.querySelectorAll('input[name="payment_type"]');
+                const partial = document.getElementById('payment_type_partial');
+                const split = document.getElementById('payment_type_split');
+                const full = document.getElementById('payment_type_full');
+                const update = document.getElementById('update-invoice-btn');
+                const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
+            }
 
 
         // Generate invoice
@@ -1501,7 +1637,7 @@
 
         document.addEventListener("DOMContentLoaded", function() {
 
-            let tasks = @json($tasks);
+            tasks = @json($tasks);
             let clients = @json($clients);
 
 

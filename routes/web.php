@@ -24,6 +24,7 @@ use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\ChatController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
@@ -182,6 +183,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
     Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
+    Route::get('/testclient',[OpenAiController::class, 'getClient']);
+    Route::get('/openai/steps', [OpenAiController::class, 'steps'])->name('steps');
+    Route::get('/openai/function-tools', [OpenAiController::class, 'addFunctionTool'])->name('function-tools');
+
+    Route::post('/chat', [ChatController::class, 'chat'])->name('chat.send');;
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
@@ -224,7 +230,8 @@ Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
+Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');   
+Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial'); 
 Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 

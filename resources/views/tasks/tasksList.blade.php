@@ -186,8 +186,8 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->client_name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->branch_name }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent_name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>
                                     @endif
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->type }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->price }}</td>
@@ -424,10 +424,10 @@
                             <h3 class='text-lg font-bold mb-2'>Task Details</h3>
                             <div class='flex flex-col rounded-md border border-[#e0e6ed]'>
                                 <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Client Name:</strong> ${data.client_name}</p>
+                                    <p><strong>Client Name:</strong> ${data.client.name}</p>
                                 </div>
                                 <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Agent Name:</strong> ${data.agent_name || 'N/A'}</p>
+                                    <p><strong>Agent Name:</strong> ${data.agent.name || 'N/A'}</p>
                                 </div>
                                 <div class='border-b px-4 py-4 hover:bg-gray-200'>
                                     <p><strong>Type:</strong> ${data.type}</p>

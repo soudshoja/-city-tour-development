@@ -24,9 +24,4 @@ class Hotel extends Model
         'description',
     ];
 
-    public function hotelDetails()
-    {
-        return $this->hasMany(TaskHotelDetail::class);
-    }
-
 }

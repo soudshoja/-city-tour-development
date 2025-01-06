@@ -130,6 +130,7 @@ Route::middleware(['auth'])->group(function () {
     // verdors routes
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
     Route::get('/suppliers/{suppliersId}',[SupplierController::class, 'show'])->name('suppliers.show');
+    Route::get('/suppliers/total-ledger/{endDate}',[SupplierController::class, 'getTotalDebitCredit'])->name('suppliers.total-ledger');
 
     //ROLE
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');

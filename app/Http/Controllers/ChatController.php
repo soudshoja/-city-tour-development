@@ -68,7 +68,9 @@ class ChatController extends Controller
         $messagesData = [
             [
                 'role' => 'system',
-                'content' => "You are a chatbot for a travel agency that will interact with the travel agencies or the agents. Please use the following data to answer any questions.",
+                'content' => "You are a chatbot for a travel agency that interacts with travel agencies or agents. 
+                              If the user's query involves a list, ensure the response is formatted as a proper list 
+                              using bullet points (-) or numbering (1., 2., 3.) for clarity. Use the following data:",
             ],
             [
                 'role' => 'user',
@@ -87,6 +89,12 @@ class ChatController extends Controller
         // Process based on classification
         if ($classification === 'DataQuery') {
            $response = $this->openAIService->getChatResponse($messagesData);
+
+           $content = $response['choices'][0]['message']['content'] ?? '';
+           $formattedContent = $this->formatAsList($content);
+
+           $response['choices'][0]['message']['content'] = $formattedContent;
+
             return response()->json($response, 200);
 
         } elseif ($classification === 'ActionRequest') {
@@ -102,6 +110,43 @@ class ChatController extends Controller
         return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
     }
 }
+
+
+        private function formatAsList($content)
+        {
+            // Check if the content is a single line (for cases like your example)
+            if (strpos($content, '-') === false && strpos($content, '1.') === false) {
+                // If it's a single line, split it by commas or other delimiters
+                $clients = preg_split('/\s*[-,;]\s*/', $content);
+
+                $formattedLines = [];
+                foreach ($clients as $client) {
+                    $trimmedClient = trim($client);
+                    if (!empty($trimmedClient)) {
+                        $formattedLines[] = '- ' . $trimmedClient; // Add bullet points
+                    }
+                }
+
+                return implode("\n", $formattedLines); // Return the formatted list
+            }
+
+            // If it's already formatted with bullet points or numbering, return as is
+            $lines = explode("\n", $content);
+            $formattedLines = [];
+
+            foreach ($lines as $line) {
+                $trimmedLine = trim($line);
+
+                // Add bullet points or numbering if not already present
+                if (!preg_match('/^\d+\./', $trimmedLine) && !str_starts_with($trimmedLine, '-')) {
+                    $formattedLines[] = '- ' . $trimmedLine; // Add bullet points for plain lines
+                } else {
+                    $formattedLines[] = $trimmedLine; // Keep already formatted lines
+                }
+            }
+
+            return implode("\n", $formattedLines);
+        }
 
     private function classifyMessage($message)
     {
@@ -284,6 +329,7 @@ class ChatController extends Controller
                     'description' => $task->reference . ' ' . $task->additional_info, // Concatenate description fields
                     'client' => $task->client ? $task->client->name : 'N/A', // Safely access client name
                     'taskprice' => $task->price, // The task price
+                    'invprice' => $task->invprice, // The task price
                 ];
             })->values(),
         ], 200);
@@ -349,13 +395,14 @@ class ChatController extends Controller
                 'tasks' => $company->branches->flatMap->agents->flatMap->clients->flatMap->tasks->map(function ($task) {
                     return [
                         'id' => $task->id,
-                        'description' => $task->additional_info,
+                        'description' => $task->reference . ' - ' . $task->additional_info,
                         'status' => $task->status,
                         'agentId' => $task->agent_id,
                         'agentName' => $task->agent->name,
                         'clientId' => $task->client_id,
                         'clientName' => $task->client->name,
                         'supplierId' => $task->supplier_id,
+                        'invprice' =>  $task->invoice_price,
                         'price' => $task->total,
                     ];
                 }),
@@ -415,13 +462,14 @@ class ChatController extends Controller
                 'tasks' => $company->branches->flatMap->agents->flatMap->clients->flatMap->tasks->map(function ($task) {
                     return [
                         'id' => $task->id,
-                        'description' => $task->additional_info,
+                        'description' => $task->reference . ' - ' . $task->additional_info,
                         'status' => $task->status,
                         'agentId' => $task->agent_id,
                         'agentName' => $task->agent->name,
                         'clientId' => $task->client_id,
                         'clientName' => $task->client->name,
                         'supplierId' => $task->supplier_id,
+                        'invprice' =>  $task->invoice_price,
                         'price' => $task->total,
                     ];
                 }),

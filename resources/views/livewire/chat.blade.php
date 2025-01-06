@@ -42,7 +42,7 @@
                     <div id="pricing-fields" class="space-y-2">
                         <!-- Pricing fields will be dynamically loaded here -->
                     </div>
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Generate Invoice</button>
+                    <button type="submit" class="btn primary-btn">Generate Invoice</button>
                 </form>
             </div>
         </div>
@@ -84,17 +84,32 @@
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),  // Ensure CSRF token is included
                 },
                 success: function (response) {
+
                     if (response.tasks) {
                         loadTaskSelection(response.tasks);
                     } else if (response.taskPricing) {
                         loadTaskPricing(response.taskPricing);
                     } else {
+
+                        if (response && response.choices && response.choices.length > 0) {
+
                         const botMessage = response.choices[0].message.content;
-                        appendMessage('cityTour', botMessage);
+                        if (botMessage.includes('-') || botMessage.includes('•')) {
+                        // Format the message into a list
+                          appendMessage('cityTour', formatList(botMessage));
+                        } else {
+                            appendMessage('cityTour', botMessage);
+                        }
+
+                      } else {
+                            appendMessage('cityTour', "No response from chatbot. Please try again.");
+                        }
+
                     }
+
                 },
                 error: function (xhr) {
-                    appendMessage("chatbot", "Error: " + (xhr.responseJSON?.error || xhr.statusText));
+                    appendMessage("cityTour", "Error: " + (xhr.responseJSON?.error || xhr.statusText));
                 },
             });
 
@@ -112,6 +127,17 @@
                     </li>`;
                 taskList.append(listItem);
             });
+        }
+
+        function formatList(message) {
+            // Handle both bullet points and dashed lists (you can add more formatting cases if necessary)
+            let listItems = [];
+            if (message.includes('-')) {
+                listItems = message.split('-').map(item => `<li>${item.trim()}</li>`).filter(item => item.trim().length > 0);
+            } else if (message.includes('•')) {
+                listItems = message.split('•').map(item => `<li>${item.trim()}</li>`).filter(item => item.trim().length > 0);
+            }
+            return `<ul>${listItems.join('')}</ul>`;
         }
 
         confirmTasksButton.on("click", function () {
@@ -147,25 +173,46 @@
         function loadTaskPricing(tasks) {
             pricingFields.empty();
             taskPricing.show();
+
+            if (tasks.length === 0) {
+                pricingFields.append('<p>No tasks available.</p>');  // Optional: Show a message if no tasks
+                return;
+            }
+
             tasks.forEach(task => {
                 const field = `
                     <div class="mb-3">
                         <label class="form-label">${task.description} (Client: ${task.client} Price: ${task.taskprice})</label>
-                        <input type="number" class="form-control" name="task-${task.id}" placeholder="Enter price">
+                        <input type="number" class="form-control" name="task-${task.id}" placeholder="Enter price" value="${task.invoice_price}">
                     </div>`;
                 pricingFields.append(field);
             });
+
+            selectedTasks = tasks;
         }
 
         $("#pricing-form").on("submit", function (event) {
-            event.preventDefault();
-            const tasks = selectedTasks.map(id => {
-                return {
-                    id,
-                    invprice: parseFloat($(`input[name='task-${id}']`).val()),
-                };
-            });
 
+            event.preventDefault();
+            const tasks = selectedTasks.map(task => {
+                const invprice = parseFloat($(`input[name='task-${task.id}']`).val());
+                if (isNaN(invprice) || invprice <= 0) {
+                    alert(`Please enter a valid price for task ${task.id}`);
+                    return null;  // Skip invalid tasks
+                }
+                return {
+                    id: task.id,
+                    invprice: invprice,
+                };
+            }).filter(task => task !== null);  // Remove any null values (invalid tasks)
+
+            if (tasks.length === 0) {
+                alert("No valid tasks selected.");
+                return;
+            }
+
+            // Log the data for debugging
+            console.log("Submitting tasks:", JSON.stringify({ tasks }));
             $.ajax({
                 url: "{{ route('chat.create') }}",
                 method: "POST",
@@ -177,7 +224,8 @@
                 success: function (response) {
                      if (response.success) {
                              const generatedLink = response.invoiceLink;
-                             appendMessage("chatbot", "Invoice generated! View it here: " + generatedLink);
+                             const clickableLink = `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
+                             appendMessage("cityTour", clickableLink);
                     }
                 },
                 error: function (xhr) {

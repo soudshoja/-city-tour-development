@@ -15,8 +15,8 @@
                         <span class="text-black dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Total Suppliers </span>
                     </a>
                     <a class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-info-light dark:bg-gray-700">
-                        <span id="SuppliersData">
-                            {{ $SuppliersCount }}
+                        <span id="suppliersData">
+                            {{ $suppliersCount }}
                         </span>
                     </a>
                 </div>

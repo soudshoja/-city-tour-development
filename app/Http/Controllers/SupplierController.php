@@ -7,6 +7,7 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
+use DateTime;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
@@ -24,10 +25,10 @@ class SupplierController extends Controller
         $suppliers = Supplier::all();
 
         // Count the suppliers
-        $SuppliersCount = Supplier::count();
+        $suppliersCount = Supplier::count();
 
         // Return view with suppliers and the count
-        return view('suppliers.index', compact('suppliers', 'SuppliersCount'));
+        return view('suppliers.index', compact('suppliers', 'suppliersCount'));
     }
 
     public function show($suppliersId)
@@ -36,7 +37,7 @@ class SupplierController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $generalLedger = GeneralLedger::select('debit','credit')->limit(20)->get();
+        $generalLedger = GeneralLedger::select('id','debit','credit', 'created_at')->get();
 
         $supplier = Supplier::with('tasks')->findOrFail($suppliersId);
 
@@ -74,5 +75,17 @@ class SupplierController extends Controller
 
         // Redirect to the suppliers list
         return redirect()->route('suppliers.index');
+    }
+
+    public function getTotalDebitCredit($endDate)
+    {
+        $endDate = new DateTime($endDate);
+        $totalDebit = GeneralLedger::where('created_at', '<=', $endDate)->sum('debit');
+        $totalCredit = GeneralLedger::where('created_at', '<=', $endDate)->sum('credit');
+        
+        return response()->json([
+            'totalDebit' => $totalDebit,
+            'totalCredit' => $totalCredit,
+        ]);
     }
 }

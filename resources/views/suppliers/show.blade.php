@@ -12,6 +12,19 @@
             padding: 0.5rem;
             border-radius: 5px;
         }
+
+        .loading {
+            position: relative;
+        }
+
+        .loading::after{
+            content : '';
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
     </style>
     <div>
         <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
@@ -42,7 +55,7 @@
                     </svg>
                 </button>
             </div>
-            <div class="flex justify-evenly gap-4">
+            <div class="flex justify-evenly gap-4" id="debit-credit-container">
                 <div class="text-center bg-gradient-to-r from-green-400 to-green-800 p-2 rounded-md text-white font-semibold w-full">
                     Debit
                 </div>
@@ -50,9 +63,9 @@
                     Credit
                 </div>
             </div>
-            <div class="bg-white rounded-md shadow-md w-full p-2 max-h-96 overflow-y-auto">
+            <div id="debit-credit" class="bg-white rounded-md shadow-md w-full max-h-96 overflow-y-auto">
                 <table>
-                    <thead class="uppercase">
+                    <thead class="text-center sticky top-0 bg-white">
                         <tr class>
                             <th colspan="2">
                                 <div class="flex">
@@ -66,16 +79,17 @@
                                             <path d="M21.5 9H16.625H10.75M2 9H5.875" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
                                         </svg>
                                     </div>
-                                    <input type="date" name="" id="" class="w-full rounded-r-md p-2">
+                                    <input type="date" name="" id="" class="w-full rounded-r-md p-2" disabled>
                                 </div>
                             </th>
                         </tr>
                     </thead>
                     <tbody class="text-center">
                         @foreach($generalLedger as $item)
-                        <tr>
+                        <tr id="{{ $item->id }}">
                             <td>{{ $item->debit }}</td>
                             <td>{{ $item->credit }}</td>
+                            <input type="hidden" name="created_at" value="{{ $item->created_at }}">
                         </tr>
                         @endforeach
                     </tbody>
@@ -93,7 +107,7 @@
                             <th>Type</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="">
                         @foreach($supplier->tasks as $task)
                         <tr>
                             <td>{{ $task->reference }}</td>
@@ -150,4 +164,67 @@
             </div>
         </div>
     </div>
+    <script>
+        const debitCredit = document.getElementById('debit-credit');
+        debitCredit.scrollTop = debitCredit.scrollHeight;
+        let lastUpdatedDate = null;
+
+        const date = new Date();
+        updateDate(date);
+
+
+        let allRows = debitCredit.querySelectorAll('tbody tr');
+        let debitCreditView = debitCredit.getBoundingClientRect();
+
+        console.log('debitCredit top: ' + debitCreditView.top + ' bottom: ' + debitCreditView.bottom);
+
+        $(function(){
+            var timer;
+            $(debitCredit).scroll(function(){
+                if(timer) {
+                    window.clearTimeout(timer);
+                }
+                timer = window.setTimeout(function() {
+                    let lastVisibleRow = null;
+                    for(let row of allRows) {
+                        let item = row.getBoundingClientRect();
+                        if(item.bottom <= debitCreditView.bottom) {
+                            lastVisibleRow = row;
+                        }
+                    }
+                    let date = new Date(lastVisibleRow.querySelector('input[name="created_at"]').value);
+                    updateDate(date);
+                    updateTotal(lastVisibleRow.querySelector('input[name="created_at"]').value);
+                }, 100);
+            });
+        }) 
+
+        function updateDate(date) {
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const year = date.getFullYear();
+            const today = `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
+            document.querySelector('input[type="date"]').value = today;
+        }
+
+        function updateTotal(date){
+            let totalDebit = 0;
+            let totalCredit = 0;
+            let url = `{{ route('suppliers.total-ledger' , ['endDate' => '__endDate__']) }}`;
+            url = url.replace('__endDate__', date);
+            
+            let debitCreditContainer = document.getElementById('debit-credit-container');
+            debitCreditContainer.classList.add('loading');
+
+            $response = fetch(url).then(response => response.json()).then(data => {
+                totalDebit = data.totalDebit;
+                totalCredit = data.totalCredit;
+                
+                debitCreditContainer.querySelector('div:nth-child(1)').textContent = totalDebit;
+                debitCreditContainer.querySelector('div:nth-child(2)').textContent = totalCredit;
+
+                debitCreditContainer.classList.remove('loading');
+            });
+        }
+    </script>
 </x-app-layout>

@@ -1,4 +1,5 @@
 <x-app-layout>
+
     <style>
         button[disabled] {
             opacity: 0.5;
@@ -152,7 +153,7 @@
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
-            <div class="panel flex-1 px-0 py-6 lg:mr-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]">
+            <div class="panel flex-1 px-0 py-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]">
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white">
@@ -341,7 +342,8 @@
                                     <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
@@ -387,9 +389,6 @@
                 </div>
 
             </div>
-
-
-
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
                 <div class="panel mb-5">
                     <select id="currency" name="currency" class="form-select">
@@ -931,1616 +930,1599 @@
                         </div>
                         <!-- end main content section -->
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedInvoiceTasks = @json($selectedTasks);
+        let branches = @json($branches);
+        let clients = @json($clients);
+        let agents = @json($agents);
+        let items = [];
+        let tasks = [];
+        const itemsBody = document.getElementById('items-body');
+        const appUrl = @json($appUrl);
+        let toggle = false;
+
+        // Handle Tab Switching
+        const selectTabButton = document.getElementById('selectTabButton');
+        const addTabButton = document.getElementById('addTabButton');
+        const selectTab = document.getElementById('selectTab');
+        const addTab = document.getElementById('addTab');
+
+        document.getElementById("openClientModalButton").onclick = openClientModal;
+        document.getElementById("closeClientModalButton").onclick = closeClientModal;
+        document.getElementById('clientSearchInput').addEventListener('input', filterClients);
 
 
+        document.getElementById("openTaskModalButton").onclick = openTaskModal;
+        document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
+        document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
 
-                    <script>
-                        let selectedTasks = @json($selectedTasks);
-                        let branches = @json($branches);
-                        let clients = @json($clients);
-                        let agents = @json($agents);
-                        let items = [];
-                        let tasks = [];
-                        const itemsBody = document.getElementById('items-body');
-                        const appUrl = @json($appUrl);
-                        let toggle = false;
+        let selectedAgent = @json($selectedAgent);
+        let selectedClient = @json($selectedClient);
 
-                        // Handle Tab Switching
-                        const selectTabButton = document.getElementById('selectTabButton');
-                        const addTabButton = document.getElementById('addTabButton');
-                        const selectTab = document.getElementById('selectTab');
-                        const addTab = document.getElementById('addTab');
-
-                        document.getElementById("openClientModalButton").onclick = openClientModal;
-                        document.getElementById("closeClientModalButton").onclick = closeClientModal;
-                        document.getElementById('clientSearchInput').addEventListener('input', filterClients);
+        const generateInvoiceButton = document.getElementById('generate-invoice-btn');
+        const buttonText = document.getElementById('button-text');
+        const buttonLoading = document.getElementById('button-loading');
+        const buttonSaved = document.getElementById('button-saved');
 
 
-                        document.getElementById("openTaskModalButton").onclick = openTaskModal;
-                        document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
-                        document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
+        const invoiceIdInput = document.getElementById('invoiceId');
 
-                        let selectedAgent = @json($selectedAgent);
-                        let selectedClient = @json($selectedClient);
+        if(selectedInvoiceTasks !== null && selectedInvoiceTasks.length > 0) {
+            selectedInvoiceTasks.forEach(task => {
+                selectTask(task);
+            });
+        }
 
-                        const generateInvoiceButton = document.getElementById('generate-invoice-btn');
-                        const buttonText = document.getElementById('button-text');
-                        const buttonLoading = document.getElementById('button-loading');
-                        const buttonSaved = document.getElementById('button-saved');
+        function checkInvoiceId() {
+            const tabs = document.querySelectorAll('input[name="payment_type"]');
+            const clientButton = document.getElementById("openClientModalButton");
+            const agentButton = document.getElementById("select-agent");
+            const taskButton = document.getElementById("openTaskModalButton");
+            const generateInvoice = document.getElementById("generate-invoice-btn");
+            const paymentGatewaySection = document.getElementById('payment_gateway_section');
+            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
 
+            const options = document.querySelectorAll('.select-option');
+            const selectedBranchInput = document.getElementById('selectedBranch');
 
-                        const invoiceIdInput = document.getElementById('invoiceId');
+            // Add click event listener to each option
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    // Get the data-value attribute from the clicked option
+                    const branchId = this.getAttribute('data-value');
 
-
-                        function checkInvoiceId() {
-                            const tabs = document.querySelectorAll('input[name="payment_type"]');
-                            const clientButton = document.getElementById("openClientModalButton");
-                            const agentButton = document.getElementById("select-agent");
-                            const taskButton = document.getElementById("openTaskModalButton");
-                            const generateInvoice = document.getElementById("generate-invoice-btn");
-                            const paymentGatewaySection = document.getElementById('payment_gateway_section');
-                            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
-
-                            const options = document.querySelectorAll('.select-option');
-                            const selectedBranchInput = document.getElementById('selectedBranch');
-
-                            // Add click event listener to each option
-                            options.forEach(option => {
-                                option.addEventListener('click', function() {
-                                    // Get the data-value attribute from the clicked option
-                                    const branchId = this.getAttribute('data-value');
-
-                                    // Update the hidden input value
-                                    selectedBranchInput.value = branchId;
-                                    console.log(selectedBranchInput.value);
-                                    // Optional: Add active styling to the selected option
-                                    options.forEach(opt => opt.classList.remove('active')); // Remove active class from others
-                                    this.classList.add('active'); // Add active class to clicked option
-                                });
-                            });
+                    // Update the hidden input value
+                    selectedBranchInput.value = branchId;
+                    console.log(selectedBranchInput.value);
+                    // Optional: Add active styling to the selected option
+                    options.forEach(opt => opt.classList.remove('active')); // Remove active class from others
+                    this.classList.add('active'); // Add active class to clicked option
+                });
+            });
 
 
-                            if (paymentType === 'full') {
-                                paymentGatewaySection.style.display = 'block'; // Show the section
-                            } else {
-                                paymentGatewaySection.style.display = 'none'; // Hide the section
-                            }
+            if (paymentType === 'full') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+            } else {
+                paymentGatewaySection.style.display = 'none'; // Hide the section
+            }
 
 
-                            console.log(invoiceIdInput.value);
-                            if (!invoiceIdInput.value) {
-                                tabs.forEach(tab => {
-                                    tab.disabled = true;
-                                });
-                                clientButton.disabled = false;
-                                agentButton.disabled = false;
-                                taskButton.disabled = false;
-                                generateInvoiceButton.disabled = false;
-                                generateInvoice.classList.remove('hidden');
-                                document.getElementById('paymentMethod').classList.add('hidden');
+            console.log(invoiceIdInput.value);
+            if (!invoiceIdInput.value) {
+                tabs.forEach(tab => {
+                    tab.disabled = true;
+                });
+                clientButton.disabled = false;
+                agentButton.disabled = false;
+                taskButton.disabled = false;
+                generateInvoiceButton.disabled = false;
+                generateInvoice.classList.remove('hidden');
+                document.getElementById('paymentMethod').classList.add('hidden');
 
-                            } else {
-                                tabs.forEach(tab => {
-                                    tab.disabled = false;
-                                });
-                                clientButton.disabled = true;
-                                agentButton.disabled = true;
-                                taskButton.disabled = true;
-                                generateInvoiceButton.disabled = false;
-                                generateInvoice.classList.add('hidden');
-                                document.getElementById('paymentMethod').classList.remove('hidden');
-                            }
-                        }
+            } else {
+                tabs.forEach(tab => {
+                    tab.disabled = false;
+                });
+                clientButton.disabled = true;
+                agentButton.disabled = true;
+                taskButton.disabled = true;
+                generateInvoiceButton.disabled = false;
+                generateInvoice.classList.add('hidden');
+                document.getElementById('paymentMethod').classList.remove('hidden');
+            }
+        }
 
-                        // Run the check on page load and whenever the input value changes
-                        document.addEventListener('DOMContentLoaded', checkInvoiceId);
-                        invoiceIdInput.addEventListener('input', checkInvoiceId);
-
-
-                        // Set initial states
-                        let isSaving = false;
-                        let isSaved = false;
-
-                        function showModal(type) {
-                            if (type == 'split') {
-                                document.getElementById('paymentModal').classList.remove('hidden');
-                            } else if (type == 'partial') {
-                                document.getElementById('paymentModal1').classList.remove('hidden');
-                            }
-
-                            checkInvoiceId();
-                        }
-
-                        function hideModal() {
-                            document.getElementById('paymentModal').classList.add('hidden');
-                            document.getElementById('paymentModal1').classList.add('hidden');
-                            checkInvoiceId();
-                        }
+        // Run the check on page load and whenever the input value changes
+        document.addEventListener('DOMContentLoaded', checkInvoiceId);
+        invoiceIdInput.addEventListener('input', checkInvoiceId);
 
 
-                        function showClientModal() {
-                            // Create the modal container
-                            const modalContainer = document.createElement('div');
-                            modalContainer.id = 'clientModal';
-                            modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+        // Set initial states
+        let isSaving = false;
+        let isSaved = false;
 
-                            // Modal content
-                            modalContainer.innerHTML = `
-                                <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
-                                    <!-- Close Button -->
-                                    <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeClientModal1()">✕</button>
+        function showModal(type) {
+            if (type == 'split') {
+                document.getElementById('paymentModal').classList.remove('hidden');
+            } else if (type == 'partial') {
+                document.getElementById('paymentModal1').classList.remove('hidden');
+            }
 
-                                    <!-- Search Box -->
-                                    <div id="selectTab" class="p-6">
-                                        <div class="relative mb-4">
-                                            <input type="text" placeholder="Search Client..."
-                                                class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                                id="clientSearchInput">
-                                        </div>
-                                        <!-- ./Search Box -->
+            checkInvoiceId();
+        }
 
-                                        <!-- List of Clients -->
-                                        <ul id="clientList1"
-                                            class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
-                                            <!-- Dynamic list items go here -->
-                                        </ul>
-                                        <!-- ./List of Clients -->
+        function hideModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('paymentModal1').classList.add('hidden');
+            checkInvoiceId();
+        }
+
+
+        function showClientModal() {
+            // Create the modal container
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'clientModal';
+            modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+
+            // Modal content
+            modalContainer.innerHTML = `
+                    <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
+                        <!-- Close Button -->
+                        <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeClientModal1()">✕</button>
+
+                        <!-- Search Box -->
+                        <div id="selectTab" class="p-6">
+                            <div class="relative mb-4">
+                                <input type="text" placeholder="Search Client..."
+                                    class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                    id="clientSearchInput">
+                            </div>
+                            <!-- ./Search Box -->
+
+                            <!-- List of Clients -->
+                            <ul id="clientList1"
+                                class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                                <!-- Dynamic list items go here -->
+                            </ul>
+                            <!-- ./List of Clients -->
+                        </div>
+                    </div>
+                `;
+
+            // Append the modal to the body
+            document.body.appendChild(modalContainer);
+        }
+
+        function closeClientModal1() {
+            // Remove the modal from the DOM
+            const modal = document.getElementById('clientModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        function updateRows() {
+            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
+
+            const tbody = document.getElementById('split-rows');
+            tbody.innerHTML = ''; // Clear existing rows
+
+            for (let i = 1; i <= splitInto; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                        <td class="border-b px-4 py-2">${i}</td>
+                        <td class="border-b px-4 py-2">
+                        <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
+                            ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                        </select>
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
+                                @foreach($paymentGateways as $gateway)
+                                <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+                        <td class="px-4 py-2 border"></td>
+                    `;
+                tbody.appendChild(row);
+
+                const selectElement = row.querySelector('.account-select');
+                new TomSelect(selectElement, {
+                    create: false,
+                    sortField: {
+                        field: 'text',
+                        direction: 'asc'
+                    }
+                });
+
+            }
+        }
+
+        function updateRows1() {
+            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
+
+            const tbody = document.getElementById('split-rows1');
+            tbody.innerHTML = ''; // Clear existing rows
+
+            for (let i = 1; i <= splitInto1; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="border-b px-4 py-2">${i}</td>
+                    <td class="border-b px-4 py-2">
+                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                    </td>
+                    <td class="border-b px-4 py-2">
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+            }
+        }
+
+        function updateField(itemId, fieldId){
+            const inputField = document.getElementById(`${fieldId}-${itemId}`);
+            const newValue = inputField.value || NULL;
+
+            const item = items.find(item => item.id === itemId);
+            if (item) {
+                item[fieldId] = newValue;
+            }
+
+            if(fieldId === 'invprice'){
+                let formattedValue = parseFloat(newValue).toFixed(2);
+
+                document.getElementById(`invPriceAtTable_${itemId}`).textContent = formattedValue + ' KWD';
+                calculateSubtotal();
+            }
+
+        }
+
+        function calculateSubtotal() {
+            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.invprice) || 0), 0);
+            
+            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
+            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
+            document.getElementById('subTotal').value = subtotal;
+            document.getElementById('total-amount').value = subtotal;
+        }
+
+
+        function renderItems() {
+            itemsBody.innerHTML = ''; // Clear existing rows
+            
+            if (items.length === 0) {
+                // If no items, display the "No Item Available" row
+                const noItemsRow = document.createElement('tr');
+                noItemsRow.innerHTML = '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                itemsBody.appendChild(noItemsRow);
+            } else {
+                // Iterate over items and create rows
+                let count = 0;
+                items.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
+                    row.classList.add('TrX');
+
+                    row.innerHTML = `
+                    <td class="flex-grow">
+                    <p>${++count}</p>
+                    </td>
+                    <td class="flex-grow">
+                    <p>${item.description}</p>
+                    </td>
+                    <td>
+                    <p>${item.type}</p>
+                    </td>
+                    <td class="flex-grow">
+                    <p>${item.venue}</p>
+                    </td>
+                    <td>
+                    <p>${item.price} KWD</p>
+                    </td>
+                    <td>
+                    <p id="invPriceAtTable_${item.id}">0.00 KWD</p>
+                    </td>
+                    <td>
+                    <p>${item.client_name}</p>
+                    </td>
+                    <td>
+                    <p>${item.agent.name}</p>
+                    </td>
+                    <td>
+                    <p>${item.agent.branch.name}</p>
+                    </td>
+                    <td>
+                    <div
+                        class="inline-flex items-center justify-evenly">
+                        <div 
+                            id="modal-open-button_${item.id}"
+                            data-tooltip="See Details">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
+                            <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+
+                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-full min-h-80 overflow-y-scroll">
+                            <div class="flex justify-between items-center p-4 border-b border-black">
+                                <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
+                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
+                        </dialog>
+                    </div>
+                    </td>
+                `;
+                    itemsBody.appendChild(row);
+
+                    let taskDetails = document.getElementById('task-details_' + item.id);
+                    taskDetails.innerHTML = `
+                                <div class="mb-4 flex flex-col gap-2"> 
+                                    <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
+                                    <div class="flex justify-between items-center text-lg">
+                                        <div>Quantitiy: <strong>${item.quantity}</strong></div>
+                                        <div class="font-bold">${(item.quantity * item.total).toFixed(2)} KWD</div>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <input
+                                        id="invprice-${item.id}"
+                                        type="number"
+                                        name="invprice",
+                                        placeholder="Enter Invoice Price",
+                                        class="border border-gray-300 p-2 rounded-md"
+                                        onInput="updateField(${item.id}, 'invprice')"
+                                    >
+                                    <input
+                                        id="remark-${item.id}"
+                                        type="text"
+                                        name="remark",
+                                        placeholder="Enter Remark",
+                                        class="border border-gray-300 p-2 rounded-md"
+                                        onInput="updateField(${item.id}, 'remark')"
+                                    >
+                                    <input
+                                        id="note-${item.id}"
+                                        type="text"
+                                        name="note",
+                                        placeholder="Enter Note",
+                                        class="border border-gray-300 p-2 rounded-md"
+                                        onInput="updateField(${item.id}, 'note')"
+                                    >
                                     </div>
                                 </div>
-                            `;
+                        `;
 
-                            // Append the modal to the body
-                            document.body.appendChild(modalContainer);
-                        }
-
-                        function closeClientModal1() {
-                            // Remove the modal from the DOM
-                            const modal = document.getElementById('clientModal');
-                            if (modal) {
-                                modal.remove();
-                            }
-                        }
-
-                        function updateRows() {
-                            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-
-                            const tbody = document.getElementById('split-rows');
-                            tbody.innerHTML = ''; // Clear existing rows
-
-                            for (let i = 1; i <= splitInto; i++) {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                    <td class="border-b px-4 py-2">${i}</td>
-                                    <td class="border-b px-4 py-2">
-                                    <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                                        ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
-                                    </select>
-                                    </td>
-                                    <td class="border-b px-4 py-2">
-                                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
-                                    </td>
-                                    <td class="border-b px-4 py-2">
-                                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
-                                    </td>
-                                    <td class="border-b px-4 py-2">
-                                        <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
-                                            @foreach($paymentGateways as $gateway)
-                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td class="px-4 py-2 border"></td>
-                                `;
-                                tbody.appendChild(row);
-
-                                const selectElement = row.querySelector('.account-select');
-                                new TomSelect(selectElement, {
-                                    create: false,
-                                    sortField: {
-                                        field: 'text',
-                                        direction: 'asc'
-                                    }
-                                });
-
-                            }
-                        }
-
-                        function updateRows1() {
-                            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-                            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
-
-                            const tbody = document.getElementById('split-rows1');
-                            tbody.innerHTML = ''; // Clear existing rows
-
-                            for (let i = 1; i <= splitInto1; i++) {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                <td class="border-b px-4 py-2">${i}</td>
-                                <td class="border-b px-4 py-2">
-                                    <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
-                                </td>
-                                <td class="border-b px-4 py-2">
-                                    <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
-                                </td>
-                            `;
-                                tbody.appendChild(row);
-
-                            }
-                        }
-
-
-                        function updateRemark(itemId) {
-                            // Find the input field by ID
-                            const inputField = document.getElementById(`remark-${itemId}`);
-                            const newRemark = inputField.value || NULL;
-
-                            // Update the corresponding item in the `items` array
-                            const item = items.find(item => item.id === itemId);
-                            if (item) {
-                                item.remark = newRemark; // Add or update the `invprice` property
-                            }
-                        }
-
-                        function updateNote(itemId) {
-                            // Find the input field by ID
-                            const inputField = document.getElementById(`note-${itemId}`);
-                            const newNote = inputField.value || NULL;
-
-                            // Update the corresponding item in the `items` array
-                            const item = items.find(item => item.id === itemId);
-                            if (item) {
-                                item.note = newNote; // Add or update the `invprice` property
-                            }
-                        }
-
-                        function updateItemPrice(itemId) {
-                            // Find the input field by ID
-                            const inputField = document.getElementById(`invprice-${itemId}`);
-                            const newPrice = parseFloat(inputField.value) || 0;
-
-                            // Update the corresponding item in the `items` array
-                            const item = items.find(item => item.id === itemId);
-                            if (item) {
-                                item.invprice = newPrice; // Add or update the `invprice` property
-                            }
-                            calculateSubtotal();
-                        }
-
-
-                        function calculateSubtotal() {
-                            const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
-                            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
-                            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
-                            document.getElementById('subTotal').value = subtotal;
-                            document.getElementById('total-amount').value = subtotal;
-                        }
-
-
-                        function renderItems() {
-                            itemsBody.innerHTML = ''; // Clear existing rows
-
-                            if (items.length === 0) {
-                                // If no items, display the "No Item Available" row
-                                const noItemsRow = document.createElement('tr');
-                                noItemsRow.innerHTML = '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
-                                itemsBody.appendChild(noItemsRow);
-
-
-                            } else {
-                                // Iterate over items and create rows
-                                let count = 0;
-                                items.forEach(item => {
-                                    const row = document.createElement('tr');
-                                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
-                                    row.classList.add('TrX');
-
-                                    row.innerHTML = `
-                                <td class="flex-grow">
-                                <p>${++count}</p>
-                                </td>
-                                <td class="flex-grow">
-                                <p>${item.description}</p>
-                                </td>
-                                <td>
-                                <p>${item.type}</p>
-                                </td>
-                                <td class="flex-grow">
-                                <p>${item.venue}</p>
-                                </td>
-                                <td>
-                                <p>${item.supplier.name}</p>
-                                </td>
-                                <td>
-                                <p>${item.client_name}</p>
-                                </td>
-                                <td>
-                                <p>${item.agent.name}</p>
-                                </td>
-                                <td>
-                                <p>${item.agent.branch.name}</p>
-                                </td>
-                                <td>
-                                <div
-                                 class="inline-flex items-center justify-evenly">
-                                    <div 
-                                        id="modal-open-button_${item.id}"
-                                        data-tooltip="See Details">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
-                                        <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
-                                        </svg>
+                    if (item.flight_details !== null && item.hotel_details !== null) {
+                        taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
+                    } else if (item.flight_details !== null) {
+                        taskDetails.innerHTML += `
+                            <div class="text-lg font-bold mt-4">Flight Details</div>
+                            <hr/> 
+                                <div class="flex flex-row-reverse items-center">
+                                    <div class="p-2">
+                                        <label class="switch">
+                                            <input type="checkbox" id="" onclick="toggleAll(${item.id})">
+                                            <span class="slider round"></span>
+                                        </label>
                                     </div>
-
-                                    <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-full min-h-80 overflow-y-scroll">
-                                        <div class="flex justify-between items-center p-4 border-b border-black">
-                                            <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
-                                            <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                       <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
-                                    </dialog>
+                                    <strong>Toggle All</strong>
                                 </div>
-                                </td>
-                            `;
-                                    itemsBody.appendChild(row);
 
-                                    let taskDetails = document.getElementById('task-details_' + item.id);
-                                    taskDetails.innerHTML = `
-                                            <div class="mb-4 flex flex-col gap-2"> 
-                                                <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
-                                                <div class="flex justify-between items-center text-lg">
-                                                    <div>Quantitiy: <strong>${item.quantity}</strong></div>
-                                                    <div class="font-bold">${(item.quantity * item.total).toFixed(2)} KWD</div>
-                                                </div>
-                                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                <input
-                                                    id="invprice-${item.id}"
-                                                    type="number"
-                                                    name="invprice",
-                                                    placeholder="Enter Invoice Price",
-                                                    class="border border-gray-300 p-2 rounded-md"
-                                                >
-                                                <input
-                                                    id="remark-${item.id}"
-                                                    type="text"
-                                                    name="remark",
-                                                    placeholder="Enter Remark",
-                                                    class="border border-gray-300 p-2 rounded-md"
-                                                >
-                                                <input
-                                                    id="note-${item.id}"
-                                                    type="text"
-                                                    name="note",
-                                                    placeholder="Enter Note",
-                                                    class="border border-gray-300 p-2 rounded-md"
-                                                >
-                                                </div>
-                                            </div>
-                                    `;
-
-                                    if (item.flight_details !== null && item.hotel_details !== null) {
-                                        taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
-                                    } else if (item.flight_details !== null) {
-                                        taskDetails.innerHTML += `
-                                        <div class="text-lg font-bold mt-4">Flight Details</div>
-                                        <hr/> 
-                                            <div class="flex flex-row-reverse items-center">
-                                                <div class="p-2">
-                                                    <label class="switch">
-                                                        <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-                                                        <span class="slider round"></span>
-                                                    </label>
-                                                </div>
-                                                <strong>Toggle All</strong>
-                                            </div>
-
-                                          <form>
-                                          <div class="task-details" style="box-sizing: border-box;">
-                                            <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group" >
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Ticket Info</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div class="p-4">
-                                                  
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Departure Time</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.departure_time}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country From</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_from.name}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport From</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_from}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal From</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_from}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Arrival Time</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.arrival_time}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country To</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_to.name}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport To</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_to}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal To</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_to}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airline</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airline_id}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Class</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.class_type}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full line-clamp-1">Baggage Allowed</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.baggage_allowed}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Equipment</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.equipment}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Flight Meal</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.flight_meal}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Seat No</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.seat_no}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Created At</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.created_at}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Updated At</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.updated_at}" disabled>
-                                                    </div>
-                                                </div>
-                                            </details>
-                                            <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Route Info</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div class="p-4">
-                                                </div>
-                                            </details>
-                                            <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Fare Info</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div class="p-4">
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Farebase</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.farebase}">
-                                                    </div>
-                                                </div>
-                                            </details>
-                                            <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Void Info</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div class="p-4">
-                                                </div>
-                                            </details>
-                                           
-                                            
+                                <form>
+                                <div class="task-details" style="box-sizing: border-box;">
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group" >
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Ticket Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
                                         </div>
-                                        </form>
-                                        `;
-
-                                    } else if (item.hotel_details !== null) {
-
-                                        taskDetails.innerHTML += `
-                                        <div class="text-lg font-bold mt-4">Hotel Details</div>
-                                        <hr/>
-                                        <div class="flex flex-row-reverse items-center">
-                                            <div class="p-2">
-                                                <label class="switch">
-                                                    <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-                                                    <span class="slider round"></span>
-                                                </label>
-                                            </div>
-                                            <strong>Toggle All</strong>
+                                    </summary>
+                                    <div class="p-4">
+                                        
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Departure Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.departure_time}" disabled>
                                         </div>
-                                        <form>
-                                        <div class="task-details" style="box-sizing: border-box;">
-                                            <details class="bg-gray-200 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div class="p-4">
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
-                                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
-                                                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
-                                                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
-                                                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
-                                                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
-                                                    </div>
-                                                    <div class="flex justify-center items-center">
-                                                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
-                                                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
-                                                    </div> 
-                                                </div>
-                                            </details>
-                                            <details class="bg-gray-200 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div></div>
-                                            </details>
-                                            <details class="bg-gray-200 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div></div>
-                                            </details>
-                                            <details class="bg-gray-200 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div></div>
-                                            </details>
-                                            <details class="bg-gray-200 p-2 rounded-md group">
-                                                <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                                    <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
-                                                    <div class="flex w-10 items-center justify-center">
-                                                        <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                                    </div>
-                                                </summary>
-                                                <div></div>
-                                            </details>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country From</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_from.name}" disabled>
                                         </div>
-                                        </form>
-                                    `;
-                                    }
-
-
-                                    let openButton = document.getElementById('modal-open-button_' + item.id);
-                                    let closeButton = document.getElementById('modal-close-button_' + item.id);
-                                    let modalInvoice = document.querySelector('dialog[data-modal-invoice="' + item.id + '"]');
-
-                                    openButton.addEventListener('click', function() {
-                                        modalInvoice.showModal();
-                                    });
-
-                                    closeButton.addEventListener('click', function() {
-                                        modalInvoice.close();
-                                    });
-
-                                    modalInvoice.addEventListener('click', function(event) {
-                                        if (event.target === modalInvoice) {
-                                            modalInvoice.close();
-                                        }
-                                    });
-
-                                    // removeButton = document.getElementById('remove-button-' + item.id);
-
-                                    // removeButton.addEventListener('click', function() {
-                                    //     removeItem(item.id);
-                                    // });
-                                });
-                            }
-
-
-                        }
-
-                        function toggleAll(itemId) {
-                            toggle = !toggle;
-                            let taskDetails = document.getElementById('task-details_' + itemId);
-                            if (toggle){
-                                let detailsElement = taskDetails.querySelectorAll('details');
-                                detailsElement.forEach(element => {
-                                    element.open = true;
-                                });
-                            } else {
-                                let detailsElement = taskDetails.querySelectorAll('details');
-                                detailsElement.forEach(element => {
-                                    element.open = false;
-                                });
-                            }
-                        }
-
-                        function removeItem(itemId) {
-                            items = items.filter(item => item.id !== itemId);
-                            renderItems(); // Re-render the table after removal
-                            renderTaskList(tasks);
-                        }
-
-                        function chooseTasksAgent(agent) {
-
-                            agent = JSON.parse(agent);
-                            const agentId = agent.id;
-                            const agentName = agent.name;
-                            const agentEmail = agent.email;
-                            const agentPhone = agent.phone_number;
-
-                            itemsBody.innerHTML = '';
-                            document.getElementById('agentId').value = agentId;
-                            document.getElementById('agentName').value = agentName;
-                            document.getElementById('agentEmail').value = agentEmail;
-                            document.getElementById('agentPhone').value = agentPhone;
-                            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
-                            url = url.replace('_agentId_', agentId);
-
-                            fetch(url)
-                                .then(response => response.json())
-                                .then(data => {
-                                    tasks = data;
-                                    renderTaskList(tasks);
-                                })
-                                .catch(error => console.error(error));
-
-                            closeAgentModal();
-                            items = [];
-                        }
-                        // Show Select Client Tab
-                        selectTabButton.addEventListener('click', () => {
-                            selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
-                            selectTabButton.classList.remove('text-gray-500');
-                            addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
-                            addTabButton.classList.add('text-gray-500');
-
-                            selectTab.classList.remove('hidden');
-                            addTab.classList.add('hidden');
-                        });
-
-                        // Show Add New Client Tab
-                        addTabButton.addEventListener('click', () => {
-                            addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
-                            addTabButton.classList.remove('text-gray-500');
-                            selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
-                            selectTabButton.classList.add('text-gray-500');
-
-                            addTab.classList.remove('hidden');
-                            selectTab.classList.add('hidden');
-                        });
-
-                        if (Array.isArray(selectedTasks)) {
-                            // Iterate over the array and select each task
-                            selectedTasks.forEach(task => selectTask(task));
-                            // console.log('one', selectedTasks);
-                        } else {
-                            // console.log('tow', selectedTasks);
-                            // If it's a single task object, select it directly
-                            selectTask(selectedTasks);
-                        }
-
-                        // Function to select a task
-                        function selectTask(task) {
-                            console.log('task selected', task);
-                            items.push({
-                                ...task, // Spread the properties of the task object
-                                remark: '', // Add default empty remark
-                                quantity: 1, // Default quantity is 1
-                                description: `${task.reference} - ${task.additional_info}`, // Custom description format
-                                client_name: task.client_name
-                            });
-                            console.log('items', items);
-                            // Set the selected task name
-                            selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
-
-                            updateClientAgent(task.client_id, task.agent_id);
-                            // Call a function to update the total, passing the current items array
-                            //  updateTotal(items);
-                            renderTaskList(tasks);
-                            closeTaskModal();
-                            renderItems();
-                        }
-
-                        function updateTotal(items) {
-                            const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
-                                0); // Calculate total based on price and quantity
-                            this.subtotal = total;
-                            // this.updateSubTotal();
-                        };
-
-                        function openClientModal() {
-                            const modal = document.getElementById("clientModal");
-                            modal.classList.remove("hidden");
-                        }
-
-                        // Close Client Modal
-                        function closeClientModal() {
-                            const modal = document.getElementById("clientModal");
-                            modal.classList.add("hidden");
-                        }
-
-                        function openAgentModal() {
-                            const modal = document.getElementById("agentModal");
-                            modal.classList.remove("hidden");
-                        }
-
-                        // Close Agent Modal
-                        function closeAgentModal() {
-                            const modal = document.getElementById("agentModal");
-                            modal.classList.add("hidden");
-                        }
-
-                        function filterClients() {
-                            const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
-                            const filteredClients = clients.filter(client =>
-                                client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
-                            );
-                            renderClientList(filteredClients);
-                        }
-
-                        function renderClientList(clientData) {
-                            const clientList = document.getElementById('clientList');
-                            clientList.innerHTML = '';
-                            clientData.forEach(client => {
-                                const li = document.createElement('li');
-                                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                                li.innerText = `${client.name} - ${client.email}`;
-                                li.onclick = () => selectClient(client);
-                                clientList.appendChild(li);
-                            });
-                        }
-
-                        function selectClient(client) {
-                            document.getElementById('client').value = client;
-                            document.getElementById('receiverId').value = client.id;
-
-                            // Update input fields
-                            document.getElementById('receiverName').value = client.name;
-                            document.getElementById('receiverName1').textContent = client.name;
-                            document.getElementById('receiverEmail').value = client.email;
-                            document.getElementById('receiverPhone').value = client.phone;
-                            closeClientModal();
-
-                        }
-
-                        function openTaskModal() {
-                            document.getElementById('taskModal').classList.remove('hidden');
-                        }
-
-                        function closeTaskModal() {
-                            document.getElementById('taskModal').classList.add('hidden');
-                        }
-
-                        function filterTasks() {
-                            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
-                            const filteredTasks = tasks.filter(task =>
-                                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
-                            );
-                            renderTaskList(filteredTasks);
-                        }
-
-                        function renderTaskList(taskData) {
-                            const taskList = document.getElementById('taskList');
-
-                            taskData = taskData.filter(task =>
-                                !items.some(selectedTask => selectedTask.id === task.id)
-                            );
-
-                            taskList.innerHTML = '';
-                            if (taskData.length == 0) {
-                                const p = document.createElement('p');
-                                p.className = 'text-center text-gray-500';
-                                p.innerText = 'No Task Available';
-                                taskList.appendChild(p);
-
-                                return;
-                            }
-                            taskData.forEach(task => {
-                                const li = document.createElement('li');
-                                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                                li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
-                                li.onclick = () => selectTask(task);
-                                taskList.appendChild(li);
-                            });
-                        }
-
-                        // Call the function with the selectedClient object
-                        if (selectedClient && selectedAgent) {
-                            updateFormFields(selectedClient, selectedAgent);
-                        }
-
-                        function updateClientAgent(clientId, agentId) {
-                            // Find the client by clientId
-                            let client = clients.find(c => c.id === clientId);
-
-                            // Find the agent by agentId
-                            let agent = agents.find(a => a.id === agentId);
-                            // Find the branch associated with the agent
-                            let branch = branches.find(b => b.id === agent.branch_id);
-                            console.log('branch', branch);
-                            // Check if client and agent exist
-                            if (client && agent && branch) {
-                                // Update hidden fields
-                                document.getElementById('receiverId').value = client.id;
-
-                                // Update input fields for client
-                                document.getElementById('receiverName').value = client.name;
-                                document.getElementById('receiverName1').textContent = client.name;
-                                document.getElementById('receiverEmail').value = client.email;
-                                document.getElementById('receiverPhone').value = client.phone;
-
-                                document.getElementById('agentId').value = agent.id;
-                                // Update input fields for agent
-                                document.getElementById('agentName').value = agent.name;
-                                document.getElementById('agentEmail').value = agent.email;
-                                document.getElementById('agentPhone').value = agent.phone;
-
-                                // Update the selected branch
-                                document.getElementById('selectedBranch').value = branch.id;
-
-                                // Update the trigger text for branch selection
-                                document.querySelector('.select-trigger').textContent = branch.name;
-
-                            } else {
-                                console.error('Client or Agent not found');
-                            }
-                        }
-
-                        function updateFormFields(client, agent) {
-                            // Update hidden fields
-                            document.getElementById('receiverId').value = client.id;
-
-                            // Update input fields
-                            document.getElementById('receiverName').value = client.name;
-                            document.getElementById('receiverName1').textContent = client.name;
-                            document.getElementById('receiverEmail').value = client.email;
-                            document.getElementById('receiverPhone').value = client.phone;
-
-                            document.getElementById('agentId').value = agent.id;
-                            document.getElementById('agentName').value = agent.name;
-                            document.getElementById('agentEmail').value = agent.email;
-                            document.getElementById('agentPhone').value = agent.phone;
-                        }
-
-                        generateInvoiceButton.addEventListener('click', async function(event) {
-                            event.preventDefault(); // Prevent form submission or default action
-                            if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
-
-                            // Start saving
-                            isSaving = true;
-                            updateButtonState();
-
-                            try {
-                                // Simulate invoice generation (replace with your actual API call)
-                                await generateInvoice();
-                                updateButtonState();
-                            } catch (error) {
-                                console.error("Error generating invoice:", error);
-                                isSaving = false; // Reset saving state
-                                updateButtonState();
-
-                            }
-                        });
-
-                        // Function to update button state (text, loading spinner, disabled state)
-                        function updateButtonState() {
-                            if (isSaving) {
-                                buttonText.style.display = 'none';
-                                buttonLoading.style.display = 'inline-block';
-                                buttonSaved.style.display = 'none';
-                                generateInvoiceButton.disabled = true; // Disable button during saving
-                            } else if (isSaved) {
-                                buttonText.style.display = 'none';
-                                buttonLoading.style.display = 'none';
-                                buttonSaved.style.display = 'inline-block';
-                                generateInvoiceButton.disabled = false; // Re-enable button after saved
-                            } else {
-                                buttonText.style.display = 'inline-block';
-                                buttonLoading.style.display = 'none';
-                                buttonSaved.style.display = 'none';
-                                generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
-                            }
-                        }
-
-                        function savePartial(mode) {
-
-                            if (mode === 'full') {
-
-                                if (!validateFullPayment()) return;
-
-                                const gateway = document.getElementById('payment_gateway').value;
-                                const date = document.getElementById('duedate').value;
-                                const amount = document.getElementById('subTotal').value;
-                                const fullData = [];
-
-                                fullData.push({
-                                    date,
-                                    amount,
-                                    gateway
-                                });
-                                save('full', fullData);
-                            } else
-                            if (mode === 'split') {
-
-                                if (!validateSplitPayment()) return;
-
-                                // Collect Split Payment Data
-                                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                                const description = document.getElementById('split-desc').value;
-                                const rows = document.querySelectorAll('#split-rows tr');
-
-                                const splitData = [];
-                                rows.forEach(row => {
-                                    const selectElement = row.querySelector('select');
-                                    const clientId = selectElement.value;
-                                    const date = row.querySelector('input[type="date"]').value;
-                                    const gateway = row.querySelector('#payment_gateway2').value || null;
-                                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-                                    const clientName = selectElement.options[selectElement.selectedIndex].text;
-
-                                    splitData.push({
-                                        clientId,
-                                        clientName,
-                                        date,
-                                        amount,
-                                        gateway
-                                    });
-                                });
-
-                                save('split', splitData);
-
-                            } else if (mode === 'partial') {
-                                if (!validatePartialPayment()) return;
-
-                                // Collect Partial Payment Data
-                                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-                                const partialRows = document.querySelectorAll('#split-rows1 tr');
-                                const gateway = document.getElementById('payment_gateway1').value;
-
-                                const partialData = [];
-
-                                partialRows.forEach(row => {
-                                    const date = row.querySelector('input[type="date"]').value;
-                                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-
-                                    partialData.push({
-                                        date,
-                                        amount,
-                                        gateway
-                                    });
-                                });
-
-                                save('partial', partialData);
-
-                            }
-                        }
-
-                        async function save(type, data) {
-                            const invoiceUrl = "{{ route('invoice.partial') }}";
-                            const csrfToken = "{{ csrf_token() }}";
-                            const invoiceId = document.getElementById('invoiceId').value;
-                            const invoiceNumber = document.getElementById('invoiceNumber').value;
-
-                            if (type === 'full') {
-                                const clientId = document.getElementById('receiverId').value;
-
-                                try {
-                                    for (const item of data) {
-                                        const {
-                                            date,
-                                            amount,
-                                            gateway
-                                        } = item;
-
-                                        // Send POST request for each client
-                                        const response = await fetch(invoiceUrl, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': csrfToken,
-                                            },
-                                            body: JSON.stringify({
-                                                invoiceId,
-                                                invoiceNumber,
-                                                clientId,
-                                                type,
-                                                date,
-                                                amount,
-                                                gateway
-                                            }),
-                                        });
-
-                                        if (!response.ok) {
-                                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                                        }
-
-                                        const result = await response.json();
-
-                                    }
-
-                                    // Display links
-
-                                } catch (error) {
-                                    console.error('Error generating invoices:', error);
-                                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                                } finally {
-                                    afterPaymentType();
-                                    hideModal();
-                                }
-                            } else
-                            if (type === 'split') {
-                                // Handle split payment, generate links for each row
-                                try {
-                                    const invoiceLinks = []; // Store links for each client
-                                    for (const item of data) {
-                                        const {
-                                            clientId,
-                                            clientName,
-                                            date,
-                                            amount,
-                                            gateway
-                                        } = item;
-
-                                        console.log(invoiceId, clientId, type, date, amount);
-                                        console.log(csrfToken);
-                                        console.log(clientName)
-                                        // Send POST request for each client
-                                        const response = await fetch(invoiceUrl, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': csrfToken,
-                                            },
-                                            body: JSON.stringify({
-                                                invoiceId,
-                                                invoiceNumber,
-                                                clientId,
-                                                type,
-                                                date,
-                                                amount,
-                                                gateway
-                                            }),
-                                        });
-
-                                        if (!response.ok) {
-                                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                                        }
-
-                                        const result = await response.json();
-                                    }
-
-                                    // Set the linkVisible flag to true
-                                    //linkVisible = true;
-
-                                    // Update the visibility of the link
-                                    updateLinkVisibility(invoiceNumber);
-
-
-                                } catch (error) {
-                                    console.error('Error generating invoices:', error);
-                                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                                } finally {
-                                    afterPaymentType();
-                                    //hideModal();
-                                }
-
-                            } else if (type === 'partial') {
-                                // Handle partial payment as before
-                                const clientId = document.getElementById('receiverId').value;
-
-                                try {
-
-                                    for (const item of data) {
-                                        const {
-                                            date,
-                                            amount,
-                                            gateway
-                                        } = item;
-
-                                        const response = await fetch(invoiceUrl, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': csrfToken,
-                                            },
-                                            body: JSON.stringify({
-                                                invoiceId,
-                                                invoiceNumber,
-                                                clientId,
-                                                type,
-                                                date,
-                                                amount,
-                                                gateway
-                                            }),
-                                        });
-
-                                        if (!response.ok) {
-                                            throw new Error("Failed to generate partial invoice.");
-                                        }
-                                    }
-                                } catch (error) {
-                                    console.error('Error generating invoice:', error);
-                                    displayErrorMessage("Error generating invoice. Please try again.");
-                                } finally {
-                                    afterPaymentType();
-                                    hideModal();
-                                }
-                            }
-                        }
-
-
-                        function validateFullPayment() {
-                            const gateway = document.getElementById('payment_gateway').value;
-                            const date = document.getElementById('duedate').value;
-                            const amount = parseFloat(document.getElementById('subTotal').value) || 0;
-
-                            if (!gateway || !date || amount <= 0) {
-                                displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
-                                return false;
-                            }
-                            return true;
-                        }
-
-                        function validateSplitPayment() {
-                            const rows = document.querySelectorAll('#split-rows tr');
-                            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
-                            let totalAmount = 0;
-
-                            for (const row of rows) {
-                                const selectElement = row.querySelector('select');
-                                const clientId = selectElement.value;
-                                const date = row.querySelector('input[type="date"]').value;
-                                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-
-                                if (!clientId || !date || amount <= 0) {
-                                    displayErrorMessage("Each split payment row must have a client, valid date, and amount greater than 0.");
-                                    return false;
-                                }
-
-                                totalAmount += amount;
-                            }
-
-                            if (totalAmount > subTotal) {
-                                displayErrorMessage(`The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
-                                return false;
-                            }
-
-                            if (totalAmount < subTotal) {
-                                displayErrorMessage(`The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
-                                return false;
-                            }
-
-                            return true;
-                        }
-
-                        function validatePartialPayment() {
-                            const rows = document.querySelectorAll('#split-rows1 tr');
-                            const gateway = document.getElementById('payment_gateway1').value;
-                            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
-                            let totalAmount = 0;
-
-                            for (const row of rows) {
-                                const date = row.querySelector('input[type="date"]').value;
-                                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-
-                                if (!date || amount <= 0) {
-                                    displayErrorMessage("Each partial payment row must have a valid date and amount greater than 0.");
-                                    return false;
-                                }
-
-                                totalAmount += amount;
-                            }
-
-                            if (!gateway) {
-                                displayErrorMessage("Payment gateway is required for partial payment.");
-                                return false;
-                            }
-
-                            if (totalAmount > subTotal) {
-                                displayErrorMessage(`The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
-                                return false;
-                            }
-
-                            if (totalAmount < subTotal) {
-                                displayErrorMessage(`The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
-                                return false;
-                            }
-
-                            return true;
-                        }
-
-
-                        function displayErrorMessage(message) {
-                            const alert = document.createElement('div');
-                            alert.innerHTML = `
-                                <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                                    ${message}
-                                    <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                            `;
-                            document.body.appendChild(alert);
-                        }
-
-                        function afterPaymentType() {
-                            const partial = document.getElementById('payment_type_partial');
-                            const split = document.getElementById('payment_type_split');
-                            const full = document.getElementById('payment_type_full');
-                            const update = document.getElementById('update-invoice-btn');
-                            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
-                            // Get all payment type inputs
-                            const paymentOptions = document.querySelectorAll('input[name="payment_type"]');
-
-                            // Get the selected payment type
-                            const selectedOption = document.querySelector('input[name="payment_type"]:checked');
-
-                            update.disabled = true;
-
-                            // Disable all options
-                            paymentOptions.forEach(option => {
-                                option.disabled = true; // Disable the radio button
-                                const label = option.closest('label'); // Find the parent label
-                                if (option === selectedOption) {
-                                    // Highlight the selected label
-                                    label.classList.add('highlight-selected');
-                                } else {
-                                    // Fade the unselected labels
-                                    label.classList.add('fade-unchecked');
-                                }
-                            });
-
-                        }
-
-                        function updateLinkVisibility(invoiceNumber) {
-                            const rows = document.querySelectorAll("#split-rows tr");
-                            rows.forEach(row => {
-                                // Get the clientId from the select element or hidden input
-                                const clientIdSelect = row.querySelector("select[name^='customer_name_']");
-                                const clientId = clientIdSelect ? clientIdSelect.value : null;
-
-                                // Update the link only if clientId is available
-                                if (clientId) {
-                                    const linkCell = row.querySelector("td:last-child");
-                                    linkCell.innerHTML = `
-                                    <a href="/invoice/partial/${invoiceNumber}/${clientId}" 
-                                    class="text-blue-500 underline" 
-                                    target="_blank">
-                                    View Details
-                                    </a>
-                                `;
-                                }
-                            });
-                        }
-
-                        // Generate invoice
-                        async function generateInvoice() {
-
-                            const invoiceUrl = "{{ route('invoice.store') }}";
-                            const csrfToken = "{{ csrf_token() }}";
-
-                            const currencyElement = document.getElementById('currency');
-                            const invoiceNumberElement = document.getElementById('invoiceNumber');
-                            const invdateElement = document.getElementById('invoiceDate');
-                            const duedateElement = document.getElementById('dueDate');
-                            const subTotalElement = document.getElementById('subTotal');
-                            const clientIdElement = document.getElementById('receiverId');
-                            const agentIdElement = document.getElementById('agentId');
-                            const selectedBranch = document.getElementById('selectedBranch');
-
-                            const currency = currencyElement ? currencyElement.value : null;
-                            const invoiceNumber = invoiceNumberElement ? invoiceNumberElement.value : null;
-                            const invdate = invdateElement ? invdateElement.value : null;
-                            const duedate = duedateElement ? duedateElement.value : null;
-                            const subTotal = subTotalElement ? subTotalElement.value : null;
-                            const clientId = clientIdElement ? clientIdElement.value : null;
-                            const agentId = agentIdElement ? agentIdElement.value : null;
-                            const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
-                            const tasks = items;
-
-                            // Show loading state
-                            buttonText.style.display = "none";
-                            buttonLoading.style.display = "inline";
-
-                            console.log(
-                                'clientId:', clientId,
-                                'agentId:', agentId,
-                                'tasksLength:', tasks.length,
-                                'selectedBranchValue:', selectedBranchValue,
-                                'currency:', currency,
-                                'invoiceNumber:', invoiceNumber,
-                                'invdate:', invdate,
-                                'duedate:', duedate,
-                                'subTotal:', subTotal,
-                            );
-
-                            let errorMessages = [];
-
-                            // Validate all inputs and add specific messages
-                            if (!currency) errorMessages.push("Currency is missing.");
-                            if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
-                            if (!invdate) errorMessages.push("Invoice date is missing.");
-                            if (!duedate) errorMessages.push("Due date is missing.");
-                            if (!subTotal) errorMessages.push("Subtotal is missing.");
-                            if (!clientId) errorMessages.push("Client ID is missing.");
-                            if (!agentId) errorMessages.push("Agent ID is missing.");
-                            if (!items.length) errorMessages.push("No tasks have been selected.");
-                            if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
-
-                            // Check if there are any errors
-                            if (errorMessages.length > 0) {
-                                // Create the error notification element
-                                let errorNotification = document.createElement('div');
-                                errorNotification.className = "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
-                                errorNotification.innerHTML = `
-                                    <ul>
-                                        ${errorMessages.map(message => `<li>${message}</li>`).join('')}
-                                    </ul>
-                                    <button type="button" class="close text-white ml-2" aria-label="Close"
-                                        onclick="this.parentElement.style.display='none';">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                `;
-
-                                // Append the error notification to the body
-                                document.body.appendChild(errorNotification);
-
-                                // Reset button state or perform any cleanup
-                                resetButtonState();
-                                return;
-                            }
-
-                            // Proceed with the form submission or further processing
-                            console.log("All required data is provided. Proceeding...");
-
-                            try {
-                                const response = await fetch(invoiceUrl, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': csrfToken,
-                                    },
-                                    body: JSON.stringify({
-                                        clientId,
-                                        agentId,
-                                        tasks,
-                                        subTotal,
-                                        invoiceNumber,
-                                        currency,
-                                        invdate,
-                                        duedate
-
-                                    })
-                                });
-                                if (!response.ok) {
-                                    throw new Error("Failed to reach the invoice controller.");
-                                }
-
-                                const result = await response.json();
-                                const {
-                                    invoiceId
-                                } = result;
-                                console.log(invoiceId);
-
-                                document.getElementById('invoiceId').value = invoiceId;
-                                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
-
-                                // Show success state
-                                isSaved = true; // Mark as saved after generating
-                                updateButtonState();
-
-                                coaActivites(items, subTotal);
-
-
-                            } catch (error) {
-                                console.error('Error generating invoice:', error);
-                                let alert = document.createElement('div');
-                                alert.innerHTML = ` 
-                                    <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                                        Error Generating Invoice: make sure all fields are filled correctly
-                                        <button type="button" class="close text-white ml-2" aria-label="Close"
-                                            onclick="this.parentElement.style.display='none';">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport From</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_from}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal From</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_from}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Arrival Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.arrival_time}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country To</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_to.name}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport To</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_to}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal To</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_to}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airline</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airline_id}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Class</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.class_type}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full line-clamp-1">Baggage Allowed</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.baggage_allowed}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Equipment</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.equipment}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Flight Meal</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.flight_meal}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Seat No</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.seat_no}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Created At</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.created_at}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Updated At</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.updated_at}" disabled>
+                                        </div>
                                     </div>
-                                    `
-                                document.body.appendChild(alert);
-                                resetButtonState();
-                            } finally {
-                                // Reset button states
-                                buttonLoading.style.display = "none";
-                                setTimeout(() => {
-                                    checkInvoiceId();
-                                    resetButtonState();
-                                    // Show COA activities container
-                                    document.getElementById("coa-activities-container").style.display = "block";
-                                }, 1000);
-                            }
-                        };
+                                </details>
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Route Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                    </div>
+                                </details>
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Fare Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Farebase</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.farebase}">
+                                        </div>
+                                    </div>
+                                </details>
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Void Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                    </div>
+                                </details>
+                                
+                                
+                            </div>
+                            </form>
+                            `;
+
+                    } else if (item.hotel_details !== null) {
+
+                        taskDetails.innerHTML += `
+                            <div class="text-lg font-bold mt-4">Hotel Details</div>
+                            <hr/>
+                            <div class="flex flex-row-reverse items-center">
+                                <div class="p-2">
+                                    <label class="switch">
+                                        <input type="checkbox" id="" onclick="toggleAll(${item.id})">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <strong>Toggle All</strong>
+                            </div>
+                            <form>
+                            <div class="task-details" style="box-sizing: border-box;">
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
+                                        </div> 
+                                    </div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                            </div>
+                            </form>
+                        `;
+                    }
 
 
-                        function coaActivites(items, subTotal) {
-                            const supplierTotals = new Map(); // To track cumulative amounts for each supplier
-                            let cumulativeMarkup = 0; // Total markup income
+                    let openButton = document.getElementById('modal-open-button_' + item.id);
+                    let closeButton = document.getElementById('modal-close-button_' + item.id);
+                    let modalInvoice = document.querySelector('dialog[data-modal-invoice="' + item.id + '"]');
 
-                            const clientNameInput = document.getElementById("receiverName");
-                            const defaultClientName = "Unknown Client"; // Fallback if input is empty or unavailable
-                            const clientNameFromInput = clientNameInput ? clientNameInput.value.trim() : defaultClientName;
+                    openButton.addEventListener('click', function() {
+                        modalInvoice.showModal();
+                    });
 
-                            const activities = items.map(item => {
-                                // Extract relevant details for each activity
-                                const taskId = item.reference || "Unknown Task ID"; // Task ID
-                                const supplierName = item.supplier_name || "Unknown Supplier";
-                                const agentName = item.agent_name || "Unknown Agent";
-                                const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
-                                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.price || 0); // Markup = invprice - price
+                    closeButton.addEventListener('click', function() {
+                        modalInvoice.close();
+                    });
 
-                                // Update cumulative totals per supplier
-                                if (!supplierTotals.has(supplierName)) {
-                                    supplierTotals.set(supplierName, 0);
-                                }
-                                supplierTotals.set(supplierName, supplierTotals.get(supplierName) + totalAmount);
-
-                                // Update cumulative markup
-                                cumulativeMarkup += markupValue;
-
-                                // Construct the activities
-                                return [
-                                    `Task ID: ${taskId} - Income of KWD${markupValue.toFixed(2)} from agent: ${agentName}`
-                                ];
-                            }).flat(); // Flatten the array since map creates a nested array for each item
-
-                            activities.push(`Payments to receive from: ${clientNameFromInput} amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`);
-                            // Add cumulative totals for each supplier
-                            supplierTotals.forEach((total, supplierName) => {
-                                activities.push(`Payment need to be made to ${supplierName}: KWD${total.toFixed(2)}`);
-                            });
-
-                            // Add overall cumulative totals
-                            activities.push(`Total markup income: KWD${cumulativeMarkup.toFixed(2)}`);
-
-                            // Get the container where activities will be displayed
-                            const activitiesList = document.getElementById("coa-activities-list");
-
-                            // Clear any previous content
-                            activitiesList.innerHTML = "";
-
-                            // Display the activities
-                            activities.forEach(activity => {
-                                const listItem = document.createElement("li");
-                                listItem.textContent = activity;
-                                activitiesList.appendChild(listItem);
-                            });
+                    modalInvoice.addEventListener('click', function(event) {
+                        if (event.target === modalInvoice) {
+                            modalInvoice.close();
                         }
+                    });
+
+                    // removeButton = document.getElementById('remove-button-' + item.id);
+
+                    // removeButton.addEventListener('click', function() {
+                    //     removeItem(item.id);
+                    // });
+                });
+            }
 
 
-                        function openInvoiceModal(invoiceNumber) {
-                            const modal = document.getElementById("viewInvoiceModal");
-                            const contentDiv = document.getElementById("invoiceContent");
+        }
 
-                            // Clear previous content
-                            contentDiv.innerHTML = "";
+        function toggleAll(itemId) {
+            toggle = !toggle;
+            let taskDetails = document.getElementById('task-details_' + itemId);
+            if (toggle) {
+                let detailsElement = taskDetails.querySelectorAll('details');
+                detailsElement.forEach(element => {
+                    element.open = true;
+                });
+            } else {
+                let detailsElement = taskDetails.querySelectorAll('details');
+                detailsElement.forEach(element => {
+                    element.open = false;
+                });
+            }
+        }
 
-                            // Open the modal
-                            modal.classList.remove("hidden");
-                            url =
-                                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                                    ":invoiceNumber",
-                                    invoiceNumber
-                                );
+        function removeItem(itemId) {
+            items = items.filter(item => item.id !== itemId);
+            renderItems(); // Re-render the table after removal
+            renderTaskList(tasks);
+        }
 
-                            // Fetch the invoice details
-                            fetch(url)
-                                .then((response) => {
-                                    if (!response.ok) {
-                                        throw new Error("Network response was not ok");
-                                    }
-                                    return response.text();
-                                })
-                                .then((data) => {
-                                    contentDiv.innerHTML = data;
+        function chooseTasksAgent(agent) {
 
-                                    // Close the modal when the backdrop is clicked
-                                    modal.addEventListener("click", (event) => {
-                                        if (event.target === modal) {
-                                            closeInvoiceModal();
-                                        }
-                                    });
+            agent = JSON.parse(agent);
+            const agentId = agent.id;
+            const agentName = agent.name;
+            const agentEmail = agent.email;
+            const agentPhone = agent.phone_number;
 
+            itemsBody.innerHTML = '';
+            document.getElementById('agentId').value = agentId;
+            document.getElementById('agentName').value = agentName;
+            document.getElementById('agentEmail').value = agentEmail;
+            document.getElementById('agentPhone').value = agentPhone;
+            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
+            url = url.replace('_agentId_', agentId);
 
-                                })
-                                .catch((error) => {
-                                    console.error("Error fetching invoice details:", error);
-                                    contentDiv.innerHTML =
-                                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    tasks = data;
+                    renderTaskList(tasks);
+                })
+                .catch(error => console.error(error));
 
-                                });
-                        }
+            closeAgentModal();
+            items = [];
+        }
+        // Show Select Client Tab
+        selectTabButton.addEventListener('click', () => {
+            selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+            selectTabButton.classList.remove('text-gray-500');
+            addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+            addTabButton.classList.add('text-gray-500');
 
-                        function closeInvoiceModal() {
-                            const modal = document.getElementById("viewInvoiceModal");
-                            modal.classList.add("hidden");
-                        }
+            selectTab.classList.remove('hidden');
+            addTab.classList.add('hidden');
+        });
 
+        // Show Add New Client Tab
+        addTabButton.addEventListener('click', () => {
+            addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+            addTabButton.classList.remove('text-gray-500');
+            selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+            selectTabButton.classList.add('text-gray-500');
 
-                        function resetButtonState() {
-                            isSaving = false;
-                            isSaved = false;
-                            updateButtonState();
-                        }
-
-                        document.addEventListener("DOMContentLoaded", function() {
-
-                            tasks = @json($tasks);
-                            let clients = @json($clients);
-
-
-                            // Initial rendering of items
-                            renderItems();
+            addTab.classList.remove('hidden');
+            selectTab.classList.add('hidden');
+        });
 
 
-                            // Initialize modals with full data
-                            renderClientList(clients);
-                            renderTaskList(tasks);
+        // Function to select a task
+        function selectTask(task) {
+            console.log('task selected', task);
+            items.push({
+                ...task, // Spread the properties of the task object
+                remark: '', // Add default empty remark
+                quantity: 1, // Default quantity is 1
+                description: `${task.reference} - ${task.additional_info}`, // Custom description format
+                client_name: task.client_name
+            });
+            
+            // Set the selected task name
+            selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
+            updateClientAgent(task.client_id, task.agent_id);
+            // Call a function to update the total, passing the current items array
+            //  updateTotal(items);
+            renderTaskList(tasks);
+            closeTaskModal();
+            renderItems();
+        }
 
+        function updateTotal(items) {
+            const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
+                0); // Calculate total based on price and quantity
+            this.subtotal = total;
+            // this.updateSubTotal();
+        };
 
+        function openClientModal() {
+            const modal = document.getElementById("clientModal");
+            modal.classList.remove("hidden");
+        }
+
+        // Close Client Modal
+        function closeClientModal() {
+            const modal = document.getElementById("clientModal");
+            modal.classList.add("hidden");
+        }
+
+        function openAgentModal() {
+            const modal = document.getElementById("agentModal");
+            modal.classList.remove("hidden");
+        }
+
+        // Close Agent Modal
+        function closeAgentModal() {
+            const modal = document.getElementById("agentModal");
+            modal.classList.add("hidden");
+        }
+
+        function filterClients() {
+            const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
+            const filteredClients = clients.filter(client =>
+                client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
+            );
+            renderClientList(filteredClients);
+        }
+
+        function renderClientList(clientData) {
+            const clientList = document.getElementById('clientList');
+            clientList.innerHTML = '';
+            clientData.forEach(client => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                li.innerText = `${client.name} - ${client.email}`;
+                li.onclick = () => selectClient(client);
+                clientList.appendChild(li);
+            });
+        }
+
+        function selectClient(client) {
+            document.getElementById('client').value = client;
+            document.getElementById('receiverId').value = client.id;
+
+            // Update input fields
+            document.getElementById('receiverName').value = client.name;
+            document.getElementById('receiverName1').textContent = client.name;
+            document.getElementById('receiverEmail').value = client.email;
+            document.getElementById('receiverPhone').value = client.phone;
+            closeClientModal();
+
+        }
+
+        function openTaskModal() {
+            document.getElementById('taskModal').classList.remove('hidden');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+        }
+
+        function filterTasks() {
+            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
+            const filteredTasks = tasks.filter(task =>
+                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
+            );
+            renderTaskList(filteredTasks);
+        }
+
+        function renderTaskList(taskData) {
+            const taskList = document.getElementById('taskList');
+
+            taskData = taskData.filter(task =>
+                !items.some(selectedTask => selectedTask.id === task.id)
+            );
+
+            taskList.innerHTML = '';
+            if (taskData.length == 0) {
+                const p = document.createElement('p');
+                p.className = 'text-center text-gray-500';
+                p.innerText = 'No Task Available';
+                taskList.appendChild(p);
+
+                return;
+            }
+            taskData.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
+                li.onclick = () => selectTask(task);
+                taskList.appendChild(li);
+            });
+        }
+
+        // Call the function with the selectedClient object
+        if (selectedClient && selectedAgent) {
+            updateFormFields(selectedClient, selectedAgent);
+        }
+
+        function updateClientAgent(clientId, agentId) {
+            // Find the client by clientId
+            let client = clients.find(c => c.id === clientId);
+
+            // Find the agent by agentId
+            let agent = agents.find(a => a.id === agentId);
+            // Find the branch associated with the agent
+            let branch = branches.find(b => b.id === agent.branch_id);
+            
+            // Check if client and agent exist
+            if (client && agent && branch) {
+                // Update hidden fields
+                document.getElementById('receiverId').value = client.id;
+
+                // Update input fields for client
+                document.getElementById('receiverName').value = client.name;
+                document.getElementById('receiverName1').textContent = client.name;
+                document.getElementById('receiverEmail').value = client.email;
+                document.getElementById('receiverPhone').value = client.phone;
+
+                document.getElementById('agentId').value = agent.id;
+                // Update input fields for agent
+                document.getElementById('agentName').value = agent.name;
+                document.getElementById('agentEmail').value = agent.email;
+                document.getElementById('agentPhone').value = agent.phone;
+
+                // Update the selected branch
+                document.getElementById('selectedBranch').value = branch.id;
+
+                // Update the trigger text for branch selection
+                document.querySelector('.select-trigger').textContent = branch.name;
+
+            } else {
+                console.error('Client or Agent not found');
+            }
+        }
+
+        function updateFormFields(client, agent) {
+            // Update hidden fields
+            document.getElementById('receiverId').value = client.id;
+
+            // Update input fields
+            document.getElementById('receiverName').value = client.name;
+            document.getElementById('receiverName1').textContent = client.name;
+            document.getElementById('receiverEmail').value = client.email;
+            document.getElementById('receiverPhone').value = client.phone;
+
+            document.getElementById('agentId').value = agent.id;
+            document.getElementById('agentName').value = agent.name;
+            document.getElementById('agentEmail').value = agent.email;
+            document.getElementById('agentPhone').value = agent.phone;
+        }
+
+        generateInvoiceButton.addEventListener('click', async function(event) {
+            event.preventDefault(); // Prevent form submission or default action
+            if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
+
+            // Start saving
+
+            try {
+                // Simulate invoice generation (replace with your actual API call)
+                await generateInvoice();
+                updateButtonState();
+            } catch (error) {
+                console.error("Error generating invoice:", error);
+                isSaving = false; // Reset saving state
+                updateButtonState();
+
+            }
+        });
+
+        // Function to update button state (text, loading spinner, disabled state)
+        function updateButtonState() {
+
+            if (isSaving) {
+                buttonText.style.display = 'none';
+                buttonLoading.style.display = 'inline-block';
+                buttonSaved.style.display = 'none';
+                generateInvoiceButton.disabled = true; // Disable button during saving
+            } else if (isSaved) {
+                buttonText.style.display = 'none';
+                buttonLoading.style.display = 'none';
+                buttonSaved.style.display = 'inline-block';
+                generateInvoiceButton.disabled = false; // Re-enable button after saved
+            } else {
+                buttonText.style.display = 'inline-block';
+                buttonLoading.style.display = 'none';
+                buttonSaved.style.display = 'none';
+                generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
+            }
+        }
+
+        function savePartial(mode) {
+
+            if (mode === 'full') {
+
+                if (!validateFullPayment()) return;
+
+                const gateway = document.getElementById('payment_gateway').value;
+                const date = document.getElementById('duedate').value;
+                const amount = document.getElementById('subTotal').value;
+                const fullData = [];
+
+                fullData.push({
+                    date,
+                    amount,
+                    gateway
+                });
+                save('full', fullData);
+            } else
+            if (mode === 'split') {
+
+                if (!validateSplitPayment()) return;
+
+                // Collect Split Payment Data
+                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                const description = document.getElementById('split-desc').value;
+                const rows = document.querySelectorAll('#split-rows tr');
+
+                const splitData = [];
+                rows.forEach(row => {
+                    const selectElement = row.querySelector('select');
+                    const clientId = selectElement.value;
+                    const date = row.querySelector('input[type="date"]').value;
+                    const gateway = row.querySelector('#payment_gateway2').value || null;
+                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                    const clientName = selectElement.options[selectElement.selectedIndex].text;
+
+                    splitData.push({
+                        clientId,
+                        clientName,
+                        date,
+                        amount,
+                        gateway
+                    });
+                });
+
+                save('split', splitData);
+
+            } else if (mode === 'partial') {
+                if (!validatePartialPayment()) return;
+
+                // Collect Partial Payment Data
+                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                const partialRows = document.querySelectorAll('#split-rows1 tr');
+                const gateway = document.getElementById('payment_gateway1').value;
+
+                const partialData = [];
+
+                partialRows.forEach(row => {
+                    const date = row.querySelector('input[type="date"]').value;
+                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                    partialData.push({
+                        date,
+                        amount,
+                        gateway
+                    });
+                });
+
+                save('partial', partialData);
+
+            }
+        }
+
+        async function save(type, data) {
+            const invoiceUrl = "{{ route('invoice.partial') }}";
+            const csrfToken = "{{ csrf_token() }}";
+            const invoiceId = document.getElementById('invoiceId').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+
+            if (type === 'full') {
+                const clientId = document.getElementById('receiverId').value;
+
+                try {
+                    for (const item of data) {
+                        const {
+                            date,
+                            amount,
+                            gateway
+                        } = item;
+
+                        // Send POST request for each client
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId,
+                                type,
+                                date,
+                                amount,
+                                gateway
+                            }),
                         });
-                    </script>
 
+                        if (!response.ok) {
+                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                        }
+
+                        const result = await response.json();
+
+                    }
+
+                    // Display links
+
+                } catch (error) {
+                    console.error('Error generating invoices:', error);
+                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
+                }
+            } else
+            if (type === 'split') {
+                // Handle split payment, generate links for each row
+                try {
+                    const invoiceLinks = []; // Store links for each client
+                    for (const item of data) {
+                        const {
+                            clientId,
+                            clientName,
+                            date,
+                            amount,
+                            gateway
+                        } = item;
+
+                        console.log(invoiceId, clientId, type, date, amount);
+                        console.log(csrfToken);
+                        console.log(clientName)
+                        // Send POST request for each client
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId,
+                                type,
+                                date,
+                                amount,
+                                gateway
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                        }
+
+                        const result = await response.json();
+                    }
+
+                    // Set the linkVisible flag to true
+                    //linkVisible = true;
+
+                    // Update the visibility of the link
+                    updateLinkVisibility(invoiceNumber);
+
+
+                } catch (error) {
+                    console.error('Error generating invoices:', error);
+                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                } finally {
+                    afterPaymentType();
+                    //hideModal();
+                }
+
+            } else if (type === 'partial') {
+                // Handle partial payment as before
+                const clientId = document.getElementById('receiverId').value;
+
+                try {
+
+                    for (const item of data) {
+                        const {
+                            date,
+                            amount,
+                            gateway
+                        } = item;
+
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId,
+                                type,
+                                date,
+                                amount,
+                                gateway
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error("Failed to generate partial invoice.");
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error generating invoice:', error);
+                    displayErrorMessage("Error generating invoice. Please try again.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
+                }
+            }
+        }
+
+
+        function validateFullPayment() {
+            const gateway = document.getElementById('payment_gateway').value;
+            const date = document.getElementById('duedate').value;
+            const amount = parseFloat(document.getElementById('subTotal').value) || 0;
+
+            if (!gateway || !date || amount <= 0) {
+                displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
+                return false;
+            }
+            return true;
+        }
+
+        function validateSplitPayment() {
+            const rows = document.querySelectorAll('#split-rows tr');
+            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+            let totalAmount = 0;
+
+            for (const row of rows) {
+                const selectElement = row.querySelector('select');
+                const clientId = selectElement.value;
+                const date = row.querySelector('input[type="date"]').value;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                if (!clientId || !date || amount <= 0) {
+                    displayErrorMessage("Each split payment row must have a client, valid date, and amount greater than 0.");
+                    return false;
+                }
+
+                totalAmount += amount;
+            }
+
+            if (totalAmount > subTotal) {
+                displayErrorMessage(`The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            if (totalAmount < subTotal) {
+                displayErrorMessage(`The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            return true;
+        }
+
+        function validatePartialPayment() {
+            const rows = document.querySelectorAll('#split-rows1 tr');
+            const gateway = document.getElementById('payment_gateway1').value;
+            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+            let totalAmount = 0;
+
+            for (const row of rows) {
+                const date = row.querySelector('input[type="date"]').value;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                if (!date || amount <= 0) {
+                    displayErrorMessage("Each partial payment row must have a valid date and amount greater than 0.");
+                    return false;
+                }
+
+                totalAmount += amount;
+            }
+
+            if (!gateway) {
+                displayErrorMessage("Payment gateway is required for partial payment.");
+                return false;
+            }
+
+            if (totalAmount > subTotal) {
+                displayErrorMessage(`The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            if (totalAmount < subTotal) {
+                displayErrorMessage(`The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+                return false;
+            }
+
+            return true;
+        }
+
+
+        function displayErrorMessage(message) {
+            const alert = document.createElement('div');
+            alert.innerHTML = `
+                    <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                        ${message}
+                        <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                `;
+            document.body.appendChild(alert);
+        }
+
+        function afterPaymentType() {
+            const partial = document.getElementById('payment_type_partial');
+            const split = document.getElementById('payment_type_split');
+            const full = document.getElementById('payment_type_full');
+            const update = document.getElementById('update-invoice-btn');
+            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+            // Get all payment type inputs
+            const paymentOptions = document.querySelectorAll('input[name="payment_type"]');
+
+            // Get the selected payment type
+            const selectedOption = document.querySelector('input[name="payment_type"]:checked');
+
+            update.disabled = true;
+
+            // Disable all options
+            paymentOptions.forEach(option => {
+                option.disabled = true; // Disable the radio button
+                const label = option.closest('label'); // Find the parent label
+                if (option === selectedOption) {
+                    // Highlight the selected label
+                    label.classList.add('highlight-selected');
+                } else {
+                    // Fade the unselected labels
+                    label.classList.add('fade-unchecked');
+                }
+            });
+
+        }
+
+        function updateLinkVisibility(invoiceNumber) {
+            const rows = document.querySelectorAll("#split-rows tr");
+            rows.forEach(row => {
+                // Get the clientId from the select element or hidden input
+                const clientIdSelect = row.querySelector("select[name^='customer_name_']");
+                const clientId = clientIdSelect ? clientIdSelect.value : null;
+
+                // Update the link only if clientId is available
+                if (clientId) {
+                    const linkCell = row.querySelector("td:last-child");
+                    linkCell.innerHTML = `
+                        <a href="/invoice/partial/${invoiceNumber}/${clientId}" 
+                        class="text-blue-500 underline" 
+                        target="_blank">
+                        View Details
+                        </a>
+                    `;
+                }
+            });
+        }
+
+        // Generate invoice
+        async function generateInvoice() {
+
+            isSaving = true;
+            updateButtonState();
+
+            const invoiceUrl = "{{ route('invoice.store') }}";
+            const csrfToken = "{{ csrf_token() }}";
+
+            const currencyElement = document.getElementById('currency');
+            const invoiceNumberElement = document.getElementById('invoiceNumber');
+            const invdateElement = document.getElementById('invoiceDate');
+            const duedateElement = document.getElementById('dueDate');
+            const subTotalElement = document.getElementById('subTotal');
+            const clientIdElement = document.getElementById('receiverId');
+            const agentIdElement = document.getElementById('agentId');
+            const selectedBranch = document.getElementById('selectedBranch');
+
+            const currency = currencyElement ? currencyElement.value : null;
+            const invoiceNumber = invoiceNumberElement ? invoiceNumberElement.value : null;
+            const invdate = invdateElement ? invdateElement.value : null;
+            const duedate = duedateElement ? duedateElement.value : null;
+            const subTotal = subTotalElement ? subTotalElement.value : null;
+            const clientId = clientIdElement ? clientIdElement.value : null;
+            const agentId = agentIdElement ? agentIdElement.value : null;
+            const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
+            const tasks = items;
+
+            // Show loading state
+            buttonText.style.display = "none";
+            buttonLoading.style.display = "inline";
+
+            console.log(
+                'clientId:', clientId,
+                'agentId:', agentId,
+                'tasksLength:', tasks.length,
+                'selectedBranchValue:', selectedBranchValue,
+                'currency:', currency,
+                'invoiceNumber:', invoiceNumber,
+                'invdate:', invdate,
+                'duedate:', duedate,
+                'subTotal:', subTotal,
+            );
+
+            let errorMessages = [];
+
+            // Validate all inputs and add specific messages
+            if (!currency) errorMessages.push("Currency is missing.");
+            if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
+            if (!invdate) errorMessages.push("Invoice date is missing.");
+            if (!duedate) errorMessages.push("Due date is missing.");
+            if (!subTotal) errorMessages.push("Subtotal is missing.");
+            if (!clientId) errorMessages.push("Client ID is missing.");
+            if (!agentId) errorMessages.push("Agent ID is missing.");
+            if (!items.length) errorMessages.push("No tasks have been selected.");
+            if (!selectedBranchValue) errorMessages.push("Branch selection is required.");
+
+            // Check if there are any errors
+            if (errorMessages.length > 0) {
+                // Create the error notification element
+                let errorNotification = document.createElement('div');
+                errorNotification.className = "alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg";
+                errorNotification.innerHTML = `
+                        <ul>
+                            ${errorMessages.map(message => `<li>${message}</li>`).join('')}
+                        </ul>
+                        <button type="button" class="close text-white ml-2" aria-label="Close"
+                            onclick="this.parentElement.style.display='none';">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    `;
+
+                // Append the error notification to the body
+                document.body.appendChild(errorNotification);
+
+                // Reset button state or perform any cleanup
+                resetButtonState();
+                return;
+            }
+
+            // Proceed with the form submission or further processing
+            console.log("All required data is provided. Proceeding...");
+
+            try {
+                console.log('invoiceUrl: ', invoiceUrl);
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        agentId,
+                        tasks,
+                        subTotal,
+                        invoiceNumber,
+                        currency,
+                        invdate,
+                        duedate
+
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error("Failed to generate");
+                }
+
+                const result = await response.json();
+                const {
+                    invoiceId
+                } = result;
+                console.log(invoiceId);
+
+                document.getElementById('invoiceId').value = invoiceId;
+                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
+
+                // Show success state
+                isSaved = true; // Mark as saved after generating
+                updateButtonState();
+
+                coaActivites(items, subTotal);
+
+                setTimeout(() => {
+                    checkInvoiceId();
+                    // Show COA activities container
+                    document.getElementById("coa-activities-container").style.display = "block";
+                }, 1000);
+
+            } catch (error) {
+                console.error(error);
+                let alert = document.createElement('div');
+                alert.innerHTML = ` 
+                        <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                            Error Generating Invoice
+                            <button type="button" class="close text-white ml-2" aria-label="Close"
+                                onclick="this.parentElement.style.display='none';">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        `
+                document.body.appendChild(alert);
+
+                resetButtonState();
+            } finally {
+                // Reset button states
+            }
+        };
+
+
+        function coaActivites(items, subTotal) {
+            const supplierTotals = new Map(); // To track cumulative amounts for each supplier
+            let cumulativeMarkup = 0; // Total markup income
+
+            const clientNameInput = document.getElementById("receiverName");
+            const defaultClientName = "Unknown Client"; // Fallback if input is empty or unavailable
+            const clientNameFromInput = clientNameInput ? clientNameInput.value.trim() : defaultClientName;
+
+            const activities = items.map(item => {
+                // Extract relevant details for each activity
+                const taskId = item.reference || "Unknown Task ID"; // Task ID
+                const supplierName = item.supplier_name || "Unknown Supplier";
+                const agentName = item.agent_name || "Unknown Agent";
+                const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
+                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.price || 0); // Markup = invprice - price
+
+                // Update cumulative totals per supplier
+                if (!supplierTotals.has(supplierName)) {
+                    supplierTotals.set(supplierName, 0);
+                }
+                supplierTotals.set(supplierName, supplierTotals.get(supplierName) + totalAmount);
+
+                // Update cumulative markup
+                cumulativeMarkup += markupValue;
+
+                // Construct the activities
+                return [
+                    `Task ID: ${taskId} - Income of KWD${markupValue.toFixed(2)} from agent: ${agentName}`
+                ];
+            }).flat(); // Flatten the array since map creates a nested array for each item
+
+            activities.push(`Payments to receive from: ${clientNameFromInput} amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`);
+            // Add cumulative totals for each supplier
+            supplierTotals.forEach((total, supplierName) => {
+                activities.push(`Payment need to be made to ${supplierName}: KWD${total.toFixed(2)}`);
+            });
+
+            // Add overall cumulative totals
+            activities.push(`Total markup income: KWD${cumulativeMarkup.toFixed(2)}`);
+
+            // Get the container where activities will be displayed
+            const activitiesList = document.getElementById("coa-activities-list");
+
+            // Clear any previous content
+            activitiesList.innerHTML = "";
+
+            // Display the activities
+            activities.forEach(activity => {
+                const listItem = document.createElement("li");
+                listItem.textContent = activity;
+                activitiesList.appendChild(listItem);
+            });
+        }
+
+
+        function openInvoiceModal(invoiceNumber) {
+            const modal = document.getElementById("viewInvoiceModal");
+            const contentDiv = document.getElementById("invoiceContent");
+
+            // Clear previous content
+            contentDiv.innerHTML = "";
+
+            // Open the modal
+            modal.classList.remove("hidden");
+            url =
+                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
+
+            // Fetch the invoice details
+            fetch(url)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.text();
+                })
+                .then((data) => {
+                    contentDiv.innerHTML = data;
+
+                    // Close the modal when the backdrop is clicked
+                    modal.addEventListener("click", (event) => {
+                        if (event.target === modal) {
+                            closeInvoiceModal();
+                        }
+                    });
+
+
+                })
+                .catch((error) => {
+                    console.error("Error fetching invoice details:", error);
+                    contentDiv.innerHTML =
+                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
+
+                });
+        }
+
+        function closeInvoiceModal() {
+            const modal = document.getElementById("viewInvoiceModal");
+            modal.classList.add("hidden");
+        }
+
+
+        function resetButtonState() {
+            isSaving = false;
+            isSaved = false;
+            updateButtonState();
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+
+            tasks = @json($tasks);
+            let clients = @json($clients);
+
+            // Initial rendering of items
+            renderItems();
+
+
+            // Initialize modals with full data
+            renderClientList(clients);
+            renderTaskList(tasks);
+
+
+
+        });
+    </script>
 
 </x-app-layout>

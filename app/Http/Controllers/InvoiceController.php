@@ -526,12 +526,8 @@ class InvoiceController extends Controller
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'account_id' =>  $payableAccount->id,
-                            'branch_id' => $branchId,
                             'account_id' =>  $payableAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment need to be made to: ' . $supplier->name,
@@ -540,7 +536,6 @@ class InvoiceController extends Controller
                             'balance' => $selectedtask->total,
                             'name' => $supplier->name,
                             'type' => 'payable',
-                            'type_reference_id' => $supplier->id
                         ]);
 
 
@@ -548,10 +543,7 @@ class InvoiceController extends Controller
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'branch_id' => $branchId,
                             'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
@@ -562,7 +554,6 @@ class InvoiceController extends Controller
                             'balance' => $task['invprice'],
                             'name' =>  $client->name,
                             'type' => 'receivable',
-                            'type_reference_id' => $client->id
                         ]);
 
 
@@ -572,12 +563,8 @@ class InvoiceController extends Controller
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
-                            'branch_id' => $branchId,
-                            'account_id' => $incomeAccount->id,
-                            'branch_id' => $branchId,
                             'account_id' => $incomeAccount->id,
                             'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Price markup by Agent: ' . $agent->name,
@@ -586,7 +573,6 @@ class InvoiceController extends Controller
                             'balance' => $markup,
                             'name' =>   $agent->name,
                             'type' => 'income',
-                            'type_reference_id' => $agent->id
                         ]);
 
 
@@ -594,7 +580,7 @@ class InvoiceController extends Controller
                         $selectedtask->save();
                     } catch (Exception $e) {
                         Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description']);
+                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description'], 500);
                     }
                 }
             }

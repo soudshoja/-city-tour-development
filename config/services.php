@@ -56,4 +56,9 @@ return [
         'url' => env('OPENAI_URL').'/'.env("OPENAI_VERSION"),
         'key' => env('OPENAI_KEY'),
     ],
+    'tbo' => [
+        'url' => env('APP_ENV') == 'production' ? env('TBO_URL') : env('TBO_SANDBOX_URL'),
+        'username' => env('APP_ENV') == 'production' ? env('TBO_USERNAME') : env('TBO_SANDBOX_USERNAME'),
+        'password' => env('APP_ENV') == 'production' ? env('TBO_PASSWORD') : env('TBO_SANDBOX_PASSWORD'),
+    ]
 ];

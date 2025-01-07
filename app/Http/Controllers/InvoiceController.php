@@ -209,7 +209,7 @@ class InvoiceController extends Controller
         $todayDate = Carbon::now()->format('Y-m-d');
 
         $appUrl = config('app.url');
-        
+
         return view('invoice.create', compact(
             'clients',
             'agents',
@@ -463,7 +463,6 @@ class InvoiceController extends Controller
 
         try {
 
-
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'agent_id' => $agentId,
@@ -474,7 +473,6 @@ class InvoiceController extends Controller
                 'status' => 'unpaid',
                 'invoice_date' => $invdate,
                 'due_date' => $duedate,
-                'payment_type' => 'full',
             ]);
 
             if (!empty($tasks)) {
@@ -608,8 +606,8 @@ class InvoiceController extends Controller
             ]);
 
         } catch (Exception $e) {
-            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-            return response()->json('Invoice creation failed!');
+            Log::error('Failed to create invoice: ' . $e->getMessage());
+            return response()->json('Invoice creation failed!', 500);
         }
     }
 

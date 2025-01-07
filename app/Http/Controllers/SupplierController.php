@@ -89,7 +89,7 @@ class SupplierController extends Controller
         $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
         $invoicesId = array_values(array_filter($invoicesId));
         $totalDebit = GeneralLedger::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('debit');
-        $totalCredit = GeneralLedger::whereIn('invoice_id', $invoicesId)->sum('credit');
+        $totalCredit = GeneralLedger::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('credit');
         
         return response()->json([
             'totalDebit' => $totalDebit,

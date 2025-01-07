@@ -17,8 +17,8 @@
             position: relative;
         }
 
-        .loading::after{
-            content : '';
+        .loading::after {
+            content: '';
             position: absolute;
             top: 0;
             width: 100%;
@@ -37,7 +37,7 @@
         </ul>
     </div>
     <div class="flex flex-col gap-2">
-        <div class="grid gap-4 bg-gradient-to-r from-blue-600 to-gray-800 p-4 rounded-md shadow-md w-full">
+        <div class="grid bg-gradient-to-r from-blue-600 to-gray-800 p-4 rounded-md shadow-md w-full">
             <div class="flex justify-between items-center gap-4">
                 <div class="flex items-center justify-center rounded-full bg-black/50 font-semibold text-white p-2">
                     <x-application-logo class="" />
@@ -55,7 +55,16 @@
                     </svg>
                 </button>
             </div>
-            <div class="flex justify-evenly gap-4" id="debit-credit-container">
+            <div id="debit-credit" class="bg-white mt-2 rounded-t-md shadow-md w-full max-h-96 overflow-y-auto">
+                @foreach($generalLedger as $item)
+                <div id="{{ $item->id }}" class="general-ledger-rows grid grid-cols-2 gap-2 p-2 text-center">
+                    <div>{{ $item->debit }}</div>
+                    <div>{{ $item->credit }}</div>
+                    <input type="hidden" name="created_at" value="{{ $item->created_at }}">
+                </div>
+                @endforeach
+            </div>
+            <div class="p-2 flex justify-evenly gap-4 bg-white" id="debit-credit-container">
                 <div class="text-center bg-gradient-to-r from-green-400 to-green-800 p-2 rounded-md text-white font-semibold w-full">
                     Debit
                 </div>
@@ -63,38 +72,24 @@
                     Credit
                 </div>
             </div>
-            <div id="debit-credit" class="bg-white rounded-md shadow-md w-full max-h-96 overflow-y-auto">
-                <table>
-                    <thead class="text-center sticky top-0 bg-white">
-                        <tr class>
-                            <th colspan="2">
-                                <div class="flex">
-                                    <div class="rounded-l-md bg-gray-200 p-2 flex justify-center items-center">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M22 14V12C22 8.22876 22 6.34315 20.8284 5.17157C19.6569 4 17.7712 4 14 4M14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                            <path d="M7 4V2.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                            <path d="M17 4V2.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                            <circle cx="18" cy="18" r="3" stroke="#1C274C" stroke-width="1.5" />
-                                            <path d="M20.5 20.5L22 22" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                            <path d="M21.5 9H16.625H10.75M2 9H5.875" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                        </svg>
-                                    </div>
-                                    <input type="date" name="" id="" class="w-full rounded-r-md p-2" disabled>
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-center">
-                        @foreach($generalLedger as $item)
-                        <tr id="{{ $item->id }}">
-                            <td>{{ $item->debit }}</td>
-                            <td>{{ $item->credit }}</td>
-                            <input type="hidden" name="created_at" value="{{ $item->created_at }}">
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="text-center bg-white p-2 rounded-b-md">
+                <div colspan="2">
+                    <div class="flex">
+                        <div class="rounded-l-md bg-gray-200 p-2 flex justify-center items-center">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M22 14V12C22 8.22876 22 6.34315 20.8284 5.17157C19.6569 4 17.7712 4 14 4M14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M7 4V2.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M17 4V2.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                <circle cx="18" cy="18" r="3" stroke="#1C274C" stroke-width="1.5" />
+                                <path d="M20.5 20.5L22 22" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M21.5 9H16.625H10.75M2 9H5.875" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <input type="date" name="" id="" class="w-full rounded-r-md p-2" disabled>
+                    </div>
+                </div>
             </div>
+
         </div>
         <div class="flex flex-col rounded-md bg-white p-4 shadow-md">
             <strong class="my-2">Task of this supplier</strong>
@@ -165,6 +160,9 @@
         </div>
     </div>
     <script>
+        let generalLedger = @json($generalLedger);
+        console.log('general ledger: ' + generalLedger.length);
+
         const debitCredit = document.getElementById('debit-credit');
         debitCredit.scrollTop = debitCredit.scrollHeight;
         let lastUpdatedDate = null;
@@ -173,31 +171,34 @@
         updateDate(date);
 
 
-        let allRows = debitCredit.querySelectorAll('tbody tr');
+        let allRows = document.querySelectorAll('#debit-credit>div');
+        console.log('all rows: ' + allRows);
+        console.log('all rows count: ' + allRows.length);
         let debitCreditView = debitCredit.getBoundingClientRect();
 
         console.log('debitCredit top: ' + debitCreditView.top + ' bottom: ' + debitCreditView.bottom);
 
-        $(function(){
+        $(function() {
             var timer;
-            $(debitCredit).scroll(function(){
-                if(timer) {
+            $(debitCredit).scroll(function() {
+                if (timer) {
                     window.clearTimeout(timer);
                 }
                 timer = window.setTimeout(function() {
                     let lastVisibleRow = null;
-                    for(let row of allRows) {
+                    for (let row of allRows) {
+                        console.log('row : ' + row);
                         let item = row.getBoundingClientRect();
-                        if(item.bottom <= debitCreditView.bottom) {
+                        if (item.bottom <= debitCreditView.bottom) {
                             lastVisibleRow = row;
                         }
                     }
-                    let date = new Date(lastVisibleRow.querySelector('input[name="created_at"]').value);
-                    updateDate(date);
+
+                    updateDate(new Date(lastVisibleRow.querySelector('input[name="created_at"]').value));
                     updateTotal(lastVisibleRow.querySelector('input[name="created_at"]').value);
                 }, 100);
             });
-        }) 
+        })
 
         function updateDate(date) {
             const month = date.getMonth() + 1;
@@ -207,19 +208,19 @@
             document.querySelector('input[type="date"]').value = today;
         }
 
-        function updateTotal(date){
+        function updateTotal(date) {
             let totalDebit = 0;
             let totalCredit = 0;
             let url = `{{ route('suppliers.total-ledger' , ['endDate' => '__endDate__']) }}`;
             url = url.replace('__endDate__', date);
-            
+
             let debitCreditContainer = document.getElementById('debit-credit-container');
             debitCreditContainer.classList.add('loading');
 
             $response = fetch(url).then(response => response.json()).then(data => {
                 totalDebit = data.totalDebit;
                 totalCredit = data.totalCredit;
-                
+
                 debitCreditContainer.querySelector('div:nth-child(1)').textContent = totalDebit;
                 debitCreditContainer.querySelector('div:nth-child(2)').textContent = totalCredit;
 

@@ -160,23 +160,21 @@
         </div>
     </div>
     <script>
-        let generalLedger = @json($generalLedger);
-        console.log('general ledger: ' + generalLedger.length);
+        let supplierId = @json($supplier -> id);
 
         const debitCredit = document.getElementById('debit-credit');
         debitCredit.scrollTop = debitCredit.scrollHeight;
         let lastUpdatedDate = null;
 
         const date = new Date();
-        updateDate(date);
 
+
+        updateDate(date);
+        updateTotal(date);
 
         let allRows = document.querySelectorAll('#debit-credit>div');
-        console.log('all rows: ' + allRows);
-        console.log('all rows count: ' + allRows.length);
-        let debitCreditView = debitCredit.getBoundingClientRect();
 
-        console.log('debitCredit top: ' + debitCreditView.top + ' bottom: ' + debitCreditView.bottom);
+        let debitCreditView = debitCredit.getBoundingClientRect();
 
         $(function() {
             var timer;
@@ -193,9 +191,10 @@
                             lastVisibleRow = row;
                         }
                     }
-
-                    updateDate(new Date(lastVisibleRow.querySelector('input[name="created_at"]').value));
-                    updateTotal(lastVisibleRow.querySelector('input[name="created_at"]').value);
+                    date = lastVisibleRow.querySelector('input[name="created_at"]').value;
+                    date.getHours();
+                    updateDate(date);
+                    updateTotal(date);
                 }, 100);
             });
         })
@@ -209,10 +208,16 @@
         }
 
         function updateTotal(date) {
+            //format date to yyyy-mm-dd hh:mm:ss
+            date = date.toISOString().split('T')[0] + ' 23:59:59';
+            console.log('date in updateTotal: ' + date);
             let totalDebit = 0;
             let totalCredit = 0;
-            let url = `{{ route('suppliers.total-ledger' , ['endDate' => '__endDate__']) }}`;
+
+            // Route::get('/suppliers/total-ledger/{supplierId}/date/{$endDate}',[SupplierController::class, 'getTotalDebitCredit'])->name('suppliers.total-ledger');
+            let url = `{{ route('suppliers.total-ledger', ['supplierId' => '__supplierId__', 'endDate' => '__endDate__']) }}`;
             url = url.replace('__endDate__', date);
+            url = url.replace('__supplierId__', supplierId);
 
             let debitCreditContainer = document.getElementById('debit-credit-container');
             debitCreditContainer.classList.add('loading');

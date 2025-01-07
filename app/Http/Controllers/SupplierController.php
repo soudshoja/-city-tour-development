@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
 use DateTime;
+use Generator;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
@@ -37,9 +38,13 @@ class SupplierController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $generalLedger = GeneralLedger::select('id','debit','credit', 'created_at')->get();
+        $supplier = Supplier::with('tasks.invoiceDetail.invoice')->findOrFail($suppliersId);
+        $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
+        $invoicesId = array_values(array_filter($invoicesId));
 
-        $supplier = Supplier::with('tasks')->findOrFail($suppliersId);
+        $generalLedger = GeneralLedger::select('id', 'debit', 'credit', 'created_at')
+            ->whereIn('invoice_id', $invoicesId)
+            ->get();
 
         return view('suppliers.show', compact('supplier', 'generalLedger'));
     }
@@ -77,11 +82,14 @@ class SupplierController extends Controller
         return redirect()->route('suppliers.index');
     }
 
-    public function getTotalDebitCredit($endDate)
+    public function getTotalDebitCredit($supplierId, $endDate)
     {
         $endDate = new DateTime($endDate);
-        $totalDebit = GeneralLedger::where('created_at', '<=', $endDate)->sum('debit');
-        $totalCredit = GeneralLedger::where('created_at', '<=', $endDate)->sum('credit');
+        $supplier = Supplier::with('tasks.invoiceDetail.invoice')->findOrFail($supplierId);
+        $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
+        $invoicesId = array_values(array_filter($invoicesId));
+        $totalDebit = GeneralLedger::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('debit');
+        $totalCredit = GeneralLedger::whereIn('invoice_id', $invoicesId)->sum('credit');
         
         return response()->json([
             'totalDebit' => $totalDebit,

@@ -188,7 +188,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/openai/steps', [OpenAiController::class, 'steps'])->name('steps');
     Route::get('/openai/function-tools', [OpenAiController::class, 'addFunctionTool'])->name('function-tools');
 
-    Route::post('/chat', [ChatController::class, 'chat'])->name('chat.send');;
+    Route::post('/chat', [ChatController::class, 'chat'])->name('chat.process');
+    Route::post('/chat/tasks/select', [ChatController::class, 'sendprocessTaskSelection'])->name('chat.select');
+    Route::post('/chat/invoices/create', [ChatController::class, 'handleTaskPricing'])->name('chat.create');
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');

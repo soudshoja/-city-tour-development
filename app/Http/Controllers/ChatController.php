@@ -2,16 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Services\OpenAIService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Account;
+use App\Models\Agent;
+use App\Models\Client;
+use App\Models\GeneralLedger;
+use App\Models\Task;
+use App\Models\Invoice;
+use App\Models\InvoiceSequence;
+use App\Models\InvoiceDetail;
+use App\Models\Transaction;
+use Carbon\Carbon;
 
 class ChatController extends Controller
 {
+    use NotificationTrait;
+
     protected $openAIService;
 
     public function __construct(OpenAIService $openAIService)
@@ -21,133 +35,323 @@ class ChatController extends Controller
 
 
     public function chat(Request $request)
+{
+
+    $validated = $request->validate([
+        'messages' => 'required|array',
+        'messages.*.role' => 'required|string',
+        'messages.*.content' => 'required|string',
+    ]);
+
+    try {
+        $userMessage = collect($validated['messages'])->last()['content'];
+        $userData = $this->fetchUserBasedData();
+
+        // Check if there was an error in fetching user data
+        if (isset($userData['error'])) {
+            return response()->json(['error' => $userData['error']], 403);
+        }
+
+        // Prepare messages for OpenAI with the user's role-based data
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => "You are a chatbot for a travel agency that will interact with the travel agencies or the agents. Please use the following data to answer any questions.",
+            ],
+            [
+                'role' => 'user',
+                'content' => $userMessage,
+            ]
+        ];
+
+
+        $messagesData = [
+            [
+                'role' => 'system',
+                'content' => "You are a chatbot for a travel agency that interacts with travel agencies or agents. 
+                              If the user's query involves a list, ensure the response is formatted as a proper list 
+                              using bullet points (-) or numbering (1., 2., 3.) for clarity. Use the following data:",
+            ],
+            [
+                'role' => 'user',
+                'content' => $userMessage,
+            ],
+            [
+                'role' => 'system',
+                'content' => json_encode($userData), // Send user data as JSON to OpenAI
+            ],
+        ];
+
+        // Classification Step
+        $classification = $this->classifyMessage($userMessage) ?? 'GeneralMessage';
+        \Log::info('Message classification: ' . $classification);
+
+        // Process based on classification
+        if ($classification === 'DataQuery') {
+           $response = $this->openAIService->getChatResponse($messagesData);
+
+           $content = $response['choices'][0]['message']['content'] ?? '';
+           $formattedContent = $this->formatAsList($content);
+
+           $response['choices'][0]['message']['content'] = $formattedContent;
+
+            return response()->json($response, 200);
+
+        } elseif ($classification === 'ActionRequest') {
+            return $this->handleActionRequest($userMessage, $userData);
+        } else {
+            // Pass the message to OpenAI if it's not recognized as data or action
+            $response = $this->openAIService->getChatResponse($messages);
+            return response()->json($response, 200);
+        }
+
+    } catch (\Exception $e) {        
+        \Log::error('Chatbot error: ' . $e->getMessage());
+        return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
+    }
+}
+
+
+        private function formatAsList($content)
+        {
+            // Check if the content is a single line (for cases like your example)
+            if (strpos($content, '-') === false && strpos($content, '1.') === false) {
+                // If it's a single line, split it by commas or other delimiters
+                $clients = preg_split('/\s*[-,;]\s*/', $content);
+
+                $formattedLines = [];
+                foreach ($clients as $client) {
+                    $trimmedClient = trim($client);
+                    if (!empty($trimmedClient)) {
+                        $formattedLines[] = '- ' . $trimmedClient; // Add bullet points
+                    }
+                }
+
+                return implode("\n", $formattedLines); // Return the formatted list
+            }
+
+            // If it's already formatted with bullet points or numbering, return as is
+            $lines = explode("\n", $content);
+            $formattedLines = [];
+
+            foreach ($lines as $line) {
+                $trimmedLine = trim($line);
+
+                // Add bullet points or numbering if not already present
+                if (!preg_match('/^\d+\./', $trimmedLine) && !str_starts_with($trimmedLine, '-')) {
+                    $formattedLines[] = '- ' . $trimmedLine; // Add bullet points for plain lines
+                } else {
+                    $formattedLines[] = $trimmedLine; // Keep already formatted lines
+                }
+            }
+
+            return implode("\n", $formattedLines);
+        }
+
+    private function classifyMessage($message)
+    {
+        // Example: Using OpenAI or another NLP service to classify the message
+        $classificationMessages = [
+            [
+                'role' => 'system',
+                'content' => "Classify the following user message into one of the following categories: DataQuery (question or statement that need to query for data) , ActionRequest (statement that need to create or use automation), or GeneralMessage.",
+            ],
+            [
+                'role' => 'user',
+                'content' => $message,
+            ],
+        ];
+
+        $response = $this->openAIService->getChatResponse($classificationMessages);
+
+        // Extract the classification result
+        if (isset($response['choices'][0]['message']['content'])) {
+            return trim($response['choices'][0]['message']['content']);
+        }
+
+        return 'GeneralMessage'; // Default to GeneralMessage if no classification is returned
+    }
+
+    
+    private function handleActionRequest($message, $userData)
+    {
+        // Define the messages to classify the action and extract task information
+        $actionMessages = [
+            [
+                'role' => 'system',
+                'content' => "Analyze the following user message and return a JSON object with two keys: 'action' and 'task_ids'. 
+                The 'action' should be one of the following: 'create invoice', 'send WhatsApp', 'send email', or 'remind clients/agents'. 
+                If the action is 'create invoice', include the 'task_ids' as an array of integers. 
+                Example JSON: {\"action\": \"create invoice\", \"task_ids\": [123, 456]}",
+            ],
+            [
+                'role' => 'user',
+                'content' => $message,
+            ],
+        ];
+    
+        $response = $this->openAIService->getChatResponse($actionMessages);
+    
+        if (isset($response['choices'][0]['message']['content'])) {
+            $responseContent = $response['choices'][0]['message']['content'];
+    
+            // Attempt to decode the JSON response
+            $parsedResponse = json_decode($responseContent, true);
+    
+            if (json_last_error() === JSON_ERROR_NONE && isset($parsedResponse['action'])) {
+                $action = strtolower(trim($parsedResponse['action']));
+                $taskIds = $parsedResponse['task_ids'] ?? [];
+    
+                if (!is_array($taskIds)) {
+                    $taskIds = [];
+                }
+    
+                // Handle actions based on parsed response
+                switch ($action) {
+                    case 'create invoice':
+                        // if (!empty($taskIds)) {
+                            return $this->initiateInvoiceCreationWithTasks($taskIds, $userData);
+                        // }
+                        // return response()->json(['error' => 'At least one Task ID is required to create an invoice.'], 400);
+    
+                    case 'send whatsapp':
+                        return $this->sendWhatsApp($userData);
+    
+                    case 'send email':
+                        return $this->sendEmail($userData);
+    
+                    case 'remind clients/agents':
+                        return $this->sendReminder($userData);
+    
+                    default:
+                        return response()->json(['error' => 'Action not recognized: ' . $action], 400);
+                }
+            }
+        }
+    
+        // Log and return error if JSON structure is invalid
+        \Log::error('Invalid response from OpenAI:', ['response' => $response]);
+        return response()->json(['error' => 'Unable to classify action.'], 400);
+    }
+    
+
+    private function initiateInvoiceCreationWithTasks(array $taskIds, $userData)
+    {
+        // Logic to create an invoice using the provided task IDs
+        \Log::info('initiateInvoiceCreationWithTasks:', ['taskIds' => $taskIds]);
+
+        if (!empty($taskIds)) {
+            // If tasks are directly mentioned, validate and proceed
+            return $this->processTaskSelection($taskIds);
+        }
+
+            return response()->json([
+                'message' => 'Please choose the tasks to include in the invoice:',
+                'tasks' => collect($userData['tasks'])->map(function ($task) {
+                    return [
+                        'id' => $task['id'],
+                        'description' => $task['description'],
+                        'client' => $task['clientName'],
+                    ];
+                }),
+            ], 200);
+    }
+
+    
+
+    public function processTaskSelection($taskIds)
+    {
+
+        // Logic to create an invoice using the provided task IDs
+        \Log::info('processTaskSelection:', ['taskIds' => $taskIds]);
+        
+        $userData = $this->fetchUserBasedData();
+
+        // Cast task IDs to integers
+        $taskIds = array_map('intval', $taskIds);
+        \Log::info('processTaskSelectiontaskIds:', ['taskIds' => $taskIds]);
+        // Filter available tasks based on provided IDs
+        $availableTasks = collect($userData['tasks'])->whereIn('id', $taskIds);
+        \Log::info('available Tasks:', ['availableTasks' => $availableTasks]);
+
+
+        if ($availableTasks->isEmpty()) {
+            return response()->json(['message' => 'No valid tasks found for the provided IDs.'], 400);
+        }
+
+        return response()->json([
+            'message' => 'Please insert invoice price for each selected task:',
+            'taskPricing' => $availableTasks->map(function ($task) {
+                return [
+                    'id' => $task['id'],
+                    'description' => $task['description'],
+                    'client' => $task['clientName'],
+                    'taskprice' => $task['price'],
+                ];
+            })->values(),
+        ], 200);
+    }
+
+
+    public function sendProcessTaskSelection(Request $request)
+    {
+        // Get the task IDs from the request
+        $taskIds = $request->input('tasks');
+        
+        // Log task IDs received
+        \Log::info('processTaskSelection:', ['taskIds' => $taskIds]);
+    
+        // Fetch user data, including tasks
+        $userData = $this->fetchUserBasedData();
+        
+        // Ensure task IDs are integers
+        $taskIds = array_map('intval', $taskIds);
+        \Log::info('processTaskSelection taskIds:', ['taskIds' => $taskIds]);
+    
+        // Fetch available tasks based on the provided task IDs (with eager loading of client)
+        $availableTasks = Task::with('client')  // Eager load the 'client' relationship
+            ->whereIn('id', $taskIds)
+            ->get();  // Execute the query to retrieve the tasks
+    
+        \Log::info('availableTasks:', ['availableTasks' => $availableTasks]);
+    
+        // If no tasks were found, return an error response
+        if ($availableTasks->isEmpty()) {
+            return response()->json(['message' => 'No valid tasks found for the provided IDs.'], 400);
+        }
+    
+        // Map the available tasks to include necessary data for invoice pricing
+        return response()->json([
+            'message' => 'Please insert invoice price for each selected task:',
+            'taskPricing' => $availableTasks->map(function ($task) {
+                return [
+                    'id' => $task->id, // Access Eloquent model attribute using ->id
+                    'description' => $task->reference . ' ' . $task->additional_info, // Concatenate description fields
+                    'client' => $task->client ? $task->client->name : 'N/A', // Safely access client name
+                    'taskprice' => $task->price, // The task price
+                    'invprice' => $task->invprice, // The task price
+                ];
+            })->values(),
+        ], 200);
+    }
+    
+
+
+    public function handleTaskPricing(Request $request)
     {
         $validated = $request->validate([
-            'messages' => 'required|array',
-            'messages.*.role' => 'required|string',
-            'messages.*.content' => 'required|string',
+            'tasks' => 'required|array',
+            'tasks.*.id' => 'required|integer',
+            'tasks.*.invprice' => 'required|numeric|min:0',
+        ], [
+            'tasks.required' => 'You must select at least one task.',
+            'tasks.*.invprice.numeric' => 'All prices must be numeric values.',
         ]);
-    
-        try {
-            $userMessage = collect($validated['messages'])->last()['content'];
-            $userData = $this->fetchUserBasedData();
-    
-            // Check if there was an error in fetching user data
-            if (isset($userData['error'])) {
-                return response()->json(['error' => $userData['error']], 403);
-            }
-    
-            // Prepare messages for OpenAI with the user's role-based data
-            $messages = [
-                [
-                    'role' => 'system',
-                    'content' => "You are a chatbot for a travel agency. Please use the following data based to answer any questions.",
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $userMessage,
-                ],
-            ];
-    
-            // Add user data context dynamically
-            $messages[] = [
-                'role' => 'system',
-                'content' => json_encode($userData)  // Send user data as JSON to OpenAI
-            ];
-    
-            // First, detect the type of message (Data Query or Action Request)
-            if ($this->isDataQuery($userMessage)) {
-                // Handle data query
-                return $this->handleDataQuery($userMessage, $userData);
-            } elseif ($this->isActionRequest($userMessage)) {
-                // Handle action request (like create invoice, send message)
-                return $this->handleActionRequest($userMessage, $userData);
-            } else {
-                // Pass the message to OpenAI if it's not recognized as data or action
-                $response = $this->openAIService->getChatResponse($messages);
-                return response()->json($response, 200);
-            }
-    
-        } catch (\Exception $e) {
-            \Log::error('Chatbot error: ' . $e->getMessage());
-            return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
-        }
-    }
-    
 
-    private function handleDataQuery($userMessage, $userData)
-    {
-        // Check for specific data request in the message and return corresponding data
-        if (stripos($userMessage, 'clients') !== false) {
-            $clients = $userData['clients']->pluck('name'); // Assuming name is the relevant column
-            return response()->json(['clients' => $clients], 200);
-        } elseif (stripos($userMessage, 'invoices') !== false) {
-            $invoices = $userData['invoices']->pluck('invoice_number'); // Assuming invoice_number is the relevant column
-            return response()->json(['invoices' => $invoices], 200);
-        } elseif (stripos($userMessage, 'tasks') !== false) {
-            $tasks = $userData['tasks']->pluck('task_name'); // Assuming task_name is the relevant column
-            return response()->json(['tasks' => $tasks], 200);
-        }
-        // Add more conditions based on other data
-    }
-
-    private function handleActionRequest($userMessage, $userData)
-    {
-        // Check if the action is 'create invoice'
-        if (stripos($userMessage, 'create invoice') !== false) {
-            $invoiceDetails = $this->extractInvoiceDetailsFromMessage($userMessage);
-    
-            // Validate and create the invoice
-            if (empty($invoiceDetails['client_id']) || empty($invoiceDetails['amount'])) {
-                return response()->json(['error' => 'Please provide complete invoice details.'], 400);
-            }
-    
-            $invoice = $this->createInvoice($invoiceDetails);
-            return response()->json(['invoice' => $invoice], 200);
-        }
-    
-        // Handle other actions like sending a message
-        if (stripos($userMessage, 'send message') !== false) {
-            $messageDetails = $this->extractMessageDetailsFromMessage($userMessage);
-    
-            if (empty($messageDetails['recipient_id']) || empty($messageDetails['content'])) {
-                return response()->json(['error' => 'Please provide recipient and message content.'], 400);
-            }
-    
-            $this->sendMessage($messageDetails);
-            return response()->json(['message' => 'Message sent successfully.'], 200);
-        }
-    }
-
-    
-    
-    private function isDataQuery($message)
-    {
-        // Basic keyword matching for data-related queries
-        $dataKeywords = ['clients', 'invoices', 'tasks', 'agents', 'branches'];
-    
-        foreach ($dataKeywords as $keyword) {
-            if (stripos($message, $keyword) !== false) {
-                return true;
-            }
-        }
-    
-        return false;
-    }
-    
-
-    private function isActionRequest($message)
-    {
-        // Basic keyword matching for action requests
-        $actionKeywords = ['create invoice', 'send message', 'update task'];
-
-        foreach ($actionKeywords as $keyword) {
-            if (stripos($message, $keyword) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        $selectedTasks = collect($validated['tasks']);
+        \Log::info('handleTaskPricing:', ['selectedTask' => $selectedTasks]);
+        // Generate invoice
+        return $this->createInvoice($selectedTasks);
     }
 
 
@@ -191,11 +395,14 @@ class ChatController extends Controller
                 'tasks' => $company->branches->flatMap->agents->flatMap->clients->flatMap->tasks->map(function ($task) {
                     return [
                         'id' => $task->id,
-                        'description' => $task->additional_info,
+                        'description' => $task->reference . ' - ' . $task->additional_info,
                         'status' => $task->status,
                         'agentId' => $task->agent_id,
+                        'agentName' => $task->agent->name,
                         'clientId' => $task->client_id,
+                        'clientName' => $task->client->name,
                         'supplierId' => $task->supplier_id,
+                        'invprice' =>  $task->invoice_price,
                         'price' => $task->total,
                     ];
                 }),
@@ -255,11 +462,14 @@ class ChatController extends Controller
                 'tasks' => $company->branches->flatMap->agents->flatMap->clients->flatMap->tasks->map(function ($task) {
                     return [
                         'id' => $task->id,
-                        'description' => $task->additional_info,
+                        'description' => $task->reference . ' - ' . $task->additional_info,
                         'status' => $task->status,
                         'agentId' => $task->agent_id,
+                        'agentName' => $task->agent->name,
                         'clientId' => $task->client_id,
+                        'clientName' => $task->client->name,
                         'supplierId' => $task->supplier_id,
+                        'invprice' =>  $task->invoice_price,
                         'price' => $task->total,
                     ];
                 }),
@@ -292,35 +502,284 @@ class ChatController extends Controller
     }
     
 
-    private function extractInvoiceDetailsFromMessage($message)
-{
-    preg_match('/client (\d+)/', $message, $clientMatches);
-    preg_match('/amount (\d+(\.\d{1,2})?)/', $message, $amountMatches);
-    preg_match('/due date (\d{4}-\d{2}-\d{2})/', $message, $dueDateMatches);
+    private function createInvoice($tasks)
+    {
+        \Log::info('createInvoice:', ['selectedTask' => $tasks]);
+        $duedate = now()->addDays(30);
+        $invdate = now();  
+        $currency =  'KWD'; 
+        $user = Auth::user();
+        $taskIds = collect($tasks)->pluck('id')->toArray();
+        // Retrieve the tasks from the database and include 'invprice' directly
+        $selectedTasks = Task::whereIn('id', $taskIds)                   
+                       ->get()
+                       ->each(function ($task) use ($tasks) {
+                           // Find the matching task and assign invprice to the task object
+                           $taskData = collect($tasks)->firstWhere('id', $task->id);
+                           if ($taskData) {
+                               $task->invprice = $taskData['invprice'];
+                           }
+                       });
 
-    return [
-        'client_id' => $clientMatches[1] ?? null,
-        'amount' => $amountMatches[1] ?? null,
-        'due_date' => $dueDateMatches[1] ?? null,
-    ];
-}
 
-private function extractMessageDetailsFromMessage($message)
-{
-    preg_match('/to (\d+)/', $message, $recipientMatches);
-    preg_match('/message (.+)/', $message, $contentMatches);
+        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
 
-    return [
-        'recipient_id' => $recipientMatches[1] ?? null,
-        'content' => $contentMatches[1] ?? null,
-    ];
-}
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
 
-private function sendMessage($messageDetails)
-{
-    // Send the message to the recipient (You need to implement this method based on your system)
-    // Example: Message::create($messageDetails);
-}
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
+
+        $this->storeNotification([
+            'user_id' => $user->id,
+            'title' => 'Invoice' . $invoiceNumber . ' Created By ' . $user->name,
+            'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
+        ]);
+
+        $subTotal = $selectedTasks->sum('invprice');
+        if ($selectedTasks->count() > 0) {
+        $clientIds = $selectedTasks->pluck('client_id')->unique();
+        $agentIds =  $selectedTasks->pluck('agent_id')->unique();
+        $selectedAgent = Agent::find($agentIds->first());
+
+            if ($clientIds->count() >= 1) {
+                $selectedClient = Client::find($clientIds->first());
+            } else {
+                $selectedClient = null; // Handle multi-client case
+            }
+        } else {
+            $selectedClient = null; // No tasks selected
+            $selectedAgent = null;
+        }
+
+
+        $appUrl = config('app.url');
+        $agent = $selectedAgent;
+        $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
+        $branchId = $agent ? $agent->branch_id : null;
+
+        Log::info('Company ID:', ['companyId' => $companyId]);
+
+        $receivableAccount = Account::where('name', 'like', '%Receivable%')
+            ->where('company_id', $companyId)
+            ->first();
+
+
+        $payableAccount =  Account::where('name', 'like', '%Payable%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        $incomeAccount =  Account::where('name', 'like', '%Income On Sales%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        try {
+
+
+            $invoice = Invoice::create([
+                'invoice_number' => $invoiceNumber,
+                'agent_id' => $selectedAgent->id,
+                'client_id' => $selectedClient->id,
+                'sub_amount' => $subTotal,
+                'amount' => $subTotal,
+                'currency' => $currency,
+                'status' => 'unpaid',
+                'invoice_date' => $invdate,
+                'due_date' => $duedate,
+                'payment_type' => 'full',
+            ]);
+
+            if (!empty($selectedTasks)) {
+                foreach ($selectedTasks as $task) {
+                    try {
+
+                        $selectedtask = Task::where('id', operator: $task['id'])->first();
+                        $supplier = Supplier::where('id', operator: $task['supplier_id'])->first();
+                        $client = Client::where('id', operator: $task['client_id'])->first();
+                        $agent = Agent::where('id', operator: $task['agent_id'])->first();
+                        // Create a transaction record first
+
+                        $invoiceDetail =  InvoiceDetail::create([
+                            'invoice_id' => $invoice->id,
+                            'invoice_number' => $invoiceNumber,
+                            'task_id' => $task['id'],
+                            'task_description' => $task['reference'] . ' ' . $task['additional_info'],  
+                            'task_remark' => $task['remark'],
+                            'client_notes' => $task['note'],
+                            'task_price' =>  $task['invprice'],
+                            'supplier_price' => $selectedtask->total,
+                            'markup_price' => $task['invprice'] - $selectedtask->total,
+                            'paid' => false,
+                        ]);
+
+                        $transaction = Transaction::create([
+                            'entity_id' => $companyId,
+                            'entity_type' => 'company',
+                            'transaction_type' => 'credit',
+                            'amount' =>  $task['invprice'],
+                            'date' => Carbon::now(),
+                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                            'invoice_id' => $invoice->id,
+                            'reference_type' => 'Invoice',
+                        ]);
+
+
+                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
+                        if ($payableAccount) {
+                            $filteredPayableChildAccount = $payableAccount->children()
+                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
+                                ->first(); // Get the first matching child account
+                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
+                        } else {
+                            $PayablechildAccountId = null; // Handle case when no parent account is found
+                        }
+
+
+                        // Try to create payable account
+                        GeneralLedger::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $companyId,
+                            'branch_id' => $branchId,
+                            'account_id' =>  $payableAccount->id,
+                            'branch_id' => $branchId,
+                            'account_id' =>  $payableAccount->id,
+                            'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Payment need to be made to: ' . $supplier->name,
+                            'debit' => $selectedtask->total,
+                            'credit' => 0,
+                            'balance' => $selectedtask->total,
+                            'name' => $supplier->name,
+                            'type' => 'payable',
+                            'type_reference_id' => $supplier->id
+                        ]);
+
+
+                        // Try to create receivable account
+                        GeneralLedger::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $companyId,
+                            'branch_id' => $branchId,
+                            'branch_id' => $branchId,
+                            'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'account_id' =>  $receivableAccount->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'account_id' =>  $receivableAccount->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Payment need to be received from: ' . $client->name,
+                            'debit' => 0,
+                            'credit' => $task['invprice'],
+                            'balance' => $task['invprice'],
+                            'name' =>  $client->name,
+                            'type' => 'receivable',
+                            'type_reference_id' => $client->id
+                        ]);
+
+
+
+                        $markup = $task['invprice'] - $selectedtask->total;
+                        // Try to create income
+                        GeneralLedger::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $companyId,
+                            'branch_id' => $branchId,
+                            'account_id' => $incomeAccount->id,
+                            'branch_id' => $branchId,
+                            'account_id' => $incomeAccount->id,
+                            'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Price markup by Agent: ' . $agent->name,
+                            'debit' => 0,
+                            'credit' => $markup,
+                            'balance' => $markup,
+                            'name' =>   $agent->name,
+                            'type' => 'income',
+                            'type_reference_id' => $agent->id
+                        ]);
+
+
+                        $selectedtask->status = 'Assigned';
+                        $selectedtask->save();
+                    } catch (Exception $e) {
+                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description']);
+                    }
+                }
+            }
+
+            $generatedLink = $appUrl . '/invoice/' . $invoiceNumber;
+               return response()->json([
+                    'success' => true,
+                    'invoiceLink' => $generatedLink,
+                    'invoiceNumber' => $invoiceNumber
+                ]);
+
+        } catch (Exception $e) {
+            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+            return response()->json('Invoice creation failed!');
+        }
+    
+      
+    }
+
+
+    public function generateInvoiceNumber($sequence)
+    {
+        $year = now()->year;
+        return sprintf('INV-%s-%05d', $year, $sequence);
+    }
+
+    
+    private function sendWhatsApp($userData)
+    {
+        if (!isset($userData['contact_number'])) {
+            return response()->json(['error' => 'No contact number provided for WhatsApp.'], 400);
+        }
+    
+        // Logic to send WhatsApp message
+        $message = "Hello! This is a reminder from your travel agency.";
+        // Example: WhatsAppService::send($userData['contact_number'], $message);
+    
+        return response()->json(['success' => true, 'message' => 'WhatsApp message sent.'], 200);
+    }
+
+    private function sendEmail($userData)
+    {
+        if (!isset($userData['email'])) {
+            return response()->json(['error' => 'No email address provided.'], 400);
+        }
+
+        // Logic to send email
+        $emailContent = "Hello! This is a reminder from your travel agency.";
+        // Example: Mail::to($userData['email'])->send(new ReminderEmail($emailContent));
+
+        return response()->json(['success' => true, 'message' => 'Email sent successfully.'], 200);
+    }
+
+    private function sendReminder($userData)
+    {
+        if (!isset($userData['clients']) || count($userData['clients']) === 0) {
+            return response()->json(['error' => 'No clients or agents to remind.'], 400);
+        }
+    
+        // Logic to send reminders to all clients/agents
+        foreach ($userData['clients'] as $client) {
+            // Example: ReminderService::send($client['contact']);
+        }
+    
+        return response()->json(['success' => true, 'message' => 'Reminders sent successfully.'], 200);
+    }
+    
 
    
 }

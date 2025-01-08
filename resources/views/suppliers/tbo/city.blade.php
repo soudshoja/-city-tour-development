@@ -33,7 +33,7 @@
             <div class="p-4 rounded-b-lg bg-white dark:bg-gray-600 overflow-auto shadow-sm max-h-160 flex">
                 <div class="px-2 grid grid-cols-2 xl:grid-cols-3 gap-2 w-1/2">
                     @foreach($cities as $city)
-                    <button data-item-id="{{ $city['Code'] }}" class="btn p-2 bg-gradient-to-r from-gray-800 to-gray-500 dark:to-blue-600 rounded-md text-center text-white w-full hover:from-gray-200 hover:to-gray-400 hover:text-black">
+                    <button data-item-id="{{ $city['Code'] }}" class="btn p-2 bg-gradient-to-r from-gray-800 to-gray-500 dark:to-blue-600 dark:border-gray-500 rounded-md text-center text-white w-full hover:from-gray-200 hover:to-gray-400 hover:text-black">
                         {{ $city['Name'] }}
                     </button>
                     @endforeach

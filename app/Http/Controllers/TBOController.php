@@ -138,7 +138,13 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        return $response;
+        if($response['Status']['Code'] !== 200){
+            return response()->json([
+                'error' => $response['Status']['Description']
+            ]);
+        }
+
+        return $response['Hotels'];
     }
 
     public function hotelCodeList()

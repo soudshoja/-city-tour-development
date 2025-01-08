@@ -9,6 +9,14 @@
             font-size: 1.5rem;
             color: #000;
         }
+
+        .star-filled {
+            color: gold;
+        }
+
+        .star-empty {
+            color: gray;
+        }
     </style>
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <ul class="flex space-x-2 rtl:space-x-reverse text-base md:text-lg sm:text-sm py-3">
@@ -57,7 +65,7 @@
                 let url = "{!! route('suppliers.tbo.hotel-list', ['cityCode' => '__cityCode__']) !!}";
                 url = url.replace('__cityCode__', itemId);
 
-                hotels.classList.add('flex','items-center','justify-center');
+                hotels.classList.add('flex', 'items-center', 'justify-center');
                 hotels.classList.remove('grid')
                 hotels.innerHTML = `
                     <svg class="animate-spin h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -80,6 +88,23 @@
                         hotels.innerHTML = '';
 
                         data.forEach(hotel => {
+
+                            let rating;
+
+                            if (hotel.HotelRating === 'OneStar') {
+                                rating = 1;
+                            } else if (hotel.HotelRating === 'TwoStar') {
+                                rating = 2;
+                            } else if (hotel.HotelRating === 'ThreeStar') {
+                                rating = 3;
+                            } else if (hotel.HotelRating === 'FourStar') {
+                                rating = 4;
+                            } else if (hotel.HotelRating === 'All') {
+                                rating = 5;
+                            } else {
+                                rating = 0;
+                            }
+
                             const hotelDiv = document.createElement('div');
                             hotelDiv.className = 'rounded-md border-black border dark:border-gray-600 shadow-lg p-2 dark:bg-gray-500';
                             hotelDiv.innerHTML = `
@@ -90,16 +115,30 @@
                                     <div class="bg-gradient-to-r from-gray-800 to-gray-500 dark:to-blue-600 p-2 text-white rounded-md">${hotel.HotelName}</div>
                                 </div>
                                 <div class="grid grid-cols-1 text-start">
-                                    <div class="col-span-1">
+                                    <div class="inline-flex gap-2">
                                         <strong>Hotel Name:</strong> ${hotel.HotelName}
                                     </div>
-                                    <div class="col-span-1">
-                                        <strong>Hotel Code:</strong> ${hotel.HotelRating}
+                                    <div class="inline-flex gap-2">
+                                        <strong>Hotel Rating:</strong>
+                                        <div class="rating-container">
+                                        </div>
                                     </div>
                                 </div>
                             `;
-
                             hotels.appendChild(hotelDiv);
+
+                            const ratingContainer = hotelDiv.querySelector('.rating-container');
+
+                            for (let i = 0; i < 5; i++) {
+                                const star = document.createElement('span');
+                                if (i < rating) {
+                                    star.innerHTML = '&#9733;'; // Filled star
+                                } else {
+                                    star.innerHTML = '&#9734;'; // Empty star
+                                }
+                                ratingContainer.appendChild(star);
+                            }
+
                         });
                     })
                     .catch(error => {

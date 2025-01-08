@@ -1,4 +1,7 @@
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 <div class="container mx-auto mt-5">
+
         <!-- Chat Section -->
         <div class="bg-white shadow-md rounded-lg mb-6">
             <div class="bg-blue-500 text-white px-4 py-2 rounded-t-lg font-semibold">
@@ -46,6 +49,265 @@
                 </form>
             </div>
         </div>
+
+       <!-- Payment Modal -->
+   
+        <input id="invoiceNumber" type="hidden" name="invoiceNumber" />    
+        <input id="invoiceId" type="hidden" name="invoiceId" />    
+        <input id="invoiceAmount" type="hidden" name="invoiceAmount" />  
+        <input id="subTotal" type="hidden" name="subTotal" />  
+        <input id="due_date" type="hidden" name="due_date" />    
+        <input id="receiverId" type="hidden" name="receiverId" />  
+        
+
+        <div id="open-payment-type" class="bg-white shadow-md rounded-lg mb-6 hidden">
+            <div class="bg-yellow-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
+                <span>Select Payment Type</span>
+                <button id="close-payment-type" class="text-white hover:text-gray-200">&times;</button>
+            </div>
+            <div class="p-4">
+            <div class="modal-body">
+                        <form id="payment-type-form">
+                            <div class="form-group">
+                                <label for="payment-type">Choose Payment Type:</label>
+                                <select id="payment-type" class="form-control" required>
+                                    <option value="">-- Select --</option>
+                                    <option value="full">Full</option>
+                                    <option value="partial">Partial</option>
+                                    <option value="split">Split</option>
+                                </select>
+                            </div>
+                            <div id="payment-details" class="mt-3"></div>
+                            <button type="submit" class="btn btn-primary mt-3">Proceed</button>
+                        </form>
+                    </div>
+            </div>
+        </div>
+
+        <div id="payment_gateway_section" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                     <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+
+                                        <!-- Split Payment Tab Content -->
+                                        <div id="split-payment-container" class="tab-content">
+
+                                            <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                                                <option value="Tap">Tap</option>
+                                                <option value="Hesabe">Hesabe</option>
+                                                <option value="MyFatoorah">MyFatoorah</option>
+                                            </select>
+                                            <div>
+                                            <button type="button" onclick="savePartial('full')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                    city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                            </div>
+                                        </div>
+                                 </div>
+                            </div>
+                            <div class="mt-4 flex justify-end">
+                            <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                        </div>
+                     </div>
+          </div>
+          <!-- Modal -->
+          <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
+                                <!-- Include your previous page content here -->
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+
+                                        <!-- Split Payment Tab Content -->
+                                        <div id="split-payment-container" class="tab-content">
+                                            <form>
+                                                <!-- Top Fields -->
+                                                <div class="grid grid-cols-3 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Amount *</label>
+                                                        <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
+                                                        <select id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
+                                                            <option value="" disabled selected>Select a value</option>
+                                                            <option value="1">1</option>
+                                                            <option value="2">2</option>
+                                                            <option value="3">3</option>
+                                                            <option value="4">4</option>
+                                                            <option value="5">5</option>
+                                                            <option value="6">6</option>
+                                                            <option value="7">7</option>
+                                                            <option value="8">8</option>
+                                                            <option value="9">9</option>
+                                                            <option value="10">10</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Expiry and Description -->
+                                                <div class="grid grid-cols-2 gap-4 mb-5">
+                                                    <div>
+                                                        <label class="block text-sm font-medium mb-1">Description *</label>
+                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Table -->
+                                                <div class="overflow-x-auto">
+                                                    <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="border-b px-4 py-2">S.No</th>
+                                                                <th class="border-b px-4 py-2">Choose Client</th>
+                                                                <th class="border-b px-4 py-2">Expiry Date</th>
+                                                                <th class="border-b px-4 py-2">Amount</th>
+                                                                <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="split-rows">
+                                                            <!-- Dynamic rows will be generated here -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                <!-- Buttons -->
+
+                                                <div>
+                                                    <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
+                                <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
+                                <div class="bg-gray-100 p-5">
+                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+                                        <!-- Partial Payment Tab Content -->
+                                        <div id="partial-payment-container" class="tab-content">
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Client Name</label>
+                                                    <span id="receiverName1">AHMED</span>
+                                                </div>
+                                                <div>
+                                                    <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                    <span id="subT1">0.00</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
+                                                    <select id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
+                                                        <option value="" disabled selected>Select a value</option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                        <option value="3">3</option>
+                                                        <option value="4">4</option>
+                                                        <option value="5">5</option>
+                                                        <option value="6">6</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Payment Gateway</label>
+                                                    <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">  
+                                                        <option value="Tap">Tap</option>
+                                                        <option value="Hesabe">Hesabe</option>
+                                                        <option value="MyFatoorah">MyFatoorah</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                            <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="border-b px-4 py-2">S.No</th>
+                                                        <th class="border-b px-4 py-2">Expiry Date</th>
+                                                        <th class="border-b px-4 py-2">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="split-rows1">
+                                                    <!-- Dynamic rows will be generated here -->
+                                                </tbody>
+                                            </table>
+
+                                            <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+
+                                            <div class="flex space-x-4 mt-5">
+                                                <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                </div>
+                            </div>
+                        </div>
+
+                <!-- Create Client -->
+        <div id="create-client" class="bg-white shadow-md rounded-lg mb-6 hidden">
+             <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
+                <span>Create Client</span>
+                <button id="close-create-client" class="text-white hover:text-gray-200">&times;</button>
+            </div>
+            <div class="p-4">
+                <p class="mb-4">Enter client Information:</p>
+                <form id="client-form" class="space-y-4">
+                    <div id="client-fields" class="space-y-2">
+                        <!-- Pricing fields will be dynamically loaded here -->
+                    </div>
+                    <button type="submit" class="btn primary-btn">Create Client</button>
+                </form>
+            </div>
+        </div>
+
+                        <!-- Create Agent -->
+         <div id="create-agent" class="bg-white shadow-md rounded-lg mb-6 hidden">
+             <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
+                <span>Create Agent</span>
+                <button id="close-create-agent" class="text-white hover:text-gray-200">&times;</button>
+            </div>
+            <div class="p-4">
+                <p class="mb-4">Enter agent Information:</p>
+                <form id="agent-form" class="space-y-4">
+                    <div id="agent-fields" class="space-y-2">
+                        <!-- Pricing fields will be dynamically loaded here -->
+                    </div>
+                    <button type="submit" class="btn primary-btn">Create Agent</button>
+                </form>
+            </div>
+        </div>
+
+                        <!-- Create Branch -->
+         <div id="create-branch" class="bg-white shadow-md rounded-lg mb-6 hidden">
+             <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
+                <span>Create Branch</span>
+                <button id="close-create-branch" class="text-white hover:text-gray-200">&times;</button>
+            </div>
+            <div class="p-4">
+                <p class="mb-4">Enter branch Information:</p>
+                <form id="branch-form" class="space-y-4">
+                    <div id="branch-fields" class="space-y-2">
+                        <!-- Pricing fields will be dynamically loaded here -->
+                    </div>
+                    <button type="submit" class="btn primary-btn">Create Branch</button>
+                </form>
+            </div>
+        </div>
+
     </div>
 
 
@@ -57,9 +319,19 @@
         const taskList = $("#task-list");
         const confirmTasksButton = $("#confirm-tasks");
         const taskPricing = $("#task-pricing");
+        const openpaymentType = $("#open-payment-type");
+        const createClient = $("#create-client");
+        const createAgent = $("#create-agent");
+        const createBranch = $("#create-branch");
         const pricingFields = $("#pricing-fields");
+        const clientFields = $("#client-fields");
+        const agentFields = $("#agent-fields");
+        const branchFields = $("#branch-fields");
+        let clients = [];
 
         let selectedTasks = [];
+        appendMessage("cityTour", "Welcome to City Tour. You can ask anything.");
+
 
         function appendMessage(role, content) {
             const messageClass = role === "user" ? "text-end" : "text-start";
@@ -89,7 +361,13 @@
                         loadTaskSelection(response.tasks);
                     } else if (response.taskPricing) {
                         loadTaskPricing(response.taskPricing);
-                    } else {
+                    }else if (response.client) {
+                        loadClient(response.client);
+                    } else if (response.agent) {
+                        loadAgent(response.agent);
+                    }  else if (response.branch) {
+                        loadBranch(response.branch);
+                    }   else {
 
                         if (response && response.choices && response.choices.length > 0) {
 
@@ -222,12 +500,32 @@
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),  // Ensure CSRF token is included
                 },
                 success: function (response) {
-                     if (response.success) {
-                             const generatedLink = response.invoiceLink;
-                             const clickableLink = `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
-                             appendMessage("cityTour", clickableLink);
-                    }
-                },
+                if (response.success) {
+                    const generatedLink = response.invoiceLink;
+                    const invoiceNumber = response.invoiceNumber; // Assuming this is part of the response
+                    const invoiceId = response.invoiceId; // Replace with actual response key for invoice ID
+                    const invoiceAmount = response.invoiceAmount; // Replace with actual response key for amount
+                    const due_date = response.due_date; 
+                    clients = response.clients; // Assuming this is an array of clients
+
+                    // Generate clickable link
+                    const clickableLink = `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
+                    appendMessage("cityTour", clickableLink);
+
+                    document.getElementById('invoiceNumber').value = response.invoiceNumber;
+                    document.getElementById('invoiceId').value = response.invoiceId;
+                    document.getElementById('invoiceAmount').value = response.invoiceAmount;
+                    document.getElementById('subTotal').value = response.invoiceAmount;
+                    document.getElementById('receiverId').value = response.clientId;
+                    
+                    // Serialize the clients array as a JSON string
+                    document.getElementById('total-amount').value = response.invoiceAmount;
+                    document.getElementById('due_date').value = response.due_date;
+                    document.getElementById('subT1').textContent = `${response.invoiceAmount.toFixed(2)}`;
+                    // Show payment type selection
+                    showPaymentTypeSelection();
+                }
+            },
                 error: function (xhr) {
                     alert("Error: " + (xhr.responseJSON?.error || xhr.statusText));
                 },
@@ -236,12 +534,868 @@
         });
 
 
+        function showPaymentTypeSelection() {
+            
+            openpaymentType.show();
+        }
+
+         // Handle payment type selection change
+            document.getElementById('payment-type').addEventListener('change', function () {
+                const paymentType = this.value;
+                
+                console.log(paymentType);
+                if (paymentType === 'full') {
+                    document.getElementById('payment_gateway_section').classList.remove('hidden');
+                }else if (paymentType === 'partial') {
+                    document.getElementById('paymentModal1').classList.remove('hidden');
+                } else if (paymentType === 'split') {
+                    document.getElementById('paymentModal').classList.remove('hidden');
+                }
+            });
+                    
+
+
+            function updateRows() {
+                            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
+
+                            const tbody = document.getElementById('split-rows');
+                            tbody.innerHTML = ''; // Clear existing rows
+
+                            for (let i = 1; i <= splitInto; i++) {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td class="border-b px-4 py-2">${i}</td>
+                                    <td class="border-b px-4 py-2">
+                                    <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
+                                        ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                                    </select>
+                                    </td>
+                                    <td class="border-b px-4 py-2">
+                                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                                    </td>
+                                    <td class="border-b px-4 py-2">
+                                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
+                                    </td>
+                                    <td class="border-b px-4 py-2">
+                                        <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
+                                            <option value="Tap">Tap</option>
+                                            <option value="Hesabe">Hesabe</option>
+                                            <option value="MyFatoorah">MyFatoorah</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-2 border"></td>
+                                `;
+                                tbody.appendChild(row);
+
+                                const selectElement = row.querySelector('.account-select');
+                                new TomSelect(selectElement, {
+                                    create: false,
+                                    sortField: {
+                                        field: 'text',
+                                        direction: 'asc'
+                                    }
+                                });
+
+                            }
+                        }
+
+                        function updateRows1() {
+                            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
+
+                            const tbody = document.getElementById('split-rows1');
+                            tbody.innerHTML = ''; // Clear existing rows
+
+                            for (let i = 1; i <= splitInto1; i++) {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                <td class="border-b px-4 py-2">${i}</td>
+                                <td class="border-b px-4 py-2">
+                                    <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                                </td>
+                                <td class="border-b px-4 py-2">
+                                    <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
+                                </td>
+                            `;
+                                tbody.appendChild(row);
+
+                            }
+                        }
+
+
+         function savePartial(mode) {
+
+            if (mode === 'full') {
+                console.log('savepartial');
+                if (!validateFullPayment()) return;
+
+                const gateway = document.getElementById('payment_gateway').value;
+                const date = document.getElementById('due_date').value;
+                const amount =  parseFloat(document.getElementById('total-amount').value) || 0;
+                const fullData = [];
+
+                fullData.push({
+                    date,
+                    amount,
+                    gateway
+                });
+                save('full', fullData);
+            } else
+            if (mode === 'split') {
+
+            if (!validateSplitPayment()) return;
+
+            // Collect Split Payment Data
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+            const description = document.getElementById('split-desc').value;
+            const rows = document.querySelectorAll('#split-rows tr');
+
+            const splitData = [];
+            rows.forEach(row => {
+                const selectElement = row.querySelector('select');
+                const clientId = selectElement.value;
+                const date = row.querySelector('input[type="date"]').value;
+                const gateway = row.querySelector('#payment_gateway2').value || null;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                const clientName = selectElement.options[selectElement.selectedIndex].text;
+
+                splitData.push({
+                    clientId,
+                    clientName,
+                    date,
+                    amount,
+                    gateway
+                });
+            });
+
+            save('split', splitData);
+
+        } else if (mode === 'partial') {
+            if (!validatePartialPayment()) return;
+
+            // Collect Partial Payment Data
+            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+            const partialRows = document.querySelectorAll('#split-rows1 tr');
+            const gateway = document.getElementById('payment_gateway1').value;
+            console.log(gateway);
+            const partialData = [];
+
+            partialRows.forEach(row => {
+                const date = row.querySelector('input[type="date"]').value;
+                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+                partialData.push({
+                    date,
+                    amount,
+                    gateway
+                });
+            });
+
+            save('partial', partialData);
+
+        }
+}
+
+async function save(type, data) {
+        console.log('save');
+        const invoiceUrl = "{{ route('invoice.partial') }}";
+        const csrfToken = "{{ csrf_token() }}";
+        const invoiceId = document.getElementById('invoiceId').value;
+        const invoiceNumber = document.getElementById('invoiceNumber').value;
+
+        if (type === 'full') {
+            const clientId = document.getElementById('receiverId').value;
+
+            try {
+                for (const item of data) {
+                    const {
+                        date,
+                        amount,
+                        gateway
+                    } = item;
+
+                    // Send POST request for each client
+                    const response = await fetch(invoiceUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            invoiceId,
+                            invoiceNumber,
+                            clientId,
+                            type,
+                            date,
+                            amount,
+                            gateway
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                    }
+
+                    const result = await response.json();
+
+                }
+
+                // Display links
+
+            } catch (error) {
+                console.error('Error generating invoices:', error);
+                displayErrorMessage("Error generating one or more invoices. Please check your data.");
+            } finally {
+                afterPaymentType(type, invoiceNumber);
+                hideModal();
+            }
+        } else
+        if (type === 'split') {
+            // Handle split payment, generate links for each row
+            try {
+                const invoiceLinks = []; // Store links for each client
+                for (const item of data) {
+                    const {
+                        clientId,
+                        clientName,
+                        date,
+                        amount,
+                        gateway
+                    } = item;
+
+                    console.log(invoiceId, clientId, type, date, amount);
+                    console.log(csrfToken);
+                    console.log(clientName)
+                    // Send POST request for each client
+                    const response = await fetch(invoiceUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            invoiceId,
+                            invoiceNumber,
+                            clientId,
+                            type,
+                            date,
+                            amount,
+                            gateway
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
+                    }
+
+                    const result = await response.json();
+                }
+
+                // Set the linkVisible flag to true
+                //linkVisible = true;
+
+                // Update the visibility of the link
+                updateLinkVisibility(invoiceNumber);
+
+
+            } catch (error) {
+                console.error('Error generating invoices:', error);
+                displayErrorMessage("Error generating one or more invoices. Please check your data.");
+            } finally {
+                afterPaymentType(type, invoiceNumber);
+                //hideModal();
+            }
+
+        } else if (type === 'partial') {
+            // Handle partial payment as before
+            const clientId = document.getElementById('receiverId').value;
+
+            try {
+
+                for (const item of data) {
+                    const {
+                        date,
+                        amount,
+                        gateway
+                    } = item;
+
+                    const response = await fetch(invoiceUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            invoiceId,
+                            invoiceNumber,
+                            clientId,
+                            type,
+                            date,
+                            amount,
+                            gateway
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Failed to generate partial invoice.");
+                    }
+                }
+            } catch (error) {
+                console.error('Error generating invoice:', error);
+                displayErrorMessage("Error generating invoice. Please try again.");
+            } finally {
+                afterPaymentType(type, invoiceNumber);
+                hideModal();
+            }
+        }
+        }
+        
+
+        function afterPaymentType(type, invoiceNumber){
+            appendMessage("cityTour", `Payment type: <span style="color: #ff9800; font-weight: bold;">${type}</span>  has been saved for invoice number: ${invoiceNumber}`);
+            openpaymentType.hide();
+        }
+
+        function validateFullPayment() {
+        const gateway = document.getElementById('payment_gateway').value;
+        const date = document.getElementById('due_date').value;
+        const amount = parseFloat(document.getElementById('subTotal').value) || 0;
+
+        if (!gateway || !date || amount <= 0) {
+            displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
+            return false;
+        }
+        return true;
+        }
+
+                    function updateLinkVisibility(invoiceNumber) {
+                            const rows = document.querySelectorAll("#split-rows tr");
+                            rows.forEach(row => {
+                                // Get the clientId from the select element or hidden input
+                                const clientIdSelect = row.querySelector("select[name^='customer_name_']");
+                                const clientId = clientIdSelect ? clientIdSelect.value : null;
+
+                                // Update the link only if clientId is available
+                                if (clientId) {
+                                    const linkCell = row.querySelector("td:last-child");
+                                    linkCell.innerHTML = `
+                                    <a href="/invoice/partial/${invoiceNumber}/${clientId}" 
+                                    class="text-blue-500 underline" 
+                                    target="_blank">
+                                    View Details
+                                    </a>
+                                `;
+                                }
+                            });
+                        }
+
+
+        function validateSplitPayment() {
+        const rows = document.querySelectorAll('#split-rows tr');
+        const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+        let totalAmount = 0;
+
+        for (const row of rows) {
+            const selectElement = row.querySelector('select');
+            const clientId = selectElement.value;
+            const date = row.querySelector('input[type="date"]').value;
+            const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+            if (!clientId || !date || amount <= 0) {
+                displayErrorMessage("Each split payment row must have a client, valid date, and amount greater than 0.");
+                return false;
+            }
+
+            totalAmount += amount;
+        }
+
+        if (totalAmount > subTotal) {
+            displayErrorMessage(`The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+            return false;
+        }
+
+        if (totalAmount < subTotal) {
+            displayErrorMessage(`The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+            return false;
+        }
+
+        return true;
+        }
+
+        function validatePartialPayment() {
+        const rows = document.querySelectorAll('#split-rows1 tr');
+        const gateway = document.getElementById('payment_gateway1').value;
+        const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+        let totalAmount = 0;
+
+        for (const row of rows) {
+            const date = row.querySelector('input[type="date"]').value;
+            const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+
+            if (!date || amount <= 0) {
+                displayErrorMessage("Each partial payment row must have a valid date and amount greater than 0.");
+                return false;
+            }
+
+            totalAmount += amount;
+        }
+
+        if (!gateway) {
+            displayErrorMessage("Payment gateway is required for partial payment.");
+            return false;
+        }
+
+        if (totalAmount > subTotal) {
+            displayErrorMessage(`The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+            return false;
+        }
+
+        if (totalAmount < subTotal) {
+            displayErrorMessage(`The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+            return false;
+        }
+
+        return true;
+        }
+
+
+        function displayErrorMessage(message) {
+        const alert = document.createElement('div');
+        alert.innerHTML = `
+            <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                ${message}
+                <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(alert);
+        }
+
+        function hideModal() {
+            document.querySelectorAll('.fixed').forEach(modal => modal.classList.add('hidden'));
+        }
+
         document.getElementById('close-task-selection').addEventListener('click', function() {
             taskSelection.hide();
         });
 
         document.getElementById('close-task-pricing').addEventListener('click', function() {
             taskPricing.hide();
+        });
+
+
+        function loadClient() {
+                // Clear existing content in the client fields container
+                clientFields.empty();
+
+                // Show the client creation form
+                createClient.show();
+
+                // Define the HTML for the "Add New Client" form
+                const addClientForm = `
+                    <div id="client-modal" class="p-6">
+                        <!-- Add New Client Form -->
+                        <h6 class="text-lg font-bold mb-3">Add New Client</h6>
+                        <form id="client-form">
+                            <div class="mb-4 flex gap-4">
+                                <!-- Name Field -->
+                                <div class="w-1/2">
+                                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                    <input id="name" name="name" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Name" />
+                                </div>
+
+                                <!-- Email Field -->
+                                <div class="w-1/2">
+                                    <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                    <input id="email" name="email" type="email" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Email" />
+                                </div>
+                            </div>
+
+                            <div class="mb-4 flex gap-4">
+                                <!-- Phone Field -->
+                                <div class="w-1/2">
+                                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                    <input id="phone" name="phone" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Phone" />
+                                </div>
+
+                                <!-- Address Field -->
+                                <div class="w-1/2">
+                                    <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                    <input id="address" name="address" type="text"
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Address" />
+                                </div>
+                            </div>
+
+                            <!-- Passport Number Field -->
+                            <div class="mb-4">
+                                <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
+                                <input id="passport_no" name="passport_no" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Passport Number" />
+                            </div>
+
+                            <!-- Agent Email Field -->
+                            <div class="mb-4">
+                                <label for="agent_email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
+                                <input id="agent_email" name="agent_email" type="email" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Agent Email" />
+                            </div>
+
+                            <!-- Status Field -->
+                            <div class="mb-4">
+                                <div class="flex flex-col">
+                                    <div class="flex items-center space-x-4">
+                                        <label class="text-lg font-semibold mb-2">Status:</label>
+
+                                        <!-- Active Radio Button -->
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
+                                            <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
+                                                <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                            </span>
+                                            <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
+                                        </label>
+
+                                        <!-- Inactive Radio Button -->
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
+                                            <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
+                                                <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                            </span>
+                                            <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="flex items-center justify-center">
+                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                    Register Client
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+
+                // Append the form to the clientFields container
+                clientFields.append(addClientForm);
+
+                // Show the modal (using Bootstrap)
+                const modal = new bootstrap.Modal(document.getElementById('client-modal'));
+                modal.show();
+
+                // Handle form submission
+                $('#client-form').on('submit', function (event) {
+                    event.preventDefault();
+
+                    // Collect form data
+                    const formData = $(this).serialize();
+
+                    // Submit the form via AJAX
+                    $.ajax({
+                        url: "{{ route('chat.client') }}",
+                        method: "POST",
+                        data: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        },
+                        success: function (response) {
+                            alert("Client registered successfully!");
+                            modal.hide(); // Hide the modal
+                        },
+                        error: function (xhr) {
+                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                        },
+                    });
+                });
+
+            }
+
+
+        function loadAgent(tasks) {
+            agentFields.empty();
+            createAgent.show();
+             // Define the HTML for the "Add New Client" form
+             const addAgentForm = `
+                    <div id="agent-modal" class="w-full lg:w-3/5 p-8 flex items-center justify-center">
+                            <div class="w-full">
+                                <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Register New
+                                    Agent</h2>
+
+                                <!-- Registration Form -->
+                                <form id="agent-form">
+                                    <!-- Name Field -->
+                                    <div class="mb-4">
+                                        <label for="name"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                        <input id="name" name="name" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Agent Name" />
+                                    </div>
+
+                                    <!-- Email Address -->
+                                    <div class="mb-4">
+                                        <label for="email"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                        <input id="email" name="email" type="email" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Agent Email" />
+                                    </div>
+
+                                    <!-- Phone Field -->
+                                    <div class="mb-4">
+                                        <label for="phone_number"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
+                                            Number</label>
+                                        <input id="phone_number" name="phone_number" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Phone Number" />
+                                    </div>
+
+                                    <!-- Agent Type -->
+                                    <div class="mb-4">
+                                        <label for="type"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Type</label>
+                                        <select id="type" name="type" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                            <option value="staff">Staff</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+
+                                <!-- Submit Button -->
+                                    <div class="flex items-center justify-center">
+                                        <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                            Register Agent
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                `;
+
+                // Append the form to the clientFields container
+                agentFields.append(addAgentForm);
+
+                // Show the modal (using Bootstrap)
+                const modal = new bootstrap.Modal(document.getElementById('agent-modal'));
+                modal.show();
+
+                // Handle form submission
+                $('#agent-form').on('submit', function (event) {
+                    event.preventDefault();
+
+                    // Collect form data
+                    const formData = $(this).serialize();
+
+                    // Submit the form via AJAX
+                    $.ajax({
+                        url: "{{ route('chat.agent') }}",
+                        method: "POST",
+                        data: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        },
+                        success: function (response) {
+                            alert("Client registered successfully!");
+                            modal.hide(); // Hide the modal
+                        },
+                        error: function (xhr) {
+                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                        },
+                    });
+                });
+
+        }
+
+        function loadBranch(tasks) {
+            branchFields.empty();
+            createBranch.show();
+            // Define the HTML for the "Add New Client" form
+            const addBranchForm = `
+                  <div id="branch-modal" class="w-full lg:w-3/5 p-8 flex items-center justify-center">
+                            <div class="w-full">
+                                <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Add New
+                                    Branch</h2>
+
+                                <!-- Registration Form -->
+                                <form id="branch-form">
+                                    <!-- Name Field -->
+                                    <div class="mb-4">
+                                        <label for="name"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                        <input id="name" name="name" type="text" :value="old('name')" required autofocus
+                                            autocomplete="name"
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Name" />
+                                    </div>
+
+                                    <!-- Email Field -->
+                                    <div class="mb-4">
+                                        <label for="email"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                        <input id="email" type="email" name="email" :value="old('email')" required
+                                            autocomplete="username"
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Email" />
+                                    </div>
+                                    <!-- phone Field -->
+                                    <div class="mb-4">
+                                        <label for="phone"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
+                                            Number</label>
+                                        <input id="phone" name="phone" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Contact" />
+                                    </div>
+                                    <!-- country Field -->
+                                    <div class="mb-4">
+                                        <label for="nationality"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Country
+                                        </label>
+                                        <input id="nationality" name="nationality" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company country" />
+                                    </div>
+                                    <!-- Address Field -->
+                                    <div class="mb-4">
+                                        <label for="address"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                        <input id="address" name="address" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Address" />
+                                    </div>
+
+                                    <!-- iata Field -->
+                                    <div class="mb-4">
+                                        <label for="iata_status"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Does this company
+                                            has an
+                                            IATA ID?</label>
+                                        <div class="flex items-center">
+                                            <input type="radio" id="iata_yes" name="iata_status" value="yes" class="mr-2"
+                                                onclick="toggleIataInput(true)">
+                                            <label for="iata_yes" class="mr-4 text-gray-700 dark:text-gray-300">Yes</label>
+                                            <input type="radio" id="iata_no" name="iata_status" value="no" class="mr-2"
+                                                onclick="toggleIataInput(false)">
+                                            <label for="iata_no" class="text-gray-700 dark:text-gray-300">No</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4" id="iata_input" style="display: none;">
+                                        <label for="iata" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">IATA
+                                            ID</label>
+                                        <input id="iata" name="iata" type="text"
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Enter IATA ID" />
+                                    </div>
+
+                                    <!-- Commercial License Field -->
+                                    <div class="mb-4">
+                                        <label for="commercial_license"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                            Commercial License (PDF)
+                                        </label>
+                                        <!-- Hidden File Input -->
+                                        <input id="commercial_license" name="commercial_license" type="file"
+                                            accept="application/pdf" class="hidden">
+                                        <!-- Custom Button to Trigger File Input -->
+                                        <div class="flex items-center">
+                                            <button type="button" onclick="document.getElementById('commercial_license').click()"
+                                                class="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                Choose file...
+                                            </button>
+                                            <span id="file-name" class="ml-3 text-sm text-gray-500">No file chosen</span>
+                                        </div>
+                                    </div>
+
+
+
+                                <!-- Submit Button -->
+                                    <div class="flex items-center justify-center">
+                                        <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                            Register Agent
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                `;
+
+                // Append the form to the clientFields container
+                branchFields.append(addBranchForm);
+
+                // Show the modal (using Bootstrap)
+                const modal = new bootstrap.Modal(document.getElementById('branch-modal'));
+                modal.show();
+
+                // Handle form submission
+                $('#branch-form').on('submit', function (event) {
+                    event.preventDefault();
+
+                    // Collect form data
+                    const formData = $(this).serialize();
+
+                    // Submit the form via AJAX
+                    $.ajax({
+                        url: "{{ route('chat.branch') }}",
+                        method: "POST",
+                        data: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        },
+                        success: function (response) {
+                            alert("Client registered successfully!");
+                            modal.hide(); // Hide the modal
+                        },
+                        error: function (xhr) {
+                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                        },
+                    });
+                });
+
+        }
+
+        function toggleIataInput(show) {
+                                        var iataInput = document.getElementById('iata_input');
+                                        if (show) {
+                                            iataInput.style.display = 'block';
+                                        } else {
+                                            iataInput.style.display = 'none';
+                                        }
+                                    }
+
+        document.getElementById('commercial_license').addEventListener('change', function() {
+            const fileName = this.files[0] ? this.files[0].name : 'No file chosen';
+            document.getElementById('file-name').textContent = fileName;
+        });
+
+        document.getElementById('close-create-client').addEventListener('click', function() {
+            createClient.hide();
+        });
+
+        document.getElementById('close-create-agent').addEventListener('click', function() {
+            createAgent.hide();
+        });
+
+        document.getElementById('close-create-branch').addEventListener('click', function() {
+            createBranch.hide();
         });
 
     </script>

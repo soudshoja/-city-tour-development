@@ -180,7 +180,7 @@ class ChatController extends Controller
             [
                 'role' => 'system',
                 'content' => "Analyze the following user message and return a JSON object with two keys: 'action' and 'task_ids'. 
-                The 'action' should be one of the following: 'create invoice', 'send WhatsApp', 'send email', or 'remind clients/agents'. 
+                The 'action' should be one of the following: 'create invoice', 'create client', 'create agent', or 'create branch'. 
                 If the action is 'create invoice', include the 'task_ids' as an array of integers. 
                 Example JSON: {\"action\": \"create invoice\", \"task_ids\": [123, 456]}",
             ],
@@ -214,14 +214,14 @@ class ChatController extends Controller
                         // }
                         // return response()->json(['error' => 'At least one Task ID is required to create an invoice.'], 400);
     
-                    case 'send whatsapp':
-                        return $this->sendWhatsApp($userData);
+                    case 'create client':
+                        return $this->initiatecreateClient($userData);
     
-                    case 'send email':
-                        return $this->sendEmail($userData);
+                    case 'create agent':
+                        return $this->initiatecreateAgent($userData);
     
-                    case 'remind clients/agents':
-                        return $this->sendReminder($userData);
+                    case 'create branch':
+                        return $this->initiatecreateBranch($userData);
     
                     default:
                         return response()->json(['error' => 'Action not recognized: ' . $action], 400);
@@ -718,11 +718,19 @@ class ChatController extends Controller
             }
 
             $generatedLink = $appUrl . '/invoice/' . $invoiceNumber;
-               return response()->json([
-                    'success' => true,
-                    'invoiceLink' => $generatedLink,
-                    'invoiceNumber' => $invoiceNumber
-                ]);
+            $clients = Client::select('id', 'name', 'email')->get();
+
+            // Return response
+            return response()->json([
+                'success' => true,
+                'invoiceLink' => $generatedLink,
+                'invoiceNumber' => $invoiceNumber,
+                'invoiceId' => $invoice->id,
+                'clientId' => $invoice->client_id,
+                'invoiceAmount' => $invoice->amount,
+                'due_date' => $invoice->due_date,
+                'clients' => $clients
+            ]);
 
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
@@ -766,7 +774,125 @@ class ChatController extends Controller
         return response()->json(['success' => true, 'message' => 'Email sent successfully.'], 200);
     }
 
-    private function sendReminder($userData)
+    private function initiatecreateClient($userData)
+    {    
+    
+        $user = Auth::user();
+
+        $company = Company::with('branches.agents.clients')->find($user->company->id);
+
+        return response()->json([
+            'message' => 'Create New Client:',
+            'client' => $company,
+        ], 200);
+    }
+
+    private function initiatecreateAgent($userData)
+    {    
+    
+        $user = Auth::user();
+
+        $company = Company::with('branches.agents.clients')->find($user->company->id);
+
+        return response()->json([
+            'message' => 'Create New Agent:',
+            'agent' => $company,
+        ], 200);
+    }
+
+
+    private function initiatecreateBranch($userData)
+    {    
+    
+        $user = Auth::user();
+
+        $company = Company::with('branches.agents.clients')->find($user->company->id);
+
+        return response()->json([
+            'message' => 'Create New Branch:',
+            'branch' => $company,
+        ], 200);
+    }
+
+    public function createClient(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:clients,email',
+            'phone' => 'nullable|string|max:15',    // Optional phone field
+        ]);
+
+        // Create a new client record
+        try {
+            $agent = Agent::where('email', $request->get('agent_email'))->first();
+
+            $client = Client::create([
+                'name' => $request->get('name'),
+                'email' => $request->get('email'),
+                'status' => $request->get('status'),
+                'phone' => $request->get('phone'),
+                'address' => $request->get('address'),
+                'passport_no' => $request->get('passport_no'),
+                'agent_id' => $agent->id,
+            ]);
+
+            // Redirect to the clients list with a success message
+            return response()->json([
+                'success' => true,
+                'message' => 'Client registered successfully!',
+                'client' => $client, // Optionally return client details
+            ], 201);
+
+        } catch (Exception $e) {
+            Log::error('Failed to create client: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error registering client: ' . $e->getMessage(),
+                'errors' => $e->errors() ?? [],
+            ], 400);
+        }
+    }
+
+    
+    private function createAgent($userData)
+    {
+        $user = Auth::user();
+        $role = $user->role_id;
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone_number' => 'required|string',
+            'company_id' => 'required',
+            'type' => 'required'
+        ]);
+
+        // Create a new user
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make('citytour123'),
+            'role' => 'agent'
+        ]);
+
+            $agent = Agent::create([
+                'user_id' => $user->id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone_number' => $request->phone_number,
+                'company_id' => $user->company->id,
+                'type' => $request->type,
+            ]);
+
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Agent registered successfully!',
+                'client' => $client, // Optionally return client details
+            ], 201);
+    }
+
+    private function createBranch($userData)
     {
         if (!isset($userData['clients']) || count($userData['clients']) === 0) {
             return response()->json(['error' => 'No clients or agents to remind.'], 400);
@@ -779,7 +905,62 @@ class ChatController extends Controller
     
         return response()->json(['success' => true, 'message' => 'Reminders sent successfully.'], 200);
     }
+
+
+    public function processPayment(Request $request)
+    {
+        $request->validate([
+            'invoiceId' => 'required',
+            'date' => 'required',
+            'clientId' => 'required',
+            'amount' => 'required',
+            'type' => 'required|string',
+            'invoiceNumber'=> 'required|string',
+            'gateway' => 'required|string',
+        ]);
+
+        $invoiceId = $request->input('invoiceId');
+        $invoiceNumber = $request->input('invoiceNumber');
+        $clientId = $request->input('clientId'); 
+        $type = $request->input('type');
+        $date = $request->input('date'); 
+        $amount = $request->input('amount');
+        $gateway = $request->input('gateway');
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+
+
+        try {
+
+                $invoicepartial = InvoicePartial::create([
+                    'invoice_id' => $invoiceId,
+                    'invoice_number' => $invoiceNumber,
+                    'client_id' => $clientId,
+                    'amount' => $amount,
+                    'status' => 'unpaid',
+                    'expiry_date' => $date,
+                    'type' => $type,
+                    'payment_gateway' => $gateway,
+                ]);
+
+                $invoice->payment_type = $type;
+                $invoice->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Invoice Partial created successfully!',
+                    'invoiceId' => $invoiceId,
+                ]);
     
+            } catch (Exception $e) {
+                Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create invoice!',
+                ]);
+            }
+
+    }
 
    
 }

@@ -191,6 +191,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat', [ChatController::class, 'chat'])->name('chat.process');
     Route::post('/chat/tasks/select', [ChatController::class, 'sendprocessTaskSelection'])->name('chat.select');
     Route::post('/chat/invoices/create', [ChatController::class, 'handleTaskPricing'])->name('chat.create');
+    Route::post('/chat/client', [ChatController::class, 'createClient'])->name('chat.client');
+    Route::post('/chat/agent', [ChatController::class, 'createAgent'])->name('chat.agent');
+    Route::post('/chat/branch', [ChatController::class, 'createBranch'])->name('chat.branch');
+    Route::post('/chat/payment', [ChatController::class, 'processPayment'])->name('chat.processPayment');
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');

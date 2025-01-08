@@ -7,6 +7,7 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redirect;
 use PhpParser\Node\Expr\Throw_;
 
 class TBOController extends Controller
@@ -122,7 +123,13 @@ class TBOController extends Controller
             "CountryCode" => $countryCode
         ];
 
-        $cities = $this->tboPostAuthentication($url, $data)['CityList'];
+        $cities = $this->tboPostAuthentication($url, $data);
+        
+        if($cities['Status']['Code'] !== 200){
+            return Redirect::back()->withErrors($cities['Status']['Description']);
+        }
+
+        $cities = $cities['CityList'];
 
         return view('suppliers.tbo.city', compact('cities'));
     }

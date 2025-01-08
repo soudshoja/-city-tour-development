@@ -19,7 +19,7 @@
                 <div class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md text-center text-sm w-full">No Country Found</div>
                 @else
                 @foreach($countries as $country)
-                <a href="{{ route('suppliers.tbo.city-list', [ 'countryCode' => $country['Code']]) }}" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md text-center text-sm w-full">{{ $country['Name'] }}</a>
+                <a href="{{ route('suppliers.tbo.city-list', [ 'countryCode' => $country['Code']]) }}" class="p-2 bg-gradient-to-r from-gray-800 to-gray-500  dark:to-blue-600 rounded-md text-center text-sm text-white w-full">{{ $country['Name'] }}</a>
                 @endforeach
                 @endif
             </div>

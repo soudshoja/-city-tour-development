@@ -52,7 +52,7 @@ class TBOController extends Controller
             'endDate' => $endDate
         ]);
 
-        $pastBookings = $this->bookingDetail($data)['BookingDetail'];
+        $pastBookings = $this->bookingDetail($data);
         return view('suppliers.tbo.index', compact('countries', 'pastBookings', 'startDate', 'endDate'));
     }
 
@@ -77,15 +77,9 @@ class TBOController extends Controller
 
     public function bookingDetail(Request $request)
     {
-        // $startDate = '2024-11-01';
-        // $endDate = '2025-01-07';
         $startDate = $request->query('startDate');
         $endDate = $request->query('endDate');
-    //     return [
-    // "FromDate" => $startDate,
-    //         "ToDate" => $endDate
-    //     ];
-      
+   
         $url = '/BookingDetailsbasedondate';
         
         $response = $this->tboPostAuthentication($url, [
@@ -93,7 +87,14 @@ class TBOController extends Controller
             "ToDate" => $endDate
         ]);
 
-        return $response;
+        if($response['Status']['Code'] !== 200){
+            
+            return response()->json([
+                'error' => $response['Status']['Description']
+            ]);
+        }
+
+        return $response['BookingDetail'];
     }
 
     public function countryList()

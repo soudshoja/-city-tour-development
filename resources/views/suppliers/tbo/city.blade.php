@@ -22,7 +22,7 @@
             <div class="p-4 rounded-b-lg bg-white dark:bg-gray-600 overflow-auto shadow-sm max-h-160">
                 <div class="px-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     @foreach($cities as $city)
-                    <a href="{{ route('suppliers.tbo.hotel-list', ['cityCode' => $city['Code']]) }}" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md text-center text-sm w-full">{{ $city['Name'] }}</a>
+                    <a href="{{ route('suppliers.tbo.hotel-list', ['cityCode' => $city['Code']]) }}" class="p-2 bg-gradient-to-r from-gray-800 to-gray-500 dark:to-blue-600 rounded-md text-center text-white w-full">{{ $city['Name'] }}</a>
                     @endforeach
                 </div>
             </div>

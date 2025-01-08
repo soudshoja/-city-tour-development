@@ -41,7 +41,7 @@
             </div>
         </div>
     </div>
-    <div class="flex justify-start items-center my-5 p-2 bg-white shadow-md rounded-md">
+    <div class="flex justify-start items-center my-5 p-2 bg-white dark:bg-dark shadow-md rounded-md">
         <div class="mr-2">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 7V13" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" />
@@ -51,32 +51,35 @@
         </div>
         <span class="">Activate supplier to allow the system users to request API from the supplier</span>
     </div>
-    <div class="mt-5 overflow-x-auto bg-white shadow rounded-lg">
-        <div class="max-h-160 overflow-y-auto custom-scrollbar">
-            <table class="">
-                <thead class="sticky top-0">
-                    <tr>
-                        <th class="px-4 py-2">Supplier Name</th>
-                        <th class="px-4 py-2">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($suppliers as $supplier)
-                    <tr class=" hover:bg-gray-100">
-                        <td class="px-4 py-2 border cursor-pointer">
-                            <a href="{{ route('suppliers.show', $supplier->id) }}">
-                                <span class="font-bold">» {{ $supplier->name }}</span><br>
-                            </a>
-                        </td>
-                        <td class="px-4 py-2 border text-center space-x-2">
-                            <button class="bg-green-500 text-white px-2 py-1 rounded">Activate</button>
-                            <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Deactivate</button>
-                            <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</button>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+    <div class="max-h-160 overflow-y-auto custom-scrollbar">
+        <table class="">
+            <thead class="sticky top-0">
+                <tr>
+                    <th class="px-4 py-2">Supplier Name</th>
+                    <th class="px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-dark rounded-md p-2">
+                @foreach ($suppliers as $supplier)
+                <tr class=" hover:bg-gray-200 dark:hover:bg-gray-600">
+                    <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
+                        <a href="{{ route('suppliers.show', $supplier->id) }}">
+                            <span class="font-bold">» {{ $supplier->name }}</span><br>
+                        </a>
+                    </td>
+                    <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2">
+                        <button class="bg-green-500 text-white px-2 py-1 rounded">Activate</button>
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Deactivate</button>
+                        @php
+                        $indexRoute = 'suppliers.' . $supplier->route . '.index';
+                        @endphp
+                        @if(Route::has($indexRoute))
+                        <a href="{{ route($indexRoute) }}" class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</a>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </x-app-layout>

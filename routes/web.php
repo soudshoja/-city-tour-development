@@ -25,6 +25,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\TBOController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
@@ -127,10 +128,30 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
     Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
 
-    // verdors routes
-    Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
-    Route::get('/suppliers/{suppliersId}',[SupplierController::class, 'show'])->name('suppliers.show');
-    Route::get('/suppliers/total-ledger/{supplierId}/date/{endDate}',[SupplierController::class, 'getTotalDebitCredit'])->name('suppliers.total-ledger');
+    // SUPPLIERS
+    Route::group([
+            'middleware' => ['auth'],
+            'prefix' => 'suppliers',
+            'as' => 'suppliers.',
+    ], function () {
+        Route::get('/', [SupplierController::class, 'index'])->name('index');
+        Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
+        Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
+
+        Route::group([
+            'prefix' => 'tbo',
+            'as' => 'tbo.',
+        ], function () {
+            Route::get('index', [TBOController::class, 'index'])->name('index');
+            Route::get('search', [TBOController::class, 'search'])->name('search');
+            Route::get('country', [TBOController::class, 'countryList'])->name('country-list');
+            Route::get('country/{countryCode}/city', [TBOController::class, 'cityList'])->name('city-list');
+            Route::get('city/{cityCode}/hotel', [TBOController::class, 'hotelCityList'])->name('hotel-list');
+            Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
+            Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
+            Route::get('booking-details', [TBOController::class, 'bookingDetail'])->name('booking-details');
+        });
+    });
 
     //ROLE
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');

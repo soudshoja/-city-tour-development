@@ -8,11 +8,11 @@
             <div class="flex justify-between items-center w-auto">
                 <div class="flex items-center mx-4">
                     <label for="startDate" class="mr-2">Start Date:</label>
-                    <input type="date" id="startDate" x-model="startDate" class="border border-gray-300 dark:border-gray-700 dark:bg-dark p-2 rounded">
+                    <input type="date" id="startDate" class="border border-gray-300 dark:border-gray-700 dark:bg-dark p-2 rounded">
                 </div>
                 <div class="flex items-center mx-4">
                     <label for="endDate" class="mr-2">End Date:</label>
-                    <input type="date" id="endDate" x-model="endDate" class="border border-gray-300 dark:border-gray-700 dark:bg-dark p-2 rounded">
+                    <input type="date" id="endDate" class="border border-gray-300 dark:border-gray-700 dark:bg-dark p-2 rounded">
                 </div>
             </div>
             <button id="filter-button" class="bg-blue-500 dark:bg-blue-600 hover:bg-blue-700 text-white text-lg px-2 rounded-md shadow-md w-48 font-semibold">Search</button>

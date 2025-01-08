@@ -44,7 +44,16 @@ class TBOController extends Controller
 
         $countries->setPath($request->url());
 
-        return view('suppliers.tbo.index', compact('countries'));
+        $startDate = date('Y-m-d', strtotime('-100 days'));
+        $endDate = date('Y-m-d');
+
+        $data = new Request([
+            'startDate' => $startDate,  
+            'endDate' => $endDate
+        ]);
+
+        $pastBookings = $this->bookingDetail($data)['BookingDetail'];
+        return view('suppliers.tbo.index', compact('countries', 'pastBookings', 'startDate', 'endDate'));
     }
 
     public function tboGetAuthentication(string $url) 
@@ -68,16 +77,17 @@ class TBOController extends Controller
 
     public function bookingDetail(Request $request)
     {
-        // if($request->input('startDate') && $request->input('endDate')){
-        //     $startDate = $request->input('startDate');
-        //     $endDate = $request->input('endDate');
-        // }
-
-        $startDate = '2024-11-01';
-        $endDate = '2025-01-07';
-
+        // $startDate = '2024-11-01';
+        // $endDate = '2025-01-07';
+        $startDate = $request->query('startDate');
+        $endDate = $request->query('endDate');
+    //     return [
+    // "FromDate" => $startDate,
+    //         "ToDate" => $endDate
+    //     ];
+      
         $url = '/BookingDetailsbasedondate';
-
+        
         $response = $this->tboPostAuthentication($url, [
             "FromDate" => $startDate,
             "ToDate" => $endDate

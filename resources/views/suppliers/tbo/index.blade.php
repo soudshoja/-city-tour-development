@@ -10,12 +10,10 @@
             <span>TBO Holidays</span>
         </li>
     </ul>
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white p-4 dark:bg-gray-600 overflow-hidden shadow-sm rounded-t-lg font-semibold">
+    @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings])
+    <div class="">
+        <div class="bg-white p-4 dark:bg-gray-600 overflow-hidden shadow-sm rounded-lg font-semibold">
             COUNTRY AVAILABLE
-        </div>
-        <hr class="dark:border-gray-200">
-        <div class="p-4 rounded-b-lg bg-white dark:bg-gray-600 overflow-hidden shadow-sm">
             <div class="px-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 @if($countries->isEmpty())
                 <div class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md text-center text-sm w-full">No Country Found</div>

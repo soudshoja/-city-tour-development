@@ -266,10 +266,91 @@
             <div class="p-4">
                 <p class="mb-4">Enter client Information:</p>
                 <form id="client-form" class="space-y-4">
-                    <div id="client-fields" class="space-y-2">
-                        <!-- Pricing fields will be dynamically loaded here -->
-                    </div>
-                    <button type="submit" class="btn primary-btn">Create Client</button>
+                          <div class="mb-4 flex gap-4">
+                                <!-- Name Field -->
+                                <div class="w-1/2">
+                                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                    <input id="name" name="name" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Name" />
+                                </div>
+
+                                <!-- Email Field -->
+                                <div class="w-1/2">
+                                    <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                    <input id="email" name="email" type="email" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Email" />
+                                </div>
+                            </div>
+
+                            <div class="mb-4 flex gap-4">
+                                <!-- Phone Field -->
+                                <div class="w-1/2">
+                                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                    <input id="phone" name="phone" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Phone" />
+                                </div>
+
+                                <!-- Address Field -->
+                                <div class="w-1/2">
+                                    <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                    <input id="address" name="address" type="text"
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Address" />
+                                </div>
+                            </div>
+
+                            <!-- Passport Number Field -->
+                            <div class="mb-4">
+                                <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
+                                <input id="passport_no" name="passport_no" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Passport Number" />
+                            </div>
+
+                            <!-- Agent Email Field -->
+                            <div class="mb-4">
+                                <label for="agent_email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
+                                <input id="agent_email" name="agent_email" type="email" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Agent Email" />
+                            </div>
+
+                            <!-- Status Field -->
+                            <div class="mb-4">
+                                <div class="flex flex-col">
+                                    <div class="flex items-center space-x-4">
+                                        <label class="text-lg font-semibold mb-2">Status:</label>
+
+                                        <!-- Active Radio Button -->
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
+                                            <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
+                                                <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                            </span>
+                                            <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
+                                        </label>
+
+                                        <!-- Inactive Radio Button -->
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
+                                            <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
+                                                <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                            </span>
+                                            <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="flex items-center justify-center">
+                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                    Register Client
+                                </button>
+                            </div>
                 </form>
             </div>
         </div>
@@ -282,11 +363,53 @@
             </div>
             <div class="p-4">
                 <p class="mb-4">Enter agent Information:</p>
-                <form id="agent-form" class="space-y-4">
-                    <div id="agent-fields" class="space-y-2">
-                        <!-- Pricing fields will be dynamically loaded here -->
-                    </div>
-                    <button type="submit" class="btn primary-btn">Create Agent</button>
+                 <form id="agent-form" class="space-y-4">
+                                 <div class="mb-4">
+                                        <label for="name"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                        <input  name="name" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Agent Name" />
+                                    </div>
+
+                                    <!-- Email Address -->
+                                    <div class="mb-4">
+                                        <label for="email"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                        <input name="email" type="email" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Agent Email" />
+                                    </div>
+
+                                    <!-- Phone Field -->
+                                    <div class="mb-4">
+                                        <label for="phone_number"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
+                                            Number</label>
+                                        <input id="phone_number" name="phone_number" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Phone Number" />
+                                    </div>
+
+                                    <!-- Agent Type -->
+                                    <div class="mb-4">
+                                        <label for="type"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Type</label>
+                                        <select id="type" name="type" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                            <option value="staff">Staff</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+                                <div id="agent-fields" class="space-y-2">
+                                    <!-- Pricing fields will be dynamically loaded here -->
+                                </div>
+                              <div class="flex items-center justify-center">
+                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                    Register Agent
+                                </button>
+                            </div>
                 </form>
             </div>
         </div>
@@ -300,10 +423,65 @@
             <div class="p-4">
                 <p class="mb-4">Enter branch Information:</p>
                 <form id="branch-form" class="space-y-4">
-                    <div id="branch-fields" class="space-y-2">
-                        <!-- Pricing fields will be dynamically loaded here -->
-                    </div>
-                    <button type="submit" class="btn primary-btn">Create Branch</button>
+                <div id="branch-modal" class="w-full lg:w-3/5 p-8 flex items-center justify-center">
+                            <div class="w-full">
+                                    <!-- Name Field -->
+                                    <div class="mb-4">
+                                        <label for="name"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Branch Name</label>
+                                        <input id="branch_name" name="branch_name" type="text" required autofocus
+                                            autocomplete="name"
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Branch Name" />
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="name"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">User Name</label>
+                                        <input name="name" type="text" required autofocus
+                                            autocomplete="name"
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="User Name" />
+                                    </div>
+
+                                    <!-- Email Field -->
+                                    <div class="mb-4">
+                                        <label for="email"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                        <input type="email" name="email" required
+                                            autocomplete="username"
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Email" />
+                                    </div>
+                                    <!-- phone Field -->
+                                    <div class="mb-4">
+                                        <label for="phone"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
+                                            Number</label>
+                                        <input  name="phone" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Contact" />
+                                    </div>
+
+                                    <!-- Address Field -->
+                                    <div class="mb-4">
+                                        <label for="address"
+                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                        <input  name="address" type="text" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                            placeholder="Company Address" />
+                                    </div>
+
+
+                                <!-- Submit Button -->
+                                    <div class="flex items-center justify-center">
+                                        <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                            Register Branch
+                                        </button>
+                                    </div>
+                         
+                            </div>
+                        </div>
                 </form>
             </div>
         </div>
@@ -991,211 +1169,64 @@ async function save(type, data) {
 
 
         function loadClient() {
-                // Clear existing content in the client fields container
-                clientFields.empty();
 
                 // Show the client creation form
                 createClient.show();
+        }
+        // Handle form submission
+        $('#client-form').on('submit', function (event) {
+            event.preventDefault();
+            // Collect form data
+            const formData = $(this).serialize();
 
-                // Define the HTML for the "Add New Client" form
-                const addClientForm = `
-                    <div id="client-modal" class="p-6">
-                        <!-- Add New Client Form -->
-                        <h6 class="text-lg font-bold mb-3">Add New Client</h6>
-                        <form id="client-form">
-                            <div class="mb-4 flex gap-4">
-                                <!-- Name Field -->
-                                <div class="w-1/2">
-                                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                    <input id="name" name="name" type="text" required
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Name" />
-                                </div>
+            // Submit the form via AJAX
+            $.ajax({
+                url: "{{ route('chat.client') }}",
+                method: "POST",
+                data: formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                },
+                success: function (response) {
+                    if (response.success) {
+                    const client = response.client;
+                    appendMessage("cityTour", `New client created: <span style="color: #ff9800; font-weight: bold;">${client.name}</span>`);
+                    createClient.hide();
 
-                                <!-- Email Field -->
-                                <div class="w-1/2">
-                                    <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                    <input id="email" name="email" type="email" required
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Email" />
-                                </div>
-                            </div>
-
-                            <div class="mb-4 flex gap-4">
-                                <!-- Phone Field -->
-                                <div class="w-1/2">
-                                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                                    <input id="phone" name="phone" type="text" required
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Phone" />
-                                </div>
-
-                                <!-- Address Field -->
-                                <div class="w-1/2">
-                                    <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                    <input id="address" name="address" type="text"
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Address" />
-                                </div>
-                            </div>
-
-                            <!-- Passport Number Field -->
-                            <div class="mb-4">
-                                <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                                <input id="passport_no" name="passport_no" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Passport Number" />
-                            </div>
-
-                            <!-- Agent Email Field -->
-                            <div class="mb-4">
-                                <label for="agent_email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
-                                <input id="agent_email" name="agent_email" type="email" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Agent Email" />
-                            </div>
-
-                            <!-- Status Field -->
-                            <div class="mb-4">
-                                <div class="flex flex-col">
-                                    <div class="flex items-center space-x-4">
-                                        <label class="text-lg font-semibold mb-2">Status:</label>
-
-                                        <!-- Active Radio Button -->
-                                        <label class="flex items-center cursor-pointer">
-                                            <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
-                                            <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
-                                                <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                            </span>
-                                            <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
-                                        </label>
-
-                                        <!-- Inactive Radio Button -->
-                                        <label class="flex items-center cursor-pointer">
-                                            <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
-                                            <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
-                                                <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                            </span>
-                                            <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <div class="flex items-center justify-center">
-                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                                    Register Client
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                `;
-
-                // Append the form to the clientFields container
-                clientFields.append(addClientForm);
-
-                // Show the modal (using Bootstrap)
-                const modal = new bootstrap.Modal(document.getElementById('client-modal'));
-                modal.show();
-
-                // Handle form submission
-                $('#client-form').on('submit', function (event) {
-                    event.preventDefault();
-
-                    // Collect form data
-                    const formData = $(this).serialize();
-
-                    // Submit the form via AJAX
-                    $.ajax({
-                        url: "{{ route('chat.client') }}",
-                        method: "POST",
-                        data: formData,
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-                        },
-                        success: function (response) {
-                            alert("Client registered successfully!");
-                            modal.hide(); // Hide the modal
-                        },
-                        error: function (xhr) {
-                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
-                        },
-                    });
-                });
-
-            }
+                    }
+                },
+                error: function (xhr) {
+                    alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                },
+            });
+        });
 
 
-        function loadAgent(tasks) {
+        function loadAgent(branches) {
+            console.log(branches);
             agentFields.empty();
             createAgent.show();
              // Define the HTML for the "Add New Client" form
+
+             const branchOptions = branches.map(branch => `<option value="${branch.id}">${branch.name}</option>`).join('');
+
              const addAgentForm = `
-                    <div id="agent-modal" class="w-full lg:w-3/5 p-8 flex items-center justify-center">
-                            <div class="w-full">
-                                <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Register New
-                                    Agent</h2>
-
-                                <!-- Registration Form -->
-                                <form id="agent-form">
-                                    <!-- Name Field -->
+                                 
+                               <!-- Branches Dropdown -->
                                     <div class="mb-4">
-                                        <label for="name"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                        <input id="name" name="name" type="text" required
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Agent Name" />
-                                    </div>
-
-                                    <!-- Email Address -->
-                                    <div class="mb-4">
-                                        <label for="email"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                        <input id="email" name="email" type="email" required
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Agent Email" />
-                                    </div>
-
-                                    <!-- Phone Field -->
-                                    <div class="mb-4">
-                                        <label for="phone_number"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
-                                            Number</label>
-                                        <input id="phone_number" name="phone_number" type="text" required
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Phone Number" />
-                                    </div>
-
-                                    <!-- Agent Type -->
-                                    <div class="mb-4">
-                                        <label for="type"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Type</label>
-                                        <select id="type" name="type" required
+                                        <label for="branch_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Branch</label>
+                                        <select id="branch_id" name="branch_id" required
                                             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                            <option value="staff">Staff</option>
-                                            <option value="manager">Manager</option>
-                                            <option value="admin">Admin</option>
+                                            <option value="" disabled selected>Select Branch</option>
+                                            ${branchOptions}
                                         </select>
                                     </div>
-
-                                <!-- Submit Button -->
-                                    <div class="flex items-center justify-center">
-                                        <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                                            Register Agent
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
                 `;
 
                 // Append the form to the clientFields container
                 agentFields.append(addAgentForm);
+        }
 
-                // Show the modal (using Bootstrap)
-                const modal = new bootstrap.Modal(document.getElementById('agent-modal'));
-                modal.show();
 
                 // Handle form submission
                 $('#agent-form').on('submit', function (event) {
@@ -1203,7 +1234,7 @@ async function save(type, data) {
 
                     // Collect form data
                     const formData = $(this).serialize();
-
+                     console.log('data:', formData);
                     // Submit the form via AJAX
                     $.ajax({
                         url: "{{ route('chat.agent') }}",
@@ -1213,138 +1244,26 @@ async function save(type, data) {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
                         },
                         success: function (response) {
-                            alert("Client registered successfully!");
-                            modal.hide(); // Hide the modal
+                            if (response.success) {
+                            const agent = response.agent;
+                            appendMessage("cityTour", `New agent created: <span style="color: #ff9800; font-weight: bold;">${agent.name}</span>`);
+                            createAgent.hide();
+                            
+                            }
                         },
                         error: function (xhr) {
-                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register agent."));
                         },
                     });
                 });
 
-        }
+        
 
         function loadBranch(tasks) {
-            branchFields.empty();
             createBranch.show();
-            // Define the HTML for the "Add New Client" form
-            const addBranchForm = `
-                  <div id="branch-modal" class="w-full lg:w-3/5 p-8 flex items-center justify-center">
-                            <div class="w-full">
-                                <h2 class="text-3xl font-semibold text-gray-700 dark:text-gray-200 text-center mb-6">Add New
-                                    Branch</h2>
+        }
 
-                                <!-- Registration Form -->
-                                <form id="branch-form">
-                                    <!-- Name Field -->
-                                    <div class="mb-4">
-                                        <label for="name"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                        <input id="name" name="name" type="text" :value="old('name')" required autofocus
-                                            autocomplete="name"
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Company Name" />
-                                    </div>
-
-                                    <!-- Email Field -->
-                                    <div class="mb-4">
-                                        <label for="email"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                        <input id="email" type="email" name="email" :value="old('email')" required
-                                            autocomplete="username"
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Company Email" />
-                                    </div>
-                                    <!-- phone Field -->
-                                    <div class="mb-4">
-                                        <label for="phone"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone
-                                            Number</label>
-                                        <input id="phone" name="phone" type="text" required
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Company Contact" />
-                                    </div>
-                                    <!-- country Field -->
-                                    <div class="mb-4">
-                                        <label for="nationality"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Country
-                                        </label>
-                                        <input id="nationality" name="nationality" type="text" required
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Company country" />
-                                    </div>
-                                    <!-- Address Field -->
-                                    <div class="mb-4">
-                                        <label for="address"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                        <input id="address" name="address" type="text" required
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Company Address" />
-                                    </div>
-
-                                    <!-- iata Field -->
-                                    <div class="mb-4">
-                                        <label for="iata_status"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Does this company
-                                            has an
-                                            IATA ID?</label>
-                                        <div class="flex items-center">
-                                            <input type="radio" id="iata_yes" name="iata_status" value="yes" class="mr-2"
-                                                onclick="toggleIataInput(true)">
-                                            <label for="iata_yes" class="mr-4 text-gray-700 dark:text-gray-300">Yes</label>
-                                            <input type="radio" id="iata_no" name="iata_status" value="no" class="mr-2"
-                                                onclick="toggleIataInput(false)">
-                                            <label for="iata_no" class="text-gray-700 dark:text-gray-300">No</label>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4" id="iata_input" style="display: none;">
-                                        <label for="iata" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">IATA
-                                            ID</label>
-                                        <input id="iata" name="iata" type="text"
-                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                            placeholder="Enter IATA ID" />
-                                    </div>
-
-                                    <!-- Commercial License Field -->
-                                    <div class="mb-4">
-                                        <label for="commercial_license"
-                                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                            Commercial License (PDF)
-                                        </label>
-                                        <!-- Hidden File Input -->
-                                        <input id="commercial_license" name="commercial_license" type="file"
-                                            accept="application/pdf" class="hidden">
-                                        <!-- Custom Button to Trigger File Input -->
-                                        <div class="flex items-center">
-                                            <button type="button" onclick="document.getElementById('commercial_license').click()"
-                                                class="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                                Choose file...
-                                            </button>
-                                            <span id="file-name" class="ml-3 text-sm text-gray-500">No file chosen</span>
-                                        </div>
-                                    </div>
-
-
-
-                                <!-- Submit Button -->
-                                    <div class="flex items-center justify-center">
-                                        <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                                            Register Agent
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                `;
-
-                // Append the form to the clientFields container
-                branchFields.append(addBranchForm);
-
-                // Show the modal (using Bootstrap)
-                const modal = new bootstrap.Modal(document.getElementById('branch-modal'));
-                modal.show();
-
+     
                 // Handle form submission
                 $('#branch-form').on('submit', function (event) {
                     event.preventDefault();
@@ -1361,30 +1280,22 @@ async function save(type, data) {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
                         },
                         success: function (response) {
-                            alert("Client registered successfully!");
-                            modal.hide(); // Hide the modal
+                            if (response.success) {
+                            const branch = response.branch;
+                            appendMessage("cityTour", `New branch created: <span style="color: #ff9800; font-weight: bold;">${branch.name}</span>`);
+                            createBranch.hide();
+                            
+                            }
                         },
                         error: function (xhr) {
-                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                            alert("Error: " + (xhr.responseJSON?.message || "Unable to register branch."));
                         },
                     });
                 });
 
-        }
+        
 
-        function toggleIataInput(show) {
-                                        var iataInput = document.getElementById('iata_input');
-                                        if (show) {
-                                            iataInput.style.display = 'block';
-                                        } else {
-                                            iataInput.style.display = 'none';
-                                        }
-                                    }
 
-        document.getElementById('commercial_license').addEventListener('change', function() {
-            const fileName = this.files[0] ? this.files[0].name : 'No file chosen';
-            document.getElementById('file-name').textContent = fileName;
-        });
 
         document.getElementById('close-create-client').addEventListener('click', function() {
             createClient.hide();

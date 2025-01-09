@@ -7,12 +7,14 @@ use Illuminate\Http\Request;
 use App\Services\OpenAIService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Account;
 use App\Models\Agent;
+use App\Models\Branch;
 use App\Models\Client;
 use App\Models\GeneralLedger;
 use App\Models\Task;
@@ -98,6 +100,7 @@ class ChatController extends Controller
             return response()->json($response, 200);
 
         } elseif ($classification === 'ActionRequest') {
+            \Log::info('action:', ['class' => $classification]);
             return $this->handleActionRequest($userMessage, $userData);
         } else {
             // Pass the message to OpenAI if it's not recognized as data or action
@@ -190,6 +193,7 @@ class ChatController extends Controller
             ],
         ];
     
+        \Log::info('handleActionRequest:', ['message' => $message]);
         $response = $this->openAIService->getChatResponse($actionMessages);
     
         if (isset($response['choices'][0]['message']['content'])) {
@@ -205,7 +209,8 @@ class ChatController extends Controller
                 if (!is_array($taskIds)) {
                     $taskIds = [];
                 }
-    
+
+                \Log::info('action:', ['action' => $action]);
                 // Handle actions based on parsed response
                 switch ($action) {
                     case 'create invoice':
@@ -216,7 +221,7 @@ class ChatController extends Controller
     
                     case 'create client':
                         return $this->initiatecreateClient($userData);
-    
+                        
                     case 'create agent':
                         return $this->initiatecreateAgent($userData);
     
@@ -791,12 +796,13 @@ class ChatController extends Controller
     {    
     
         $user = Auth::user();
-
+       
         $company = Company::with('branches.agents.clients')->find($user->company->id);
+        $branches = $company->branches;
 
         return response()->json([
             'message' => 'Create New Agent:',
-            'agent' => $company,
+            'agent' => $branches,
         ], 200);
     }
 
@@ -854,25 +860,32 @@ class ChatController extends Controller
     }
 
     
-    private function createAgent($userData)
+    public function createAgent(Request $request)
     {
-        $user = Auth::user();
-        $role = $user->role_id;
+        $userAuth = Auth::user();
+        $role = $userAuth->role_id;
+
+        if ($userAuth->role_id == Role::COMPANY) {
+            $company = $userAuth->company;
+            $company = Company::with('branches.agents')->find($company->id);
+        }
 
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
             'phone_number' => 'required|string',
-            'company_id' => 'required',
+            'branch_id' => 'required',
             'type' => 'required'
         ]);
+
+        try {
 
         // Create a new user
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make('citytour123'),
-            'role' => 'agent'
+            'role_id' => 3
         ]);
 
             $agent = Agent::create([
@@ -880,7 +893,8 @@ class ChatController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone_number' => $request->phone_number,
-                'company_id' => $user->company->id,
+                'company_id' => $company->id,
+                'branch_id' => $request->branch_id,
                 'type' => $request->type,
             ]);
 
@@ -888,22 +902,59 @@ class ChatController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Agent registered successfully!',
-                'client' => $client, // Optionally return client details
+                'agent' => $agent, 
             ], 201);
+
+        } catch (Exception $e) {
+            Log::error('Failed to create agent: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error registering agent: ' . $e->getMessage(),
+                'errors' => $e->errors() ?? [],
+            ], 400);
+        }
+
     }
 
-    private function createBranch($userData)
+    public function createBranch(Request $request)
     {
-        if (!isset($userData['clients']) || count($userData['clients']) === 0) {
-            return response()->json(['error' => 'No clients or agents to remind.'], 400);
+        $userAuth = Auth::user();
+        $role = $userAuth->role_id;
+
+        if ($userAuth->role_id == Role::COMPANY) {
+            $company = $userAuth->company;
+            $company = Company::with('branches.agents')->find($company->id);
         }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required|string'
+        ]);
+
+        // Create a new user
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make('citytour123'),
+            'role_id' => 6
+        ]);
+
+            $branch = Branch::create([
+                'user_id' => $user->id,
+                'name' => $request->branch_name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'company_id' => $company->id
+            ]);
+
     
-        // Logic to send reminders to all clients/agents
-        foreach ($userData['clients'] as $client) {
-            // Example: ReminderService::send($client['contact']);
-        }
-    
-        return response()->json(['success' => true, 'message' => 'Reminders sent successfully.'], 200);
+            return response()->json([
+                'success' => true,
+                'message' => 'Branch registered successfully!',
+                'branch' => $branch, // Optionally return client details
+            ], 201);
     }
 
 

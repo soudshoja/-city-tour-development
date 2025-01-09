@@ -53,7 +53,7 @@ class TBOController extends Controller
             'endDate' => $endDate
         ]);
 
-        $pastBookings = $this->bookingDetail($data);
+        $pastBookings = $this->bookingDetailByDate($data);
         return view('suppliers.tbo.index', compact('countries', 'pastBookings', 'startDate', 'endDate'));
     }
 
@@ -78,6 +78,34 @@ class TBOController extends Controller
 
     public function bookingDetail(Request $request)
     {
+        $data = [];
+
+        if(isset($request->confirmationNumber))
+        {
+            $data['ConfirmationNumber'] = $request->confirmationNumber;
+        } elseif(isset($request->BookingReferenceId)) {
+            $data['BookingReferenceId'] = $request->BookingReferenceId;
+        } else {
+            return Redirect::back()->withErrors('Please provide a valid reference number');
+        }
+
+        $url = '/BookingDetail';
+       
+        $data['PaymentMethod'] = 'Limit';
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        if($response['Status']['Code'] !== 200){
+            return [
+                'error' => $response['Status']['Description']
+            ];
+        }
+
+        return $response['BookingDetail'];
+    }
+
+    public function bookingDetailByDate(Request $request)
+    {
         $startDate = $request->query('startDate');
         $endDate = $request->query('endDate');
    
@@ -90,9 +118,9 @@ class TBOController extends Controller
 
         if($response['Status']['Code'] !== 200){
             
-            return response()->json([
+            return [
                 'error' => $response['Status']['Description']
-            ]);
+            ];
         }
 
         return $response['BookingDetail'];

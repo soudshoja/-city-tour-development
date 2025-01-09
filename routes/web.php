@@ -149,7 +149,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('city/{cityCode}/hotel', [TBOController::class, 'hotelCityList'])->name('hotel-list');
             Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
             Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
-            Route::get('booking-details', [TBOController::class, 'bookingDetail'])->name('booking-details');
+            Route::get('booking-details-by-date', [TBOController::class, 'bookingDetailByDate'])->name('booking-details-by-date');
         });
     });
 

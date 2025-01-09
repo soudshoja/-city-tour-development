@@ -103,7 +103,7 @@
                 return;
             }
 
-            let url = "{!! route('suppliers.tbo.booking-details', ['startDate' => '__startDate__', 'endDate' => '__endDate__']) !!}";
+            let url = "{!! route('suppliers.tbo.booking-details-by-date', ['startDate' => '__startDate__', 'endDate' => '__endDate__']) !!}";
             url = url.replace('__startDate__', startDate);
             url = url.replace('__endDate__', endDate);
 

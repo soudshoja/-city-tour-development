@@ -200,7 +200,7 @@ class TBOController extends Controller
             'Language' => "EN"
         ];
 
-        $response = $this->tboPostAuthentication($url, $data);
+        $response = $this->tboPostAuthentication($url, $data)['HotelDetails'];
         return $response;
     }
 

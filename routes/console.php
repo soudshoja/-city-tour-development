@@ -13,4 +13,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command(function(){
     logger('test');
-})->everyMinute()->runInBackground();
+})->everyMinute()->runInBackground()->name('app:test');

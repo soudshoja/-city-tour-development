@@ -19,6 +19,7 @@ class Agent extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'tbo_reference',
         'email',
         'type_id',
         'phone_number',

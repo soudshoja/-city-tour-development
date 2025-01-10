@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Http\Controllers\TBOController;
+use App\Models\Agent;
+use App\Models\Client;
 use App\Models\Task;
 use App\Models\TaskHotelDetail;
 use Exception;
@@ -53,6 +55,13 @@ class TboTask extends Command
 
         foreach($bookingDetailsToday as $booking)
         {
+            $agent = Agent::where('tbo_reference', $booking['ClientReferenceNumber'])->first();
+
+            if(!$agent){
+                logger('TBO Task Error: Client Reference Number does not register with any agent. Client Reference Number: ' . $booking['ClientReferenceNumber']);
+                return;
+            }
+
             $checkInDate = new \DateTime($booking['CheckInDate']);
             $checkOutDate = new \DateTime($booking['CheckOutDate']);
             $interval = $checkInDate->diff($checkOutDate);
@@ -66,77 +75,118 @@ class TboTask extends Command
 
             logger('TBO Task Details: ', $details);
 
-            try {
-                $task = Task::create([
-                    'client_id' => 34,
-                    'agent_id' => 16,
-                    'type' => 'hotel',
-                    'status' => strtolower($booking['BookingStatus']),
-                    'client_name' => $details['Rooms'][0]['CustomerDetails'][0]['CustomerNames'][0]['FirstName'] . ' ' . $details['Rooms'][0]['CustomerDetails'][0]['CustomerNames'][0]['LastName'],
-                    'reference' => null,
-                    'duration' => $hours,
-                    'payment_type ' => null,
-                    'price' => $booking['BookingPrice'],
-                    'tax' => $details['Rooms'][0]['TotalTax'],
-                    'surcharge' => null,
-                    'total' => $details['Rooms'][0]['TotalFare'],
-                    'cancellation_policy' => json_encode($details['Rooms'][0]['CancelPolicies']),
-                    'additional_info' => null,
-                    'supplier_id' => 1,
-                    'venue' =>  $details['HotelDetails']['City'],
-                    'invoice_price' => null,
-                    'voucher_status' => (string)$details['VoucherStatus'],
-                ]);
-            } catch (Exception $e) {
-                logger('TBO Task Error: ' . $e->getMessage());
+            if(!isset($details['Rooms'])){
+                logger('TBO Task Error: No rooms found');
                 return;
             }
-           
-            $hotelRating = 0.0;
 
-            switch($details['HotelDetails']['Rating']) {
-                case 'OneStar':
-                    $hotelRating = 1.0;
-                    break;
-                case 'TwoStar':
-                    $hotelRating = 2.0;
-                    break;
-                case 'ThreeStar':
-                    $hotelRating = 3.0;
-                    break;
-                case 'FourStar':
-                    $hotelRating = 4.0;
-                    break;
-                case 'All':
-                    $hotelRating = 5.0;
-                    break;
-                default:
-                    $hotelRating = 0.0;
-                    break;
+            if(count($details['Rooms']) < 1){
+                logger('TBO Task Error: No rooms found');
+                return;
             }
 
-            try {
-                $taskHotelDetails = TaskHotelDetail::create([
-                    'task_id' => $task->id,
-                    'hotel_id' => 1,
-                    'booking_time' => Date('Y-m-d H:i:s', strtotime($booking['BookingDate'])),
-                    'check_In' => Date('Y-m-d H:i:s', strtotime($booking['CheckInDate'])),
-                    'check_out' => Date('Y-m-d H:i:s', strtotime($booking['CheckOutDate'])),
-                    'room_amount' => $details['NoOfRooms'],
-                    'room_type' => json_encode($details['Rooms'][0]['Name']),
-                    'room_details' => $details['Rooms'][0]['Inclusion'],
-                    'room_promotion' => $details['Rooms'][0]['RoomPromotion'],
-                    'rate' => $hotelRating,
-                    'meal_type' => $details['Rooms'][0]['MealType'],
-                    'is_refundable' => $details['Rooms'][0]['IsRefundable'],
-                    'supplements' => json_encode($details['Rooms'][0]['Supplements']),
-                ]);
+            foreach($details['Rooms'] as $room){
+                
+                if(!isset($room['CustomerDetails'])){
+                    logger('TBO Task Error: No customer details found');
+                    return;
+                }
 
-                logger('task with id: ' . $task->id . ' and task hotel details with id: ' . $taskHotelDetails->id . ' has been created');
+                if(count($room['CustomerDetails']) < 1){
+                    logger('TBO Task Error: No customer details found');
+                    return;
+                }
 
-            } catch (Exception $e) {
-                logger('TBO Task Error: ' . $e->getMessage());
-                Task::find($task->id)->delete();
+                foreach($room['CustomerDetails'][0]['CustomerNames'] as $key => $customer){
+                    $client = Client::updateOrCreate([
+                        'name' => $customer['FirstName'] . ' ' . $customer['LastName'],
+                    ]);
+
+                    if(!$client){
+                        logger('TBO Task Error: Client failed to create');
+                        return;
+                    }
+
+                    logger('TBO Task Client: '. $client->name . ' created');
+
+                    if($key == 0 ){
+                        $leaderCustomer = $client;
+
+                        logger('TBO Task : Leader Customer: '. $leaderCustomer->name);
+                    }
+                }
+                try{
+                    $task = Task::create([
+                        'client_id' => $client->id,
+                        'agent_id' => $agent->id,
+                        'type' => 'hotel',
+                        'status' => strtolower($booking['BookingStatus']),
+                        'client_name' => $leaderCustomer->name,
+                        'reference' => null,
+                        'duration' => $hours,
+                        'payment_type ' => null,
+                        'price' => $room['TotalFare'],
+                        'tax' => $room['TotalTax'],
+                        'surcharge' => null,
+                        'total' => $room['TotalFare'],
+                        'cancellation_policy' => json_encode($room['CancelPolicies']),
+                        'additional_info' => null,
+                        'supplier_id' => 1,
+                        'venue' =>  $details['HotelDetails']['City'],
+                        'invoice_price' => null,
+                        'voucher_status' => (string)$details['VoucherStatus'],
+                    ]);
+                } catch(Exception $e){
+                    logger('TBO Task Error: ' . $e->getMessage());
+                    return;
+                }
+
+                try{
+                    $hotelRating = 0.0;
+
+                    switch($details['HotelDetails']['Rating']) {
+                        case 'OneStar':
+                            $hotelRating = 1.0;
+                            break;
+                        case 'TwoStar':
+                            $hotelRating = 2.0;
+                            break;
+                        case 'ThreeStar':
+                            $hotelRating = 3.0;
+                            break;
+                        case 'FourStar':
+                            $hotelRating = 4.0;
+                            break;
+                        case 'All':
+                            $hotelRating = 5.0;
+                            break;
+                        default:
+                            $hotelRating = 0.0;
+                            break;
+                    }
+
+                    $taskHotelDetails = TaskHotelDetail::create([
+                        'task_id' => $task->id,
+                        'hotel_id' => 1,
+                        'booking_time' => Date('Y-m-d H:i:s', strtotime($booking['BookingDate'])),
+                        'check_In' => Date('Y-m-d H:i:s', strtotime($booking['CheckInDate'])),
+                        'check_out' => Date('Y-m-d H:i:s', strtotime($booking['CheckOutDate'])),
+                        'room_amount' => 1,
+                        'room_type' => json_encode($room['Name']),
+                        'room_details' => $room['Inclusion'],
+                        'room_promotion' => $room['RoomPromotion'],
+                        'rate' => $hotelRating,
+                        'meal_type' => $room['MealType'],
+                        'is_refundable' => $room['IsRefundable'],
+                        'supplements' => json_encode($room['Supplements']),
+                    ]);
+
+                    logger('task with id: ' . $task->id . ' and task hotel details with id: ' . $taskHotelDetails->id . ' has been created');
+
+                } catch(Exception $e){
+                    logger('TBO Task Error: ' . $e->getMessage());
+                    Task::find($task->id)->delete();
+                }
             }
         }
 

@@ -1,22 +1,5 @@
 <x-app-layout>
     <style>
-        .loading {
-            content: 'Loading...';
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            font-size: 1.5rem;
-            color: #000;
-        }
-
-        .star-filled {
-            color: gold;
-        }
-
-        .star-empty {
-            color: gray;
-        }
     </style>
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <ul class="flex space-x-2 rtl:space-x-reverse text-base md:text-lg sm:text-sm py-3">
@@ -47,7 +30,7 @@
                     @endforeach
                 </div>
                 <div class="w-1/2 text-center">
-                    <div id="hotels" class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                    <div id="hotels" class="">
                         <p>Select a city to view hotels</p>
                     </div>
                 </div>
@@ -60,14 +43,16 @@
 
         cityButtons.forEach(button => {
             button.addEventListener('click', function() {
+                hotels.innerHTML = '';
+
                 const itemId = this.getAttribute('data-item-id');
 
                 let url = "{!! route('suppliers.tbo.hotel-list', ['cityCode' => '__cityCode__']) !!}";
                 url = url.replace('__cityCode__', itemId);
 
-                hotels.classList.add('flex', 'items-center', 'justify-center');
-                hotels.classList.remove('grid')
-                hotels.innerHTML = `
+                const loading = document.createElement('div');
+                loading.classList.add('w-full', 'flex', 'items-center', 'justify-center');
+                loading.innerHTML = `
                     <svg class="animate-spin h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
                         viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
@@ -77,17 +62,53 @@
                         </path>
                     </svg>
                 `;
+                hotels.appendChild(loading);
+                // hotels.classList.add('flex', 'items-center', 'justify-center');
+                // hotels.classList.remove('grid')
+                // hotels.innerHTML = `
+                //     <svg class="animate-spin h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+                //         viewBox="0 0 24 24">
+                //         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                //         </circle>
+                //         <path class="opacity-75" fill="currentColor"
+                //             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z">
+                //         </path>
+                //     </svg>
+                // `;
 
 
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         if (typeof data.error !== 'undefined') throw new Error(data.error);
-                        console.log('data : ', data);
-
                         hotels.innerHTML = '';
 
+
+                        //create breadcrumbs
+                        const breadcrumbs = document.createElement('div');
+                        breadcrumbs.classList.add('flex', 'space-x-2', 'rtl:space-x-reverse', 'text-base', 'md:text-lg', 'sm:text-sm', 'py-3');
+                        breadcrumbs.innerHTML = `
+                            <p class="">
+                                Hotels
+                            </p>
+                        `;
+                        hotels.appendChild(breadcrumbs);
+
+                        var hotelsList = [];
+
+                        const hotelListContainer = document.createElement('div');
+                        hotelListContainer.classList.add('grid', 'grid-cols-2', 'gap-2', 'w-full');
+
+                        hotels.appendChild(hotelListContainer);
+
                         data.forEach(hotel => {
+                            hotelsList.push(hotel);
+
+                            breadcrumbs.innerHTML = `
+                                <p class="">
+                                    <p class=""> Hotels </p>
+                                </p>
+                            `;
 
                             let rating;
 
@@ -106,7 +127,9 @@
                             }
 
                             const hotelDiv = document.createElement('div');
-                            hotelDiv.className = 'rounded-md border-black border dark:border-gray-600 shadow-lg p-2 dark:bg-gray-500';
+                            // hotelDiv.href = "{!! route('suppliers.tbo.hotel-details', ['hotelCode' => '__hotelCode__']) !!}".replace('__hotelCode__', hotel.HotelCode);
+                            hotelDiv.id = 'hotel-' + hotel.HotelCode;
+                            hotelDiv.className = 'rounded-md border-black border dark:border-gray-600 shadow-lg p-2 dark:bg-gray-500 cursor-pointer hover:animate-pulse';
                             hotelDiv.innerHTML = `
                                 <div class="flex justify-between mb-2">
                                     <div>
@@ -125,7 +148,7 @@
                                     </div>
                                 </div>
                             `;
-                            hotels.appendChild(hotelDiv);
+                            hotelListContainer.appendChild(hotelDiv);
 
                             const ratingContainer = hotelDiv.querySelector('.rating-container');
 
@@ -139,15 +162,68 @@
                                 ratingContainer.appendChild(star);
                             }
 
+                            hotelDiv.addEventListener('click', function() {
+                                let url = "{!! route('suppliers.tbo.hotel-details', ['hotelCode' => '__hotelCode__']) !!}".replace('__hotelCode__', hotel.HotelCode);
+                                fetch(url)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (typeof data.error !== 'undefined') throw new Error(data.error);
+
+                                        breadcrumbs.innerHTML = `
+                                            <p class="">
+                                                <p class="" id="hotel-list">Hotels</p>
+                                            </p>
+                                            <p class="before:content-['/'] before:mr-1">
+                                                <p class=""> ${data[0].HotelName} </p>
+                                            </p>
+                                        `;
+
+                                        hotelListContainer.innerHTML = '';
+                                        hotelListContainer.classList.remove('grid', 'grid-cols-2', 'gap-2', 'w-full');
+                                        hotelListContainer.classList.add('flex', 'flex-col', 'w-full', 'p-2');
+
+                                        data.forEach(hotelDetails => {
+                                            const hotelDetailsDiv = document.createElement('div');
+                                            Object.entries(hotelDetails).forEach(([key, value]) => {
+                                                hotelDetailsDiv.innerHTML += `
+                                                    <div class="grid grid-cols-1 text-start">
+                                                        <div class="inline-flex gap-2">
+                                                            <strong>${key}:</strong> ${value}
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            });
+                                            hotelListContainer.appendChild(hotelDetailsDiv);
+                                        })
+
+
+                                    })
+                                    .catch(error => {
+                                        alert(error);
+                                    });
+
+
+                            });
+
+
+
                         });
+
                     })
                     .catch(error => {
-                        alert(error);
+                        // alert(error);
+                        console.log(error);
+                        hotels.innerHTML = `
+                            <div class="text-center w-full font-bold">
+                                No Hotels Found For This City
+                            </div>
+                        `;
+
+                        //clear hotel list; don't need too, but just to be sure
+                        hotelsList = [];
                     })
                     .finally(() => {
                         // Hide loading indicator
-                        hotels.classList.remove('flex', 'items-center', 'justify-center');
-                        hotels.classList.add('grid');
                     });
 
             });

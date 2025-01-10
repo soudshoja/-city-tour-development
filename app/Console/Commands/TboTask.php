@@ -37,8 +37,8 @@ class TboTask extends Command
 
         $bookingDetailsToday = $tboController->bookingDetailByDate(
             new Request([
-                'startDate' => '2025-01-04',
-                'endDate' => '2025-01-04'
+                'startDate' => '2025-01-05',
+                'endDate' => '2025-01-05'
             ])
         );
 

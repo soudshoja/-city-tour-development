@@ -29,6 +29,16 @@ class TaskFlightDetail extends Model
         'task_id',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'departure_time' => 'datetime: H:i',
+            'arrival_time' => 'datetime: H:i',
+            'created_at' => 'datetime: Y-m-d',
+            'updated_at' => 'datetime: Y-m-d',
+        ];
+    }
+
     public function countryFrom()
     {
         return $this->belongsTo(Country::class, 'country_id_from');
@@ -43,5 +53,6 @@ class TaskFlightDetail extends Model
     {
         return $this->belongsTo(Agent::class, 'task_id');
     }
+
 
 }

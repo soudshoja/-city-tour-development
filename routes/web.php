@@ -24,6 +24,8 @@ use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\TBOController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
@@ -126,9 +128,30 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
     Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
 
-    // verdors routes
-    Route::get('/supplierslist', [SupplierController::class, 'index'])->name('supplierslist.index');
+    // SUPPLIERS
+    Route::group([
+            'middleware' => ['auth'],
+            'prefix' => 'suppliers',
+            'as' => 'suppliers.',
+    ], function () {
+        Route::get('/', [SupplierController::class, 'index'])->name('index');
+        Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
+        Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
 
+        Route::group([
+            'prefix' => 'tbo',
+            'as' => 'tbo.',
+        ], function () {
+            Route::get('index', [TBOController::class, 'index'])->name('index');
+            Route::get('search', [TBOController::class, 'search'])->name('search');
+            Route::get('country', [TBOController::class, 'countryList'])->name('country-list');
+            Route::get('country/{countryCode}/city', [TBOController::class, 'cityList'])->name('city-list');
+            Route::get('city/{cityCode}/hotel', [TBOController::class, 'hotelCityList'])->name('hotel-list');
+            Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
+            Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
+            Route::get('booking-details-by-date', [TBOController::class, 'bookingDetailByDate'])->name('booking-details-by-date');
+        });
+    });
 
     //ROLE
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');
@@ -182,6 +205,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
     Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
+    Route::get('/testclient',[OpenAiController::class, 'getClient']);
+    Route::get('/openai/steps', [OpenAiController::class, 'steps'])->name('steps');
+    Route::get('/openai/function-tools', [OpenAiController::class, 'addFunctionTool'])->name('function-tools');
+
+    Route::post('/chat', [ChatController::class, 'chat'])->name('chat.process');
+    Route::post('/chat/tasks/select', [ChatController::class, 'sendprocessTaskSelection'])->name('chat.select');
+    Route::post('/chat/invoices/create', [ChatController::class, 'handleTaskPricing'])->name('chat.create');
+    Route::post('/chat/client', [ChatController::class, 'createClient'])->name('chat.client');
+    Route::post('/chat/agent', [ChatController::class, 'createAgent'])->name('chat.agent');
+    Route::post('/chat/branch', [ChatController::class, 'createBranch'])->name('chat.branch');
+    Route::post('/chat/payment', [ChatController::class, 'processPayment'])->name('chat.processPayment');
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
@@ -224,7 +258,8 @@ Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
+Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');   
+Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial'); 
 Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 

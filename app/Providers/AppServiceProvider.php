@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Providers;
+
+use App\AIService;
+use App\AIServiceInterface;
 use Illuminate\Support\Facades\View;
 
 
@@ -21,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+       
     }
 
     /**

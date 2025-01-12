@@ -9,7 +9,7 @@
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Clients List</h2>
             <!-- total client number -->
-            <div data-tooltip="number of clients" class="relative w-12 h-12 flex items-center justify-center DarkBCcolor rounded-full shadow-sm">
+            <div data-tooltip="number of clients" class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
                 <span class="text-xl font-bold text-white">{{ $clientsCount }}</span>
             </div>
         </div>
@@ -53,7 +53,7 @@
                     <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
 
                     <!-- Search Button with SVG Icon -->
-                    <button type="button" class="btn DarkBCcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                    <button type="button" class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
                         id="searchButton">
                         <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>

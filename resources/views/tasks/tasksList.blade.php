@@ -1,7 +1,6 @@
 <x-app-layout>
 
-
-
+    @include('tasks.tasksjs')
 
     @if($importedTask = session('importedTask'))
     <div
@@ -47,7 +46,7 @@
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Tasks List</h2>
             <!-- total task number -->
-            <div data-tooltip="number of tasks" class="relative w-12 h-12 flex items-center justify-center DarkBCcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 rounded-full shadow-sm">
+            <div data-tooltip="number of tasks" class="relative w-12 h-12 flex items-center justify-center DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 rounded-full shadow-sm">
                 <span class="text-xl font-bold text-white">{{ $taskCount }}</span>
             </div>
         </div>
@@ -80,8 +79,10 @@
 
     <!-- page content -->
     <div class="tableCon">
-        <div class="content-70" id="taskListContainer">
+        <div class="content-70">
             <div class="panel BoxShadow rounded-lg">
+
+                <!-- search & filter buttons -->
                 <div class="flex flex-col sm:flex-row justify-between p-2 gap-3">
                     <!--  search icon -->
                     <div class="relative w-full">
@@ -89,7 +90,7 @@
                         <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
 
                         <!-- Search Button with SVG Icon -->
-                        <button data-tooltip="start searching" type="button" class="DarkBCcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                        <button data-tooltip="start searching" type="button" class="DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
                             id="searchButton">
                             <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5" class="dark:stroke-gray-300"></circle>
@@ -111,7 +112,7 @@
                         <!-- ./customize -->
 
                         <!-- filter -->
-                        <button onclick="getFilters()" class="flex px-5 py-3 gap-2 city-light-yellow rounded-lg shadow-sm items-center">
+                        <button id="toggleFilters" class="flex px-5 py-3 gap-2 city-light-yellow rounded-lg shadow-sm items-center">
                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                 <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
                             </svg>
@@ -134,29 +135,9 @@
                     <!-- ./filter & export buttons -->
 
                 </div>
-
-                <!-- opened filters div -->
-
-                <div id="filterstBox" class="priceDiv">
-                    <div class="pt-5 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                        <div>
-                            <h1>Custom Range Slider</h1>
-                            <div class="priceRangeCon">
-                                <input type="range" min="1" max="1000" value="500" id="priceRange">
-                                <p>Price: <span id="demo"></span></p>
-                            </div>
+                <!-- ./search & filter buttons -->
 
 
-                        </div>
-                        <div>02</div>
-                        <div>03</div>
-                    </div>
-
-
-
-                </div>
-
-                <!-- ./opened filters  div -->
 
 
                 <!-- Table -->
@@ -191,7 +172,9 @@
                             </thead>
                             <tbody>
                                 @foreach($tasks as $task)
-                                <tr data-price="{{ $task->price }}">
+                                <tr
+                                    data-price="{{ $task->price }}" data-supplier-id="{{ $task->supplier->id }}"
+                                    data-branch-id="{{ $task->branch_id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client_id }}" class="taskRow">
                                     <td>
                                         <label class="custom-checkbox" data-tooltip="select task">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
@@ -274,14 +257,202 @@
                 <!-- ./Table  -->
 
             </div>
-
-
         </div>
+
+
         <!-- right -->
-        <div class="content-30 hidden" id="taskDetailsContainer">
-            <!-- display task details here-->
-            <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div> <!-- display task details here-->
+        <!-- Task Details Container -->
+        <div class="content-30 hidden" id="showRightDiv">
+            <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div>
+            <div id="filterstBox" class="panel w-full xl:mt-0 rounded-lg h-auto"><!-- opened filters div -->
+
+                <!-- Filters Header -->
+                <div class="flex justify-between items-center gap-5 mb-5">
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Filters</h1>
+                    <div class="filter-badge flex items-center gap-3 DarkBGcolor  dark:bg-gray-700 dark:hover:bg-gray-600 rounded-full px-4 py-2 shadow">
+                        <span class="font-semibold">0 applied</span>
+                        <button id="clearFilters" data-tooltip="Clear Filters" class="transition">
+                            &times;
+                        </button>
+                    </div>
+                </div>
+                <!-- Selected Filters -->
+                <div class="w-full mb-5">
+                    <div class="flex justify-between">
+                        <div class="flex flex-wrap gap-4">
+
+                            <!-- Selected Status -->
+                            <div id="selected-statuses" class="flex flex-wrap gap-2">
+                                <!-- Selected statuses will appear here dynamically -->
+                            </div>
+
+                            <!-- Selected Types -->
+                            <div id="selected-types" class="flex flex-wrap gap-2">
+                                <!-- Selected types will appear here dynamically -->
+                            </div>
+
+                            <!-- Selected Suppliers -->
+                            <div id="selected-suppliers" class="flex flex-wrap gap-2">
+                                <!-- Selected suppliers will be displayed here dynamically -->
+                            </div>
+
+                            <!-- Selected Agents -->
+                            <div id="selected-agents" class="flex flex-wrap gap-2">
+                                <!-- Selected agents will be displayed here dynamically -->
+                            </div>
+
+                            <!-- Selected Branches -->
+                            <div id="selected-branches" class="flex flex-wrap gap-2">
+                                <!-- Selected branches will be displayed here dynamically -->
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <!--./ Selected Filters -->
+
+                <!-- Filters Container -->
+                <div class="flex flex-col gap-5">
+                    <!-- Filter Options -->
+                    <div class="w-full flex gap-5">
+                        <!-- Filters Container -->
+                        <div class="w-full gap-5 space-y-5">
+
+                            <!-- Filter by Price -->
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-5 shadow-md hover:shadow-lg">
+                                <div class="flex items-center">
+                                    <input type="range" min="1" max="1000" value="500" id="priceRange"
+                                        class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        <span id="ShowTaskFilters" class="font-medium text-gray-800 dark:text-gray-100">0</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Filter by Status -->
+                            <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg">
+                                <!-- Left Icon -->
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16">
+                                    <path fill="#000000" fill-rule="evenodd" d="M15.941 7.033a8 8 0 0 1-14.784 5.112a.75.75 0 1 1 1.283-.778a6.5 6.5 0 1 0 8.922-8.93a.75.75 0 0 1 .776-1.284a8 8 0 0 1 3.803 5.88M9 1a1 1 0 1 1-2 0a1 1 0 0 1 2 0M2.804 5a1 1 0 1 0-1.732-1a1 1 0 0 0 1.732 1M1 7a1 1 0 1 1 0 2a1 1 0 0 1 0-2m4-4.196a1 1 0 1 0-1-1.732a1 1 0 0 0 1 1.732" clip-rule="evenodd" />
+                                </svg>
+
+                                <div class="flex-1 relative">
+                                    <select name="status_id" id="status_id" class="w-full appearance-none bg-transparent border-none
+                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
+                                        <option value="">Select Status</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Assigned">Assigned</option>
+                                        <option value="Booked">Booked</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Confirmed">Confirmed</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                        <option value="Hold">Hold</option>
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Filter by Type -->
+                            <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg">
+                                <!-- Left Icon -->
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 11C14 10.4477 14.4477 10 15 10C15.5523 10 16 10.4477 16 11V13C16 13.5523 15.5523 14 15 14C14.4477 14 14 13.5523 14 13V11Z" stroke="currentColor" stroke-width="1.5"></path>
+                                    <path d="M14.0079 19.0029L13.2579 19.0007V19.0007L14.0079 19.0029ZM14.0137 17L14.7637 17.0022V17H14.0137ZM3.14958 18.8284L2.61991 19.3594H2.61991L3.14958 18.8284ZM3.14958 5.17157L2.61991 4.64058L2.61991 4.64058L3.14958 5.17157ZM2.95308 10.2537L2.58741 10.9085H2.58741L2.95308 10.2537ZM2.01058 8.98947L1.26124 8.95797L2.01058 8.98947ZM2.95308 13.7463L2.58741 13.0915L2.58741 13.0915L2.95308 13.7463ZM2.01058 15.0105L2.75992 14.979L2.01058 15.0105ZM21.0469 10.2537L21.4126 10.9085L21.0469 10.2537ZM21.9894 8.98947L22.7388 8.95797V8.95797L21.9894 8.98947ZM20.8504 5.17157L21.3801 4.64058L21.3801 4.64058L20.8504 5.17157ZM21.0469 13.7463L20.6812 14.4012V14.4012L21.0469 13.7463ZM21.9894 15.0105L22.7388 15.042V15.042L21.9894 15.0105ZM20.8504 18.8284L21.3801 19.3594L21.3801 19.3594L20.8504 18.8284ZM21.9437 14.332L22.5981 13.9656L22.5981 13.9656L21.9437 14.332ZM21.9437 9.66803L22.5981 10.0344L22.5981 10.0344L21.9437 9.66803ZM2.05634 14.332L1.4019 13.9656L1.4019 13.9656L2.05634 14.332ZM2.05634 9.66802L2.71079 9.30168L2.71078 9.30168L2.05634 9.66802ZM14.0137 7H14.7637L14.7637 6.99782L14.0137 7ZM14.0064 4.49855L13.2564 4.50073V4.50073L14.0064 4.49855ZM16.5278 4.0189L16.5471 3.26915L16.5278 4.0189ZM17.0336 19.9642L17.0653 20.7135H17.0653L17.0336 19.9642ZM13.8595 19.8541L13.3299 19.323L13.3299 19.323L13.8595 19.8541ZM14.7579 19.0051L14.7637 17.0022L13.2637 16.9978L13.2579 19.0007L14.7579 19.0051ZM15.0162 16.75C15.1574 16.75 15.2687 16.8637 15.2687 17H16.7687C16.7687 16.0317 15.9823 15.25 15.0162 15.25V16.75ZM15.0162 15.25C14.0501 15.25 13.2637 16.0317 13.2637 17H14.7637C14.7637 16.8637 14.875 16.75 15.0162 16.75V15.25ZM9.99502 4.75H13.5052V3.25H9.99502V4.75ZM13.0079 19.25H9.99502V20.75H13.0079V19.25ZM9.99502 19.25C8.08355 19.25 6.72521 19.2484 5.69469 19.1102C4.68554 18.9749 4.10384 18.721 3.67925 18.2974L2.61991 19.3594C3.3698 20.1074 4.32051 20.4393 5.4953 20.5969C6.64871 20.7516 8.12585 20.75 9.99502 20.75V19.25ZM9.99502 3.25C8.12585 3.25 6.64871 3.24841 5.4953 3.4031C4.32051 3.56066 3.3698 3.89255 2.61991 4.64058L3.67925 5.70256C4.10384 5.27902 4.68554 5.02513 5.69469 4.88979C6.72521 4.75159 8.08355 4.75 9.99502 4.75V3.25ZM2.58741 10.9085C2.97311 11.1239 3.23007 11.533 3.23007 12H4.73007C4.73007 10.9664 4.1586 10.0678 3.31876 9.59884L2.58741 10.9085ZM2.75992 9.02097C2.83795 7.16494 3.09146 6.28889 3.67925 5.70256L2.61991 4.64058C1.59036 5.66758 1.34012 7.08185 1.26124 8.95797L2.75992 9.02097ZM3.23007 12C3.23007 12.467 2.97311 12.8761 2.58741 13.0915L3.31876 14.4012C4.1586 13.9322 4.73007 13.0336 4.73007 12H3.23007ZM1.26124 15.042C1.34012 16.9182 1.59036 18.3324 2.61991 19.3594L3.67925 18.2974C3.09146 17.7111 2.83795 16.8351 2.75992 14.979L1.26124 15.042ZM20.7699 12C20.7699 11.533 21.0269 11.1239 21.4126 10.9085L20.6812 9.59884C19.8414 10.0678 19.2699 10.9664 19.2699 12H20.7699ZM22.7388 8.95797C22.6599 7.08185 22.4096 5.66758 21.3801 4.64058L20.3207 5.70256C20.9085 6.28889 21.1621 7.16494 21.2401 9.02097L22.7388 8.95797ZM21.4126 13.0915C21.0269 12.8761 20.7699 12.467 20.7699 12H19.2699C19.2699 13.0336 19.8414 13.9322 20.6812 14.4012L21.4126 13.0915ZM21.2401 14.979C21.1621 16.8351 20.9085 17.7111 20.3207 18.2974L21.3801 19.3594C22.4096 18.3324 22.6599 16.9182 22.7388 15.042L21.2401 14.979ZM20.6812 14.4012C20.9652 14.5597 21.1507 14.6636 21.2761 14.7427C21.3379 14.7817 21.3653 14.8024 21.3735 14.8093C21.388 14.8213 21.3375 14.7846 21.2892 14.6983L22.5981 13.9656C22.5153 13.8177 22.4043 13.7154 22.3304 13.6542C22.2503 13.5878 22.1613 13.5276 22.0764 13.4741C21.9087 13.3683 21.6804 13.2411 21.4126 13.0915L20.6812 14.4012ZM22.7388 15.042C22.746 14.8706 22.7541 14.6937 22.7476 14.5458C22.741 14.3959 22.7178 14.1795 22.5981 13.9656L21.2892 14.6983C21.2386 14.6079 21.2461 14.5457 21.249 14.6117C21.2503 14.6404 21.2505 14.6822 21.2488 14.7464C21.2472 14.8104 21.244 14.8847 21.2401 14.979L22.7388 15.042ZM21.4126 10.9085C21.6804 10.7589 21.9087 10.6317 22.0764 10.5259C22.1613 10.4724 22.2503 10.4122 22.3304 10.3458C22.4043 10.2846 22.5153 10.1823 22.5981 10.0344L21.2892 9.30168C21.3375 9.21543 21.388 9.17871 21.3735 9.19072C21.3653 9.19756 21.3379 9.21832 21.2761 9.25725C21.1507 9.33637 20.9652 9.44028 20.6812 9.59884L21.4126 10.9085ZM21.2401 9.02097C21.244 9.11528 21.2472 9.18961 21.2488 9.25357C21.2505 9.31779 21.2503 9.35964 21.249 9.38827C21.2461 9.45428 21.2386 9.39206 21.2892 9.30169L22.5981 10.0344C22.7178 9.82054 22.741 9.60408 22.7476 9.45419C22.7541 9.30634 22.746 9.12945 22.7388 8.95797L21.2401 9.02097ZM2.58741 13.0915C2.31959 13.2411 2.0913 13.3683 1.92358 13.4741C1.83872 13.5276 1.74971 13.5878 1.66957 13.6542C1.59566 13.7154 1.48474 13.8177 1.4019 13.9656L2.71078 14.6983C2.6625 14.7846 2.61198 14.8213 2.62648 14.8093C2.63474 14.8024 2.66215 14.7817 2.72387 14.7427C2.84929 14.6636 3.03482 14.5597 3.31876 14.4012L2.58741 13.0915ZM2.75992 14.979C2.75595 14.8847 2.75285 14.8104 2.7512 14.7464C2.74954 14.6822 2.74973 14.6404 2.75099 14.6117C2.75389 14.5457 2.76137 14.6079 2.71078 14.6983L1.4019 13.9656C1.28221 14.1795 1.25903 14.3959 1.25244 14.5458C1.24593 14.6937 1.25403 14.8706 1.26124 15.042L2.75992 14.979ZM3.31876 9.59884C3.03482 9.44028 2.84929 9.33637 2.72386 9.25725C2.66214 9.21832 2.63474 9.19756 2.62648 9.19072C2.61198 9.17871 2.66251 9.21543 2.71079 9.30168L1.4019 10.0344C1.48473 10.1823 1.59565 10.2846 1.66956 10.3458C1.74971 10.4122 1.83872 10.4724 1.92357 10.5259C2.0913 10.6317 2.31959 10.7589 2.58741 10.9085L3.31876 9.59884ZM1.26124 8.95797C1.25403 9.12945 1.24593 9.30634 1.25244 9.45419C1.25903 9.60408 1.28221 9.82054 1.4019 10.0344L2.71078 9.30168C2.76137 9.39206 2.75389 9.45428 2.75099 9.38827C2.74973 9.35964 2.74954 9.31779 2.7512 9.25357C2.75285 9.18961 2.75595 9.11528 2.75992 9.02097L1.26124 8.95797ZM14.7637 6.99782L14.7564 4.49637L13.2564 4.50073L13.2637 7.00218L14.7637 6.99782ZM15.0162 7.25C14.875 7.25 14.7637 7.13631 14.7637 7H13.2637C13.2637 7.96826 14.0501 8.75 15.0162 8.75V7.25ZM15.2687 7C15.2687 7.13631 15.1574 7.25 15.0162 7.25V8.75C15.9823 8.75 16.7687 7.96826 16.7687 7H15.2687ZM15.2687 4.51618V7H16.7687V4.51618H15.2687ZM16.5084 4.76865C18.6966 4.82509 19.6778 5.06124 20.3208 5.70256L21.3801 4.64058C20.2676 3.53084 18.6939 3.32452 16.5471 3.26915L16.5084 4.76865ZM16.7687 4.51618C16.7687 4.656 16.6534 4.77239 16.5084 4.76865L16.5471 3.26915C15.8429 3.25099 15.2687 3.81835 15.2687 4.51618H16.7687ZM13.5052 4.75C13.3698 4.75 13.2568 4.64027 13.2564 4.50073L14.7564 4.49637C14.7544 3.80569 14.1931 3.25 13.5052 3.25V4.75ZM17.0653 20.7135C18.9399 20.6343 20.353 20.384 21.3801 19.3594L20.3208 18.2974C19.7336 18.8831 18.8563 19.1365 17.002 19.2148L17.0653 20.7135ZM15.2687 17V18.9765H16.7687V17H15.2687ZM13.2579 19.0007C13.2575 19.121 13.2572 19.2136 13.255 19.2926C13.2528 19.3721 13.249 19.4192 13.245 19.4481C13.2411 19.4764 13.2396 19.4669 13.2513 19.4387C13.2654 19.4045 13.2911 19.3617 13.3299 19.323L14.389 20.3852C14.6246 20.1502 14.701 19.8709 14.7311 19.6521C14.7582 19.4548 14.7573 19.219 14.7579 19.0051L13.2579 19.0007ZM13.0079 20.75C13.2218 20.75 13.4576 20.7516 13.6549 20.7251C13.8739 20.6957 14.1534 20.6201 14.389 20.3852L13.3299 19.323C13.3687 19.2843 13.4116 19.2587 13.4458 19.2447C13.4741 19.2331 13.4836 19.2346 13.4553 19.2384C13.4264 19.2423 13.3792 19.246 13.2998 19.248C13.2208 19.25 13.1282 19.25 13.0079 19.25V20.75ZM17.002 19.2148C16.8812 19.2199 16.7889 19.2238 16.7101 19.225C16.631 19.2262 16.5849 19.2244 16.5575 19.2217C16.5309 19.2191 16.5426 19.2175 16.5734 19.2292C16.6103 19.2433 16.6536 19.2685 16.6917 19.305L15.6536 20.3878C15.8978 20.6219 16.183 20.6921 16.4108 20.7145C16.6127 20.7344 16.8518 20.7225 17.0653 20.7135L17.002 19.2148ZM15.2687 18.9765C15.2687 19.1953 15.267 19.4374 15.295 19.6397C15.3263 19.8655 15.407 20.1514 15.6536 20.3878L16.6917 19.305C16.7313 19.343 16.7584 19.3863 16.7737 19.4221C16.7863 19.4516 16.7848 19.4622 16.7808 19.4337C16.7768 19.4046 16.7729 19.3566 16.7708 19.2753C16.7687 19.1945 16.7687 19.0997 16.7687 18.9765H15.2687Z" fill="currentColor"></path>
+                                </svg>
+
+                                <!-- Select Dropdown -->
+                                <div class="flex-1 relative">
+                                    <select name="type_id" id="type_id" class="w-full appearance-none bg-transparent border-none
+                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
+                                        <option value="" class="">Select Type</option>
+                                        @foreach($types as $type)
+                                        <option value="{{ $type }}">{{ $type }}</option>
+                                        @endforeach
+                                    </select>
+
+                                </div>
+                            </div>
+
+
+                            <!-- Filter by Supplier -->
+                            <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg">
+                                <!-- Left Icon -->
+                                <svg class="w-5 h-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <g fill="none">
+                                        <path stroke="currentColor" d="M9 6a3 3 0 1 0 6 0a3 3 0 0 0-6 0Zm-4.562 7.902a3 3 0 1 0 3 5.195a3 3 0 0 0-3-5.196Zm15.124 0a2.999 2.999 0 1 1-2.998 5.194a2.999 2.999 0 0 1-2.998-5.194Z"></path>
+                                        <path fill="currentColor" fill-rule="evenodd" d="M9.003 6.125a3 3 0 0 1 .175-1.143a8.5 8.5 0 0 0-5.031 4.766a8.5 8.5 0 0 0-.502 4.817a3 3 0 0 1 .902-.723a7.5 7.5 0 0 1 4.456-7.717m5.994 0a7.5 7.5 0 0 1 4.456 7.717q.055.028.11.06c.3.174.568.398.792.663a8.5 8.5 0 0 0-5.533-9.583a3 3 0 0 1 .175 1.143m2.536 13.328a3 3 0 0 1-1.078-.42a7.5 7.5 0 0 1-8.91 0l-.107.065a3 3 0 0 1-.971.355a8.5 8.5 0 0 0 11.066 0" clip-rule="evenodd"></path>
+                                    </g>
+                                </svg>
+
+                                <!-- Select Dropdown -->
+                                <div class="flex-1 relative">
+                                    <select name="supplier_id" id="supplier_id" class="w-full appearance-none bg-transparent border-none
+                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
+                                        <option value="" class="">Select Supplier</option>
+                                        @foreach($suppliers as $supplier)
+                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Filter by Agent -->
+                            <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg">
+                                <!-- Left Icon -->
+                                <svg class="w-5 h-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <g fill="none">
+                                        <path stroke="currentColor" d="M9 6a3 3 0 1 0 6 0a3 3 0 0 0-6 0Z" />
+                                    </g>
+                                </svg>
+
+                                <!-- Select Dropdown -->
+                                <div class="flex-1 relative">
+                                    <select name="agent_id" id="agent_id" class="w-full appearance-none bg-transparent border-none
+                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
+                                        <option value="" class="">Select Agent</option>
+                                        @foreach($agents as $agent)
+                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Filter by Branch -->
+                            <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg">
+                                <!-- Left Icon -->
+                                <svg class="w-5 h-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <g fill="none">
+                                        <path stroke="currentColor" d="M9 6a3 3 0 1 0 6 0a3 3 0 0 0-6 0Zm-4.562 7.902a3 3 0 1 0 3 5.195a3 3 0 0 0-3-5.196Zm15.124 0a2.999 2.999 0 1 1-2.998 5.194a2.999 2.999 0 0 1 2.998-5.194Z"></path>
+                                        <path fill="currentColor" fill-rule="evenodd" d="M9.003 6.125a3 3 0 0 1 .175-1.143a8.5 8.5 0 0 0-5.031 4.766a8.5 8.5 0 0 0-.502 4.817a3 3 0 0 1 .902-.723a7.5 7.5 0 0 1 4.456-7.717m5.994 0a7.5 7.5 0 0 1 4.456 7.717q.055.028.11.06c.3.174.568.398.792.663a8.5 8.5 0 0 0-5.533-9.583a3 3 0 0 1 .175 1.143m2.536 13.328a3 3 0 0 1-1.078-.42a7.5 7.5 0 0 1-8.91 0l-.107.065a3 3 0 0 1-.971.355a8.5 8.5 0 0 0 11.066 0" clip-rule="evenodd"></path>
+                                    </g>
+                                </svg>
+
+                                <!-- Select Dropdown -->
+                                <div class="flex-1 relative">
+                                    <select name="branch_id" id="branch_id" class="w-full appearance-none bg-transparent border-none
+                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
+                                        <option value="" class="">Select Branch</option>
+                                        @foreach($branches as $branch)
+                                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+
+
+                <!-- ./opened filters  div -->
+            </div>
         </div>
+
+
+
         <!-- ./right -->
     </div>
     <!--./page content-->
@@ -316,235 +487,6 @@
 
     <!-- ./Floating Actions div -->
 
-
-    <!-- table pagination script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const rowsPerPage = 10; // Number of rows per page
-            const table = document.getElementById('myTable');
-            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
-            const paginationContainer = document.querySelector('.dataTable-pagination-list'); // Target pagination container
-            let currentPage = 1;
-            const totalPages = Math.ceil(rows.length / rowsPerPage); // Calculate total pages
-
-            // Function to create pagination
-            function createPagination() {
-                // Remove existing page numbers
-                Array.from(paginationContainer.querySelectorAll('li.page-number')).forEach((el) => el.remove());
-
-                // Create and add page numbers dynamically
-                for (let i = 1; i <= totalPages; i++) {
-                    const li = document.createElement('li');
-                    li.className = `page-number ${i === currentPage ? 'active' : ''}`;
-                    li.innerHTML = `<a href="#"  data-page="${i}">${i}</a>`;
-
-                    const nextPageElement = paginationContainer.querySelector('#nextPage');
-
-                    // Insert before #nextPage if it exists, otherwise append
-                    if (nextPageElement) {
-                        paginationContainer.insertBefore(li, nextPageElement);
-                    } else {
-                        paginationContainer.appendChild(li);
-                    }
-                }
-            }
-
-            // Function to show rows for the current page
-            function showPage(page) {
-                const start = (page - 1) * rowsPerPage;
-                const end = start + rowsPerPage;
-
-                // Show rows for the current page, hide others
-                rows.forEach((row, index) => {
-                    row.style.display = index >= start && index < end ? '' : 'none';
-                });
-
-                currentPage = page; // Update current page
-                createPagination(); // Recreate pagination numbers
-            }
-
-            // Function to handle page number click
-            function handlePageChange(e) {
-                e.preventDefault();
-                const page = parseInt(e.target.dataset.page, 10);
-                if (page && page !== currentPage) {
-                    showPage(page);
-                }
-            }
-
-            // Event listener for previous button
-            const prevPageButton = document.getElementById('prevPage');
-            if (prevPageButton) {
-                prevPageButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (currentPage > 1) {
-                        showPage(currentPage - 1);
-                    }
-                });
-            }
-
-            // Event listener for next button
-            const nextPageButton = document.getElementById('nextPage');
-            if (nextPageButton) {
-                nextPageButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (currentPage < totalPages) {
-                        showPage(currentPage + 1);
-                    }
-                });
-            }
-
-            // Event listener for page numbers
-            paginationContainer.addEventListener('click', (e) => {
-                if (e.target.tagName === 'A' && e.target.dataset.page) {
-                    handlePageChange(e);
-                }
-            });
-
-            // Initialize pagination
-            if (totalPages > 1) {
-                createPagination();
-                showPage(1); // Show the first page initially
-            }
-        });
-    </script>
-
-
-    <!-- show task details script -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const viewTaskLinks = document.querySelectorAll(".viewTask");
-            const taskDetailsDiv = document.getElementById("taskDetails");
-            const taskListContainer = document.getElementById("taskListContainer"); // content-70
-            const taskDetailsContainer = document.getElementById("taskDetailsContainer"); // content-30
-
-            // Track the currently opened task ID
-            let currentlyOpenTaskId = null;
-
-            viewTaskLinks.forEach(link => {
-                link.addEventListener("click", function(event) {
-                    event.preventDefault();
-
-                    const taskId = this.getAttribute("data-task-id");
-                    console.log("Fetching details for Task ID:", taskId); // Debugging log
-
-                    // Toggle close if the same task is clicked
-                    if (currentlyOpenTaskId === taskId) {
-                        console.log("Closing task details..."); // Debugging log
-
-                        // Reset styles to make content-70 full width
-                        taskListContainer.classList.remove("show-details"); // Remove class
-                        taskDetailsContainer.classList.add("hidden"); // Hide details
-                        taskDetailsDiv.innerHTML = ""; // Clear details content
-                        currentlyOpenTaskId = null; // Reset tracking variable
-                        return; // Stop execution
-                    }
-
-                    // Update the currently open task ID
-                    currentlyOpenTaskId = taskId;
-
-                    // Fetch task details
-                    fetch(`/tasks/${taskId}`)
-                        .then(response => {
-                            console.log("Response Status:", response.status); // Debugging log
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch task details. Status: ' + response.status);
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            console.log("Fetched Data:", data); // Debugging log
-
-                            // Ensure valid data
-                            if (data && data.client_name) {
-                                const taskIcon = data.type === 'Flight' ?
-                                    `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <path fill="#1e40af" fill-rule="evenodd"
-                                                    d="m14.014 17l-.006 2.003c-.001.47-.002.705-.149.851s-.382.146-.854.146h-3.01c-3.78 0-5.67 0-6.845-1.172c-.81-.806-1.061-1.951-1.14-3.817c-.015-.37-.023-.556.046-.679c.07-.123.345-.277.897-.586a1.999 1.999 0 0 0 0-3.492c-.552-.308-.828-.463-.897-.586s-.061-.308-.045-.679c.078-1.866.33-3.01 1.139-3.817C4.324 4 6.214 4 9.995 4h3.51a.5.5 0 0 1 .501.499L14.014 7c0 .552.449 1 1.002 1v2c-.553 0-1.002.448-1.002 1v2c0 .552.449 1 1.002 1v2c-.553 0-1.002.448-1.002 1"
-                                                    clip-rule="evenodd" />
-                                                <path fill="#1e40af"
-                                                    d="M15.017 16c.553 0 1.002.448 1.002 1v1.976c0 .482 0 .723.155.87c.154.148.39.138.863.118c1.863-.079 3.007-.331 3.814-1.136c.809-.806 1.06-1.952 1.139-3.818c.015-.37.023-.555-.046-.678c-.069-.124-.345-.278-.897-.586a1.999 1.999 0 0 1 0-3.492c.552-.309.828-.463.897-.586c.07-.124.061-.309.046-.679c-.079-1.866-.33-3.011-1.14-3.818c-.877-.875-2.154-1.096-4.322-1.152a.497.497 0 0 0-.509.497V7c0 .552-.449 1-1.002 1v2a1 1 0 0 1 1.002 1v2c0 .552-.449 1-1.002 1z"
-                                                    opacity=".5" />
-                                            </svg>` :
-                                    `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <path fill="#1e40af"
-                                                    d="M17 19h2v-8h-6v8h2v-6h2zM3 19V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v5h2v10h1v2H2v-2zm4-8v2h2v-2zm0 4v2h2v-2zm0-8v2h2V7z" />
-                                            </svg>`;
-
-                                const taskDescription = data.type === 'Flight' ? 'Kuala Lumpur ------->> Landon' : 'Hotel Name/ London';
-                                // Populate task details
-                                taskDetailsDiv.innerHTML = `
-                                            <div class="justify-center flex items-center mb-5">
-                                                <span
-                                                    class="text-center px-5 py-3 w-full text-lg badge bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600
-                                                                            shadow-md dark:group-hover:bg-transparent rounded-lg text-black dark:text-gray-300">
-                                                    ${data.supplier.name}
-                                                </span>
-                                            </div>
-
-                                            <div class="p-4 justify-between flex items-center gap-5">
-                                                <div class='flex gap-2'>
-                                                    <h3 class='text-lg font-bold mb-2'>Task Details</h3>
-                                                </div>
-                                                <p><span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
-                                                                                ${data.status === 'Completed' ? 'badge-outline-success' : ''}
-                                                                                ${data.status === 'Assigned' ? 'badge-outline-assigned' : ''}
-                                                                                ${data.status === 'Booked' ? 'badge-outline-booked' : ''}
-                                                                                ${data.status === 'Pending' ? 'badge-outline-danger' : ''}
-                                                                                ${data.status === 'Confirmed' ? 'badge-outline-primary' : ''}
-                                                                                ${data.status === 'Cancelled' ? 'badge-outline-danger' : ''}
-                                                                                ${data.status === 'Hold' ? 'badge-outline-danger' : ''}">
-                                                        <strong>${data.status}</strong>
-                                                    </span></p>
-
-                                            </div>
-
-                                            <div class='flex flex-col'>
-                                                <div class="p-4 justify-between flex items-center gap-5">
-                                                    <h3 class='text-md font-bold mb-2'>${data.client_name}</h3>
-                                                    <p>${data.price} - <span class='text-[#1e40af]'>KWD</span></p>
-
-                                                </div>
-
-                                                <!-- flight details -->
-                                                <div class="p-4 justify-between flex items-center gap-5">
-                                                    <div class="flex gap-2 items-center">
-                                                        ${taskIcon}
-                                                        <p>${data.type}</p>
-                                                    </div>
-                                                    <div>${taskDescription}</div>
-                                                </div>
-                                                <!-- ./flight details -->
-                                                <span class='border-b-2 border-[#b1c0db] mb-5'></span>
-                                                    <div class='border border-gray-200 rounded-md hover:bg-gray-200 flex items-center'>
-                                                        <p class='p-3 rounded-l-md bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 w-24'>Agent:</p>
-                                                        <p class="ml-2 flex-1">${data.agent_name || 'Agent name'}</p>
-                                                    </div>
-                                                     <div class='mt-3 border border-gray-200 rounded-md  hover:bg-gray-200 flex items-center'>
-                                                        <p class='p-3 rounded-l-md bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 w-24'>Branch:</p>
-                                                        <p class="ml-2 flex-1">${data.agent_name || 'Branch name'}</p>
-                                                    </div>
-
-                                            </div>
-                                            `;
-                                // Show task details and adjust styles
-                                taskListContainer.classList.add("show-details"); // Shrink content-70
-                                taskDetailsContainer.classList.remove("hidden"); // Show details
-                            } else {
-                                console.warn("Invalid Data:", data); // Debugging log
-                                taskDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid task data received.</p>";
-                                taskDetailsContainer.classList.remove("hidden");
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Error fetching task details:", error);
-                            taskDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load task details.</p>";
-                            taskDetailsContainer.classList.remove("hidden");
-                        });
-                });
-            });
-        });
-    </script>
 
 
     <!-- select all & create invoice script -->
@@ -612,33 +554,62 @@
         });
     </script>
 
-
-    <!-- filter script -->
+    <!-- table pagination script -->
     <script>
-        function getFilters() {
-            var x = document.getElementById("filterstBox");
-            x.style.display = x.style.display === "none" ? "block" : "none";
-        }
+        document.addEventListener("DOMContentLoaded", function() {
+            const rowsPerPage = 10;
+            const table = document.getElementById("myTable");
+            const rows = Array.from(table.querySelector("tbody").rows);
+            const paginationContainer = document.querySelector(".dataTable-bottom");
+            const paginationList = document.querySelector(".dataTable-pagination-list");
+            const prevPageButton = document.getElementById("prevPage");
+            const nextPageButton = document.getElementById("nextPage");
+            let currentPage = 1;
 
-        const slider = document.getElementById("priceRange");
-        const output = document.getElementById("demo");
-        const tableRows = document.querySelectorAll("#myTable tbody tr");
+            function filterRows() {
+                return rows.filter((row) => row.style.display !== "none");
+            }
 
-        output.innerHTML = slider.value;
+            function updatePagination(visibleRows) {
+                const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
 
-        slider.addEventListener('input', function() {
-            const maxPrice = parseFloat(this.value);
-            output.innerHTML = maxPrice;
+                paginationContainer.style.display = visibleRows.length > rowsPerPage ? "flex" : "none";
 
+                paginationList.querySelectorAll("li.page-number").forEach((el) => el.remove());
 
-            tableRows.forEach(row => {
-                const price = parseFloat(row.getAttribute('data-price'));
-                if (!isNaN(price) && price <= maxPrice) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
+                if (totalPages > 1) {
+                    for (let i = 1; i <= totalPages; i++) {
+                        const li = document.createElement("li");
+                        li.className = `page-number ${i === currentPage ? "active" : ""}`;
+                        li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+                        paginationList.insertBefore(li, nextPageButton);
+                    }
+                }
+            }
+
+            function showPage(page, visibleRows) {
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+
+                rows.forEach((row) => (row.style.display = "none"));
+
+                visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
+
+                currentPage = page;
+                updatePagination(visibleRows);
+            }
+
+            document.addEventListener("filterUpdated", function() {
+                const visibleRows = filterRows();
+                updatePagination(visibleRows);
+                if (visibleRows.length > 0) {
+                    showPage(1, visibleRows);
                 }
             });
+
+            const visibleRows = filterRows();
+            updatePagination(visibleRows);
+            showPage(1, visibleRows);
         });
     </script>
 

@@ -80,10 +80,23 @@ thead {
     background-color: #2a4dcd !important;
 }
 
-.DarkBCcolor {
+.DarkBGcolor {
     background-color: #1e40af !important;
+    color: #ffffff !important;
 }
-.DarkBCcolor:hover {
+.DarkBGcolor:hover {
+    background-color: #1c3a9ecb !important;
+}
+
+.DarkBTextcolor {
+    color: #1e40af !important;
+}
+
+:is(.dark .DarkBGcolor) {
+    background-color: #111827;
+    color: #ffffff !important;
+}
+:is(.dark .DarkBGcolor:hover) {
     background-color: #1c3a9ecb !important;
 }
 
@@ -502,6 +515,29 @@ thead {
 }
 
 /** tasks list page *******************************************************************************/
+
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.close-btn {
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: #6a1b9a; /* Dark purple */
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: #4a0072; /* Darker purple on hover */
+}
+
 .priceDiv {
     --tw-bg-opacity: 1;
     background-color: rgb(229 231 235 / var(--tw-bg-opacity));
@@ -544,7 +580,6 @@ thead {
 #filterstBox {
     width: 100%;
     text-align: center;
-    margin-top: 20px;
     display: none;
     border-radius: 0.5rem;
 }
@@ -554,11 +589,18 @@ thead {
     border-radius: 0.5rem; /* 8px */
 }
 
+.bgGradient {
+    background-color: #b1c0db;
+}
+.bgGradient .dark {
+    background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
+}
 .tableCon {
     width: 100%;
     display: flex;
     margin-top: 20px;
     gap: 10px;
+    transition: all 0.3s ease; /* Smooth transition for layout adjustments */
 }
 
 /* Default - Full width */
@@ -567,30 +609,36 @@ thead {
     transition: all 0.3s ease;
 }
 
-/* Show Details - Switch to 70% width */
-.content-70.show-details {
+/* When details or filters are visible - Reduce width */
+.content-70.shrink {
     width: 70%;
 }
 
+/* Sidebar container for details or filters */
 .content-30 {
     width: 30%;
     transition: all 0.3s ease;
+    display: none; /* Hide by default */
 }
 
-/* Hide initially */
-.hidden {
+/* When sidebar (details or filters) is visible */
+.content-30.visible {
+    display: block;
+}
+
+/* Hide filters by default */
+#filterstBox {
     display: none;
 }
 
-.bgGradient {
-    background-color: #b1c0db;
+/* Ensure task details are also hidden initially */
+#taskDetails {
+    display: none;
 }
-.bgGradient .dark {
-    background: linear-gradient(0deg, #2c3e50 0%, #131313 100%) !important;
-}
+
 /* Tablet View */
 @media (min-width: 768px) and (max-width: 1023px) {
-    .content-70.show-details {
+    .content-70.shrink {
         width: 50%;
     }
 
@@ -612,13 +660,14 @@ thead {
         margin-top: 20px;
     }
 
-    .content-70.show-details {
+    .content-70.shrink {
+        width: 100%;
+    }
+
+    .content-30.visible {
         width: 100%;
     }
 }
-
-/**********************************************************************************/
-
 /* Add the slide-up animation */
 @keyframes slideUp {
     from {

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
 
 // Admin registration
-Route::post('register/admin', [RegisteredUserController::class, 'storeAdmin'])->name('register.admin');
+Route::post('register', [RegisteredUserController::class, 'storeAdmin'])->name('register.admin');
 
 
 

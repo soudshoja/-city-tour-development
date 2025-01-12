@@ -7,7 +7,7 @@
             <div class="relative">
                 <!-- Icon Button -->
                 <div
-                    class="p-3 DarkBCcolor  rounded-full shadow-md flex items-center justify-center heartbeat">
+                    class="p-3 DarkBGcolor  rounded-full shadow-md flex items-center justify-center heartbeat">
                     <!-- SVG Icon -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
                         <path fill="#FFC107" d="M33 22h-9.4L30 5H19l-6 21h8.6L17 45z" />

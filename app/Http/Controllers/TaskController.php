@@ -17,6 +17,7 @@ use App\Models\Country;
 use App\Models\Hotel;
 use App\Models\Role;
 use App\Models\Supplier;
+use App\Models\Branch;
 use App\Models\TaskHotelDetail;
 use App\Services\TextFileProcessor;
 use ConvertApi\ConvertApi;
@@ -28,6 +29,7 @@ use Illuminate\Models\Suppliers;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+
 
 
 class TaskController extends Controller
@@ -86,8 +88,12 @@ class TaskController extends Controller
         $tasks = $tasks ?? collect();
         $suppliers = Supplier::all();
 
+        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
+
+        // Fetch distinct task types
+        $types = Task::distinct()->pluck('type');
         // Return the view with the required data
-        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers'));
+        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
     }
 
     public function voucher($id = null)
@@ -492,8 +498,7 @@ class TaskController extends Controller
                 'task_id' => $taskId
             ];
             TaskHotelDetail::create($hotelDetails);
-        
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             throw $e;
         }
     }

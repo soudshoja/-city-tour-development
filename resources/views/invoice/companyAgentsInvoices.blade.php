@@ -81,6 +81,7 @@
                                         </label>
                                     </th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Edit</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client name</th>
@@ -105,7 +106,7 @@
                                         </label>
                                     </td>
                                     <td class="p-3 text-sm">
-                                        <a href="javascript:void(0);" class="viewInvoice text-blue-500 hover:underline">
+                                        <a href="javascript:void(0);" class="viewInvoice text-blue-500 hover:underline" onclick="openInvoiceModal('{{ $invoice->invoice_number }}')">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="#333333" stroke-width="1.5">
                                                     <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
@@ -113,6 +114,25 @@
                                                 </g>
                                             </svg>
                                         </a>
+                                        <div id="viewInvoiceModal"
+                                            class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
+                                            <div class="relative">
+                                                <!-- Modal Content -->
+                                                <div class="w-full">
+
+                                                </div>
+                                                <div id="invoiceInvoiceContent" class="">
+                                                    <!-- Invoice content will be loaded here dynamically -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('invoice.edit', ['invoiceNumber' => $invoice->invoice_number]) }}"
+                                            class="text-sm font-medium text-blue-600 hover:underline">
+                                            Edit
+                                        </a>
+
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
 
@@ -174,53 +194,58 @@
 
         </div>
         <!-- right -->
-        <div class="content-30">
 
-            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
-                <!-- customize -->
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                        <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                    </svg>
-                    <span class="text-sm">Customize</span>
-                </button>
-                <!-- ./customize -->
-
-                <!-- filter -->
-                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
-                    </svg>
-                    <span class="text-sm">Filter</span>
-                </button>
-                <!-- ./filter -->
-
-                <!-- export -->
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
-                    </svg>
-                    <span class="text-sm">Export</span>
-                </button>
-                <!-- ./export -->
-            </div>
-            <div class="mt-5 ">
-                <!-- display Invoice details here-->
-                <div id="InvoiceDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div> <!-- display Invoice details here-->
-
-            </div>
-        </div>
         <!-- ./right -->
     </div>
     <!--./page content-->
 
+    <script>
+        function openInvoiceModal(invoiceNumber) {
+            const modal = document.getElementById("viewInvoiceModal");
+            const contentDiv = document.getElementById("invoiceInvoiceContent");
+
+            // Clear previous content
+            contentDiv.innerHTML = "";
+
+            // Open the modal
+            modal.classList.remove("hidden");
+            url =
+                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
+
+            // Fetch the invoice details
+            fetch(url)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.text();
+                })
+                .then((data) => {
+                    contentDiv.innerHTML = data;
+
+                    // Close the modal when the backdrop is clicked
+                    modal.addEventListener("click", (event) => {
+                        if (event.target === modal) {
+                            closeInvoiceModal();
+                        }
+                    });
 
 
+                })
+                .catch((error) => {
+                    console.error("Error fetching invoice details:", error);
+                    contentDiv.innerHTML =
+                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
 
+                });
+        }
 
-
-
-
-
-
+        function closeInvoiceModal() {
+            const modal = document.getElementById("viewInvoiceModal");
+            modal.classList.add("hidden");
+        }
+    </script>
 </x-app-layout>

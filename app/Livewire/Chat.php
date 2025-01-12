@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\AIService;
 use App\Http\Controllers\OpenAiController;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -13,24 +14,26 @@ class Chat extends Component
     public $messages = [];
     public $prompt;
     public $error = null;
-
+    private $aiService;
     // public function getConversation(int $userId){
     //     $this->conversation = Conversation::with('messages')->where('user_id', $userId)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->first();
     // }
 
-    public function mount(){
+
+    public function boot(AIService $aiService)
+    {
+        $this->aiService = $aiService;
     }
 
     public function loadMessages()
     {
-       
-        $openAiController = new OpenAiController();
+      
         $conversation = Conversation::where('user_id', auth()->user()->id)->where('assistant_id', env('OPENAI_ASSISTANT_ID'))->latest()->first();
        
         // return if no conversation, or if conversation has no thread_id or assistant_id
         if($conversation == null ? true : !($conversation->thread_id && $conversation->assistant_id)) return;
 
-        $messages = $openAiController->getMessages($conversation->thread_id, $conversation->assistant_id, auth()->user());
+        $messages = $this->aiService->getMessages($conversation->thread_id, $conversation->assistant_id, auth()->user());
 
         logger('messages: \n',$messages);
 
@@ -51,24 +54,22 @@ class Chat extends Component
             return;
         }
 
-        $openAiController = new OpenAiController();
+        $openAiController = new OpenAiController($this->aiService);
         $response = $openAiController->askOpenAi($this->prompt, auth()->user()->id);
 
         if($response['status'] == 'error'){
            
             logger('error',$response);
 
-            $this->error = $response['message'];
-            return;
+            return $this->error = $response['message'];
         }
-
-        logger('response: \n',$response);
 
         $this->messages = $response['data'];
     }
 
     public function render()
     {
+        
         return view('livewire.chat');
     }
 }

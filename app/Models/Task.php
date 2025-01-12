@@ -23,6 +23,7 @@ class Task extends Model
         'supplier_id',
         'client_name',
         'cancellation_policy',
+        'invoice_price',
         'venue',
         'voucher_status',
     ];
@@ -33,6 +34,10 @@ class Task extends Model
         return $this->hasOne(TaskFlightDetail::class, 'task_id');
     }
 
+    public function hotelDetails()
+    {
+         return $this->hasOne(TaskHotelDetail::class, 'task_id');
+     }
 
     public function invoiceDetail()
     {

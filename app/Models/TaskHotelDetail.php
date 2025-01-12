@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class TaskHotelDetail extends Model
 {
     protected $fillable = [
+        'task_id',
         'hotel_id',
         'booking_time',
         'check_in',
@@ -16,8 +17,11 @@ class TaskHotelDetail extends Model
         'room_type',
         'room_amount',
         'room_details',
+        'room_promotion',
         'rate',
-        'task_id',
+        'meal_type',
+        'is_refundable',
+        'supplements',
     ];
 
     public function task()
@@ -27,7 +31,7 @@ class TaskHotelDetail extends Model
 
     public function hotel()
     {
-        return $this->hasOne(Hotel::class, 'hotel_id');
+        return $this->hasOne(Hotel::class, 'id');
     }
 
     use HasFactory;

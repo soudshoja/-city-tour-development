@@ -195,8 +195,8 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->branch_name }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->agent_name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>
                                     @endif
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->price }}</td>
@@ -486,6 +486,194 @@
     </div>
 
     <!-- ./Floating Actions div -->
+
+
+
+
+    <!-- table pagination script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rowsPerPage = 10; // Number of rows per page
+            const table = document.getElementById('myTable');
+            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
+            const paginationContainer = document.querySelector('.dataTable-pagination-list'); // Target pagination container
+            let currentPage = 1;
+            const totalPages = Math.ceil(rows.length / rowsPerPage); // Calculate total pages
+
+            // Function to create pagination
+            function createPagination() {
+                // Remove existing page numbers
+                Array.from(paginationContainer.querySelectorAll('li.page-number')).forEach((el) => el.remove());
+
+                // Create and add page numbers dynamically
+                for (let i = 1; i <= totalPages; i++) {
+                    const li = document.createElement('li');
+                    li.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                    li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+
+                    const nextPageElement = paginationContainer.querySelector('#nextPage');
+
+                    // Insert before #nextPage if it exists, otherwise append
+                    if (nextPageElement) {
+                        paginationContainer.insertBefore(li, nextPageElement);
+                    } else {
+                        paginationContainer.appendChild(li);
+                    }
+                }
+            }
+
+            // Function to show rows for the current page
+            function showPage(page) {
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+
+                // Show rows for the current page, hide others
+                rows.forEach((row, index) => {
+                    row.style.display = index >= start && index < end ? '' : 'none';
+                });
+
+                currentPage = page; // Update current page
+                createPagination(); // Recreate pagination numbers
+            }
+
+            // Function to handle page number click
+            function handlePageChange(e) {
+                e.preventDefault();
+                const page = parseInt(e.target.dataset.page, 10);
+                if (page && page !== currentPage) {
+                    showPage(page);
+                }
+            }
+
+            // Event listener for previous button
+            const prevPageButton = document.getElementById('prevPage');
+            if (prevPageButton) {
+                prevPageButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) {
+                        showPage(currentPage - 1);
+                    }
+                });
+            }
+
+            // Event listener for next button
+            const nextPageButton = document.getElementById('nextPage');
+            if (nextPageButton) {
+                nextPageButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) {
+                        showPage(currentPage + 1);
+                    }
+                });
+            }
+
+            // Event listener for page numbers
+            paginationContainer.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A' && e.target.dataset.page) {
+                    handlePageChange(e);
+                }
+            });
+
+            // Initialize pagination
+            if (totalPages > 1) {
+                createPagination();
+                showPage(1); // Show the first page initially
+            }
+        });
+    </script>
+
+
+    <!-- show task details script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const viewTaskLinks = document.querySelectorAll(".viewTask");
+            const taskDetailsDiv = document.getElementById("taskDetails");
+            const taskListContainer = document.getElementById("taskListContainer"); // content-70
+            const taskDetailsContainer = document.getElementById("taskDetailsContainer"); // content-30
+
+            // Track the currently opened task ID
+            let currentlyOpenTaskId = null;
+
+            viewTaskLinks.forEach(link => {
+                link.addEventListener("click", function(event) {
+                    event.preventDefault();
+
+                    const taskId = this.getAttribute("data-task-id");
+                    console.log("Fetching details for Task ID:", taskId); // Debugging log
+
+                    // Toggle close if the same task is clicked
+                    if (currentlyOpenTaskId === taskId) {
+                        console.log("Closing task details..."); // Debugging log
+
+                        // Reset styles to make content-70 full width
+                        taskListContainer.classList.remove("show-details"); // Remove class
+                        taskDetailsContainer.classList.add("hidden"); // Hide details
+                        taskDetailsDiv.innerHTML = ""; // Clear details content
+                        currentlyOpenTaskId = null; // Reset tracking variable
+                        return; // Stop execution
+                    }
+
+                    // Update the currently open task ID
+                    currentlyOpenTaskId = taskId;
+
+                    // Fetch task details
+                    fetch(`/tasks/${taskId}`)
+                        .then(response => {
+                            console.log("Response Status:", response.status); // Debugging log
+                            if (!response.ok) {
+                                throw new Error('Failed to fetch task details. Status: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log("Fetched Data:", data); // Debugging log
+
+                            // Ensure valid data
+                            if (data && data.client_name) {
+                                // Populate task details
+                                taskDetailsDiv.innerHTML = `
+                            <h3 class='text-lg font-bold mb-2'>Task Details</h3>
+                            <div class='flex flex-col rounded-md border border-[#e0e6ed]'>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Client Name:</strong> ${data.client.name}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Agent Name:</strong> ${data.agent.name || 'N/A'}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Type:</strong> ${data.type}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Price:</strong> $${data.price}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Status:</strong> ${data.status}</p>
+                                </div>
+                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
+                                    <p><strong>Supplier:</strong> ${data.supplier.name}</p>
+                                </div>
+                            </div>
+                        `;
+                                // Show task details and adjust styles
+                                taskListContainer.classList.add("show-details"); // Shrink content-70
+                                taskDetailsContainer.classList.remove("hidden"); // Show details
+                            } else {
+                                console.warn("Invalid Data:", data); // Debugging log
+                                taskDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid task data received.</p>";
+                                taskDetailsContainer.classList.remove("hidden");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching task details:", error);
+                            taskDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load task details.</p>";
+                            taskDetailsContainer.classList.remove("hidden");
+                        });
+                });
+            });
+        });
+    </script>
+
+
 
 
 

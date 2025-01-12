@@ -47,6 +47,7 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
+        $tasks = collect();
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get();
@@ -85,7 +86,6 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
         }
 
-        $tasks = $tasks ?? collect();
         $suppliers = Supplier::all();
 
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();

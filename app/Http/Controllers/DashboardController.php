@@ -105,6 +105,11 @@ class DashboardController extends Controller
         // Retrieve the company for the authenticated user with agents
         $company = Company::where('user_id', Auth::id())->with('branches.agents.clients.invoices.invoiceDetails.task')->first();
         // dd($company);
+        // Handle the case where no company is found
+        if (!$company) {
+            return redirect()->back()->with('error', 'No company found for the authenticated user.');
+        }
+
         // Get all agents under the company
         $agents = $company->branches->flatMap(function ($branch) {
             return $branch->agents;

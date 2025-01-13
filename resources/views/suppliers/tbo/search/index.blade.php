@@ -4,8 +4,6 @@
         #search-body>div>div {
             width: 100%;
         }
-
-       
     </style>
     <div id="search-header" class="bg-white font-semibold p-2 my-2 rounded-md text-center">
         Search Hotels
@@ -22,6 +20,7 @@
                 <div class="flex flex-col gap-2">
                     <label for="country">Country</label>
                     <select name="country" id="country" class="h-12 p-2">
+                        <option value="">Select Country</option>
                         @foreach($countryList as $country)
                         <option value="{{ $country['Code'] }}">{{ $country['Name'] }}</option>
                         @endforeach
@@ -118,6 +117,7 @@
         });
 
         const searchButton = document.getElementById('search-button');
+        console.log('search button: ' + searchButton);
 
         searchButton.addEventListener('click', async () => {
             const checkInDate = document.getElementById('checkInDate').value;
@@ -134,8 +134,14 @@
             //     childrenAge.push(childAge);
             // }
 
+            if (!checkInDate || !checkOutDate) {
+                alert('Please select check in and check out date');
+                return;
+            }
+
             const url = "{!! route('suppliers.tbo.search') !!}";
-            console.log(url);
+
+            console.log('url:' + url);
 
             const data = {
                 checkInDate,
@@ -143,8 +149,10 @@
                 hotel,
                 guestNationality,
             };
+            console.log('request data: ' + JSON.stringify(data));
+            const searchResult = document.getElementById('search-result');
 
-            console.log(data);
+            searchResult.innerHTML = 'Loading...';
 
             fetch(url, {
                     method: 'POST',
@@ -156,12 +164,53 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
-                    const searchResult = document.getElementById('search-result');
+                    console.log(data)
+                    if (data.Status.Code !== 200) {
+                        searchResult.innerHTML = '';
+                        alert(data.Status.Description);
+                        return;
+                    }
+
                     searchResult.innerHTML = '';
-                    data.forEach((hotel) => {
+
+                    const hotels = data.HotelResult;
+                    hotels.forEach(hotel => {
+                        hotel.Rooms.forEach(room => {
+                            const roomDiv = document.createElement('div');
+                            roomDiv.classList.add('p-4', 'border', 'rounded', 'mb-4', 'cursor-pointer');
+                            roomDiv.innerHTML = `
+                                <form action="{{ route('suppliers.tbo.prebook.store') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="bookingCode" value="${room.BookingCode}">
+                                    <input type="hidden" name="totalFare" value="${room.TotalFare}">
+                                    <input type="hidden" name="totalTax" value="${room.TotalTax}">
+                                    <input type="hidden" name="mealType" value="${room.MealType}">
+                                    <input type="hidden" name="isRefundable" value="${room.IsRefundable}">
+                                    <input type="hidden" name="roomPromotion" value="${room.RoomPromotion}">
+                                    <input type="hidden" name="inclusion" value="${room.Inclusion}">
+                                    <input type="hidden" name="name" value="${room.Name}">
+                                    <input type="hidden" name="currency" value="${hotel.Currency}">
+                                    <div class="font-bold">${room.Name.join(', ')}</div>
+                                    <div>Inclusion: ${room.Inclusion}</div>
+                                    <div>Total Fare: ${room.TotalFare} ${hotel.Currency}</div>
+                                    <div>Total Tax: ${room.TotalTax} ${hotel.Currency}</div>
+                                    <div>Meal Type: ${room.MealType}</div>
+                                    <div>Refundable: ${room.IsRefundable ? 'Yes' : 'No'}</div>
+                                    <div>Room Promotion: ${room.RoomPromotion.join(', ')}</div>
+                                    <button type="submit" class="bg-black text-white font-semibold p-2 text-center rounded-md cursor-pointer shadow-md">
+                                        Book Now
+                                    </button>
+                                </form>
+                            `;
+                            searchResult.appendChild(roomDiv);
+                        });
                     });
+
                 })
+                .catch((error) => {
+                    searchResult.innerHTML = '';
+                    alert('Error: ' + error);
+                });
         });
     </script>
 </x-app-layout>

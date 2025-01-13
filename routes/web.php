@@ -31,8 +31,7 @@ use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\Charge;
-
-
+use Google\ApiCore\Testing\ProtobufMessageComparator;
 
 // Home route
 // Route::get('/', function () {
@@ -151,6 +150,9 @@ Route::middleware(['auth'])->group(function () {
             Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
             Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
             Route::get('booking-details-by-date', [TBOController::class, 'bookingDetailByDate'])->name('booking-details-by-date');
+            Route::post('prebook', [TBOController::class, 'preBookStore'])->name('prebook.store');
+            Route::get('prebook/{tboId}', [TBOController::class, 'preBookShow'])->name('prebook.show');
+            Route::post('book', [TBOController::class, 'book'])->name('book');
         });
     });
 

@@ -47,7 +47,7 @@ class TboTask extends Command
         if(isset($bookingDetailsToday['error']))
         {
             logger('TBO Task Error: '. $bookingDetailsToday['error']);
-            return;
+            $this->fail($bookingDetailsToday['error']);
         }
 
 
@@ -59,7 +59,7 @@ class TboTask extends Command
 
             if(!$agent){
                 logger('TBO Task Error: Client Reference Number does not register with any agent. Client Reference Number: ' . $booking['ClientReferenceNumber']);
-                return;
+                $this->fail('Client Reference Number does not register with any agent. Client Reference Number: ' . $booking['ClientReferenceNumber']);
             }
 
             $checkInDate = new \DateTime($booking['CheckInDate']);

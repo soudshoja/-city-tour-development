@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Role;
+use Google\Protobuf\Field\Kind;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Http;
@@ -67,9 +68,102 @@ class TBOController extends Controller
         return Http::withBasicAuth($this->username, $this->password)->post($this->apiUrl . $url, $data);
     }
 
-    public function search()
+    public function searchIndex(Request $request)
     {
-        return 'hello';
+        $hotelList = [];
+        $cityList = [];
+        $hotelCode = '';
+        $guestNationality = '';
+        $countryList = $this->countryList();
+
+        if($request->query('countryCode'))
+        {
+            $cityListResponse = $this->cityList($request->query('countryCode'));
+
+            if($cityListResponse['Status']['Code'] !== 200){
+                return Redirect::back()->with('error', $cityListResponse['Status']['Description']);
+            }
+
+            $cityList = $cityListResponse['CityList'];
+        }
+
+        if($request->query('cityCode'))
+        {
+            $hotelListResponse = $this->hotelCityList($request->query('cityCode'));
+
+            if($hotelListResponse['Status']['Code'] !== 200){
+                $hotelList = [];
+                return Redirect::back()->with('error', $hotelListResponse['Status']['Description']);
+            }
+
+            $hotelList = $hotelListResponse['Hotels'];
+        }
+
+        if($request->query('checkIn'))
+        {
+            $checkIn = $request->query('checkIn');
+        } else {
+            $checkIn = date('Y-m-d');
+        }
+
+        if($request->query('checkOut'))
+        {
+            $checkOut = $request->query('checkOut');
+        } else {
+            $checkOut = date('Y-m-d', strtotime('+1 day'));
+        }
+
+        if($request->query('hotelCode')) $hotelCode = $request->query('hotelCode');
+
+        if($request->query('guestNationality')) $guestNationality = $request->query('guestNationality');
+
+        return view('suppliers.tbo.search.index', compact(
+            'countryList',
+            'cityList',
+            'hotelList',
+            'checkIn',
+            'checkOut',
+            'hotelCode',
+            'guestNationality'
+        ));
+    }
+
+    public function search(Request $request)
+    {
+        response()->json($request->all());
+        $request->validate([
+            'checkIn' => 'required|date',
+            'checkOut' => 'required|date',
+            'hotelCode' => 'required',
+            'guestNationality' => 'required'
+        ]);
+        
+        $url = '/Search';
+
+        $data = [
+            'CheckIn' => $request->checkIn,
+            'CheckOut' => $request->checkOut,
+            'HotelCodes' => $request->hotelCode,
+            'GuestNationality' => $request->guestNationality,
+            'PaxRooms' => [
+                [
+                    'Adults' => 1,
+                    'Children' => 1,
+                    'ChildrenAges' => [5],
+                ]
+            ],
+            'ResponseTime' => 23,
+            'IsDetailedResponse' => false,
+            'Filters' => [
+                'Refundable' => false,
+                'NoOfRooms' => 0,
+                'MealType' => 'All', // All, WithMeal and RoomOnly
+            ]
+        ];
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        return $response->json();
     }
     
     public function prebook($parameter)
@@ -143,7 +237,7 @@ class TBOController extends Controller
         return $response;
     }
 
-    public function cityList($countryCode)
+    private function cityList($countryCode)
     {
         $url = '/CityList';
 
@@ -151,8 +245,15 @@ class TBOController extends Controller
             "CountryCode" => $countryCode
         ];
 
-        $cities = $this->tboPostAuthentication($url, $data);
+        $response = $this->tboPostAuthentication($url, $data);
         
+        return $response->json();
+    }
+
+    public function cityListPage($countryCode)
+    {
+        $cities = $this->cityList($countryCode);
+
         if($cities['Status']['Code'] !== 200){
             return Redirect::back()->withErrors($cities['Status']['Description']);
         }
@@ -173,13 +274,7 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        if($response['Status']['Code'] !== 200){
-            return response()->json([
-                'error' => $response['Status']['Description']
-            ]);
-        }
-
-        return $response['Hotels'];
+        return $response->json();
     }
 
     public function hotelCodeList()

@@ -1,4 +1,5 @@
 <x-app-layout>
+    <div class="flex justify-between">
     <ul class="flex space-x-2 rtl:space-x-reverse pb-5 px-5 text-base md:text-lg sm:text-sm">
         <li>
             <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
@@ -10,6 +11,10 @@
             <span>TBO Holidays</span>
         </li>
     </ul>
+    <div class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center">
+        <a href="{{ route('suppliers.tbo.search.index') }}"> Book Rooms </a>
+    </div>
+    </div>
     @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings])
     <div class="">
         <div class="bg-white p-4 dark:bg-gray-600 overflow-hidden shadow-sm rounded-lg font-semibold">

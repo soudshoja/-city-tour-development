@@ -37,7 +37,6 @@
 </head>
 
 <body>
-    <!-- fix it ya nsooooom -->
     @include('layouts.alert')
 
     <!-- Top Navigation -->

@@ -1,3 +1,6 @@
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
 <div class="container mx-auto">
 
     <!-- Chat Section -->
@@ -282,103 +285,155 @@
         </div>
     </div>
 
-    <!-- Create Client -->
-    <div id="create-client" class="bg-white shadow-md rounded-lg mb-6 hidden">
-        <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
-            <span>Create Client</span>
-            <button id="close-create-client" class="text-white hover:text-gray-200">&times;</button>
+    <div id="client-options-modal" class="bg-white shadow-md rounded-lg mb-6 hidden">
+                                <div class="bg-white rounded-lg shadow-lg w-11/12 max-w-md">
+                                    <div class="border-b border-gray-200 p-4 flex justify-between">
+                                        <h5 class="text-lg font-semibold text-gray-700">Add New Client</h5>
+                                        <button id="close-option-client" class="text-black hover:text-gray-200">&times;</button>
+                                    </div>
+                                    <div class="p-6">
+                                        <p class="text-gray-600 mb-4">Please choose how you want to proceed:</p>
+                                        <div class="flex justify-between space-x-4">
+                                            <button
+                                                id="upload-passport-btn"
+                                                class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg focus:outline-none shadow-md"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-5 w-5 inline-block mr-2"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        d="M3 3a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2H3z"
+                                                    />
+                                                    <path
+                                                        d="M17 10H3a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2v-2a2 2 0 00-2-2z"
+                                                    />
+                                                </svg>
+                                                Upload Passport
+                                            </button>
+                                            <button
+                                                id="fill-form-btn"
+                                                class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg focus:outline-none shadow-md"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-5 w-5 inline-block mr-2"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        d="M5 3a2 2 0 012-2h6a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V3z"
+                                                    />
+                                                </svg>
+                                                Fill Form
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                <div id="passport" >
+                    <input type="file" id="passport-upload-input" accept="image/*,application/pdf" class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" hidden>
+                    <div id="file-preview-container" class="mt-4"></div> <!-- For image preview -->
+                    <div id="upload-status" class="mt-2 text-sm text-gray-600"></div> <!-- For upload status -->
+                    <div id="passport-details" class="mt-4 text-sm text-gray-800"></div> <!-- For displaying extracted details -->
+                </div>
+
+
+          <!-- Create Client -->
+        <div id="create-client" class="bg-white shadow-md rounded-lg mb-6 hidden">
+             <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
+                <span>Create Client</span>
+                <button id="close-create-client" class="text-white hover:text-gray-200">&times;</button>
+            </div>
+            <div class="p-4">
+                <p class="mb-4">Enter client Information:</p>
+                <form id="client-form" class="space-y-4">
+                          <div class="mb-4 flex gap-4">
+                                <!-- Name Field -->
+                                <div class="w-1/2">
+                                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                    <input id="name" name="name" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Name" />
+                                </div>
+
+                                <!-- Email Field -->
+                                <div class="w-1/2">
+                                    <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                    <input id="email" name="email" type="email" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Email" />
+                                </div>
+                            </div>
+
+                            <div class="mb-4 flex gap-4">
+                                <!-- Phone Field -->
+                                <div class="w-1/2">
+                                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                    <input id="phone" name="phone" type="text" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Phone" />
+                                </div>
+
+                                <!-- Address Field -->
+                                <div class="w-1/2">
+                                    <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                    <input id="address" name="address" type="text"
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                        placeholder="Client Address" />
+                                </div>
+                            </div>
+
+                            <!-- Passport Number Field -->
+                            <div class="mb-4 flex gap-4">
+                             <div class="w-1/2">
+                                <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
+                                <input id="passport_no" name="passport_no" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Passport Number" />
+                            </div>
+                            <div class="w-1/2">
+                                <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Civil Number</label>
+                                <input id="civil_no" name="civil_no" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="Civil Number" />
+                            </div>
+                            </div>
+
+                            <!-- Agent Email Field -->
+                            <div class="mb-4 flex gap-4">
+                                <div class="w-1/2">
+                                    <label for="agent_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
+                                    <select id="agent_id" name="agent_id" class="w-full p-2 border rounded-md" placeholder="Select Agent">
+                                    @foreach ($agents as $agent)
+                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                    @endforeach
+                                    </select>
+                                </div>
+                                <div class="w-1/2">
+                                <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date of Birth</label>
+                                <input id="date_of_birth" type="date" name="date_of_birth" 
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                     />
+                                </div>
+                           </div>
+                           <input id="clientForm" type="hidden" name="clientForm" />    
+                           <input id="clientId" type="hidden" name="clientId" />    
+                            <!-- Submit Button -->
+                            <div class="flex items-center justify-center">
+                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                    Register Client
+                                </button>
+                            </div>
+                </form>
+            </div>
         </div>
-        <div class="p-4">
-            <p class="mb-4">Enter client Information:</p>
-            <form id="client-form" class="space-y-4">
-                <div class="mb-4 flex gap-4">
-                    <!-- Name Field -->
-                    <div class="w-1/2">
-                        <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                        <input id="name" name="name" type="text" required
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Client Name" />
-                    </div>
 
-                    <!-- Email Field -->
-                    <div class="w-1/2">
-                        <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                        <input id="email" name="email" type="email" required
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Client Email" />
-                    </div>
-                </div>
-
-                <div class="mb-4 flex gap-4">
-                    <!-- Phone Field -->
-                    <div class="w-1/2">
-                        <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                        <input id="phone" name="phone" type="text" required
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Client Phone" />
-                    </div>
-
-                    <!-- Address Field -->
-                    <div class="w-1/2">
-                        <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                        <input id="address" name="address" type="text"
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Client Address" />
-                    </div>
-                </div>
-
-                <!-- Passport Number Field -->
-                <div class="mb-4">
-                    <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                    <input id="passport_no" name="passport_no" type="text" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Passport Number" />
-                </div>
-
-                <!-- Agent Email Field -->
-                <div class="mb-4">
-                    <label for="agent_email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
-                    <input id="agent_email" name="agent_email" type="email" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="Agent Email" />
-                </div>
-
-                <!-- Status Field -->
-                <div class="mb-4">
-                    <div class="flex flex-col">
-                        <div class="flex items-center space-x-4">
-                            <label class="text-lg font-semibold mb-2">Status:</label>
-
-                            <!-- Active Radio Button -->
-                            <label class="flex items-center cursor-pointer">
-                                <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
-                                <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
-                                    <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                </span>
-                                <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
-                            </label>
-
-                            <!-- Inactive Radio Button -->
-                            <label class="flex items-center cursor-pointer">
-                                <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
-                                <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
-                                    <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                </span>
-                                <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="flex items-center justify-center">
-                    <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                        Register Client
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
 
     <!-- Create Agent -->
     <div id="create-agent" class="bg-white shadow-md rounded-lg mb-6 hidden">
@@ -530,27 +585,23 @@
     const clientFields = $("#client-fields");
     const agentFields = $("#agent-fields");
     const branchFields = $("#branch-fields");
-    let clients = [];
+    const clientOption = $("#client-options-modal");
+        const passport = $("#passport");
+        passport.hide();
+        // let agents = [];
+        // let clients = [];
+        let clients = @json($clients);
+        let agents = @json($agents);
 
     let selectedTasks = [];
-
+    appendMessage("cityTour", "Welcome to City Tour. You can ask anything.");
 
     function appendMessage(role, content) {
-        const isUser = role === "user";
-
-        const messageHTML = `
-        <div class="flex ${isUser ? "justify-end" : "justify-start"} mb-2">
-            <div class="${isUser ? "bg-[#1e40af] text-white" : "bg-gray-200 text-gray-800"} max-w-xs px-4 py-2 rounded-lg shadow ${
-        isUser ? "rounded-br-none" : "rounded-bl-none"
-    }">
-                ${content}
-            </div>
-        </div>
-    `;
-
-        chatLog.append(messageHTML);
-        chatLog.scrollTop(chatLog.prop("scrollHeight"));
-    }
+            const messageClass = role === "user" ? "text-end" : "text-start";
+            const message = `<div class="${messageClass}"><strong>${role}:</strong> ${content}</div>`;
+            chatLog.append(message);
+            chatLog.scrollTop(chatLog.prop("scrollHeight"));
+        }
 
 
 
@@ -1261,37 +1312,150 @@
 
 
     function loadClient() {
+            clientOption.show();
+            // Handle button clicks
+            $('#upload-passport-btn').on('click', function () {
+                // Open file upload dialog
+                $('#passport-upload-input').click(); // Assuming a hidden file input exists
+            });
 
-        // Show the client creation form
-        createClient.show();
-    }
-    // Handle form submission
-    $('#client-form').on('submit', function(event) {
-        event.preventDefault();
-        // Collect form data
-        const formData = $(this).serialize();
+            $('#fill-form-btn').on('click', function () {
+                // Show the client creation form
+                document.getElementById('clientForm').value ="new";
+                createClient.show();
+                clientOption.hide(); // Hide the options modal
+            });
 
-        // Submit the form via AJAX
-        $.ajax({
-            url: "{{ route('chat.client') }}",
-            method: "POST",
-            data: formData,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-            },
-            success: function(response) {
-                if (response.success) {
+                // Show the client creation form
+                // createClient.show();
+        }
+
+        $('#passport-upload-input').on('change', function (event) {
+                const file = event.target.files[0];
+
+                // Check if a file is selected
+                if (file) {
+                    // Create a preview of the uploaded image
+                    const previewContainer = document.getElementById('file-preview-container'); // Ensure this container exists in your HTML
+                    previewContainer.innerHTML = ''; // Clear previous previews
+
+                    let img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.width = 100;
+                    img.height = 100;
+                    img.alt = "Uploaded File Preview";
+                    img.className = "rounded shadow"; // Add TailwindCSS styles
+                    previewContainer.appendChild(img);
+                    passport.show();
+                    // Create a FormData object to send the file via AJAX
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    // Perform AJAX request to upload the file
+                    $.ajax({
+                        url: "{{ route('chat.handleFileUpload') }}",
+                        method: 'POST',
+                        data: formData,
+                        contentType: false, // Needed for FormData
+                        processData: false, // Needed for FormData
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), // Add CSRF token for security
+                        },
+                        beforeSend: function () {
+                            // Show a loader or disable the upload button during the request
+                            $('#upload-status').text('Uploading...');
+                        },
+                        success: function (response) {
+                            // Handle success response
+                            if (response.success) {
+                                $('#upload-status').text('Upload successful!');
+                                console.log(response.message);
+                                console.log(response.data);
+                                // Optionally, update UI with extracted data (if returned)
+                                if (response.data) {
+                                        const client = response.data;
+
+                                        // Display client details
+                                        $('#passport-details').html(`
+                                            <p>Passport Number: ${client.passport_no}</p>
+                                            <p>Date of Birth: ${client.date_of_birth}</p>
+                                            <p>Address: ${client.address || 'N/A'}</p>
+                                            <p>Status: ${client.status}</p>
+                                        `);
+
+
+                                        // Populate other form fields
+                                        document.getElementById('clientForm').value = "update";
+                                        document.getElementById('clientId').value = client.id || '';
+                                        document.getElementById('date_of_birth').value = client.date_of_birth || '';
+                                        document.getElementById('name').value = client.name || '';
+                                        document.getElementById('address').value = client.address || '';
+                                        document.getElementById('civil_no').value = client.civil_no || '';
+                                        document.getElementById('passport_no').value = client.passport_no || '';
+
+                                        // Hide the passport modal and show the client form
+                                        passport.hide();
+                                        clientOption.hide();
+                                        createClient.show();
+                                    }
+
+                            } else {
+                                $('#upload-status').text('Upload failed: ' + response.message);
+                            }
+                        },
+                        error: function (xhr) {
+                            // Handle error response
+                            $('#upload-status').text('Error uploading file. Please try again.');
+                            console.error(xhr.responseText);
+                        },
+                        complete: function () {
+                            // Remove loader or re-enable the upload button
+                        }
+                    });
+                } else {
+                    // Handle case where no file is selected
+                    $('#upload-status').text('No file selected.');
+                }
+            });
+
+
+
+
+        // Handle form submission
+        $('#client-form').on('submit', function (event) {
+            event.preventDefault();
+            // Collect form data
+            const formData = $(this).serialize();
+
+            // Submit the form via AJAX
+            $.ajax({
+                url: "{{ route('chat.client') }}",
+                method: "POST",
+                data: formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                },
+                success: function (response) {
+                    if (response.success) {
                     const client = response.client;
-                    appendMessage("cityTour", `New client created: <span style="color: #ff9800; font-weight: bold;">${client.name}</span>`);
+                    const action = response.action;
+
+                                // Determine the message based on the action
+                    const actionMessage = action === 'create' 
+                        ? `New client created: <span style="color: #ff9800; font-weight: bold;">${client.name}</span>` 
+                        : `Client updated: <span style="color: #4caf50; font-weight: bold;">${client.name}</span>`;
+
+                    // Append the message
+                    appendMessage("cityTour", actionMessage);
                     createClient.hide();
 
-                }
-            },
-            error: function(xhr) {
-                alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
-            },
+                    }
+                },
+                error: function (xhr) {
+                    alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
+                },
+            });
         });
-    });
 
 
     function loadAgent(branches) {
@@ -1385,9 +1549,18 @@
         });
     });
 
+         const agentDropdown = new TomSelect("#agent_id", {
+                    placeholder: "Select Agent",  // Placeholder text
+                    allowEmptyOption: true,      // Allows the first empty option
+                    create: false,               // Prevent creating new options
+                    searchField: ["text"],       // Enable searching by option text
+                    maxItems: 1,                 // Limit to single select
+                });
+      
 
-
-
+    document.getElementById('close-option-client').addEventListener('click', function() {
+        clientOption.hide();
+    });
 
     document.getElementById('close-create-client').addEventListener('click', function() {
         createClient.hide();

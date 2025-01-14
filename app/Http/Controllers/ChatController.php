@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Traits\NotificationTrait;
+use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Http\Request;
 use App\Services\OpenAIService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use App\Http\Traits\Converter;
 use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\Role;
@@ -27,6 +30,7 @@ use Carbon\Carbon;
 class ChatController extends Controller
 {
     use NotificationTrait;
+    use Converter;
 
     protected $openAIService;
 
@@ -302,25 +306,18 @@ class ChatController extends Controller
     {
         // Get the task IDs from the request
         $taskIds = $request->input('tasks');
-        
-        // Log task IDs received
-        \Log::info('processTaskSelection:', ['taskIds' => $taskIds]);
     
         // Fetch user data, including tasks
         $userData = $this->fetchUserBasedData();
         
         // Ensure task IDs are integers
         $taskIds = array_map('intval', $taskIds);
-        \Log::info('processTaskSelection taskIds:', ['taskIds' => $taskIds]);
-    
-        // Fetch available tasks based on the provided task IDs (with eager loading of client)
+              // Fetch available tasks based on the provided task IDs (with eager loading of client)
         $availableTasks = Task::with('client')  // Eager load the 'client' relationship
             ->whereIn('id', $taskIds)
             ->get();  // Execute the query to retrieve the tasks
     
-        \Log::info('availableTasks:', ['availableTasks' => $availableTasks]);
-    
-        // If no tasks were found, return an error response
+              // If no tasks were found, return an error response
         if ($availableTasks->isEmpty()) {
             return response()->json(['message' => 'No valid tasks found for the provided IDs.'], 400);
         }
@@ -354,7 +351,6 @@ class ChatController extends Controller
         ]);
 
         $selectedTasks = collect($validated['tasks']);
-        \Log::info('handleTaskPricing:', ['selectedTask' => $selectedTasks]);
         // Generate invoice
         return $this->createInvoice($selectedTasks);
     }
@@ -509,7 +505,6 @@ class ChatController extends Controller
 
     private function createInvoice($tasks)
     {
-        \Log::info('createInvoice:', ['selectedTask' => $tasks]);
         $duedate = now()->addDays(30);
         $invdate = now();  
         $currency =  'KWD'; 
@@ -566,8 +561,6 @@ class ChatController extends Controller
         $agent = $selectedAgent;
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
-
-        Log::info('Company ID:', ['companyId' => $companyId]);
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
             ->where('company_id', $companyId)
@@ -633,7 +626,6 @@ class ChatController extends Controller
                         ]);
 
 
-                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
                         if ($payableAccount) {
                             $filteredPayableChildAccount = $payableAccount->children()
                                 ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
@@ -820,36 +812,108 @@ class ChatController extends Controller
         ], 200);
     }
 
-    public function createClient(Request $request)
+
+    public function handleFileUpload(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:clients,email',
-            'phone' => 'nullable|string|max:15',    // Optional phone field
-        ]);
+        // Ensure the request contains a file
+        if ($request->hasFile('file')) {
+            try {
+                // Get the file path
+                $imagePath = $request->file('file')->getRealPath();
+    
+                // Process the image using OCR
+                $ocrResponse = $this->processImage($imagePath); // Custom method to process image OCR
+    
+                // Check if the OCR response contains the required data
+                if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                    $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
+    
+                    // Pass the parsed text to OpenAI for passport data extraction
+                    $prompt = "
+                            You are an assistant for a travel agency. You need to extract passport details from the uploaded content. The passport details should include the following fields:
+                        
+                            - `passport_no`: Passport number or Passport No.
+                            - `civil_no`: Civil number or Civil No.
+                            - `name`: Full name as per the passport.
+                            - `nationality`: Nationality
+                            - `date_of_birth`: Date of birth
+                            - `date_of_issue`: Date of issue
+                            - `date_of_expiry`: Date of expiry
+                            - `place_of_birth`: Place of birth
+                            - `place_of_issue`: Place of issue
+                        
+                            only pass me the data extracted in JSON format.
+                            ";
 
-        // Create a new client record
-        try {
-            $agent = Agent::where('email', $request->get('agent_email'))->first();
+                            $messages = [
+                                [
+                                    'role' => 'system',
+                                    'content' => $prompt,
+                                ],
+                                [
+                                    'role' => 'user',
+                                    'content' => $parsedText,
+                                ]
+                            ];
 
-            $client = Client::create([
-                'name' => $request->get('name'),
-                'email' => $request->get('email'),
-                'status' => $request->get('status'),
-                'phone' => $request->get('phone'),
-                'address' => $request->get('address'),
-                'passport_no' => $request->get('passport_no'),
-                'agent_id' => $agent->id,
-            ]);
 
-            // Redirect to the clients list with a success message
-            return response()->json([
-                'success' => true,
-                'message' => 'Client registered successfully!',
-                'client' => $client, // Optionally return client details
-            ], 201);
+                      $response = $this->openAIService->getChatResponse($messages);
+                      \Log::info('response:', ['response' => $response]);
 
-        } catch (Exception $e) {
+                    // Check if the OpenAI response contains the required data
+                    if (isset($response['choices'][0]['message']['content'])) {
+                        $content = $response['choices'][0]['message']['content'];
+                        // Update the client's passport details
+                        $passportData = json_decode($content, true);
+
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            // Now, $passportData is an array that contains the passport details
+                            \Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
+                    
+                            // Update the client's passport details
+                            $client = $this->createClientPassport($passportData);
+                    
+                            return response()->json([
+                                'success' => true,
+                                'message' => 'Client registered successfully!',
+                                'data' => $client,
+                            ], 201);
+                        } else {
+                            \Log::error('Failed to decode JSON from OpenAI response', ['error' => json_last_error_msg()]);
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Failed to decode passport data.',
+                            ], 400);
+                        }
+                    } else {
+                        // Handle missing data in OpenAI response
+                        Log::error('Failed to create client: ' . $e->getMessage());
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Error registering client: ' . $e->getMessage(),
+                            'errors' => $e->errors() ?? [],
+                        ], 400);
+                    }
+                } else {
+                    // Handle missing text in OCR response
+                    Log::error('Failed to create client: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error registering client: ' . $e->getMessage(),
+                        'errors' => $e->errors() ?? [],
+                    ], 400);
+                }
+            } catch (Exception $e) {
+                // Handle exceptions and errors
+                Log::error('Failed to create client: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error registering client: ' . $e->getMessage(),
+                    'errors' => $e->errors() ?? [],
+                ], 400);
+            }
+        } else {
+            // Handle case where no file is uploaded
             Log::error('Failed to create client: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -858,6 +922,136 @@ class ChatController extends Controller
             ], 400);
         }
     }
+    
+    public function createClientPassport($data)
+    {
+        // Ensure that $data is an array and has the required fields
+        if (is_array($data) && isset($data['name'], $data['passport_no'], $data['civil_no'], $data['date_of_birth'])) {
+            // Create client from parsed passport data
+            $dateOfBirth = $this->convertToDate($data['date_of_birth'] ?? null);
+
+            $client = Client::create([
+                'name' => $data['name'],
+                'status' => 'active',
+                'address' => $data['place_of_issue'], // Make sure place_of_issue exists, otherwise handle accordingly
+                'passport_no' => $data['passport_no'],
+                'civil_no' => $data['civil_no'],
+                'date_of_birth' => $dateOfBirth
+            ]);
+    
+            \Log::info('Client created successfully', ['client' => $client]);
+
+            return $client;
+        } else {
+            \Log::error('Invalid passport data received', ['data' => $data]);
+
+            throw new \Exception('Invalid passport data');
+        }
+    }
+    
+    private function convertToDate(?string $date): ?string
+    {
+        if (!$date) {
+            return null; // Return null if date is empty or not set
+        }
+    
+        // Check if the date is already in YYYY-MM-DD format
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return $date;
+        }
+    
+        // Convert DD/MM/YYYY to YYYY-MM-DD
+        $dateParts = explode('/', $date);
+        if (count($dateParts) === 3) {
+            return sprintf('%04d-%02d-%02d', $dateParts[2], $dateParts[1], $dateParts[0]);
+        }
+    
+        \Log::error('Invalid date format', ['date' => $date]);
+        return null; // Return null if the date format is invalid
+    }
+    
+
+    public function createClient(Request $request)
+    {
+        // Validate common fields
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:15', // Optional phone field
+            'clientForm' => 'required|string|in:new,update', // Ensure this field is provided
+        ]);
+    
+        try {
+            // Check if it's a new client or an update
+            if ($request->get('clientForm') === 'new') {
+                // Create logic
+                $agent = Agent::where('email', $request->get('agent_email'))->first();
+                
+                if (!$agent) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Agent not found.',
+                    ], 404);
+                }
+    
+                $client = Client::create([
+                    'name' => $request->get('name'),
+                    'email' => $request->get('email'),
+                    'status' => $request->get('status'),
+                    'phone' => $request->get('phone'),
+                    'address' => $request->get('address'),
+                    'passport_no' => $request->get('passport_no'),
+                    'date_of_birth' => $request->get('date_of_birth'),
+                    'civil_no' => $request->get('civil_no'),
+                    'agent_id' =>  $request->get('agent_id')
+                ]);
+    
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Client registered successfully!',
+                    'client' => $client,
+                    'action' => 'create',
+                ], 201);
+    
+            } elseif ($request->get('clientForm') === 'update') {
+                // Update logic
+                $validated = $request->validate([
+                    'clientId' => 'required|exists:clients,id', // Ensure the client ID exists
+                ]);
+    
+                $client = Client::find($request->get('clientId'));
+    
+                // Update the client details
+                $client->update([
+                    'name' => $request->get('name'),
+                    'email' => $request->get('email'),
+                    'status' => $request->get('status'),
+                    'phone' => $request->get('phone'),
+                    'address' => $request->get('address'),
+                    'passport_no' => $request->get('passport_no'),
+                    'date_of_birth' => $request->get('date_of_birth'),
+                    'civil_no' => $request->get('civil_no'),
+                    'agent_id' =>  $request->get('agent_id')
+                ]);
+    
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Client updated successfully!',
+                    'client' => $client,
+                    'action' => 'update',
+                ], 200);
+            }
+    
+        } catch (Exception $e) {
+            Log::error('Failed to handle client operation: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing request: ' . $e->getMessage(),
+            ], 400);
+        }
+    }
+    
+
+    
 
     
     public function createAgent(Request $request)

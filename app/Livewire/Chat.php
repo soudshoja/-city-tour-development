@@ -7,6 +7,10 @@ use App\Http\Controllers\OpenAiController;
 use App\Models\Conversation;
 use App\Models\Message;
 use Livewire\Component;
+use App\Models\Agent;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Client;
+use App\Models\Role;
 
 class Chat extends Component
 {
@@ -69,7 +73,26 @@ class Chat extends Component
 
     public function render()
     {
-        
-        return view('livewire.chat');
+        $user = Auth::user();
+
+        if ($user->role_id == Role::ADMIN) {
+
+        } elseif ($user->role_id == Role::COMPANY) {
+            // Company can only see trips with tasks under their agents
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->get();
+
+            $agentIds = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->pluck('id');
+
+            $clients = Client::whereIn('agent_id', $agentIds)->get();
+
+        };
+
+        // $agents = Agent::with('branch')->get();
+        // $clients = Client::with('agent')->get();
+        return view('livewire.chat', compact('agents', 'clients'));
     }
 }

@@ -150,9 +150,11 @@ Route::middleware(['auth'])->group(function () {
             Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
             Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
             Route::get('booking-details-by-date', [TBOController::class, 'bookingDetailByDate'])->name('booking-details-by-date');
+            Route::get('prebook/index', [TBOController::class, 'preBookIndex'])->name('prebook.index');
             Route::post('prebook', [TBOController::class, 'preBookStore'])->name('prebook.store');
             Route::get('prebook/{tboId}', [TBOController::class, 'preBookShow'])->name('prebook.show');
             Route::post('book', [TBOController::class, 'book'])->name('book');
+            Route::get('cancel-booking/{confirmationNo}', [TBOController::class, 'cancel'])->name('cancel-booking');
         });
     });
 

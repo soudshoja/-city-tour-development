@@ -62,12 +62,19 @@ class TBOController extends Controller
 
     public function tboGetAuthentication(string $url) 
     {
+        logger("TBO GET URL: " . $this->apiUrl . $url);
+
         return Http::withBasicAuth($this->username, $this->password)->get($this->apiUrl . $url);
     }
 
     public function tboPostAuthentication(string $url,array $data)
     {
+        logger("TBO POST URL: " . $this->apiUrl . $url);
+
+        logger("Data: ", $data);
+
         return Http::withBasicAuth($this->username, $this->password)->post($this->apiUrl . $url, $data);
+
     }
 
     public function searchIndex(Request $request)
@@ -78,9 +85,14 @@ class TBOController extends Controller
         $guestNationality = '';
         $countryList = $this->countryList();
 
+        $countryCode = '';
+        $cityCode = '';
+        $hotelCode = '';
+
         if($request->query('countryCode'))
         {
-            $cityListResponse = $this->cityList($request->query('countryCode'));
+            $countryCode = $request->query('countryCode');
+            $cityListResponse = $this->cityList($countryCode);
 
             if($cityListResponse['Status']['Code'] !== 200){
                 return Redirect::back()->with('error', $cityListResponse['Status']['Description']);
@@ -91,7 +103,8 @@ class TBOController extends Controller
 
         if($request->query('cityCode'))
         {
-            $hotelListResponse = $this->hotelCityList($request->query('cityCode'));
+            $cityCode = $request->query('cityCode');
+            $hotelListResponse = $this->hotelCityList($cityCode);
 
             if($hotelListResponse['Status']['Code'] !== 200){
                 $hotelList = [];
@@ -120,12 +133,14 @@ class TBOController extends Controller
         if($request->query('guestNationality')) $guestNationality = $request->query('guestNationality');
 
         return view('suppliers.tbo.search.index', compact(
+            'countryCode',
+            'cityCode',
+            'hotelCode',
             'countryList',
             'cityList',
             'hotelList',
             'checkIn',
             'checkOut',
-            'hotelCode',
             'guestNationality'
         ));
     }
@@ -136,7 +151,8 @@ class TBOController extends Controller
             'checkInDate' => 'required|date',
             'checkOutDate' => 'required|date',
             'hotel' => 'required',
-            'guestNationality' => 'required'
+            'guestNationality' => 'required',
+            'rooms' => 'array|required',
         ]);
         
         $url = '/Search';
@@ -144,15 +160,9 @@ class TBOController extends Controller
         $data = [
             'CheckIn' => $request->checkInDate,
             'CheckOut' => $request->checkOutDate,
-            'HotelCodes' => $request->hotel,
+            'HotelCodes' => (integer)$request->hotel,
             'GuestNationality' => $request->guestNationality,
-            'PaxRooms' => [
-                [
-                    'Adults' => 1,
-                    'Children' => 0,
-                    'ChildrenAges' => [],
-                ]
-            ],
+            'PaxRooms' => $request->rooms,
             'ResponseTime' => 23,
             'IsDetailedResponse' => false,
             'Filters' => [
@@ -162,12 +172,9 @@ class TBOController extends Controller
             ]
         ];
 
-        logger('SEARCH URL: ' . $url);
-        logger('search request : ', $data);
-
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger('search response : ', $response->json());
+        logger("Search Response: ", $response->json());
 
         return $response->json();
     }
@@ -184,9 +191,9 @@ class TBOController extends Controller
             'BookingCode' => $request->bookingCode,
         ];
 
-        logger('PREBOOK URL: ' . $url);
-        logger('request : ', $data);
         $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Prebook Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
             return Redirect::back()->withErrors($response['Status']['Description']);
@@ -222,16 +229,24 @@ class TBOController extends Controller
         return $this->preBookShow($tboPreBook->id);
     }
 
+    public function preBookIndex()
+    {
+        $tboPreBooks = TBO::all();
+
+        return view('suppliers.tbo.book.prebook-index', compact('tboPreBooks'));
+    }
+
     public function preBookShow($tboId)
     {
         $tboPreBook = TBO::find($tboId);
 
-        return view('suppliers.tbo.book.prebook', compact('tboPreBook'));
+        return view('suppliers.tbo.book.prebook-show', compact('tboPreBook'));
     }
 
     public function book(Request $request)
     {
         $request->validate([
+            'tboId' => 'required',
             'BookingCode' => 'required',
             'CustomerDetails' => 'array|required',
             'CustomerDetails.CustomerNames' => 'array|required',
@@ -260,6 +275,7 @@ class TBOController extends Controller
             'PaymentInfo.CardHolderAddress.PostalCode' => 'required_if:PaymentMode,NewCard'
         ]);
 
+        $tboId = $request->tboId;
         $url = '/Book';
 
         $data = [
@@ -291,18 +307,17 @@ class TBOController extends Controller
             $data['PaymentInfo']['CardHolderAddress']['PostalCode'] = $request->PaymentInfo['CardHolderAddress']['PostalCode'];
         }
 
-        logger('BOOK URL: ' . $url);
-        logger('request : ', $data);
+       ;
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger('response', $response->json());
+        logger('Booking Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
-            return   Redirect::back()->withErrors($response['Status']['Description']);
+            return Redirect::route('prebook.show', $tboId)->withErrors($response['Status']['Description']);
         }
 
-        return Redirect::back()->with('success', 'Booking successful');
+        return Redirect::route('tbo.index')->with('success', 'Booking successful');
     }
 
     public function bookingDetail(Request $request)
@@ -323,6 +338,8 @@ class TBOController extends Controller
         $data['PaymentMethod'] = 'Limit';
 
         $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Booking Detail Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
             return [
@@ -345,6 +362,8 @@ class TBOController extends Controller
             "ToDate" => $endDate
         ]);
 
+        logger('Booking Detail By Date Response: ', $response->json());
+
         if($response['Status']['Code'] !== 200){
             
             return [
@@ -353,6 +372,25 @@ class TBOController extends Controller
         }
 
         return $response['BookingDetail'];
+    }
+
+    public function cancel(string $confirmationNo)
+    {
+        $url = '/Cancel';
+
+        $data = [
+            'ConfirmationNumber' => $confirmationNo
+        ];
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Cancel Response: ', $response->json());
+
+        if($response['Status']['Code'] !== 200){
+            return Redirect::back()->withErrors($response['Status']['Description']);
+        }
+
+        return Redirect::route('tbo.index')->with('success', 'Booking cancelled successfully');
     }
 
     public function countryList()

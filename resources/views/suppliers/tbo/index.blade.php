@@ -11,8 +11,9 @@
             <span>TBO Holidays</span>
         </li>
     </ul>
-    <div class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center">
-        <a href="{{ route('suppliers.tbo.search.index') }}"> Book Rooms </a>
+    <div class="inline-flex gap-2">
+        <a href="{{ route('suppliers.tbo.prebook.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center "> Prebook </a>
+        <a href="{{ route('suppliers.tbo.search.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center"> Book Rooms </a>
     </div>
     </div>
     @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings])

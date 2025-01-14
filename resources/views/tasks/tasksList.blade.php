@@ -83,8 +83,8 @@
             <div class="panel BoxShadow rounded-lg">
 
                 <!-- search & filter buttons -->
-                <div class="flex flex-col sm:flex-row justify-between p-2 gap-3">
-                    <!--  search icon -->
+                <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
+                    <!-- Search icon -->
                     <div class="relative w-full">
                         <!-- Search Input -->
                         <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
@@ -100,41 +100,38 @@
                     </div>
                     <!-- ./search icon -->
 
-                    <!-- filter & export buttons -->
-                    <div class="flex lg:flex-col md:flex-row gap-5 w-full justify-end hidden md:flex">
-                        <!-- customize -->
-                        <button class="flex px-5 py-3 gap-3 city-light-yellow rounded-lg shadow-sm items-center">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <!-- Filter & export buttons -->
+                    <div class="flex customCenter gap-5 w-full justify-end">
+                        <!-- Customize -->
+                        <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
                             </svg>
-                            <span class="text-sm dark:text-black">Customize</span>
+                            <span class="dark:text-black">Customize</span>
                         </button>
                         <!-- ./customize -->
 
-                        <!-- filter -->
-                        <button id="toggleFilters" class="flex px-5 py-3 gap-2 city-light-yellow rounded-lg shadow-sm items-center">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                        <!-- Filter -->
+                        <button id="toggleFilters" class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                 <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
                             </svg>
-
-
-                            <span class="text-sm dark:text-black">Filter</span>
+                            <span class="text-xs md:text-sm dark:text-black">Filter</span>
                         </button>
                         <!-- ./filter -->
 
-                        <!-- export -->
-                        <button class="flex px-5 py-3 gap-3 city-light-yellow rounded-lg shadow-sm items-center">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <!-- Export -->
+                        <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
                             </svg>
-                            <span class="text-sm dark:text-black">Export</span>
+                            <span class="text-xs md:text-sm dark:text-black">Export</span>
                         </button>
                         <!-- ./export -->
-
                     </div>
                     <!-- ./filter & export buttons -->
-
                 </div>
+
                 <!-- ./search & filter buttons -->
 
 
@@ -165,6 +162,7 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</th>
                                     @endif
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Billing</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</th>
@@ -183,7 +181,7 @@
                                             </svg>
                                         </label>
                                     </td>
-                                    <td class="p-3 text-sm">
+                                    <td class="p-3 text-sm flex gap-3">
                                         <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300 hover:underline" data-task-id="{{ $task->id }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
@@ -192,6 +190,9 @@
                                                 </g>
                                             </svg>
                                         </a>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                            <path fill="none" stroke="#e11d48" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12H8m-6 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2M4.649 5.079q.207-.22.427-.428M7.947 2.73q.273-.122.553-.229M2.732 7.942q-.124.275-.232.558" color="#e11d48" />
+                                        </svg>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
@@ -199,6 +200,12 @@
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>
                                     @endif
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                        <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                            {{ $task->invoiceDetail ? 'badge-outline-success' : 'badge-outline-danger' }}">
+                                            {{ $task->invoiceDetail ? 'Invoiced' : 'Not Yet' }}
+                                        </span>
+                                    </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->price }}</td>
                                     <td>
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
@@ -267,9 +274,10 @@
             <div id="filterstBox" class="panel w-full xl:mt-0 rounded-lg h-auto"><!-- opened filters div -->
 
                 <!-- Filters Header -->
-                <div class="flex justify-between items-center gap-5 mb-5">
+                <div class="flex justify-between items-center gap-5 mb-5 FiltersHeader">
                     <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Filters</h1>
-                    <div class="filter-badge flex items-center gap-3 DarkBGcolor  dark:bg-gray-700 dark:hover:bg-gray-600 rounded-full px-4 py-2 shadow">
+                    <div class="filter-badge flex items-center gap-3 DarkBGcolor  
+                           FilltersAppliedPy FilltersAppliedPx  dark:bg-gray-700 dark:hover:bg-gray-600 rounded-full px-4 py-2 shadow">
                         <span class="font-semibold">0 applied</span>
                         <button id="clearFilters" data-tooltip="Clear Filters" class="transition">
                             &times;
@@ -319,7 +327,7 @@
                         <div class="w-full gap-5 space-y-8">
 
                             <!-- Filter by Price -->
-                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-5 shadow-md hover:shadow-lg">
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-5 FilltersAppliedPx FilltersAppliedPy shadow-md hover:shadow-lg">
                                 <div class="flex items-center">
                                     <input data-tooltip="filter by price" type="range" min="1" max="1000" value="500" id="priceRange"
                                         class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none">
@@ -330,16 +338,21 @@
                             </div>
 
                             <!-- Filter by Status -->
-                            <div class="flex items-center gap-4 bg-white p-4 rounded-lg shadow-md hover:shadow-lg">
+                            <div class="flex gap-4 items-center">
                                 <!-- Left Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
-                                    <path fill="#1e40af" fill-rule="evenodd" d="M6 10a4 4 0 1 0 0-8a4 4 0 0 0 0 8m0 2A6 6 0 1 0 6 0a6 6 0 0 0 0 12" clip-rule="evenodd" />
-                                </svg>
+                                <div data-tooltip="Status" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                                    <!-- SVG Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
+                                        <path fill="#1e40af" fill-rule="evenodd" d="M6 10a4 4 0 1 0 0-8a4 4 0 0 0 0 8m0 2A6 6 0 1 0 6 0a6 6 0 0 0 0 12" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
 
-                                <div class="flex-1 relative">
-                                    <select name="status_id" id="status_id" class="w-full appearance-none bg-transparent border-none
-                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
-                                        <option value="">Select Status</option>
+
+
+                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
+                                    <select name="status_id" id="status_id" class="selectize w-full appearance-none bg-transparent
+                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Status</option>
                                         <option value="Completed">Completed</option>
                                         <option value="Assigned">Assigned</option>
                                         <option value="Booked">Booked</option>
@@ -354,38 +367,43 @@
                             </div>
 
                             <!-- Filter by Type -->
-                            <div class="flex items-center gap-4 bg-white p-4 rounded-lg shadow-md hover:shadow-lg">
+                            <div class="flex gap-4 items-center">
                                 <!-- Left Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                    <path fill="#1e40af" d="M7.5 20q-1.45 0-2.475-1.025T4 16.5t1.025-2.475T7.5 13h11q1.45 0 2.475 1.025T22 16.5t-1.025 2.475T18.5 20zm-2-9q-1.45 0-2.475-1.025T2 7.5t1.025-2.475T5.5 4h11q1.45 0 2.475 1.025T20 7.5t-1.025 2.475T16.5 11z" />
-                                </svg>
+                                <div data-tooltip="Type" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                                    <!-- SVG Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                        <path fill="#1e40af" d="M7.5 20q-1.45 0-2.475-1.025T4 16.5t1.025-2.475T7.5 13h11q1.45 0 2.475 1.025T22 16.5t-1.025 2.475T18.5 20zm-2-9q-1.45 0-2.475-1.025T2 7.5t1.025-2.475T5.5 4h11q1.45 0 2.475 1.025T20 7.5t-1.025 2.475T16.5 11z" />
+                                    </svg>
+                                </div>
 
                                 <!-- Select Dropdown -->
-                                <div class="flex-1 relative">
-                                    <select name="type_id" id="type_id" class="w-full appearance-none bg-transparent border-none
-                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
-                                        <option value="" class="">Select Type</option>
+                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
+                                    <select name="type_id" id="type_id" class="selectize w-full appearance-none bg-transparent
+                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Type</option>
                                         @foreach($types as $type)
                                         <option value="{{ $type }}">{{ $type }}</option>
                                         @endforeach
                                     </select>
-
                                 </div>
                             </div>
 
 
                             <!-- Filter by Supplier -->
-                            <div class="flex items-center gap-4 bg-white p-4 rounded-lg shadow-md hover:shadow-lg">
+                            <div class="flex gap-4 items-center">
                                 <!-- Left Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                    <path fill="#1e40af" d="M16.923 15.02q-.154-.59-.6-1.1q-.446-.512-1.135-.766l-6.992-2.62q-.136-.05-.27-.061t-.307-.012H7v-2.34q0-.385.177-.742q.177-.358.5-.575l4.885-3.479q.224-.159.458-.229q.234-.069.478-.069t.49.07t.45.228l4.885 3.479q.323.217.5.575T20 8.12v6.898zM14.5 8.441q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m-2 0q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m2 2q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m-2 0q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m1.01 11.23q.198.055.481.048q.284-.006.48-.06L21 19.5q0-.696-.475-1.136q-.475-.441-1.179-.441h-5.158q-.498 0-1.02-.06q-.524-.061-.977-.22l-1.572-.526q-.161-.056-.236-.211t-.025-.315q.05-.139.202-.21q.152-.072.313-.016l1.433.502q.408.146.893.217q.486.07 1.053.07h1.202q.283 0 .453-.162t.17-.456q0-.388-.309-.809q-.308-.421-.716-.565l-6.021-2.21q-.137-.042-.273-.074q-.137-.032-.292-.032H6.385v6.737zM2.384 19.922q0 .46.308.768q.309.309.769.309h.846q.46 0 .768-.309q.309-.308.309-.768v-6q0-.46-.309-.768q-.309-.309-.768-.309h-.846q-.46 0-.769.309q-.308.309-.308.768z" />
-                                </svg>
+                                <div data-tooltip="Supplier" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                                    <!-- SVG Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                        <path fill="#1e40af" d="M16.923 15.02q-.154-.59-.6-1.1q-.446-.512-1.135-.766l-6.992-2.62q-.136-.05-.27-.061t-.307-.012H7v-2.34q0-.385.177-.742q.177-.358.5-.575l4.885-3.479q.224-.159.458-.229q.234-.069.478-.069t.49.07t.45.228l4.885 3.479q.323.217.5.575T20 8.12v6.898zM14.5 8.441q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m-2 0q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m2 2q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m-2 0q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m1.01 11.23q.198.055.481.048q.284-.006.48-.06L21 19.5q0-.696-.475-1.136q-.475-.441-1.179-.441h-5.158q-.498 0-1.02-.06q-.524-.061-.977-.22l-1.572-.526q-.161-.056-.236-.211t-.025-.315q.05-.139.202-.21q.152-.072.313-.016l1.433.502q.408.146.893.217q.486.07 1.053.07h1.202q.283 0 .453-.162t.17-.456q0-.388-.309-.809q-.308-.421-.716-.565l-6.021-2.21q-.137-.042-.273-.074q-.137-.032-.292-.032H6.385v6.737zM2.384 19.922q0 .46.308.768q.309.309.769.309h.846q.46 0 .768-.309q.309-.308.309-.768v-6q0-.46-.309-.768q-.309-.309-.768-.309h-.846q-.46 0-.769.309q-.308.309-.308.768z" />
+                                    </svg>
+                                </div>
 
                                 <!-- Select Dropdown -->
-                                <div class="flex-1 relative">
-                                    <select name="supplier_id" id="supplier_id" class="w-full appearance-none bg-transparent border-none
-                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
-                                        <option value="" class="">Select Supplier</option>
+                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
+                                    <select name="supplier_id" id="supplier_id" class="selectize w-full appearance-none bg-transparent
+                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Supplier</option>
                                         @foreach($suppliers as $supplier)
                                         <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
                                         @endforeach
@@ -394,17 +412,20 @@
                             </div>
 
                             <!-- Filter by Agent -->
-                            <div class="flex items-center gap-4 bg-white p-4 rounded-lg shadow-md hover:shadow-lg">
+                            <div class="flex gap-4 items-center">
                                 <!-- Left Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" viewBox="0 0 640 512">
-                                    <path fill="#1e40af" d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64s-64 28.7-64 64s28.7 64 64 64m448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64s-64 28.7-64 64s28.7 64 64 64m32 32h-64c-17.6 0-33.5 7.1-45.1 18.6c40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64m-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32S208 82.1 208 144s50.1 112 112 112m76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2m-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4" />
-                                </svg>
+                                <div data-tooltip="Agent" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                                    <!-- SVG Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" viewBox="0 0 640 512">
+                                        <path fill="#1e40af" d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64s-64 28.7-64 64s28.7 64 64 64m448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64s-64 28.7-64 64s28.7 64 64 64m32 32h-64c-17.6 0-33.5 7.1-45.1 18.6c40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64m-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32S208 82.1 208 144s50.1 112 112 112m76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2m-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4" />
+                                    </svg>
+                                </div>
 
                                 <!-- Select Dropdown -->
-                                <div class="flex-1 relative">
-                                    <select name="agent_id" id="agent_id" class="w-full appearance-none bg-transparent border-none
-                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
-                                        <option value="" class="">Select Agent</option>
+                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
+                                    <select name="agent_id" id="agent_id" class="selectize w-full appearance-none bg-transparent
+                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Agent</option>
                                         @foreach($agents as $agent)
                                         <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                                         @endforeach
@@ -413,17 +434,20 @@
                             </div>
 
                             <!-- Filter by Branch -->
-                            <div class="flex items-center gap-4 bg-white p-4 rounded-lg shadow-md hover:shadow-lg">
+                            <div class="flex gap-4 items-center">
                                 <!-- Left Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                    <path fill="#1e40af" fill-rule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12s0 7.071 1.464 8.535C4.93 22 7.286 22 12 22s7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464M8.03 5.97a.75.75 0 0 1 0 1.06l-.22.22H8c1.68 0 3.155.872 4 2.187a4.75 4.75 0 0 1 4-2.187h.19l-.22-.22a.75.75 0 0 1 1.06-1.06l1.5 1.5a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 1 1-1.06-1.06l.22-.22H16A3.25 3.25 0 0 0 12.75 12v6a.75.75 0 0 1-1.5 0v-6A3.25 3.25 0 0 0 8 8.75h-.19l.22.22a.75.75 0 1 1-1.06 1.06l-1.5-1.5a.75.75 0 0 1 0-1.06l1.5-1.5a.75.75 0 0 1 1.06 0" clip-rule="evenodd" />
-                                </svg>
+                                <div data-tooltip="Branch" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                                    <!-- SVG Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                        <path fill="#1e40af" fill-rule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12s0 7.071 1.464 8.535C4.93 22 7.286 22 12 22s7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464M8.03 5.97a.75.75 0 0 1 0 1.06l-.22.22H8c1.68 0 3.155.872 4 2.187a4.75 4.75 0 0 1 4-2.187h.19l-.22-.22a.75.75 0 0 1 1.06-1.06l1.5 1.5a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 1 1-1.06-1.06l.22-.22H16A3.25 3.25 0 0 0 12.75 12v6a.75.75 0 0 1-1.5 0v-6A3.25 3.25 0 0 0 8 8.75h-.19l.22.22a.75.75 0 1 1-1.06 1.06l-1.5-1.5a.75.75 0 0 1 0-1.06l1.5-1.5a.75.75 0 0 1 1.06 0" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
 
                                 <!-- Select Dropdown -->
-                                <div class="flex-1 relative">
-                                    <select name="branch_id" id="branch_id" class="w-full appearance-none bg-transparent border-none
-                                         outline-none cursor-pointer pl-2 pr-8 focus:outline-none focus:ring-0">
-                                        <option value="" class="">Select Branch</option>
+                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
+                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent
+                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Branch</option>
                                         @foreach($branches as $branch)
                                         <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                                         @endforeach
@@ -441,9 +465,6 @@
                 <!-- ./opened filters  div -->
             </div>
         </div>
-
-
-
         <!-- ./right -->
     </div>
     <!--./page content-->
@@ -791,6 +812,27 @@
             showPage(1, visibleRows);
         });
     </script>
+
+    <!-- script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function(e) {
+
+
+            // seachable
+            var options = {
+                searchable: true,
+            };
+            NiceSelect.bind(document.getElementById('status_id'), options);
+            NiceSelect.bind(document.getElementById('type_id'), options);
+            NiceSelect.bind(document.getElementById('supplier_id'), options);
+            NiceSelect.bind(document.getElementById('agent_id'), options);
+            NiceSelect.bind(document.getElementById('branch_id'), options);
+
+
+        });
+    </script>
+
+
 
 
 </x-app-layout>

@@ -176,8 +176,9 @@
                             const roomResultDiv = document.createElement('div');
                             roomResultDiv.classList.add('p-4', 'border', 'rounded', 'mb-4', 'cursor-pointer');
                             roomResultDiv.innerHTML = `
-                                <form action="{{ route('suppliers.tbo.prebook.store') }}" method="POST">
+                                <form action="{{ route('suppliers.tbo.prebook.store') }}" method="POST" class="flex justify-between">
                                     @csrf
+                                    <div>
                                     <input type="hidden" name="bookingCode" value="${room.BookingCode}">
                                     <input type="hidden" name="totalFare" value="${room.TotalFare}">
                                     <input type="hidden" name="totalTax" value="${room.TotalTax}">
@@ -194,6 +195,7 @@
                                     <div>Meal Type: ${room.MealType}</div>
                                     <div>Refundable: ${room.IsRefundable ? 'Yes' : 'No'}</div>
                                     <div>Room Promotion: ${room.RoomPromotion.join(', ')}</div>
+                                    </div>
                                     <button type="submit" class="bg-black text-white font-semibold p-2 text-center rounded-md cursor-pointer shadow-md">
                                         Book Now
                                     </button>

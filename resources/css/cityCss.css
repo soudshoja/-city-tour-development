@@ -91,6 +91,9 @@ thead {
 .DarkBTextcolor {
     color: #1e40af !important;
 }
+:is(.dark .DarkBTextcolor) {
+    color: #ffffff !important;
+}
 
 :is(.dark .DarkBGcolor) {
     background-color: #111827;

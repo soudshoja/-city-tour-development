@@ -64,7 +64,6 @@
         </a>
         <menu>
             <menuitem><a href="{{ route('invoices.company.agents') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices List</a></menuitem>
-            <menuitem><a href="{{ route('invoice.salelist') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Sale Invoices</a></menuitem>
 
         </menu>
         </menuitem>

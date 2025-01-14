@@ -149,7 +149,7 @@
                                         <label class="custom-checkbox">
                                             <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
                                             <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
                                             </svg>
                                         </label>
                                     </th>
@@ -177,12 +177,12 @@
                                         <label class="custom-checkbox" data-tooltip="select task">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
                                             </svg>
                                         </label>
                                     </td>
                                     <td class="p-3 text-sm flex gap-3">
-                                        <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300 hover:underline" data-task-id="{{ $task->id }}">
+                                        <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300" data-task-id="{{ $task->id }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
                                                     <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
@@ -206,7 +206,7 @@
                                             {{ $task->invoiceDetail ? 'Invoiced' : 'Not Yet' }}
                                         </span>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->price }}</td>
+                                    <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">{{ $task->price }}</td>
                                     <td>
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
                                         {{ $task->status === 'Completed' ? 'badge-outline-success' : '' }}

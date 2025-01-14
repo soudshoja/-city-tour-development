@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Role;
+use App\Models\TBO;
+use Exception;
+use Google\Protobuf\Field\Kind;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Http;
@@ -59,21 +62,262 @@ class TBOController extends Controller
 
     public function tboGetAuthentication(string $url) 
     {
+        logger("TBO GET URL: " . $this->apiUrl . $url);
+
         return Http::withBasicAuth($this->username, $this->password)->get($this->apiUrl . $url);
     }
 
     public function tboPostAuthentication(string $url,array $data)
     {
+        logger("TBO POST URL: " . $this->apiUrl . $url);
+
+        logger("Data: ", $data);
+
         return Http::withBasicAuth($this->username, $this->password)->post($this->apiUrl . $url, $data);
+
     }
 
-    public function search()
+    public function searchIndex(Request $request)
     {
-        return 'hello';
+        $hotelList = [];
+        $cityList = [];
+        $hotelCode = '';
+        $guestNationality = '';
+        $countryList = $this->countryList();
+
+        $countryCode = '';
+        $cityCode = '';
+        $hotelCode = '';
+
+        if($request->query('countryCode'))
+        {
+            $countryCode = $request->query('countryCode');
+            $cityListResponse = $this->cityList($countryCode);
+
+            if($cityListResponse['Status']['Code'] !== 200){
+                return Redirect::back()->with('error', $cityListResponse['Status']['Description']);
+            }
+
+            $cityList = $cityListResponse['CityList'];
+        }
+
+        if($request->query('cityCode'))
+        {
+            $cityCode = $request->query('cityCode');
+            $hotelListResponse = $this->hotelCityList($cityCode);
+
+            if($hotelListResponse['Status']['Code'] !== 200){
+                $hotelList = [];
+                return Redirect::back()->with('error', $hotelListResponse['Status']['Description']);
+            }
+
+            $hotelList = $hotelListResponse['Hotels'];
+        }
+
+        if($request->query('checkIn'))
+        {
+            $checkIn = $request->query('checkIn');
+        } else {
+            $checkIn = date('Y-m-d');
+        }
+
+        if($request->query('checkOut'))
+        {
+            $checkOut = $request->query('checkOut');
+        } else {
+            $checkOut = date('Y-m-d', strtotime('+1 day'));
+        }
+
+        if($request->query('hotelCode')) $hotelCode = $request->query('hotelCode');
+
+        if($request->query('guestNationality')) $guestNationality = $request->query('guestNationality');
+
+        return view('suppliers.tbo.search.index', compact(
+            'countryCode',
+            'cityCode',
+            'hotelCode',
+            'countryList',
+            'cityList',
+            'hotelList',
+            'checkIn',
+            'checkOut',
+            'guestNationality'
+        ));
     }
-    
-    public function prebook($parameter)
+
+    public function search(Request $request)
+    { 
+        $request->validate([
+            'checkInDate' => 'required|date',
+            'checkOutDate' => 'required|date',
+            'hotel' => 'required',
+            'guestNationality' => 'required',
+            'rooms' => 'array|required',
+        ]);
+        
+        $url = '/Search';
+
+        $data = [
+            'CheckIn' => $request->checkInDate,
+            'CheckOut' => $request->checkOutDate,
+            'HotelCodes' => (integer)$request->hotel,
+            'GuestNationality' => $request->guestNationality,
+            'PaxRooms' => $request->rooms,
+            'ResponseTime' => 23,
+            'IsDetailedResponse' => false,
+            'Filters' => [
+                'Refundable' => false,
+                'NoOfRooms' => 0,
+                'MealType' => 'All', // All, WithMeal and RoomOnly
+            ]
+        ];
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        logger("Search Response: ", $response->json());
+
+        return $response->json();
+    }
+ 
+    public function preBookStore(Request $request)
     {
+        $request->validate([
+            'bookingCode' => 'required',
+        ]);
+
+        $url = '/PreBook';
+
+        $data = [
+            'BookingCode' => $request->bookingCode,
+        ];
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Prebook Response: ', $response->json());
+
+        if($response['Status']['Code'] !== 200){
+            return Redirect::back()->withErrors($response['Status']['Description']);
+        }
+
+        $hotelResult = $response['HotelResult'];
+
+        foreach ($hotelResult as $hotel) {
+            foreach ($hotel['Rooms'] as $rooms) {
+                try {
+                    $tboPreBook = TBO::create([
+                        'booking_code' => $rooms['BookingCode'],
+                        'hotel_code' => $hotel['HotelCode'],
+                        'room_name' => json_encode($rooms['Name']),
+                        'currency' => $hotel['Currency'],
+                        'inclusion' => $rooms['Inclusion'],
+                        'day_rates' => json_encode($rooms['DayRates']),
+                        'total_fare' => $rooms['TotalFare'],
+                        'total_tax' => $rooms['TotalTax'],
+                        'extra_guest_charges' => $rooms['ExtraGuestCharges'] ?? '0',
+                        'room_promotion' => json_encode($rooms['RoomPromotion']),
+                        'cancel_policies' => json_encode($rooms['CancelPolicies']),
+                        'meal_type' => $rooms['MealType'],
+                        'is_refundable' => $rooms['IsRefundable'],
+                        'with_transfer' => $rooms['WithTransfer'] ?? false,
+                    ]);
+                } catch (Exception $e) {
+                    return Redirect::back()->with('error', $e->getMessage());
+                }
+            }
+        }
+        
+        return $this->preBookShow($tboPreBook->id);
+    }
+
+    public function preBookIndex()
+    {
+        $tboPreBooks = TBO::all();
+
+        return view('suppliers.tbo.book.prebook-index', compact('tboPreBooks'));
+    }
+
+    public function preBookShow($tboId)
+    {
+        $tboPreBook = TBO::find($tboId);
+
+        return view('suppliers.tbo.book.prebook-show', compact('tboPreBook'));
+    }
+
+    public function book(Request $request)
+    {
+        $request->validate([
+            'tboId' => 'required',
+            'BookingCode' => 'required',
+            'CustomerDetails' => 'array|required',
+            'CustomerDetails.CustomerNames' => 'array|required',
+            'CustomerDetails.CustomerNames.FirstName' => 'required',
+            'CustomerDetails.CustomerNames.LastName' => 'required',
+            'CustomerDetails.CustomerNames.Title' => 'required',
+            'CustomerDetails.CustomerNames.Type' => 'required',
+            'ClientReferenceId' => 'required',
+            'BookingReferenceId' => 'required',
+            'TotalFare' => 'numeric|required',
+            'EmailId' => 'required',
+            'PhoneNumber' => 'required',
+            'PaymentMode' => 'required',
+            'PaymentInfo' => 'array|required_if:PaymentMode,NewCard',
+            'PaymentInfo.CvvNumber' => 'required',
+            'PaymentInfo.CardNumber' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardExpirationMonth' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardExpirationYear' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardHolderFirstName' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardHolderLastName' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.BillingAmount' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.BillingCurrency' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardHolderAddress.AddressLine1' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardHolderAddress.AddressLine2' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardHolderAddress.City' => 'required_if:PaymentMode,NewCard',
+            'PaymentInfo.CardHolderAddress.PostalCode' => 'required_if:PaymentMode,NewCard'
+        ]);
+
+        $tboId = $request->tboId;
+        $url = '/Book';
+
+        $data = [
+            'BookingCode' => $request->BookingCode,
+            'CustomerDetails' => $request->CustomerDetails,
+            'ClientReferenceId' => $request->ClientReferenceId,
+            'BookingReferenceId' => $request->BookingReferenceId,
+            'TotalFare' => (float)$request->TotalFare,
+            'EmailId' => $request->EmailId,
+            'PhoneNumber' => $request->PhoneNumber,
+            'PaymentMode' => $request->PaymentMode,
+            'PaymentInfo' => $request->PaymentInfo, 
+            'PaymentInfo' => [
+                'CvvNumber' => $request->PaymentInfo['CvvNumber']
+            ]
+        ];
+
+        if($request->PaymentMode === 'NewCard'){
+            $data['PaymentInfo']['CardNumber'] = $request->PaymentInfo['CardNumber'];
+            $data['PaymentInfo']['CardExpirationMonth'] = $request->PaymentInfo['CardExpirationMonth'];
+            $data['PaymentInfo']['CardExpirationYear'] = $request->PaymentInfo['CardExpirationYear'];
+            $data['PaymentInfo']['CardHolderFirstName'] = $request->PaymentInfo['CardHolderFirstName'];
+            $data['PaymentInfo']['CardHolderLastName'] = $request->PaymentInfo['CardHolderLastName'];
+            $data['PaymentInfo']['BillingAmount'] = $request->PaymentInfo['BillingAmount'];
+            $data['PaymentInfo']['BillingCurrency'] = $request->PaymentInfo['BillingCurrency'];
+            $data['PaymentInfo']['CardHolderAddress']['AddressLine1'] = $request->PaymentInfo['CardHolderAddress']['AddressLine1'];
+            $data['PaymentInfo']['CardHolderAddress']['AddressLine2'] = $request->PaymentInfo['CardHolderAddress']['AddressLine2'];
+            $data['PaymentInfo']['CardHolderAddress']['City'] = $request->PaymentInfo['CardHolderAddress']['City'];
+            $data['PaymentInfo']['CardHolderAddress']['PostalCode'] = $request->PaymentInfo['CardHolderAddress']['PostalCode'];
+        }
+
+       ;
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Booking Response: ', $response->json());
+
+        if($response['Status']['Code'] !== 200){
+            return Redirect::route('prebook.show', $tboId)->withErrors($response['Status']['Description']);
+        }
+
+        return Redirect::route('tbo.index')->with('success', 'Booking successful');
     }
 
     public function bookingDetail(Request $request)
@@ -94,6 +338,8 @@ class TBOController extends Controller
         $data['PaymentMethod'] = 'Limit';
 
         $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Booking Detail Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
             return [
@@ -116,6 +362,8 @@ class TBOController extends Controller
             "ToDate" => $endDate
         ]);
 
+        logger('Booking Detail By Date Response: ', $response->json());
+
         if($response['Status']['Code'] !== 200){
             
             return [
@@ -124,6 +372,25 @@ class TBOController extends Controller
         }
 
         return $response['BookingDetail'];
+    }
+
+    public function cancel(string $confirmationNo)
+    {
+        $url = '/Cancel';
+
+        $data = [
+            'ConfirmationNumber' => $confirmationNo
+        ];
+
+        $response = $this->tboPostAuthentication($url, $data);
+
+        logger('Cancel Response: ', $response->json());
+
+        if($response['Status']['Code'] !== 200){
+            return Redirect::back()->withErrors($response['Status']['Description']);
+        }
+
+        return Redirect::route('tbo.index')->with('success', 'Booking cancelled successfully');
     }
 
     public function countryList()
@@ -143,7 +410,7 @@ class TBOController extends Controller
         return $response;
     }
 
-    public function cityList($countryCode)
+    private function cityList($countryCode)
     {
         $url = '/CityList';
 
@@ -151,8 +418,15 @@ class TBOController extends Controller
             "CountryCode" => $countryCode
         ];
 
-        $cities = $this->tboPostAuthentication($url, $data);
+        $response = $this->tboPostAuthentication($url, $data);
         
+        return $response->json();
+    }
+
+    public function cityListPage($countryCode)
+    {
+        $cities = $this->cityList($countryCode);
+
         if($cities['Status']['Code'] !== 200){
             return Redirect::back()->withErrors($cities['Status']['Description']);
         }
@@ -173,13 +447,7 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        if($response['Status']['Code'] !== 200){
-            return response()->json([
-                'error' => $response['Status']['Description']
-            ]);
-        }
-
-        return $response['Hotels'];
+        return $response->json();
     }
 
     public function hotelCodeList()

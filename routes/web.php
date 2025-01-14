@@ -31,8 +31,7 @@ use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\Charge;
-
-
+use Google\ApiCore\Testing\ProtobufMessageComparator;
 
 // Home route
 // Route::get('/', function () {
@@ -143,13 +142,19 @@ Route::middleware(['auth'])->group(function () {
             'as' => 'tbo.',
         ], function () {
             Route::get('index', [TBOController::class, 'index'])->name('index');
-            Route::get('search', [TBOController::class, 'search'])->name('search');
+            Route::get('search/index', [TBOController::class, 'searchIndex'])->name('search.index');
+            Route::post('search', [TBOController::class, 'search'])->name('search');
             Route::get('country', [TBOController::class, 'countryList'])->name('country-list');
-            Route::get('country/{countryCode}/city', [TBOController::class, 'cityList'])->name('city-list');
+            Route::get('country/{countryCode}/city', [TBOController::class, 'cityListPage'])->name('city-list');
             Route::get('city/{cityCode}/hotel', [TBOController::class, 'hotelCityList'])->name('hotel-list');
             Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
             Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
             Route::get('booking-details-by-date', [TBOController::class, 'bookingDetailByDate'])->name('booking-details-by-date');
+            Route::get('prebook/index', [TBOController::class, 'preBookIndex'])->name('prebook.index');
+            Route::post('prebook', [TBOController::class, 'preBookStore'])->name('prebook.store');
+            Route::get('prebook/{tboId}', [TBOController::class, 'preBookShow'])->name('prebook.show');
+            Route::post('book', [TBOController::class, 'book'])->name('book');
+            Route::get('cancel-booking/{confirmationNo}', [TBOController::class, 'cancel'])->name('cancel-booking');
         });
     });
 

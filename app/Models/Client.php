@@ -20,6 +20,8 @@ class Client extends Model
         'passport_file',
         'passport_no',
         'status_id',
+        'civil_no',
+        'date_of_birth',
         'phone',
     ];
 

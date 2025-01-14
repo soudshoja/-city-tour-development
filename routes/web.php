@@ -216,6 +216,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/agent', [ChatController::class, 'createAgent'])->name('chat.agent');
     Route::post('/chat/branch', [ChatController::class, 'createBranch'])->name('chat.branch');
     Route::post('/chat/payment', [ChatController::class, 'processPayment'])->name('chat.processPayment');
+    Route::post('/chat/upload', [ChatController::class, 'handleFileUpload'])->name('chat.handleFileUpload');
+
 });
 
 Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');

@@ -1,10 +1,18 @@
 <x-app-layout>
-    <style>
-        #search-body>div,
-        #search-body>div>div {
-            width: 100%;
-        }
-    </style>
+    <ul class="flex space-x-2 rtl:space-x-reverse pb-5 px-5 text-base md:text-lg sm:text-sm">
+        <li>
+            <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
+        </li>
+        <li class="before:content-['/'] before:mr-1 ">
+            <a href="{{ route('suppliers.index') }}" class="customBlueColor hover:underline">Suppliers List</a>
+        </li>
+        <li class="before:content-['/'] before:mr-1">
+            <a href="{{ route('suppliers.tbo.index') }}" class="customBlueColor hover:underline">TBO Holidays</a>
+        </li>
+        <li class="before:content-['/'] before:mr-1">
+            <span>Search Rooms</span>
+        </li>
+    </ul>
     <div id="search-header" class="bg-white dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-500 font-semibold p-2 my-2 rounded-md text-center">
         Search Hotels
     </div>
@@ -52,7 +60,7 @@
                     @else
                     <select name="hotel" id="hotel" class="h-12 p-2 dark:bg-gray-800 dark:border-gray-900">
                         @foreach($hotelList as $hotel)
-                        <option value="{{ $hotel['HotelCode'] }}">{{ $hotel['HotelName'] }} {{ $hotel['HotelCode'] }}</option>
+                        <option value="{{ $hotel['HotelCode'] }}">{{ $hotel['HotelName'] }} - {{ $hotel['HotelCode'] }}</option>
                         @endforeach
                     </select>
                     @endif
@@ -215,12 +223,13 @@
         function roomContainer(roomCount) {
 
             let tempDiv = document.createElement('div');
+            tempDiv.id = 'room' + roomCount;
 
             tempDiv.innerHTML = `
             <div class="p-4 border rounded mb-4">
                 <div class="flex justify-between">
                     <div class="font-bold">Room ${roomCount}</div>
-                    <button class="font-bold p-2 bg-red-500 rounded-md text-center text-white dark:bg-red-700" onclick="removeContainer(this)">Remove Room</button>
+                    <button class="font-bold p-2 bg-red-500 rounded-md text-center text-white dark:bg-red-700" onclick="removeRoom(room${roomCount})">Remove Room</button>
                 </div>
                 <div class="flex justify-evenly">
                     <div>
@@ -255,15 +264,19 @@
             childrenList.innerHTML = `
             <div class="flex gap-2">
                 <input type="number" name="children[]" class="children-for-room${roomCount} dark:bg-gray-800 dark:border-gray-900" placeholder="Age">
-                <button class="font-bold p-2 bg-red-500 dark:bg-red-700 rounded-md text-center text-white" onclick="removeContainer(this)">Remove</button>
+                <button class="font-bold p-2 bg-red-500 dark:bg-red-700 rounded-md text-center text-white" onclick="removeChild(this)">Remove</button>
             </div>
             `;
 
             childrenDiv.appendChild(childrenList);
         }
 
-        function removeContainer(element) {
+        function removeChild(element) {
             element.parentElement.remove();
+        }
+
+        function removeRoom(roomId){
+            roomId.remove();
         }
     </script>
 </x-app-layout>

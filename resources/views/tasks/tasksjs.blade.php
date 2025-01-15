@@ -165,6 +165,8 @@
             },
         };
 
+
+
         const filterContainers = {
             supplier: document.getElementById("selected-suppliers"),
             branch: document.getElementById("selected-branches"),

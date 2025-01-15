@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 use App\AIService;
 use App\Models\Client;
 use App\Models\OpenAi;
+use Exception;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -37,18 +39,36 @@ class RoleController extends Controller
         return redirect()->route('role.index');
     }
 
-    public function edit($role)
+    public function edit($roleId)
     {
-        $permissions = $this->getAllPermission();
+        $permissions = cache()->remember('permissions', 60, function () {
+            return $this->getAllPermission();
+        });
+        $role = Role::with('permissions')->find($roleId);
 
-        foreach($permissions as $key => $permission) dump($key);
-        dd($permissions);
-        return view('role.edit', compact('role', 'permissions'));
+        // foreach($permissions as $key => $permission) dump($key);
+        // dd($permissions);
+        return view('role.edit', compact('role','permissions'));
     }
 
-    public function update($role)
+    public function update(Request $request)
     {
-        return redirect()->route('role.index');
+        $role = Role::findById($request->role_id);
+
+        try {
+
+            foreach ($request->permissionsId as $permissionId) {
+
+                $permission = Permission::findById($permissionId);
+
+                $role->givePermissionTo($permission);
+            }
+
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Role updated successfully');
     }
 
     public function getAllPermission()

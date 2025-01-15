@@ -94,7 +94,7 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Routes for creating new records
-    Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
+    Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions')->middleware('role:admin');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
     Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
     Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');
@@ -160,6 +160,7 @@ Route::middleware(['auth'])->group(function () {
 
     //ROLE
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');
+    Route::get('/role/permission',[RoleController::class, 'getAllPermission'])->name('role.all-permission');
     Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
     Route::post('/role', [RoleController::class, 'store'])->name('role.store');
     Route::get('/edit-role/{role}', [RoleController::class, 'edit'])->name('role.edit');

@@ -75,8 +75,9 @@ class Chat extends Component
     {
         $user = Auth::user();
 
-        if ($user->role_id == Role::ADMIN) {
-
+        if ($user->role_id == 1) {
+            $agents = Agent::with('branch')->get();
+            $clients = Client::with('agent')->get();
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
             $agents = Agent::with(['branch' => function ($query) use ($user) {

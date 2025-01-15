@@ -3,10 +3,21 @@
 
 namespace App\Http\Controllers;
 
+use App\AIService;
 use App\Models\Client;
+use App\Models\OpenAi;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
+    private $aiService;
+
+    public function __construct()
+    {
+        $this->aiService = new AIService();
+    }
+
     public function index()
     {
 
@@ -29,6 +40,9 @@ class RoleController extends Controller
     public function edit($role)
     {
         $permissions = $this->getAllPermission();
+
+        foreach($permissions as $key => $permission) dump($key);
+        dd($permissions);
         return view('role.edit', compact('role', 'permissions'));
     }
 
@@ -37,121 +51,38 @@ class RoleController extends Controller
         return redirect()->route('role.index');
     }
 
-    private function getAllPermission()
+    public function getAllPermission()
     {
+        $permissions = Permission::all();
 
-        return [
+        $message = [
             [
-                'id' => 1,
-                'name' => 'User',
-                'sub' => [
-                    'view-user',
-                    'create-user',
-                    'edit-user',
-                    'delete-user',
-                    'edit-profile'
-                ],
+                'role' => 'user',
+                'content' => 'Please help me categorize my permissions exist in the system based on the names such as it become group-permission > permissions'
             ],
             [
-                'id' => 2,
-                'name' => 'Role',
-                'sub' => [
-                    'view-role',
-                    'create-role',
-                    'edit-role',
-                    'delete-role'
-                ],
+                'role' => 'user',
+                'content' => "example: this is the original array = ['create user', 'read user', 'create role', 'read role', 'create permission', 'read permission']. Into this array = [
+                    'user' => [ {'id' => 1, 'name' => 'user', 'guard_name' => 'web' },{ 'id' => 2, 'name' => 'role', 'guard_name' => 'web' },{ 'id' => 3, 'name' => 'permission', 'guard_name' => 'web' }],
+                    'role' => [ {'id' => 1, 'name' => 'create role', 'guard_name' => 'web' },{ 'id' => 2, 'name' => 'read role', 'guard_name' => 'web' }],
+                    'permission' => [ {'id' => 1, 'name' => 'create permission', 'guard_name' => 'web' },{ 'id' => 2, 'name' => 'read permission', 'guard_name' => 'web' }]
+                ]"
             ],
             [
-                'id' => 3,
-                'name' => 'Profile',
-                'sub' => [
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 4,
-                'name' => 'Agent',
-                'sub' => [
-                    'view-agent',
-                    'edit-agent'
-                ],
+                'role' => 'user',
+                'content' => 'This is the real array of permissions in the system:' . $permissions
             ]
         ];
+
+        $response = $this->aiService->chatCompletionJsonResponse($message);
+
+        return json_decode($response['choices'][0]['message']['content'],true);
+
     }
 
     public function getAllRole()
     {
-        return [
-            [
-                'id' => 1,
-                'name' => 'Admin',
-                'description' => 'Admin role',
-                'permissions' => [
-                    'view-user',
-                    'create-user',
-                    'edit-user',
-                    'delete-user',
-                    'view-role',
-                    'create-role',
-                    'edit-role',
-                    'delete-role',
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 2,
-                'name' => 'User',
-                'description' => 'User role',
-                'permissions' => [
-                    'view-user',
-                    'edit-user',
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 3,
-                'name' => 'Agent',
-                'description' => 'Agent role',
-                'permissions' => [
-                    'view-user',
-                    'edit-user',
-                    'edit-profile',
-                    'view-agent',
-                    'edit-agent'
-                ],
-            ],
-            [
-                'id' => 4,
-                'name' => 'Company',
-                'description' => 'Company role',
-                'permissions' => [
-                    'view-user',
-                    'edit-user',
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 5,
-                'name' => 'Client',
-                'description' => 'Client role',
-                'permissions' => [
-                    'view-user',
-                    'edit-user',
-                    'edit-profile'
-                ],
-            ],
-            [
-                'id' => 6,
-                'name' => 'Guest',
-                'description' => 'Guest role',
-                'permissions' => [
-                    'view-user',
-                    'edit-user',
-                    'edit-profile'
-                ],
-            ]
-        ];
+        return Role::with('permissions')->get();
     }
 
     public function getRole($id)

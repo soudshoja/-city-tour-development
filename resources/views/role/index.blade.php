@@ -25,8 +25,8 @@
                             <td>{{ $role['id'] }}</td>
                             <td>{{ $role['name'] }}</td>
                             <td>{{ $role['description'] }}</td>
-                            <td x-data="{ openModal: false }" class="grid grid-cols-4 gap-2">
-                                @foreach(array_slice($role['permissions'], 0, 3) as $permission)
+                            <td x-data="{ openModal: false }" class="">
+                                @foreach($role->permissions as $permission)
                                 <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">{{ $permission }}</span>
                                 @endforeach
                                 @if(count($role['permissions']) > 3)

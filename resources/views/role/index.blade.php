@@ -56,7 +56,7 @@
                                 </div>
                             </td>
                             <td>
-                                <a href="{{ route('role.edit', ['role' => $role['name']]) }}" class="text-blue-500 text-xs">
+                                <a href="{{ route('role.edit', ['roleId' => $role['id']]) }}" class="text-blue-500 text-xs">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 bg-green-100 border border-green-500 rounded" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM6 12v2H4v2h2v2h2v-2h2v-2H8v-2H6z" />
                                     </svg>

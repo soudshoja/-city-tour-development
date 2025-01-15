@@ -130,9 +130,9 @@ Route::middleware(['auth'])->group(function () {
 
     // SUPPLIERS
     Route::group([
-            'middleware' => ['auth'],
-            'prefix' => 'suppliers',
-            'as' => 'suppliers.',
+        'middleware' => ['auth'],
+        'prefix' => 'suppliers',
+        'as' => 'suppliers.',
     ], function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
@@ -205,7 +205,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
     Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
-    Route::get('/testclient',[OpenAiController::class, 'getClient']);
+    Route::get('/testclient', [OpenAiController::class, 'getClient']);
     Route::get('/openai/steps', [OpenAiController::class, 'steps'])->name('steps');
     Route::get('/openai/function-tools', [OpenAiController::class, 'addFunctionTool'])->name('function-tools');
 
@@ -258,8 +258,8 @@ Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');   
-Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial'); 
+Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
+Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial');
 Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 

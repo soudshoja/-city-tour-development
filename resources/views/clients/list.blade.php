@@ -139,12 +139,22 @@
                                         </label>
                                     </td>
                                     <td class="p-3 text-sm flex gap-3">
+
                                         <a href="javascript:void(0);"
-                                            class="viewClient text-blue-600"
+                                            class="viewClient text-blue-600 dark:text-blue-300"
                                             data-id="{{ $client->id }}"
                                             data-name="{{ $client->name }}"
                                             data-email="{{ $client->email }}"
-                                            data-phone="{{ $client->phone }}">
+                                            data-phone="{{ $client->phone }}"
+                                            data-tooltip="see Client">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                <g fill="none" stroke="currentColor" stroke-width="1">
+                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
+                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                                </g>
+                                            </svg>
+                                        </a>
+                                        <a>
                                             View Details
                                         </a>
 

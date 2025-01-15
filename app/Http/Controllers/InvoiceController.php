@@ -273,6 +273,8 @@ class InvoiceController extends Controller
         });
         $selectedTasks = $invoice->invoiceDetails->map(function ($invoiceDetail) use ($invoice) {
             $task = $invoiceDetail->task;
+            $task->agent_name = $task->agent->name ?? null; // Add agent_name dynamically
+            $task->branch_name = $task->agent->branch->name ?? null;
             $task->task_price = $invoiceDetail->task_price;
             $task->invprice = (float) $invoice->amount;
             return $task;

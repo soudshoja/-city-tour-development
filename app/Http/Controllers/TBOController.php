@@ -245,79 +245,87 @@ class TBOController extends Controller
 
     public function book(Request $request)
     {
+
         $request->validate([
-            'tboId' => 'required',
-            'BookingCode' => 'required',
-            'CustomerDetails' => 'array|required',
-            'CustomerDetails.CustomerNames' => 'array|required',
-            'CustomerDetails.CustomerNames.FirstName' => 'required',
-            'CustomerDetails.CustomerNames.LastName' => 'required',
-            'CustomerDetails.CustomerNames.Title' => 'required',
-            'CustomerDetails.CustomerNames.Type' => 'required',
-            'ClientReferenceId' => 'required',
-            'BookingReferenceId' => 'required',
-            'TotalFare' => 'numeric|required',
-            'EmailId' => 'required',
-            'PhoneNumber' => 'required',
-            'PaymentMode' => 'required',
-            'PaymentInfo' => 'array|required_if:PaymentMode,NewCard',
-            'PaymentInfo.CvvNumber' => 'required',
-            'PaymentInfo.CardNumber' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardExpirationMonth' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardExpirationYear' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardHolderFirstName' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardHolderLastName' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.BillingAmount' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.BillingCurrency' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardHolderAddress.AddressLine1' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardHolderAddress.AddressLine2' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardHolderAddress.City' => 'required_if:PaymentMode,NewCard',
-            'PaymentInfo.CardHolderAddress.PostalCode' => 'required_if:PaymentMode,NewCard'
+            'tbo_id' => 'required',
+            'booking_code' => 'required',
+            // 'CustomerDetails' => 'array|required',
+            // 'CustomerDetails.CustomerNames' => 'array|required',
+            'first_name' => 'required',
+            'last_name' => 'required',
+            'title' => 'required',
+            'type' => 'required',
+            'client_reference_id' => 'required',
+            'booking_reference_id' => 'required',
+            'total_fare' => 'numeric|required',
+            'email_id' => 'required',
+            'phone_number' => 'required',
+            'payment_mode' => 'required',
+            // 'PaymentInfo' => 'array|required_if:PaymentMode,NewCard',
+            'cvv' => 'required',
+            'card_number' => 'required_if:payment_mode,NewCard',
+            'expired_month' => 'required_if:payment_mode,NewCard',
+            'expired_year' => 'required_if:payment_mode,NewCard',
+            'card_first_name' => 'required_if:payment_mode,NewCard',
+            'card_last_name' => 'required_if:payment_mode,NewCard',
+            'billing_amount' => 'required_if:payment_mode,NewCard',
+            'billing_currency' => 'required_if:payment_mode,NewCard',
+            'address_line_1' => 'required_if:payment_mode,NewCard',
+            'address_line_2' => 'required_if:payment_mode,NewCard',
+            'card_city' => 'required_if:payment_mode,NewCard',
+            'card_postal_code' => 'required_if:payment_mode,NewCard',
+            'card_country_code' => 'required_if:payment_mode,NewCard'
         ]);
 
-        $tboId = $request->tboId;
+        $tboId = $request->tbo_id;
         $url = '/Book';
 
         $data = [
-            'BookingCode' => $request->BookingCode,
-            'CustomerDetails' => $request->CustomerDetails,
-            'ClientReferenceId' => $request->ClientReferenceId,
-            'BookingReferenceId' => $request->BookingReferenceId,
-            'TotalFare' => (float)$request->TotalFare,
-            'EmailId' => $request->EmailId,
-            'PhoneNumber' => $request->PhoneNumber,
-            'PaymentMode' => $request->PaymentMode,
-            'PaymentInfo' => $request->PaymentInfo, 
+            'BookingCode' => $request->booking_code,
+            'CustomerDetails' => [
+                'CustomerName' => [
+                    'FirstName' => $request->first_name,
+                    'LastName' => $request->last_name,
+                    'Title' => $request->title,
+                    'Type' => $request->type
+                ]
+            ],
+            'ClientReferenceId' => $request->client_reference_id,
+            'BookingReferenceId' => $request->booking_reference_id,
+            'TotalFare' => (float)$request->total_fare,
+            'EmailId' => $request->email_id,
+            'PhoneNumber' => $request->phone_number,
+            'PaymentMode' => $request->payment_mode,
+            // 'PaymentInfo' => $request->PaymentInfo,
             'PaymentInfo' => [
-                'CvvNumber' => $request->PaymentInfo['CvvNumber']
+                'CvvNumber' => $request->cvv,
             ]
         ];
 
         if($request->PaymentMode === 'NewCard'){
-            $data['PaymentInfo']['CardNumber'] = $request->PaymentInfo['CardNumber'];
-            $data['PaymentInfo']['CardExpirationMonth'] = $request->PaymentInfo['CardExpirationMonth'];
-            $data['PaymentInfo']['CardExpirationYear'] = $request->PaymentInfo['CardExpirationYear'];
-            $data['PaymentInfo']['CardHolderFirstName'] = $request->PaymentInfo['CardHolderFirstName'];
-            $data['PaymentInfo']['CardHolderLastName'] = $request->PaymentInfo['CardHolderLastName'];
-            $data['PaymentInfo']['BillingAmount'] = $request->PaymentInfo['BillingAmount'];
-            $data['PaymentInfo']['BillingCurrency'] = $request->PaymentInfo['BillingCurrency'];
-            $data['PaymentInfo']['CardHolderAddress']['AddressLine1'] = $request->PaymentInfo['CardHolderAddress']['AddressLine1'];
-            $data['PaymentInfo']['CardHolderAddress']['AddressLine2'] = $request->PaymentInfo['CardHolderAddress']['AddressLine2'];
-            $data['PaymentInfo']['CardHolderAddress']['City'] = $request->PaymentInfo['CardHolderAddress']['City'];
-            $data['PaymentInfo']['CardHolderAddress']['PostalCode'] = $request->PaymentInfo['CardHolderAddress']['PostalCode'];
-        }
-
-       ;
+            $data['PaymentInfo']['CardNumber'] = $request->card_number;
+            $data['PaymentInfo']['CardExpirationMonth'] = $request->expired_month;
+            $data['PaymentInfo']['CardExpirationYear'] = $request->expired_year;
+            $data['PaymentInfo']['CardHolderFirstName'] = $request->card_first_name;
+            $data['PaymentInfo']['CardHolderLastName'] = $request->card_last_name;
+            $data['PaymentInfo']['BillingAmount'] = $request->billing_amount;
+            $data['PaymentInfo']['BillingCurrency'] = $request->billing_currency;
+            $data['PaymentInfo']['CardHolderAddress']['AddressLine1'] = $request->address_line_1;
+            $data['PaymentInfo']['CardHolderAddress']['AddressLine2'] = $request->address_line_2;
+            $data['PaymentInfo']['CardHolderAddress']['City'] = $request->card_city;
+            $data['PaymentInfo']['CardHolderAddress']['PostalCode'] = $request->card_postal_code;
+            $data['PaymentInfo']['CardHolderAddress']['CountryCode'] = $request->card_country_code;
+        } 
 
         $response = $this->tboPostAuthentication($url, $data);
 
         logger('Booking Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
-            return Redirect::route('prebook.show', $tboId)->withErrors($response['Status']['Description']);
+            return Redirect::route('suppliers.tbo.prebook.show', ['tboId' => $tboId])->withErrors($response['Status']['Description']);
         }
 
-        return Redirect::route('tbo.index')->with('success', 'Booking successful');
+        return Redirect::route('suppliers.tbo.index')->with('success', 'Booking successful');
     }
 
     public function bookingDetail(Request $request)

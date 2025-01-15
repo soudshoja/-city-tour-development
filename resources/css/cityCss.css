@@ -46,6 +46,9 @@ thead {
     border-radius: 999px !important;
 }
 
+.hidden {
+    display: none;
+}
 /* Define the heartbeat animation */
 @keyframes heartbeat {
     0% {

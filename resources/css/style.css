@@ -882,8 +882,9 @@
 }
 .dark .nice-select,
 .dark .nice-select.open {
-    background-color: #1b2e4b;
+    background-color: #374151;
     border-color: #253b5c !important;
+    border-radius: 6px !important;
 }
 .dark .nice-select .nice-select-dropdown {
     background-color: #1b2e4b;

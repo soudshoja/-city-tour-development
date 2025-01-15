@@ -94,6 +94,13 @@ thead {
 :is(.dark .DarkBTextcolor) {
     color: #ffffff !important;
 }
+.icon {
+    fill: #1e40af; /* Light mode color */
+}
+
+.dark .icon {
+    fill: white; /* Dark mode color */
+}
 
 :is(.dark .DarkBGcolor) {
     background-color: #111827;
@@ -330,7 +337,7 @@ thead {
     width: 100%; /* Full width */
     padding: 10px; /* Padding inside the input */
     border: 1px solid #d1d5db !important; /* Gray border */
-    border-radius: 9999px;
+    border-radius: 0.5rem;
     color: black; /* Light mode text color */
     transition: all 0.3s ease; /* Smooth transition for dark mode */
     background: transparent;

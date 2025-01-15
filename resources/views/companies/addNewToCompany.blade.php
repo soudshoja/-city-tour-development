@@ -314,7 +314,7 @@
 
                                 <!-- Client Phone -->
                                 <div class="mb-4 flex items-center">
-                                    <input type="tel" name="phone" class="custom-input"
+                                    <input type="number" name="phone" class="custom-input"
                                         required placeholder="Client Phone" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                 </div>
 

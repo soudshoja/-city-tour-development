@@ -8,7 +8,7 @@
                 <span class="text-lg font-bold text-gray-800 dark:text-white">City Tour</span>
             </a>
 
-            <div class="ml-5 hidden lg:block xl:block">
+            <div class="ml-5 lg:block xl:block">
                 <!-- company menu -->
                 @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
                 @include('layouts.menus.company')
@@ -31,7 +31,7 @@
 
             </div>
         </div>
-
+        <!-- ./Logo -->
 
         <!-- Right Section -->
         <div x-data="{ 
@@ -174,5 +174,6 @@
                 @endif
             </div>
         </div>
+        <!-- ./Right Section -->
     </div>
 </header>

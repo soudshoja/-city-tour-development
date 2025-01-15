@@ -473,7 +473,7 @@
     </div>
 
     <script>
-        let selectedTasks = @json($selectedTasks);
+
         let items = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);

@@ -11,7 +11,9 @@ class TBO extends Model
     protected $fillable = [
         'booking_code',
         'hotel_code',
+        'hotel_name',
         'room_name',
+        'room_quantity',
         'inclusion',
         'currency',
         'day_rates',
@@ -24,4 +26,9 @@ class TBO extends Model
         'is_refundable',
         'with_transfer',
     ];
+
+    public function rooms()
+    {
+        return $this->hasMany(TBORoom::class, 'tbo_id');
+    }
 }

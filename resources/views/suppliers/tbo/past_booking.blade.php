@@ -22,7 +22,7 @@
             <div class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md text-center text-sm w-full">No Past Booking Found</div>
             @else
             @foreach($pastBookings as $booking)
-            <div class="rounded-md border-black border dark:border-gray-600 shadow-lg p-2 dark:bg-gray-500">
+            <div class="rounded-md border-black border dark:border-gray-600 shadow-lg p-2 dark:bg-gray-500 group">
                 <div class="flex justify-between mb-2">
                     <div>
                         Booking Id: <strong> {{ $booking['BookingId'] }} </strong>
@@ -43,9 +43,9 @@
                     <div class="grid grid-cols-1 gap-2">
                         <div class="inline-flex justify-between">
                             <div class="flex sm:flex-col lg:flex-row gap-2">
-                                <div class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md items-center font-bold">
+                                <a href="{{ route('suppliers.tbo.booking-detail', ['confirmationNumber' => $booking['ConfirmationNo']]) }}" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-md items-center font-bold group-hover:animate-pulse cursor-pointer">
                                     {{ $booking['ConfirmationNo'] }}
-                                </div>
+                                </a>
                                 <div class="bg-gradient-to-r from-green-800 to-green-400 items-center p-2 text-white rounded-md font-bold">{{ $booking['BookingStatus']}}</div>
                             </div>
                             <div>

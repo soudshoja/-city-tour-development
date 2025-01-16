@@ -68,17 +68,26 @@ class RoleController extends Controller
 
     public function update(Request $request)
     {
-        dd($request->all());
+        $request->validate([
+            'role_id' => 'required',
+            'permissionsId.enabled' => 'required',
+            'permissionsId.disabled' => 'required'
+        ]);
+
         $role = Role::findById($request->role_id);
 
         try {
 
-            foreach ($request->permissionsId as $permissionId) {
+            foreach ($request->permissionsId['enabled'] as $permissionId) {
 
                 $permission = Permission::findById($permissionId);
 
                 $role->givePermissionTo($permission);
             }
+
+            foreach ($request->permissionsId['disabled'] as $permissionId) {
+
+                $permission = Permission::findById($permission
 
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());

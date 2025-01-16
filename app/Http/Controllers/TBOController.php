@@ -231,7 +231,7 @@ class TBOController extends Controller
 
     public function preBookIndex()
     {
-        $tboPreBooks = TBO::all();
+        $tboPreBooks = TBO::all()->sortByDesc('created_at');
 
         return view('suppliers.tbo.book.prebook-index', compact('tboPreBooks'));
     }
@@ -283,11 +283,15 @@ class TBOController extends Controller
         $data = [
             'BookingCode' => $request->booking_code,
             'CustomerDetails' => [
-                'CustomerName' => [
-                    'FirstName' => $request->first_name,
-                    'LastName' => $request->last_name,
-                    'Title' => $request->title,
-                    'Type' => $request->type
+                [
+                    'CustomerNames' => [
+                        [
+                            'FirstName' => $request->first_name,
+                            'LastName' => $request->last_name,
+                            'Title' => $request->title,
+                            'Type' => $request->type
+                        ],
+                    ]
                 ]
             ],
             'ClientReferenceId' => $request->client_reference_id,
@@ -302,7 +306,7 @@ class TBOController extends Controller
             ]
         ];
 
-        if($request->PaymentMode === 'NewCard'){
+        if($request->payment_mode === 'NewCard'){
             $data['PaymentInfo']['CardNumber'] = $request->card_number;
             $data['PaymentInfo']['CardExpirationMonth'] = $request->expired_month;
             $data['PaymentInfo']['CardExpirationYear'] = $request->expired_year;
@@ -322,7 +326,7 @@ class TBOController extends Controller
         logger('Booking Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
-            return Redirect::route('suppliers.tbo.prebook.show', ['tboId' => $tboId])->withErrors($response['Status']['Description']);
+            return back()->withInput()->withErrors($response['Status']['Description']);
         }
 
         return Redirect::route('suppliers.tbo.index')->with('success', 'Booking successful');

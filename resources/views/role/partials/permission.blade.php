@@ -16,8 +16,8 @@
               @foreach($groupPermission as $permission)
               <div class="grid grid-cols-4 border">
                   <div class="inline-block align-middle m-auto">
-                      <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId['enabled'][]" value="{{ $permission['id'] }}" {{ $permission['checked'] ? 'checked' : '' }}>
-                      <input type="hidden" name="permissionsId['disabled'][]" value="{{ $permission['id'] }}">
+                      <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId[enabled][]" value="{{ $permission['id'] }}" {{ $permission['checked'] ? 'checked' : '' }}>
+                      <input type="hidden" name="permissionsId[disabled][]" value="{{ $permission['id'] }}">
                   </div>
                   <div class="inline-block align-middle m-auto col-span-3">
                       <label for="{{$permission['id']}}">{{$permission['name']}}</label>

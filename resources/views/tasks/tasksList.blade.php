@@ -131,7 +131,6 @@
                     </div>
                     <!-- ./filter & export buttons -->
                 </div>
-
                 <!-- ./search & filter buttons -->
 
 
@@ -230,7 +229,6 @@
                         </table>
 
                     </div>
-
 
 
                     <!-- pagination -->

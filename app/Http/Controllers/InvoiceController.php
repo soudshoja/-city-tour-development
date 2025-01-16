@@ -102,7 +102,7 @@ class InvoiceController extends Controller
         }
 
         $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
-        
+
         $selectedTasks = $tasks->whereIn('id', $taskIdsArray)->get();
 
         foreach ($selectedTasks as $task) {
@@ -175,34 +175,34 @@ class InvoiceController extends Controller
 
         $clientId = $selectedClient ? $selectedClient->id : null;
 
-        
+
 
         if ($user->role_id == Role::AGENT) {
-            $tasks = $agentId 
+            $tasks = $agentId
                 ? $tasks
-                    ->where('agent_id', $agentId)
-                    ->get()
-                    ->map(function ($task) {
-                        $task->agent_name = $task->agent->name ?? null;
-                        $task->branch_name = $task->agent->branch->name ?? null;
-                        $task->supplier_name = $task->supplier->name ?? null;
-                        return $task;
-                    })
+                ->where('agent_id', $agentId)
+                ->get()
+                ->map(function ($task) {
+                    $task->agent_name = $task->agent->name ?? null;
+                    $task->branch_name = $task->agent->branch->name ?? null;
+                    $task->supplier_name = $task->supplier->name ?? null;
+                    return $task;
+                })
                 : collect();
         } else {
-            $tasks = $agentId 
+            $tasks = $agentId
                 ? $tasks
-                    ->whereIn('agent_id', (array)$agentId)
-                    ->get()
-                    ->map(function ($task) {
-                        $task->agent_name = $task->agent->name ?? null;
-                        $task->branch_name = $task->agent->branch->name ?? null;
-                        $task->supplier_name = $task->supplier->name ?? null;
-                        return $task;
-                    })
+                ->whereIn('agent_id', (array)$agentId)
+                ->get()
+                ->map(function ($task) {
+                    $task->agent_name = $task->agent->name ?? null;
+                    $task->branch_name = $task->agent->branch->name ?? null;
+                    $task->supplier_name = $task->supplier->name ?? null;
+                    return $task;
+                })
                 : collect();
         }
-        
+
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
@@ -239,13 +239,12 @@ class InvoiceController extends Controller
             $company = $user->company;
             $company = Company::with('branches.agents')->find($company->id);
             $agents = $company->branches->flatMap->agents;
-
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $agents = $company->branches->flatMap->agents;
         }
-   
+
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
 
@@ -283,7 +282,7 @@ class InvoiceController extends Controller
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $invoiceDate = $invoice->invoice_date;
-        $invprice= $invoice->amount;
+        $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
 
         $appUrl = config('app.url');
@@ -292,7 +291,7 @@ class InvoiceController extends Controller
             'clients',
             'invoice',
             'agents',
-            'agentId',     
+            'agentId',
             'clientId',
             'tasks',
             'company',
@@ -307,7 +306,6 @@ class InvoiceController extends Controller
             'dueDate',
             'appUrl'
         ));
-
     }
 
 
@@ -319,15 +317,15 @@ class InvoiceController extends Controller
             'clientId' => 'required',
             'amount' => 'required',
             'type' => 'required|string',
-            'invoiceNumber'=> 'required|string',
+            'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
         ]);
 
         $invoiceId = $request->input('invoiceId');
         $invoiceNumber = $request->input('invoiceNumber');
-        $clientId = $request->input('clientId'); 
+        $clientId = $request->input('clientId');
         $type = $request->input('type');
-        $date = $request->input('date'); 
+        $date = $request->input('date');
         $amount = $request->input('amount');
         $gateway = $request->input('gateway');
 
@@ -336,34 +334,32 @@ class InvoiceController extends Controller
 
         try {
 
-                $invoicepartial = InvoicePartial::create([
-                    'invoice_id' => $invoiceId,
-                    'invoice_number' => $invoiceNumber,
-                    'client_id' => $clientId,
-                    'amount' => $amount,
-                    'status' => 'unpaid',
-                    'expiry_date' => $date,
-                    'type' => $type,
-                    'payment_gateway' => $gateway,
-                ]);
+            $invoicepartial = InvoicePartial::create([
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'client_id' => $clientId,
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'expiry_date' => $date,
+                'type' => $type,
+                'payment_gateway' => $gateway,
+            ]);
 
-                $invoice->payment_type = $type;
-                $invoice->save();
+            $invoice->payment_type = $type;
+            $invoice->save();
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Invoice Partial created successfully!',
-                    'invoiceId' => $invoiceId,
-                ]);
-    
-            } catch (Exception $e) {
-                Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create invoice!',
-                ]);
-            }
-
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice Partial created successfully!',
+                'invoiceId' => $invoiceId,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create invoice!',
+            ]);
+        }
     }
 
     public function removePartial(Request $request)
@@ -372,15 +368,15 @@ class InvoiceController extends Controller
             'invoiceId' => 'required',
             'invoiceNumber' => 'required|string',
         ]);
-    
+
         $invoiceId = $request->input('invoiceId');
         $invoiceNumber = $request->input('invoiceNumber');
-    
+
         try {
             // Find the invoice partial to be deleted
             $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)
                 ->first();
-    
+
             // Check if the partial exists
             if (!$invoicePartial) {
                 return response()->json([
@@ -388,16 +384,15 @@ class InvoiceController extends Controller
                     'message' => 'Invoice partial not found!',
                 ]);
             }
-    
+
             // Delete the invoice partial
             $invoicePartial->delete();
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice partial removed successfully!',
                 'invoiceId' => $invoiceId,
             ]);
-    
         } catch (Exception $e) {
             Log::error('Failed to remove InvoicePartial: ' . $e->getMessage());
             return response()->json([
@@ -406,7 +401,7 @@ class InvoiceController extends Controller
             ]);
         }
     }
-    
+
 
     /**
      * Store a newly created resource in storage.
@@ -430,7 +425,7 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'currency' => 'required|string',
         ]);
-     
+
 
         $tasks = $request->input('tasks');
         $duedate = $request->input('duedate');
@@ -530,7 +525,7 @@ class InvoiceController extends Controller
                             'invoice_id' =>  $invoice->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment need to be made to: ' . $supplier->name,
+                            'description' => 'Payment: ' . $supplier->name,
                             'debit' => $selectedtask->total,
                             'credit' => 0,
                             'balance' => $selectedtask->total,
@@ -548,7 +543,7 @@ class InvoiceController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment need to be received from: ' . $client->name,
+                            'description' => 'Payment received from: ' . $client->name,
                             'debit' => 0,
                             'credit' => $task['invprice'],
                             'balance' => $task['invprice'],
@@ -590,7 +585,6 @@ class InvoiceController extends Controller
                 'message' => 'Invoice created successfully!',
                 'invoiceId' => $invoice->id,
             ]);
-
         } catch (Exception $e) {
             Log::error('Failed to create invoice: ' . $e->getMessage());
             return response()->json('Invoice creation failed!', 500);

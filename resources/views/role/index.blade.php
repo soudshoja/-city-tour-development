@@ -27,7 +27,7 @@
                             <td>{{ $role['description'] }}</td>
                             <td x-data="{ openModal: false }" class="">
                                 @foreach($role->permissions as $permission)
-                                <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">{{ $permission }}</span>
+                                <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">{{ $permission['name'] }}</span>
                                 @endforeach
                                 @if(count($role['permissions']) > 3)
                                 <button type="button" class="text-blue-500 text-xs" @click="openModal = true">See All</button>

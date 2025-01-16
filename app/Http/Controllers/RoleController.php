@@ -41,10 +41,25 @@ class RoleController extends Controller
 
     public function edit($roleId)
     {
-        $permissions = cache()->remember('permissions', 60, function () {
+        $groupedPermissions = cache()->remember('permissions', 60, function () {
             return $this->getAllPermission();
         });
         $role = Role::with('permissions')->find($roleId);
+
+        // compare permissions with role permissions and check if the role already has the same permission
+        foreach ($groupedPermissions as $gpKey => $permissions) {
+            foreach ($permissions as $pKey => $permission) {
+                $groupedPermissions[$gpKey][$pKey]['checked'] = false;
+
+                foreach ($role->permissions as $rolePermission) {
+                    if ($rolePermission->id == $permission['id']) {
+                        $groupedPermissions[$gpKey][$pKey]['checked'] = true;
+                    }
+                }
+            }
+        }
+
+        $permissions = $groupedPermissions;
 
         // foreach($permissions as $key => $permission) dump($key);
         // dd($permissions);
@@ -53,6 +68,7 @@ class RoleController extends Controller
 
     public function update(Request $request)
     {
+        dd($request->all());
         $role = Role::findById($request->role_id);
 
         try {

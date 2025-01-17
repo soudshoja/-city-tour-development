@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Role;
 use App\Models\TBO;
+use App\Models\TBORoom;
 use Exception;
 use Google\Protobuf\Field\Kind;
 use Illuminate\Http\Request;
@@ -183,6 +184,10 @@ class TBOController extends Controller
     {
         $request->validate([
             'bookingCode' => 'required',
+            'hotelName' => 'required',
+            'rooms' => 'array|required',
+            'rooms.*.adults' => 'required',
+            'rooms.*.children' => 'required', 
         ]);
 
         $url = '/PreBook';
@@ -207,6 +212,8 @@ class TBOController extends Controller
                     $tboPreBook = TBO::create([
                         'booking_code' => $rooms['BookingCode'],
                         'hotel_code' => $hotel['HotelCode'],
+                        'hotel_name' => $request->hotelName,
+                        'room_quantity' => count($request->rooms),
                         'room_name' => json_encode($rooms['Name']),
                         'currency' => $hotel['Currency'],
                         'inclusion' => $rooms['Inclusion'],
@@ -215,46 +222,73 @@ class TBOController extends Controller
                         'total_tax' => $rooms['TotalTax'],
                         'extra_guest_charges' => $rooms['ExtraGuestCharges'] ?? '0',
                         'room_promotion' => json_encode($rooms['RoomPromotion']),
-                        'cancel_policies' => json_encode($rooms['CancelPolicies']),
                         'meal_type' => $rooms['MealType'],
                         'is_refundable' => $rooms['IsRefundable'],
                         'with_transfer' => $rooms['WithTransfer'] ?? false,
                     ]);
+
+                    foreach($request->rooms as $room){
+                        try{
+                            TBORoom::create([
+                                'tbo_id' => $tboPreBook->id,
+                                // 'room_name' => $room['roomName'],
+                                'adult_quantity' => $room['adults'],
+                                'child_quantity' => $room['children'],
+                            ]);
+                        } catch (Exception $e) {
+
+                            $tboPreBook->delete();
+                            logger('Error: '. $e->getMessage());
+                            return Redirect::back()->with('error', $e->getMessage());
+                        }
+                    }
                 } catch (Exception $e) {
+                    logger('Error: '. $e->getMessage()); 
                     return Redirect::back()->with('error', $e->getMessage());
                 }
             }
         }
-        
-        return $this->preBookShow($tboPreBook->id);
+
+        $tboPreBook = TBO::with('rooms')->find($tboPreBook->id);
+
+        return view('suppliers.tbo.book.prebook-show', compact('tboPreBook'))->with('success', 'Prebook successful');
     }
 
     public function preBookIndex()
     {
-        $tboPreBooks = TBO::all();
+        $tboPreBooks = TBO::all()->sortByDesc('created_at');
 
         return view('suppliers.tbo.book.prebook-index', compact('tboPreBooks'));
     }
 
     public function preBookShow($tboId)
     {
-        $tboPreBook = TBO::find($tboId);
-
+        $tboPreBook = TBO::with('rooms')->find($tboId);
         return view('suppliers.tbo.book.prebook-show', compact('tboPreBook'));
     }
 
     public function book(Request $request)
     {
-
         $request->validate([
             'tbo_id' => 'required',
             'booking_code' => 'required',
-            // 'CustomerDetails' => 'array|required',
-            // 'CustomerDetails.CustomerNames' => 'array|required',
-            'first_name' => 'required',
-            'last_name' => 'required',
-            'title' => 'required',
-            'type' => 'required',
+            // 'adult' => 'array|required',
+            // 'adult.*.title' => 'required',
+            // 'adult.*.first_name' => 'required',
+            // 'adult.*.last_name' => 'required',
+            // 'child' => 'array|nullable',
+            // 'child.*.title' => 'required_if:child,1',
+            // 'child.*.first_name' => 'required_if:child,1',
+            // 'child.*.last_name' => 'required_if:child,1',
+            'rooms' => 'array|required',
+            'rooms.*.adults' => 'required',
+            'rooms.*.adults.*.title' => 'required',
+            'rooms.*.adults.*.first_name' => 'required',
+            'rooms.*.adults.*.last_name' => 'required',
+            'rooms.*.children' => 'nullable',
+            'rooms.*.children.*.title' => 'required_if:rooms.*.children,1',
+            'rooms.*.children.*.first_name' => 'required_if:rooms.*.children,1',
+            'rooms.*.children.*.last_name' => 'required_if:rooms.*.children,1',
             'client_reference_id' => 'required',
             'booking_reference_id' => 'required',
             'total_fare' => 'numeric|required',
@@ -280,16 +314,57 @@ class TBOController extends Controller
         $tboId = $request->tbo_id;
         $url = '/Book';
 
+        $customerDetails = [];
+        foreach ($request->rooms as $key => $room) {
+            $customers = [];
+            foreach ($room['adults'] as $adult) {
+                $customers[] = [
+                    'FirstName' => $adult['first_name'],
+                    'LastName' => $adult['last_name'],
+                    'Title' => $adult['title'],
+                    'Type' => 'Adult'
+                ];
+            }
+
+            if(isset($room['children'])){
+                foreach($room['children'] as $child){
+                    $customers[] = [
+                        'FirstName' => $child['first_name'],
+                        'LastName' => $child['last_name'],
+                        'Title' => $child['title'],
+                        'Type' => 'Child'
+                    ];
+                }
+            }
+
+            $customerDetails[] = [
+                'CustomerNames' => $customers
+            ];
+        }
+        // foreach ($adults as $adult) {
+        //     $customers[] = [
+        //         'FirstName' => $adult['first_name'],
+        //         'LastName' => $adult['last_name'],
+        //         'Title' => $adult['title'],
+        //         'Type' => 'Adult'
+        //     ];
+        // }
+
+        // if ($children) {
+        //     foreach ($children as $child) {
+        //         $customers[] = [
+        //             'FirstName' => $child['first_name'],
+        //             'LastName' => $child['last_name'],
+        //             'Title' => $child['title'],
+        //             'Type' => 'Child'
+        //         ];
+        //     }
+        // }
+
+
         $data = [
             'BookingCode' => $request->booking_code,
-            'CustomerDetails' => [
-                'CustomerName' => [
-                    'FirstName' => $request->first_name,
-                    'LastName' => $request->last_name,
-                    'Title' => $request->title,
-                    'Type' => $request->type
-                ]
-            ],
+            'CustomerDetails' => $customerDetails,
             'ClientReferenceId' => $request->client_reference_id,
             'BookingReferenceId' => $request->booking_reference_id,
             'TotalFare' => (float)$request->total_fare,
@@ -302,7 +377,7 @@ class TBOController extends Controller
             ]
         ];
 
-        if($request->PaymentMode === 'NewCard'){
+        if($request->payment_mode === 'NewCard'){
             $data['PaymentInfo']['CardNumber'] = $request->card_number;
             $data['PaymentInfo']['CardExpirationMonth'] = $request->expired_month;
             $data['PaymentInfo']['CardExpirationYear'] = $request->expired_year;
@@ -315,15 +390,29 @@ class TBOController extends Controller
             $data['PaymentInfo']['CardHolderAddress']['City'] = $request->card_city;
             $data['PaymentInfo']['CardHolderAddress']['PostalCode'] = $request->card_postal_code;
             $data['PaymentInfo']['CardHolderAddress']['CountryCode'] = $request->card_country_code;
-        } 
+        }
 
         $response = $this->tboPostAuthentication($url, $data);
 
         logger('Booking Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
-            return Redirect::route('suppliers.tbo.prebook.show', ['tboId' => $tboId])->withErrors($response['Status']['Description']);
+
+            if($response['Status']['Code'] === 400 && $response['Status']['Description'] === 'Session Expired'){
+              $tboRequest = TBO::with('rooms')->find($tboId);
+
+              $tboRequest->rooms()->delete();
+              $tboRequest->delete();  
+
+                 return Redirect::route('suppliers.tbo.search.index')->with('error', 'Session Expired. Please try again');
+            }
+            return Redirect::route('suppliers.tbo.prebook.show', $tboId)->withInput()->withErrors($response['Status']['Description']);
+            // return back()->withInput()->withErrors($response['Status']['Description']);
         }
+            $tboRequest = TBO::with('rooms')->find($tboId);
+
+            $tboRequest->rooms()->delete();
+            $tboRequest->delete();  
 
         return Redirect::route('suppliers.tbo.index')->with('success', 'Booking successful');
     }
@@ -370,7 +459,7 @@ class TBOController extends Controller
             "ToDate" => $endDate
         ]);
 
-        logger('Booking Detail By Date Response: ', $response->json());
+        // logger('Booking Detail By Date Response: ', $response->json());
 
         if($response['Status']['Code'] !== 200){
             
@@ -398,7 +487,7 @@ class TBOController extends Controller
             return Redirect::back()->withErrors($response['Status']['Description']);
         }
 
-        return Redirect::route('tbo.index')->with('success', 'Booking cancelled successfully');
+        return Redirect::route('suppliers.tbo.index')->with('success', 'Booking cancelled successfully');
     }
 
     public function countryList()

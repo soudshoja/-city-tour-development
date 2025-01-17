@@ -139,7 +139,7 @@
         </div>
     </div>
     <!-- Modal -->
-    <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+    <div id="paymentModalChat" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
             <!-- Include your previous page content here -->
@@ -215,7 +215,7 @@
         </div>
     </div>
 
-    <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+    <div id="paymentModal1Chat" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
             <div class="bg-gray-100 p-5">
@@ -868,9 +868,9 @@
         if (paymentType === 'full') {
             document.getElementById('payment_gateway_section').classList.remove('hidden');
         } else if (paymentType === 'partial') {
-            document.getElementById('paymentModal1').classList.remove('hidden');
+            document.getElementById('paymentModal1Chat').classList.remove('hidden');
         } else if (paymentType === 'split') {
-            document.getElementById('paymentModal').classList.remove('hidden');
+            document.getElementById('paymentModalChat').classList.remove('hidden');
         }
     });
 

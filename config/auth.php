@@ -69,13 +69,17 @@ return [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
-
+        Intervention\Image\ImageServiceProvider::class,
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
     ],
 
+    'aliases' => [
+        // Remove this line if it exists
+        'Image' => Intervention\Image\Facades\Image::class,
+    ],
     /*
     |--------------------------------------------------------------------------
     | Resetting Passwords

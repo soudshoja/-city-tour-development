@@ -45,8 +45,9 @@
                     </div>
                     @else
                     <select name="city" id="city" class="h-12 p-2 dark:bg-gray-800 dark:border-gray-900">
+                        <option value="">Select City</option>
                         @foreach($cityList as $city)
-                        <option value="{{ $city['Code'] }}">{{ $city['Name'] }}</option>
+                        <option value="{{ $city['Code'] }}" {{ $city['Code'] === $cityCode ? 'selected' : ''}}>{{ $city['Name'] }}</option>
                         @endforeach
                     </select>
                     @endif
@@ -59,6 +60,7 @@
                     </div>
                     @else
                     <select name="hotel" id="hotel" class="h-12 p-2 dark:bg-gray-800 dark:border-gray-900">
+                        <option value="">Select Hotel</option>
                         @foreach($hotelList as $hotel)
                         <option value="{{ $hotel['HotelCode'] }}">{{ $hotel['HotelName'] }} - {{ $hotel['HotelCode'] }}</option>
                         @endforeach
@@ -119,20 +121,30 @@
             const checkInDate = document.getElementById('checkInDate').value;
             const checkOutDate = document.getElementById('checkOutDate').value;
             const hotel = document.getElementById('hotel').value;
+            const hotelName = document.getElementById('hotel').options[document.getElementById('hotel').selectedIndex].text;
+
             const guestNationality = document.getElementById('guestNationality').value;
 
-            if(!checkInDate || !checkOutDate || !hotel || !guestNationality) {
+            if(!hotel){
+                alert('Please select a hotel');
+                return;
+            }
+
+            if(!checkInDate || !checkOutDate ){
                 alert('Please fill the correct date');
                 return;
             }
 
             const rooms = [];
 
-            for (let i = 1; i <= roomCount; i++) {
-                const adults = document.getElementById('adults').value;
-                console.log('type of: ' + typeof adults);
+            let adultQuantity = 0;
+            let childrenQuantity = 0;
+
+            for (let i = 1; i <= roomCount ; i++) {
+                const adults = document.getElementById('room' + i + '-adults').value;
                 const children = document.getElementsByClassName('children-for-room' + i);
                 const childrenArray = [];
+
                 for (let j = 0; j < children.length; j++) {
                     childrenArray.push(children[j].value);
                 }
@@ -141,11 +153,11 @@
                     children: childrenArray.length,
                     childrenAges: childrenArray
                 });
+
+              
             }
 
             const url = "{!! route('suppliers.tbo.search') !!}";
-
-            console.log('url:' + url);
 
             const data = {
                 checkInDate,
@@ -154,6 +166,8 @@
                 guestNationality,
                 rooms
             };
+
+            console.log(data);
 
             const searchResult = document.getElementById('search-result');
 
@@ -181,34 +195,80 @@
                     const hotels = data.HotelResult;
                     hotels.forEach(hotel => {
                         hotel.Rooms.forEach(room => {
+                            console.log(room);
                             const roomResultDiv = document.createElement('div');
                             roomResultDiv.classList.add('p-4', 'border', 'rounded', 'mb-4', 'cursor-pointer');
-                            roomResultDiv.innerHTML = `
-                                <form action="{{ route('suppliers.tbo.prebook.store') }}" method="POST" class="flex justify-between">
-                                    @csrf
-                                    <div>
-                                    <input type="hidden" name="bookingCode" value="${room.BookingCode}">
-                                    <input type="hidden" name="totalFare" value="${room.TotalFare}">
-                                    <input type="hidden" name="totalTax" value="${room.TotalTax}">
-                                    <input type="hidden" name="mealType" value="${room.MealType}">
-                                    <input type="hidden" name="isRefundable" value="${room.IsRefundable}">
-                                    <input type="hidden" name="roomPromotion" value="${room.RoomPromotion}">
-                                    <input type="hidden" name="inclusion" value="${room.Inclusion}">
-                                    <input type="hidden" name="name" value="${room.Name}">
-                                    <input type="hidden" name="currency" value="${hotel.Currency}">
-                                    <div class="font-bold">${room.Name.join(', ')}</div>
-                                    <div>Inclusion: ${room.Inclusion}</div>
-                                    <div>Total Fare: ${room.TotalFare} ${hotel.Currency}</div>
-                                    <div>Total Tax: ${room.TotalTax} ${hotel.Currency}</div>
-                                    <div>Meal Type: ${room.MealType}</div>
-                                    <div>Refundable: ${room.IsRefundable ? 'Yes' : 'No'}</div>
-                                    <div>Room Promotion: ${room.RoomPromotion.join(', ')}</div>
-                                    </div>
-                                    <button type="submit" class="bg-black text-white font-semibold p-2 text-center rounded-md cursor-pointer shadow-md">
-                                        Book Now
-                                    </button>
-                                </form>
+
+                            let form = document.createElement('form');
+                            form.action = "{{ route('suppliers.tbo.prebook.store') }}";
+                            form.method = "POST";
+                            form.classList.add('flex', 'justify-between');
+
+                            form.innerHTML += `@csrf`;
+
+                            for(let i = 0; i < rooms.length ; i++){
+                                let adultInput = document.createElement('input');
+                                adultInput.type = 'hidden';
+                                adultInput.name = 'rooms[' + i + '][adults]';
+                                adultInput.value = rooms[i].adults;
+
+                                form.appendChild(adultInput);
+
+                                let childrenInput = document.createElement('input');
+                                childrenInput.type = 'hidden';
+                                childrenInput.name = 'rooms[' + i + '][children]';
+                                childrenInput.value = rooms[i].children;
+
+                                form.appendChild(childrenInput);
+                            }
+
+                            form.innerHTML += `
+                                <input type="hidden" name="hotelName" value="${hotelName}">
+                                <input type="hidden" name="bookingCode" value="${room.BookingCode}">
+                                <input type="hidden" name="totalFare" value="${room.TotalFare}">
+                                <input type="hidden" name="totalTax" value="${room.TotalTax}">
+                                <input type="hidden" name="mealType" value="${room.MealType}">
+                                <input type="hidden" name="isRefundable" value="${room.IsRefundable}">
+                                <input type="hidden" name="roomPromotion" value="${room.RoomPromotion}">
+                                <input type="hidden" name="inclusion" value="${room.Inclusion}">
+                                <input type="hidden" name="name" value="${room.Name}">
+                                <input type="hidden" name="currency" value="${hotel.Currency}">
+                                <div>
+                                <div class="font-bold">${room.Name.join(', ')}</div>
+                                <div>Inclusion: ${room.Inclusion}</div>
+                                <div>Total Fare: ${room.TotalFare} ${hotel.Currency}</div>
+                                <div>Total Tax: ${room.TotalTax} ${hotel.Currency}</div>
+                                <div>Meal Type: ${room.MealType}</div>
+                                <div>Refundable: ${room.IsRefundable ? 'Yes' : 'No'}</div>
+                                </div>
                             `;
+
+                            if(room.RoomPromotion.length > 0){
+                                form.innerHTML += `
+                                  <div>Room Promotion: ${room.RoomPromotion.join(', ')}</div>
+                                `;
+                            }
+
+                            if(room.Supplements.length > 0){
+                                form.innerHTML += `
+                                  <div>Supplements:</div>
+                                `;
+
+                                room.Supplements.forEach(supplement => {
+                                    supplement.forEach(sup => {
+                                        form.innerHTML += `
+                                            <div>${sup.Description}</div>
+                                        `;
+                                    });
+                                });
+                            }
+
+                            form.innerHTML += `
+                                <button type="submit" class="bg-black text-white font-semibold p-2 text-center rounded-md cursor-pointer shadow-md">
+                                    Book Now
+                                </button>
+                            `;
+                            roomResultDiv.appendChild(form);
                             searchResult.appendChild(roomResultDiv);
                         });
                     });
@@ -234,7 +294,7 @@
                 <div class="flex justify-evenly">
                     <div>
                         <label for="adults">Adult Quantity</label>
-                        <input type="number" name="adults[]" id="adults" class="dark:bg-gray-800 dark:border-gray-900">
+                        <input type="number" name="rooms[${roomCount}][adults]" id="room${roomCount}-adults" class="dark:bg-gray-800 dark:border-gray-900">
                     </div>
                     <div class="grid">
                         <div class="flex justify-between mb-2 min-w-56">
@@ -264,19 +324,20 @@
             childrenList.innerHTML = `
             <div class="flex gap-2">
                 <input type="number" name="children[]" class="children-for-room${roomCount} dark:bg-gray-800 dark:border-gray-900" placeholder="Age">
-                <button class="font-bold p-2 bg-red-500 dark:bg-red-700 rounded-md text-center text-white" onclick="removeChild(this)">Remove</button>
+                <button class="font-bold p-2 bg-red-500 dark:bg-red-700 rounded-md text-center text-white" onclick="deleteChildDiv(this)">Remove</button>
             </div>
             `;
 
             childrenDiv.appendChild(childrenList);
         }
 
-        function removeChild(element) {
+        function deleteChildDiv(element) {
             element.parentElement.remove();
         }
 
         function removeRoom(roomId){
             roomId.remove();
+            roomCount--;
         }
     </script>
 </x-app-layout>

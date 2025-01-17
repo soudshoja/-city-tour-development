@@ -80,12 +80,12 @@
 
     <!-- Payment Modal -->
 
-    <input id="invoiceNumber" type="hidden" name="invoiceNumber" />
-    <input id="invoiceId" type="hidden" name="invoiceId" />
-    <input id="invoiceAmount" type="hidden" name="invoiceAmount" />
-    <input id="subTotal" type="hidden" name="subTotal" />
-    <input id="due_date" type="hidden" name="due_date" />
-    <input id="receiverId" type="hidden" name="receiverId" />
+    <input id="invoiceNumberChat" type="hidden" name="invoiceNumberChat" />
+    <input id="invoiceIdChat" type="hidden" name="invoiceIdChat" />
+    <input id="invoiceAmountChat" type="hidden" name="invoiceAmountCHat" />
+    <input id="subTotalChat" type="hidden" name="subTotalChat" />
+    <input id="due_dateChat" type="hidden" name="due_dateChat" />
+    <input id="receiverIdChat" type="hidden" name="receiverIdChat" />
 
 
     <div id="open-payment-type" class="bg-white shadow-md rounded-lg mb-6 hidden">
@@ -98,7 +98,7 @@
                 <form id="payment-type-form">
                     <div class="form-group">
                         <label for="payment-type">Choose Payment Type:</label>
-                        <select id="payment-type" class="form-control" required>
+                        <select id="payment-typeChat" class="form-control" required>
                             <option value="">-- Select --</option>
                             <option value="full">Full</option>
                             <option value="partial">Partial</option>
@@ -153,11 +153,11 @@
                             <div class="grid grid-cols-3 gap-4 mb-5">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">Amount *</label>
-                                    <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+                                    <input type="number" id="total-amountChat" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
-                                    <select id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
+                                    <select id="split-intoChat" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
                                         <option value="" disabled selected>Select a value</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
@@ -177,7 +177,7 @@
                             <div class="grid grid-cols-2 gap-4 mb-5">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">Description *</label>
-                                    <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                    <textarea id="split-descChat" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
                                 </div>
                             </div>
 
@@ -193,7 +193,7 @@
                                             <th class="border-b px-4 py-2">Payment Gateway</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="split-rows">
+                                    <tbody id="split-rowsChat">
                                         <!-- Dynamic rows will be generated here -->
                                     </tbody>
                                 </table>
@@ -225,18 +225,18 @@
                         <div class="grid grid-cols-3 gap-4 mb-5">
                             <div>
                                 <label class="block text-sm font-medium mb-1">Client Name</label>
-                                <span id="receiverName1">AHMED</span>
+                                <span id="receiverName1Chat">AHMED</span>
                             </div>
                             <div>
-                                <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
-                                <span id="subT1">0.00</span>
+                                <label for="subT1Chat" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                <span id="subT1Chat">0.00</span>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-3 gap-4 mb-5">
                             <div>
                                 <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
-                                <select id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
+                                <select id="split-into1Chat" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
                                     <option value="" disabled selected>Select a value</option>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
@@ -249,7 +249,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium mb-1">Payment Gateway</label>
-                                <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                <select id="payment_gateway1Chat" name="payment_gateway1Chat" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                     <option value="Tap">Tap</option>
                                     <option value="Hesabe">Hesabe</option>
                                     <option value="MyFatoorah">MyFatoorah</option>
@@ -265,12 +265,12 @@
                                     <th class="border-b px-4 py-2">Amount</th>
                                 </tr>
                             </thead>
-                            <tbody id="split-rows1">
+                            <tbody id="split-rows1Chat">
                                 <!-- Dynamic rows will be generated here -->
                             </tbody>
                         </table>
 
-                        <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+                        <p id="error-messageChat" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
 
                         <div class="flex space-x-4 mt-5">
                             <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
@@ -357,7 +357,7 @@
                                 <!-- Name Field -->
                                 <div class="w-1/2">
                                     <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                    <input id="name" name="name" type="text" required
+                                    <input id="nameChat" name="name" type="text" required
                                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         placeholder="Client Name" />
                                 </div>
@@ -365,7 +365,7 @@
                                 <!-- Email Field -->
                                 <div class="w-1/2">
                                     <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                    <input id="email" name="email" type="email" required
+                                    <input id="emailChat" name="email" type="email" required
                                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         placeholder="Client Email" />
                                 </div>
@@ -375,7 +375,7 @@
                                 <!-- Phone Field -->
                                 <div class="w-1/2">
                                     <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                                    <input id="phone" name="phone" type="text" required
+                                    <input id="phoneChat" name="phone" type="text" required
                                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         placeholder="Client Phone" />
                                 </div>
@@ -383,7 +383,7 @@
                                 <!-- Address Field -->
                                 <div class="w-1/2">
                                     <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                    <input id="address" name="address" type="text"
+                                    <input id="addressChat" name="address" type="text"
                                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         placeholder="Client Address" />
                                 </div>
@@ -393,13 +393,13 @@
                             <div class="mb-4 flex gap-4">
                              <div class="w-1/2">
                                 <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                                <input id="passport_no" name="passport_no" type="text" required
+                                <input id="passport_noChat" name="passport_no" type="text" required
                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                     placeholder="Passport Number" />
                             </div>
                             <div class="w-1/2">
                                 <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Civil Number</label>
-                                <input id="civil_no" name="civil_no" type="text" required
+                                <input id="civil_noChat" name="civil_noChat" type="text" required
                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                     placeholder="Civil Number" />
                             </div>
@@ -409,7 +409,7 @@
                             <div class="mb-4 flex gap-4">
                                 <div class="w-1/2">
                                     <label for="agent_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
-                                    <select id="agent_id" name="agent_id" class="w-full p-2 border rounded-md" placeholder="Select Agent">
+                                    <select id="agent_idChat" name="agent_idChat" class="w-full p-2 border rounded-md" placeholder="Select Agent">
                                     @foreach ($agents as $agent)
                                         <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                                     @endforeach
@@ -417,7 +417,7 @@
                                 </div>
                                 <div class="w-1/2">
                                 <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date of Birth</label>
-                                <input id="date_of_birth" type="date" name="date_of_birth" 
+                                <input id="date_of_birthChat" type="date" name="date_of_birthChat" 
                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                      />
                                 </div>
@@ -590,8 +590,8 @@
         passport.hide();
         // let agents = [];
         // let clients = [];
-        let clients = @json($clients);
-        let agents = @json($agents);
+        let clientsChat = @json($clients);
+        let agentsChat = @json($agents);
 
     let selectedTasks = [];
     appendMessage("cityTour", "Welcome to City Tour. You can ask anything.");
@@ -827,22 +827,22 @@
                     const invoiceId = response.invoiceId; // Replace with actual response key for invoice ID
                     const invoiceAmount = response.invoiceAmount; // Replace with actual response key for amount
                     const due_date = response.due_date;
-                    clients = response.clients; // Assuming this is an array of clients
+                    clientsChat = response.clients; // Assuming this is an array of clients
 
                     // Generate clickable link
                     const clickableLink = `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
                     appendMessage("cityTour", clickableLink);
 
-                    document.getElementById('invoiceNumber').value = response.invoiceNumber;
-                    document.getElementById('invoiceId').value = response.invoiceId;
-                    document.getElementById('invoiceAmount').value = response.invoiceAmount;
-                    document.getElementById('subTotal').value = response.invoiceAmount;
-                    document.getElementById('receiverId').value = response.clientId;
+                    document.getElementById('invoiceNumberChat').value = response.invoiceNumber;
+                    document.getElementById('invoiceIdChat').value = response.invoiceId;
+                    document.getElementById('invoiceAmountChat').value = response.invoiceAmount;
+                    document.getElementById('subTotalChat').value = response.invoiceAmount;
+                    document.getElementById('receiverIdChat').value = response.clientId;
 
                     // Serialize the clients array as a JSON string
-                    document.getElementById('total-amount').value = response.invoiceAmount;
-                    document.getElementById('due_date').value = response.due_date;
-                    document.getElementById('subT1').textContent = `${response.invoiceAmount.toFixed(2)}`;
+                    document.getElementById('total-amountChat').value = response.invoiceAmount;
+                    document.getElementById('due_dateChat').value = response.due_date;
+                    document.getElementById('subT1Chat').textContent = `${response.invoiceAmount.toFixed(2)}`;
                     // Show payment type selection
                     showPaymentTypeSelection();
                 }
@@ -861,7 +861,7 @@
     }
 
     // Handle payment type selection change
-    document.getElementById('payment-type').addEventListener('change', function() {
+    document.getElementById('payment-typeChat').addEventListener('change', function() {
         const paymentType = this.value;
 
         console.log(paymentType);
@@ -877,11 +877,11 @@
 
 
     function updateRows() {
-        const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-        const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+        const splitInto = parseInt(document.getElementById('split-intoChat').value) || 0;
+        const totalAmount = parseFloat(document.getElementById('total-amountChat').value) || 0;
         const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
 
-        const tbody = document.getElementById('split-rows');
+        const tbody = document.getElementById('split-rowsChat');
         tbody.innerHTML = ''; // Clear existing rows
 
         for (let i = 1; i <= splitInto; i++) {
@@ -889,8 +889,8 @@
             row.innerHTML = `
                                     <td class="border-b px-4 py-2">${i}</td>
                                     <td class="border-b px-4 py-2">
-                                    <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                                        ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                                    <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-selectChat" placeholder="Select Client">
+                                        ${clientsChat.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
                                     </select>
                                     </td>
                                     <td class="border-b px-4 py-2">
@@ -900,7 +900,7 @@
                                         <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
                                     </td>
                                     <td class="border-b px-4 py-2">
-                                        <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
+                                        <select id="payment_gateway2Chat" name="payment_gateway2Chat" class="border border-gray-300 p-2 rounded w-full">
                                             <option value="Tap">Tap</option>
                                             <option value="Hesabe">Hesabe</option>
                                             <option value="MyFatoorah">MyFatoorah</option>
@@ -910,7 +910,7 @@
                                 `;
             tbody.appendChild(row);
 
-            const selectElement = row.querySelector('.account-select');
+            const selectElement = row.querySelector('.account-selectChat');
             new TomSelect(selectElement, {
                 create: false,
                 sortField: {
@@ -923,11 +923,11 @@
     }
 
     function updateRows1() {
-        const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-        const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+        const splitInto1 = parseInt(document.getElementById('split-into1Chat').value) || 0;
+        const totalAmount1 = parseFloat(document.getElementById('total-amountChat').value) || 0;
         const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
 
-        const tbody = document.getElementById('split-rows1');
+        const tbody = document.getElementById('split-rows1Chat');
         tbody.innerHTML = ''; // Clear existing rows
 
         for (let i = 1; i <= splitInto1; i++) {
@@ -953,9 +953,9 @@
             console.log('savepartial');
             if (!validateFullPayment()) return;
 
-            const gateway = document.getElementById('payment_gateway').value;
-            const date = document.getElementById('due_date').value;
-            const amount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const gateway = document.getElementById('payment_gatewayChat').value;
+            const date = document.getElementById('due_dateChat').value;
+            const amount = parseFloat(document.getElementById('total-amountChat').value) || 0;
             const fullData = [];
 
             fullData.push({
@@ -970,17 +970,17 @@
             if (!validateSplitPayment()) return;
 
             // Collect Split Payment Data
-            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-            const description = document.getElementById('split-desc').value;
-            const rows = document.querySelectorAll('#split-rows tr');
+            const totalAmount = parseFloat(document.getElementById('total-amountChat').value) || 0;
+            const splitInto = parseInt(document.getElementById('split-intoChat').value) || 0;
+            const description = document.getElementById('split-descChat').value;
+            const rows = document.querySelectorAll('#split-rowsChat tr');
 
             const splitData = [];
             rows.forEach(row => {
                 const selectElement = row.querySelector('select');
                 const clientId = selectElement.value;
                 const date = row.querySelector('input[type="date"]').value;
-                const gateway = row.querySelector('#payment_gateway2').value || null;
+                const gateway = row.querySelector('#payment_gateway2Chat').value || null;
                 const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
                 const clientName = selectElement.options[selectElement.selectedIndex].text;
 
@@ -999,10 +999,10 @@
             if (!validatePartialPayment()) return;
 
             // Collect Partial Payment Data
-            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-            const partialRows = document.querySelectorAll('#split-rows1 tr');
-            const gateway = document.getElementById('payment_gateway1').value;
+            const totalAmount1 = parseFloat(document.getElementById('total-amountChat').value) || 0;
+            const splitInto1 = parseInt(document.getElementById('split-into1Chat').value) || 0;
+            const partialRows = document.querySelectorAll('#split-rows1Chat tr');
+            const gateway = document.getElementById('payment_gateway1Chat').value;
             console.log(gateway);
             const partialData = [];
 
@@ -1026,11 +1026,11 @@
         console.log('save');
         const invoiceUrl = "{{ route('invoice.partial') }}";
         const csrfToken = "{{ csrf_token() }}";
-        const invoiceId = document.getElementById('invoiceId').value;
-        const invoiceNumber = document.getElementById('invoiceNumber').value;
+        const invoiceId = document.getElementById('invoiceIdChat').value;
+        const invoiceNumber = document.getElementById('invoiceNumberChat').value;
 
         if (type === 'full') {
-            const clientId = document.getElementById('receiverId').value;
+            const clientId = document.getElementById('receiverIdChat').value;
 
             try {
                 for (const item of data) {
@@ -1134,7 +1134,7 @@
 
         } else if (type === 'partial') {
             // Handle partial payment as before
-            const clientId = document.getElementById('receiverId').value;
+            const clientId = document.getElementById('receiverIdChat').value;
 
             try {
 
@@ -1183,9 +1183,9 @@
     }
 
     function validateFullPayment() {
-        const gateway = document.getElementById('payment_gateway').value;
-        const date = document.getElementById('due_date').value;
-        const amount = parseFloat(document.getElementById('subTotal').value) || 0;
+        const gateway = document.getElementById('payment_gatewayChat').value;
+        const date = document.getElementById('due_dateChat').value;
+        const amount = parseFloat(document.getElementById('subTotalChat').value) || 0;
 
         if (!gateway || !date || amount <= 0) {
             displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
@@ -1195,7 +1195,7 @@
     }
 
     function updateLinkVisibility(invoiceNumber) {
-        const rows = document.querySelectorAll("#split-rows tr");
+        const rows = document.querySelectorAll("#split-rowsChat tr");
         rows.forEach(row => {
             // Get the clientId from the select element or hidden input
             const clientIdSelect = row.querySelector("select[name^='customer_name_']");
@@ -1217,8 +1217,8 @@
 
 
     function validateSplitPayment() {
-        const rows = document.querySelectorAll('#split-rows tr');
-        const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+        const rows = document.querySelectorAll('#split-rowsChat tr');
+        const subTotal = parseFloat(document.getElementById('subTotalChat').value) || 0;
         let totalAmount = 0;
 
         for (const row of rows) {
@@ -1249,9 +1249,9 @@
     }
 
     function validatePartialPayment() {
-        const rows = document.querySelectorAll('#split-rows1 tr');
-        const gateway = document.getElementById('payment_gateway1').value;
-        const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
+        const rows = document.querySelectorAll('#split-rows1Chat tr');
+        const gateway = document.getElementById('payment_gateway1Chat').value;
+        const subTotal = parseFloat(document.getElementById('subTotalChat').value) || 0;
         let totalAmount = 0;
 
         for (const row of rows) {
@@ -1387,11 +1387,11 @@
                                         // Populate other form fields
                                         document.getElementById('clientForm').value = "update";
                                         document.getElementById('clientId').value = client.id || '';
-                                        document.getElementById('date_of_birth').value = client.date_of_birth || '';
-                                        document.getElementById('name').value = client.name || '';
-                                        document.getElementById('address').value = client.address || '';
-                                        document.getElementById('civil_no').value = client.civil_no || '';
-                                        document.getElementById('passport_no').value = client.passport_no || '';
+                                        document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
+                                        document.getElementById('nameChat').value = client.name || '';
+                                        document.getElementById('addressChat').value = client.address || '';
+                                        document.getElementById('civil_noChat').value = client.civil_no || '';
+                                        document.getElementById('passport_noChat').value = client.passport_no || '';
 
                                         // Hide the passport modal and show the client form
                                         passport.hide();
@@ -1549,7 +1549,7 @@
         });
     });
 
-         const agentDropdown = new TomSelect("#agent_id", {
+         const agentDropdown = new TomSelect("#agent_idChat", {
                     placeholder: "Select Agent",  // Placeholder text
                     allowEmptyOption: true,      // Allows the first empty option
                     create: false,               // Prevent creating new options

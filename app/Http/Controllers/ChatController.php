@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Facades\Image;
+use Smalot\PdfParser\Parser;
 use App\Http\Traits\Converter;
 use App\Models\Company;
 use App\Models\Supplier;
@@ -818,12 +820,75 @@ class ChatController extends Controller
         // Ensure the request contains a file
         if ($request->hasFile('file')) {
             try {
+                
+                $file = $request->file('file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('uploads', $fileName, 'public');
+
                 // Get the file path
-                $imagePath = $request->file('file')->getRealPath();
-    
+                $imagePath = $file->getRealPath();  // Path to the temporary uploaded file
+                $extension = pathinfo($fileName, PATHINFO_EXTENSION); 
                 // Process the image using OCR
-                $ocrResponse = $this->processImage($imagePath); // Custom method to process image OCR
+            
+                \Log::info('extension:', ['extension' => $extension]);
+                if ($extension === 'pdf') {
+
+                    $text = $this->extractTextFromPdf($filePath);
+                    if ($text === null) {
+                        // Extract images from the PDF and process them via OCR
+                        $images = $this->extractImagesFromPdf($filePath);
+                        \Log::info('images:', ['images' => $images]);
+                        if (empty($images)) {
+                            \Log::info('No images found, converting PDF to images...');
+                             $images = $this->pdfToImage($filePath);
+                        }
     
+
+                        if (empty($images)) {
+                            return response()->json(['error' => 'No images found or generated for OCR.'], 400);
+                        }
+
+                        $ocrResponse = [];
+                        foreach ($images as $image) {
+                            // Process each extracted image with OCR
+                            $ocrText = $this->processImage($image);
+                            if ($ocrText) {
+                                $ocrResponse[] = ['ParsedText' => $ocrText];
+                            }
+                        }
+                        
+                        // If no OCR text was extracted
+                        if (empty($ocrResponse)) {
+                            return response()->json(['error' => 'Failed to extract text from the images in the PDF.'], 400);
+                        }
+    
+                    } else {
+                        // PDF contains text, use the extracted text
+                        $ocrResponse = ['ParsedResults' => [['ParsedText' => $text]]];
+                    }
+
+                } else if (in_array($extension, ['png', 'jpg', 'jpeg'])) {
+    
+                    $ocrResponse = $this->processImage($imagePath);
+                } else {
+                    return response()->json(['error' => 'Unsupported file format.'], 400);
+                }
+
+                            // Check if the OCR response is a JsonResponse object
+                    if ($ocrResponse instanceof \Illuminate\Http\JsonResponse) {
+                        $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
+                    }
+
+                
+                      // Check if OCR response contains parsed text
+                      if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to extract text from the image.',
+                        ], 400);
+                    }
+
+                    
                 // Check if the OCR response contains the required data
                 if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
                     $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
@@ -859,6 +924,11 @@ class ChatController extends Controller
 
                       $response = $this->openAIService->getChatResponse($messages);
                       \Log::info('response:', ['response' => $response]);
+
+                      // Check if $response is a JsonResponse object
+                    if ($response instanceof \Illuminate\Http\JsonResponse) {
+                        $response = $response->getData(true); // Convert to an associative array
+                    }
 
                     // Check if the OpenAI response contains the required data
                     if (isset($response['choices'][0]['message']['content'])) {
@@ -923,6 +993,51 @@ class ChatController extends Controller
         }
     }
     
+
+    // Function to extract text from PDF using Smalot PdfParser
+        private function extractTextFromPdf($filePath)
+        {
+
+            \Log::info('extractTextFromPdf:', ['filePath' => $filePath]);
+            try {
+                $parser = new Parser();
+                $pdf = $parser->parseFile(storage_path('app/public/' . $filePath));
+                \Log::info('pdf:', ['pdf' => $pdf]);
+                $text = $pdf->getText(); // Extract text content from PDF
+
+                if (empty($text)) {
+                    return null; // No text extracted
+                }
+
+                \Log::info('Extracted Text from PDF:', ['text' => $text]);
+                return $text; // Return the extracted text
+            } catch (\Exception $e) {
+                \Log::error('Error extracting text from PDF', ['error' => $e->getMessage()]);
+                return null; // Return null in case of error
+            }
+        }
+
+        private function extractImagesFromPdf($pdfFilePath)
+        {
+            try {
+                // Command to extract images from the PDF using poppler-utils (pdftohtml or pdfimages)
+                $outputDir = storage_path('app/public/outputs/');
+                $command = "pdftohtml -c -hidden -images '$pdfFilePath' '$outputDir/output.html'";
+
+                // Run the command to extract images
+                exec($command);
+
+                // Get all image paths from the output directory
+                $imagePaths = glob($outputDir . '*.jpg'); // Adjust the file extension if necessary
+
+                return $imagePaths;
+            } catch (\Exception $e) {
+                \Log::error('Error extracting images from PDF', ['error' => $e->getMessage()]);
+                return [];
+            }
+        }
+
+
     public function createClientPassport($data)
     {
         // Ensure that $data is an array and has the required fields

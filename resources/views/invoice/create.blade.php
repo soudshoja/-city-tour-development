@@ -938,8 +938,8 @@
     <script>
         let selectedInvoiceTasks = @json($selectedTasks);
         let branches = @json($branches);
-        //let clients = @json($clients);
-        //let agents = @json($agents);
+        let clients = @json($clients);
+        let agents = @json($agents);
         let items = [];
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
@@ -2511,8 +2511,7 @@
 
             tasks = @json($tasks);
             let clients = @json($clients);
-            let agents = @json($agents);
-            
+
             // Initial rendering of items
             renderItems();
 

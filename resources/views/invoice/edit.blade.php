@@ -316,7 +316,7 @@
                                     <form action="{{ route('whatsapp.send') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="client" id="client">
-                                        <input type="hidden" name="invoiceNumber" value="{{$invoiceNumber}}">
+                                        <input type="hidden" name="invoiceNumber2" value="{{$invoiceNumber}}">
                                         <button type="submit" class="w-full items-center py-3 px-5 text-xs text-white btn-success rounded-full">
                                             Share via WhatsApp
                                         </button>
@@ -783,8 +783,9 @@
         let selectedTasks1 = @json($selectedTasks);
         let selectedAgent = @json($selectedAgent);
         let selectedClient = @json($selectedClient);
-       console.log('client',selectedClient );
-       console.log('agent', selectedAgent);
+
+        updateClientAgent(selectedClient.id, selectedAgent.id);
+
         const generateInvoiceButton = document.getElementById('generate-invoice-btn');
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
@@ -797,7 +798,7 @@
         function checkInvoiceId() {
         const tabs = document.querySelectorAll('input[name="payment_type"]');
         const paymentType = invoice.payment_type;
-
+          console.log('paymenttype', paymentType);
         const paymentGatewaySection = document.getElementById('payment_gateway_section');
 
         if (paymentType === 'full') {
@@ -973,8 +974,7 @@
 
 
         function renderItems() {
-            console.log('selectedTasks1', selectedTasks1);
-            console.log(items);
+
           const t = tasks;
             itemsBody.innerHTML = ''; // Clear existing rows
 
@@ -1127,7 +1127,7 @@
 
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
-
+           
             // Call a function to update the total, passing the current items array
             //  updateTotal(items);
             renderTaskList(t);
@@ -1195,7 +1195,7 @@
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
         }
-
+        console.log('helloooooo2');
         function openTaskModal() {
             document.getElementById('taskModal').classList.remove('hidden');
         }
@@ -1257,6 +1257,43 @@
         if (selectedClient && selectedAgent) {
             console.log('helloooooo');
             updateFormFields(selectedClient, selectedAgent);
+        }
+
+        function updateClientAgent(clientId, agentId) {
+            // Find the client by clientId
+            let client = clients.find(c => c.id === clientId);
+
+            // Find the agent by agentId
+            let agent = agents.find(a => a.id === agentId);
+            // Find the branch associated with the agent
+            let branch = branches.find(b => b.id === agent.branch_id);
+
+            // Check if client and agent exist
+            if (client && agent && branch) {
+                // Update hidden fields
+                document.getElementById('receiverId').value = client.id;
+
+                // Update input fields for client
+                document.getElementById('receiverName').value = client.name;
+                document.getElementById('receiverName1').textContent = client.name;
+                document.getElementById('receiverEmail').value = client.email;
+                document.getElementById('receiverPhone').value = client.phone;
+
+                document.getElementById('agentId').value = agent.id;
+                // Update input fields for agent
+                document.getElementById('agentName').value = agent.name;
+                document.getElementById('agentEmail').value = agent.email;
+                document.getElementById('agentPhone').value = agent.phone;
+
+                // Update the selected branch
+                document.getElementById('selectedBranch').value = branch.id;
+
+                // Update the trigger text for branch selection
+                document.querySelector('.select-trigger').textContent = branch.name;
+
+            } else {
+                console.error('Client or Agent not found');
+            }
         }
 
         function updateFormFields(client, agent) {

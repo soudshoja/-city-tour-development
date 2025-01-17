@@ -564,7 +564,7 @@
                         </div>
 
                         <!-- Modal -->
-                        <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                        <div id="paymentModal3" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
                             <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
                                 <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
                                 <!-- Include your previous page content here -->
@@ -1049,7 +1049,7 @@
 
         function showModal(type) {
             if (type == 'split') {
-                document.getElementById('paymentModal').classList.remove('hidden');
+                document.getElementById('paymentModal3').classList.remove('hidden');
             } else if (type == 'partial') {
                 document.getElementById('paymentModal1').classList.remove('hidden');
             }
@@ -1058,7 +1058,7 @@
         }
 
         function hideModal() {
-            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('paymentModal3').classList.add('hidden');
             document.getElementById('paymentModal1').classList.add('hidden');
             checkInvoiceId();
         }
@@ -1881,7 +1881,7 @@
                 if (!validateFullPayment()) return;
 
                 const gateway = document.getElementById('payment_gateway').value;
-                const date = document.getElementById('duedate').value;
+                const date = document.getElementById('dueDate').value;
                 const amount = document.getElementById('subTotal').value;
                 const fullData = [];
 
@@ -2105,7 +2105,7 @@
 
         function validateFullPayment() {
             const gateway = document.getElementById('payment_gateway').value;
-            const date = document.getElementById('duedate').value;
+            const date = document.getElementById('dueDate').value;
             const amount = parseFloat(document.getElementById('subTotal').value) || 0;
 
             if (!gateway || !date || amount <= 0) {

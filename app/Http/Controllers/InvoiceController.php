@@ -110,6 +110,14 @@ class InvoiceController extends Controller
                 return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
             }
         }
+
+        $selectedTasks = $selectedTasks->map(function ($task) {
+            $task->agent_name = $task->agent->name ?? null;
+            $task->branch_name = $task->agent->branch->name ?? null;
+            $task->supplier_name = $task->supplier->name ?? null;
+            return $task;
+        });
+        
         if ($request->input('user_id') != null) {
             $user = User::find($request->input('user_id'));
         } else {
@@ -444,7 +452,7 @@ class InvoiceController extends Controller
         $currency = $request->input('currency');
 
 
-        $agent = Agent::where('id', operator: $agentId)->first();
+        $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
 
@@ -527,6 +535,7 @@ class InvoiceController extends Controller
                         // Try to create payable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
+                            'branch_id' => $branchId,
                             'company_id' => $companyId,
                             'account_id' =>  $payableAccount->id,
                             'invoice_id' =>  $invoice->id,
@@ -544,6 +553,7 @@ class InvoiceController extends Controller
                         // Try to create receivable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
+                            'branch_id' => $branchId,
                             'company_id' => $companyId,
                             'invoice_id' =>  $invoice->id,
                             'account_id' =>  $receivableAccount->id,
@@ -564,6 +574,7 @@ class InvoiceController extends Controller
                         // Try to create income
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
+                            'branch_id' => $branchId,
                             'company_id' => $companyId,
                             'account_id' => $incomeAccount->id,
                             'invoice_id' =>  $invoice->id,

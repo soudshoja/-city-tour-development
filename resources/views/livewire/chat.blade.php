@@ -1,10 +1,10 @@
 <div class="container mx-auto">
 
     <!-- Chat Section -->
-    <div class="bg-white shadow-md rounded-lg h-[550px] w-[450px] flex flex-col"
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg h-[550px] w-[450px] flex flex-col"
         style="background-image: url('images/aibgPic02.svg'); background-position: center; background-size: cover; background-repeat: no-repeat;">
         <!-- Header -->
-        <div class="px-4 py-2 justify-start font-semibold flex items-center">
+        <div class="px-4 py-2 justify-start font-semibold flex items-center dark:text-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 14">
                 <g fill="none" stroke="#ffc107" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M6.022 4.347a18.5 18.5 0 0 0-1.93 1.686C1.248 8.877-.192 12.046.874 13.113c1.066 1.066 4.236-.375 7.079-3.218a18.5 18.5 0 0 0 1.686-1.931" />
@@ -16,7 +16,7 @@
         </div>
 
         <!-- Chat Section -->
-        <div class="flex-grow p-4 overflow-y-auto">
+        <div class="flex-grow p-4 overflow-y-auto dark:text-gray-300">
             <div id="chat-log" class="mb-4 p-3">
                 <!-- Chat messages will appear here -->
             </div>
@@ -24,12 +24,12 @@
 
         <!-- Input Section -->
         <div class="p-4 items-center">
-            <div class="border border-[#1e40af] rounded-lg flex items-center overflow-hidden">
+            <div class="border border-[#1e40af] rounded-lg flex items-center overflow-hidden dark:border-gray-600">
                 <input id="user-message" type="text"
-                    class="flex-grow border-none dark:bg-gray-700 dark:text-white focus:ring-0 focus:border-none"
+                    class="flex-grow border-none bg-transparent text-gray-800  dark:text-gray-300 focus:ring-0 focus:border-none"
                     placeholder="Type your message...">
                 <button id="send-message"
-                    class="bg-[#1e40af] relative w-12 h-12 flex items-center justify-center m-2 dark:bg-gray-700 hover:bg-gray-300 rounded-full shadow-sm">
+                    class="bg-[#1e40af] relative w-12 h-12 flex items-center justify-center m-2 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <g fill="none">
                             <path d="m12.594 23.258l-.012.002l-.071.035l-.02.004l-.014-.004l-.071-.036q-.016-.004-.024.006l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.016-.018m.264-.113l-.014.002l-.184.093l-.01.01l-.003.011l.018.43l.005.012l.008.008l.201.092q.019.005.029-.008l.004-.014l-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.003-.011l.018-.43l-.003-.012l-.01-.01z" />
@@ -540,10 +540,10 @@
 
         const messageHTML = `
         <div class="flex ${isUser ? "justify-end" : "justify-start"} mb-2">
-            <div class="${isUser ? "bg-[#1e40af] text-white" : "bg-gray-200 text-gray-800"} max-w-xs px-4 py-2 rounded-lg shadow ${
+            <div class="${isUser ? "bg-[#1e40af] text-white dark:bg-gray-700 dark:text-gray-300" : "bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300"} max-w-xs px-4 py-2 rounded-lg shadow ${
         isUser ? "rounded-br-none" : "rounded-bl-none"
-    }">
-                ${content}
+        }">
+            ${content}
             </div>
         </div>
     `;

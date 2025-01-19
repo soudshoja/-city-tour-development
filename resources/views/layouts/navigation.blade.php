@@ -72,7 +72,7 @@
             </div>
 
             <!-- Notification Icon -->
-            <div @click="toggle = true"
+            <div x-data="{ toggle: false }" @click="toggle = true"
                 class="relative w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
 
                 <span class="absolute top-1 right-1 bg-red-500 w-3 h-3 rounded-full"></span>
@@ -80,6 +80,7 @@
                 <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M10.146 3.248a2 2 0 0 1 3.708 0A7 7 0 0 1 19 10v4.697l1.832 2.748A1 1 0 0 1 20 19h-4.535a3.501 3.501 0 0 1-6.93 0H4a1 1 0 0 1-.832-1.555L5 14.697V10c0-3.224 2.18-5.94 5.146-6.752M10.586 19a1.5 1.5 0 0 0 2.829 0zM12 5a5 5 0 0 0-5 5v5a1 1 0 0 1-.168.555L5.869 17H18.13l-.963-1.445A1 1 0 0 1 17 15v-5a5 5 0 0 0-5-5" />
                 </svg>
+
                 <div
                     x-show="toggle"
                     x-cloak
@@ -90,15 +91,45 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 transform scale-100"
                     x-transition:leave-end="opacity-0 transform scale-90"
-                    class="absolute top-16 right-0 w-120 bg-white dark:bg-gray-700 border-2 border-gray dark:border-gray-600 rounded-lg shadow-md z-60">
-                    <h2 class="bg-black text-white text-lg font-semibold font-lg p-4 rounded-t-lg">
-                        Notifications
-                    </h2>
-                    <div class="p-4">
+                    class="max-h-[550px] flex flex-col absolute top-16 right-0 w-96 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-md z-60">
+                    <div class="p-4 flex justify-between items-center">
+                        <h2 class="bg-white dark:bg-gray-800 text-lg font-semibold rounded-t-lg">
+                            Notifications
+                        </h2>
+
+                        <!-- Close button -->
+                        <button type="button" @click.stop="toggle = false" aria-label="Close">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="cursor-pointer">
+                                <path fill="none" stroke="#e11d48" stroke-linecap="round" stroke-width="1.5"
+                                    d="m14.5 9.5l-5 5m0-5l5 5M7 3.338A9.95 9.95 0 0 1 12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.338-5" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Notification List with scrollable area -->
+                    <div class="p-4 flex-1 overflow-y-auto">
                         <livewire:notification />
                     </div>
+
+                    <!-- Sticky Footer Buttons -->
+                    <div class="flex justify-between items-center  p-4 bg-gray-100 dark:bg-gray-700 rounded-b-lg sticky bottom-0">
+                        <a
+                            href="javascript:void(0);"
+                            wire:click="markAllAsRead"
+                            class="text-blue-800 dark:text-blue-300 hover:text-blue-500 hover:dark:text-blue-400 text-sm font-medium hover:underline cursor-pointer transition-all ease-in-out duration-200">
+                            Mark all as read
+                        </a>
+
+                        <a
+                            href="{{ route('notifications.index') }}"
+                            class="bg-blue-100/50 dark:bg-blue-900/50 hover:bg-blue-900/50 hover:dark:bg-blue-900/80 text-blue-800 dark:text-blue-300 hover:text-white hover:dark:text-blue-400 text-sm font-semibold px-4 py-2 rounded-lg transition-all">
+                            View all notifications
+                        </a>
+                    </div>
                 </div>
+
             </div>
+
 
             <!-- Profile Picture with Dropdown -->
             <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">

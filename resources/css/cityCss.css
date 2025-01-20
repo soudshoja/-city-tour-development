@@ -49,6 +49,7 @@ thead {
 .hidden {
     display: none;
 }
+
 /* Define the heartbeat animation */
 @keyframes heartbeat {
     0% {
@@ -69,6 +70,12 @@ thead {
 .heartbeat-container:hover .heartbeat {
     animation: heartbeat 1s infinite;
 }
+
+/*****************************************************************************************/
+
+/* navigation */
+
+/******************************************************************************************/
 
 /** Colors *******************************************************************************/
 .dataTable-pagination .active a {
@@ -654,8 +661,36 @@ thead {
 #taskDetails {
     display: none;
 }
+.menu-icon {
+    display: none;
+}
+
+/********************************************************************************************************/
+
+/**** media settings ****/
 
 /* Tablet View */
+@media (max-width: 768px) {
+    .sc768 {
+        display: none; /* Hide menu items on tablets by default */
+    }
+    .menu-icon {
+        display: block;
+    }
+    .text-background p {
+        text-align: center !important;
+    }
+}
+
+/* Mobile View */
+@media (max-width: 575px) {
+    .sc768 {
+        display: none; /* Hide menu items on mobile by default */
+    }
+    .menu-icon {
+        display: block;
+    }
+}
 @media (min-width: 768px) and (max-width: 1023px) {
     .content-70.shrink {
         width: 70%;
@@ -713,6 +748,7 @@ thead {
         flex-direction: row !important;
     }
 }
+/************************************************************************************************************/
 
 /* Add the slide-up animation */
 @keyframes slideUp {

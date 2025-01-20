@@ -1,6 +1,5 @@
 <x-app-layout>
 
-    @include('tasks.tasksjs')
 
     @if($importedTask = session('importedTask'))
     <div
@@ -103,12 +102,12 @@
                     <!-- Filter & export buttons -->
                     <div class="flex customCenter gap-5 w-full justify-end">
                         <!-- Customize -->
-                        <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                        <!-- <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
                             </svg>
                             <span class="dark:text-black">Customize</span>
-                        </button>
+                        </button> -->
                         <!-- ./customize -->
 
                         <!-- Filter -->
@@ -121,12 +120,12 @@
                         <!-- ./filter -->
 
                         <!-- Export -->
-                        <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                        <!-- <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24">
+                                <path fill="#333333" d="m8.71 7.71l11 5.41v15a1 1 0 0 0 2 0v5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42m21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1h5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
                             </svg>
                             <span class="text-xs md:text-sm dark:text-black">Export</span>
-                        </button>
+                        </button> -->
                         <!-- ./export -->
                     </div>
                     <!-- ./filter & export buttons -->
@@ -181,7 +180,7 @@
                                             </svg>
                                         </label>
                                     </td>
-                                    <td class="p-3 text-sm flex gap-3">
+                                    <td class="p-3 text-sm flex gap-3 justify-center">
                                         <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300" data-task-id="{{ $task->id }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
@@ -190,9 +189,6 @@
                                                 </g>
                                             </svg>
                                         </a>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                                            <path fill="none" stroke="#e11d48" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12H8m-6 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2M4.649 5.079q.207-.22.427-.428M7.947 2.73q.273-.122.553-.229M2.732 7.942q-.124.275-.232.558" color="#e11d48" />
-                                        </svg>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
@@ -271,7 +267,7 @@
         <!-- Task Details Container -->
         <div class="content-30 hidden" id="showRightDiv">
             <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div>
-            <div id="filterstBox" class="panel w-full xl:mt-0 rounded-lg h-auto"><!-- opened filters div -->
+            <div id="filterBox" class="panel w-full xl:mt-0 rounded-lg h-auto"><!-- opened filters div -->
 
                 <!-- Filters Header -->
                 <div class="flex justify-between items-center gap-5 mb-5 FiltersHeader">
@@ -495,343 +491,5 @@
             </div>
         </div>
     </div>
-
-    <!-- ./Floating Actions div -->
-
-
-
-
-    <!-- table pagination script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const rowsPerPage = 10; // Number of rows per page
-            const table = document.getElementById('myTable');
-            const rows = Array.from(table.querySelector('tbody').rows); // Get all rows
-            const paginationContainer = document.querySelector('.dataTable-pagination-list'); // Target pagination container
-            let currentPage = 1;
-            const totalPages = Math.ceil(rows.length / rowsPerPage); // Calculate total pages
-
-            // Function to create pagination
-            function createPagination() {
-                // Remove existing page numbers
-                Array.from(paginationContainer.querySelectorAll('li.page-number')).forEach((el) => el.remove());
-
-                // Create and add page numbers dynamically
-                for (let i = 1; i <= totalPages; i++) {
-                    const li = document.createElement('li');
-                    li.className = `page-number ${i === currentPage ? 'active' : ''}`;
-                    li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
-
-                    const nextPageElement = paginationContainer.querySelector('#nextPage');
-
-                    // Insert before #nextPage if it exists, otherwise append
-                    if (nextPageElement) {
-                        paginationContainer.insertBefore(li, nextPageElement);
-                    } else {
-                        paginationContainer.appendChild(li);
-                    }
-                }
-            }
-
-            // Function to show rows for the current page
-            function showPage(page) {
-                const start = (page - 1) * rowsPerPage;
-                const end = start + rowsPerPage;
-
-                // Show rows for the current page, hide others
-                rows.forEach((row, index) => {
-                    row.style.display = index >= start && index < end ? '' : 'none';
-                });
-
-                currentPage = page; // Update current page
-                createPagination(); // Recreate pagination numbers
-            }
-
-            // Function to handle page number click
-            function handlePageChange(e) {
-                e.preventDefault();
-                const page = parseInt(e.target.dataset.page, 10);
-                if (page && page !== currentPage) {
-                    showPage(page);
-                }
-            }
-
-            // Event listener for previous button
-            const prevPageButton = document.getElementById('prevPage');
-            if (prevPageButton) {
-                prevPageButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (currentPage > 1) {
-                        showPage(currentPage - 1);
-                    }
-                });
-            }
-
-            // Event listener for next button
-            const nextPageButton = document.getElementById('nextPage');
-            if (nextPageButton) {
-                nextPageButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (currentPage < totalPages) {
-                        showPage(currentPage + 1);
-                    }
-                });
-            }
-
-            // Event listener for page numbers
-            paginationContainer.addEventListener('click', (e) => {
-                if (e.target.tagName === 'A' && e.target.dataset.page) {
-                    handlePageChange(e);
-                }
-            });
-
-            // Initialize pagination
-            if (totalPages > 1) {
-                createPagination();
-                showPage(1); // Show the first page initially
-            }
-        });
-    </script>
-
-
-    <!-- show task details script -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const viewTaskLinks = document.querySelectorAll(".viewTask");
-            const taskDetailsDiv = document.getElementById("taskDetails");
-            const taskListContainer = document.getElementById("taskListContainer"); // content-70
-            const taskDetailsContainer = document.getElementById("taskDetailsContainer"); // content-30
-
-            // Track the currently opened task ID
-            let currentlyOpenTaskId = null;
-
-            viewTaskLinks.forEach(link => {
-                link.addEventListener("click", function(event) {
-                    event.preventDefault();
-
-                    const taskId = this.getAttribute("data-task-id");
-                    console.log("Fetching details for Task ID:", taskId); // Debugging log
-
-                    // Toggle close if the same task is clicked
-                    if (currentlyOpenTaskId === taskId) {
-                        console.log("Closing task details..."); // Debugging log
-
-                        // Reset styles to make content-70 full width
-                        taskListContainer.classList.remove("show-details"); // Remove class
-                        taskDetailsContainer.classList.add("hidden"); // Hide details
-                        taskDetailsDiv.innerHTML = ""; // Clear details content
-                        currentlyOpenTaskId = null; // Reset tracking variable
-                        return; // Stop execution
-                    }
-
-                    // Update the currently open task ID
-                    currentlyOpenTaskId = taskId;
-
-                    // Fetch task details
-                    fetch(`/tasks/${taskId}`)
-                        .then(response => {
-                            console.log("Response Status:", response.status); // Debugging log
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch task details. Status: ' + response.status);
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            console.log("Fetched Data:", data); // Debugging log
-
-                            // Ensure valid data
-                            if (data && data.client_name) {
-                                // Populate task details
-                                taskDetailsDiv.innerHTML = `
-                            <h3 class='text-lg font-bold mb-2'>Task Details</h3>
-                            <div class='flex flex-col rounded-md border border-[#e0e6ed]'>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Client Name:</strong> ${data.client.name}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Agent Name:</strong> ${data.agent.name || 'N/A'}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Type:</strong> ${data.type}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Price:</strong> $${data.price}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Status:</strong> ${data.status}</p>
-                                </div>
-                                <div class='border-b px-4 py-4 hover:bg-gray-200'>
-                                    <p><strong>Supplier:</strong> ${data.supplier.name}</p>
-                                </div>
-                            </div>
-                        `;
-                                // Show task details and adjust styles
-                                taskListContainer.classList.add("show-details"); // Shrink content-70
-                                taskDetailsContainer.classList.remove("hidden"); // Show details
-                            } else {
-                                console.warn("Invalid Data:", data); // Debugging log
-                                taskDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid task data received.</p>";
-                                taskDetailsContainer.classList.remove("hidden");
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Error fetching task details:", error);
-                            taskDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load task details.</p>";
-                            taskDetailsContainer.classList.remove("hidden");
-                        });
-                });
-            });
-        });
-    </script>
-
-
-
-
-
-    <!-- select all & create invoice script -->
-    <script>
-        const floatingActions = document.getElementById("floatingActions");
-        const closeFloatingActions = document.getElementById("closeFloatingActions");
-        const selectAllCheckbox = document.getElementById("selectAll");
-        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
-        const createInvoiceBtn = document.getElementById("createInvoiceBtn");
-
-
-        // Select/Deselect all checkboxes
-        selectAllCheckbox.addEventListener("change", function() {
-            rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
-            toggleCreateInvoiceButton(); // Update button state
-        });
-
-        // Toggle "Create Invoice" button based on selected checkboxes
-        const toggleCreateInvoiceButton = () => {
-            const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
-            createInvoiceBtn.disabled = !isAnySelected;
-        };
-        // Add change event to each row checkbox
-        rowCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener("change", function() {
-                // Update the "Select All" checkbox state
-                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-                selectAllCheckbox.checked = allChecked;
-
-                // Update button state
-                toggleCreateInvoiceButton();
-
-                // Show or hide the floating div based on any checkbox selection
-                const isAnyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
-                if (isAnyChecked) {
-                    floatingActions.classList.remove("hidden");
-                } else {
-                    floatingActions.classList.add("hidden");
-                }
-            });
-        });
-
-        // Initialize button state on page load
-        toggleCreateInvoiceButton();
-
-        // Gather selected task IDs and submit them
-        createInvoiceBtn.addEventListener("click", function() {
-            const selectedTaskIds = Array.from(rowCheckboxes)
-                .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value);
-
-            if (selectedTaskIds.length === 0) {
-                alert("No tasks selected!");
-                return;
-            }
-
-            // Example: Redirect to the batch invoice creation route
-            const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
-            window.location.href = url;
-        });
-
-        // Close the floating div when the "X" button is clicked
-        closeFloatingActions.addEventListener("click", function() {
-            floatingActions.classList.add("hidden");
-        });
-    </script>
-
-    <!-- table pagination script -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const rowsPerPage = 10;
-            const table = document.getElementById("myTable");
-            const rows = Array.from(table.querySelector("tbody").rows);
-            const paginationContainer = document.querySelector(".dataTable-bottom");
-            const paginationList = document.querySelector(".dataTable-pagination-list");
-            const prevPageButton = document.getElementById("prevPage");
-            const nextPageButton = document.getElementById("nextPage");
-            let currentPage = 1;
-
-            function filterRows() {
-                return rows.filter((row) => row.style.display !== "none");
-            }
-
-            function updatePagination(visibleRows) {
-                const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
-
-                paginationContainer.style.display = visibleRows.length > rowsPerPage ? "flex" : "none";
-
-                paginationList.querySelectorAll("li.page-number").forEach((el) => el.remove());
-
-                if (totalPages > 1) {
-                    for (let i = 1; i <= totalPages; i++) {
-                        const li = document.createElement("li");
-                        li.className = `page-number ${i === currentPage ? "active" : ""}`;
-                        li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
-                        paginationList.insertBefore(li, nextPageButton);
-                    }
-                }
-            }
-
-            function showPage(page, visibleRows) {
-                const start = (page - 1) * rowsPerPage;
-                const end = start + rowsPerPage;
-
-                rows.forEach((row) => (row.style.display = "none"));
-
-                visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
-
-                currentPage = page;
-                updatePagination(visibleRows);
-            }
-
-            document.addEventListener("filterUpdated", function() {
-                const visibleRows = filterRows();
-                updatePagination(visibleRows);
-                if (visibleRows.length > 0) {
-                    showPage(1, visibleRows);
-                }
-            });
-
-            const visibleRows = filterRows();
-            updatePagination(visibleRows);
-            showPage(1, visibleRows);
-        });
-    </script>
-
-    <!-- script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function(e) {
-
-
-            // seachable
-            var options = {
-                searchable: true,
-            };
-            NiceSelect.bind(document.getElementById('status_id'), options);
-            NiceSelect.bind(document.getElementById('type_id'), options);
-            NiceSelect.bind(document.getElementById('supplier_id'), options);
-            NiceSelect.bind(document.getElementById('agent_id'), options);
-            NiceSelect.bind(document.getElementById('branch_id'), options);
-
-
-        });
-    </script>
-
-
-
-
+    @include('tasks.tasksjs')
 </x-app-layout>

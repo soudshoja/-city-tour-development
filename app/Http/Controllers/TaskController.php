@@ -93,7 +93,7 @@ class TaskController extends Controller
         // Fetch distinct task types
         $types = Task::distinct()->pluck('type');
         // Return the view with the required data
-        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
     }
 
     public function voucher($id = null)

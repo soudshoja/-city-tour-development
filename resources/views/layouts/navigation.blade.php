@@ -1,14 +1,22 @@
+<link href='https://fonts.googleapis.com/css?family=Archivo+Black' rel='stylesheet'>
+
+
+
 <header>
+    <div class="relative h-3 w-full -z-10 px-6 py-4 top5Up">
+        <p class="text-center text-background">
+            CityTourApp
+        </p>
+    </div>
     <div class="container mx-auto flex flex-wrap items-center justify-between px-6 py-4">
         <!-- Logo -->
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <!-- Logo Image & home link -->
             <a href="{{ url('/') }}" class="flex items-center">
-                <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-8 mr-4">
-                <span class="text-lg font-bold text-gray-800 dark:text-white">City Tour</span>
+                <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-12 mr-4">
             </a>
 
-            <div class="ml-5 lg:block xl:block">
+            <div class="ml-5 lg:block xl:block sc768" id="responsiveMenu">
                 <!-- company menu -->
                 @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
                 @include('layouts.menus.company')
@@ -30,6 +38,11 @@
                 @endif
 
             </div>
+
+            <div class="menu-icon" id="menu-icon">
+                <i class="fa fa-bars"></i> <!-- Font Awesome Icon for Hamburger -->
+            </div>
+
         </div>
         <!-- ./Logo -->
 
@@ -208,3 +221,57 @@
         <!-- ./Right Section -->
     </div>
 </header>
+
+<script>
+    $(document).ready(function() {
+        $('.menu-icon').click(function() {
+            $('#responsiveMenu').toggle();
+        });
+    });
+</script>
+
+
+<style>
+    .top5Up {
+        top: -4.5rem;
+    }
+
+    .text-background {
+
+        padding: 0 !important;
+        margin: 0 !important;
+        background-image: url("{{ asset('images/bgCity.png') }}");
+        opacity: 0.4;
+        background-size: cover;
+        background-position: center;
+        color: transparent;
+        font-size: 9rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-family: 'Archivo Black', sans-serif;
+        letter-spacing: 3.1rem;
+        -webkit-background-clip: text;
+        background-clip: text;
+        text-align: center;
+
+    }
+
+    /* Tablet and Mobile Specific Styles */
+    @media (max-width: 768px) {
+        .text-background {
+            font-size: 3rem;
+            /* Adjust font size for tablets */
+            letter-spacing: 1.5rem;
+            /* Adjust letter spacing for tablets */
+        }
+    }
+
+    @media (max-width: 575px) {
+        .text-background {
+            font-size: 2.5rem;
+            /* Adjust font size for mobile */
+            letter-spacing: 1rem;
+            /* Adjust letter spacing for mobile */
+        }
+    }
+</style>

@@ -210,7 +210,7 @@
                                     Upload New Task
                                 </span>
                             </a>
-                            <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
+                            <form id="uploadTaskForm" action="{{ route('tasks.upload') }}" method="POST"
                                 enctype="multipart/form-data" class="hidden">
                                 @csrf
                                 <input id="pdfInput" type="file" accept=".pdf" name="task_file"

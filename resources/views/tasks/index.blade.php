@@ -60,14 +60,14 @@
 
             <!-- add task icon -->
             <div class="relative w-12 h-12 flex items-center justify-center btn-success dark:bg-green-700 rounded-full shadow-sm" data-tooltip="upload task">
-                <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST" enctype="multipart/form-data">
+                <form id="uploadTaskForm" action="{{ route('tasks.upload') }}" method="POST" enctype="multipart/form-data">
                     @csrf
-                    <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden" onchange="uploadTask()" />
-                    <button id="uploadTaskButton" type="button" class="flex items-center justify-center w-12 h-12" onclick="document.getElementById('pdfInput').click();">
+                    <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden" />
+                    <label for="pdfInput" class="flex items-center justify-center w-12 h-12">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                             <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
                         </svg>
-                    </button>
+                    </label>
                 </form>
             </div>
         </div>
@@ -172,7 +172,7 @@
                                 @foreach($tasks as $task)
                                 <tr
                                     data-price="{{ $task->price }}" data-supplier-id="{{ $task->supplier->id }}"
-                                    data-branch-id="{{ $task->agent->branch->id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client->name }}" data-task-id="{{ $task->id }}" class="taskRow">
+                                    data-branch-id="{{ $task->agent->branch->id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client ? $task->client->id : null }}" data-task-id="{{ $task->id }}" class="taskRow">
                                     <td>
                                         <label class="custom-checkbox" data-tooltip="select task">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
@@ -192,9 +192,9 @@
                                         </a>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->reference }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client ? $task->client->name : 'Not Set' }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name ?? 'Not Set'}}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>
                                     @endif
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>

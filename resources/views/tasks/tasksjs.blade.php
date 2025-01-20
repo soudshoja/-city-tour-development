@@ -53,7 +53,7 @@
 
         showSidebar("details");
 
-        let url = "{!! route('task.show', '__taskId__') !!}".replace('__taskId__', taskId);
+        let url = "{!! route('tasks.show', '__taskId__') !!}".replace('__taskId__', taskId);
 
         fetch(url)
             .then((response) => {
@@ -223,17 +223,14 @@
                 if(row.classList.contains("hidden")) {
                     row.classList.remove("hidden");
                 }
-                console.log('row with task id: ', row.getAttribute("data-client-id"), ' is visible');
+                
                 visibleRows++;
             } else {
-                row.classList.add("hidden");
-                console.log('row with task id: ', row.getAttribute("data-task-id"), ' is hidden');
+                row.classList.add("hidden"); 
             }
 
             count++;
         });
-
-        console.log('visibleRows : ', visibleRows);
 
         const noDataMessage = document.getElementById("no-data-message");
         if (visibleRows === 0) {
@@ -575,6 +572,10 @@
         showPage(1, visibleRows);
     });
 
+    document.getElementById("pdfInput").addEventListener("change", function() {
+        // submit the form
+        this.form.submit();
+    });
     document.addEventListener('DOMContentLoaded', function(e) {
 
 

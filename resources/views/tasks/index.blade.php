@@ -153,6 +153,7 @@
                                         </label>
                                     </th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Task Id</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
 
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
@@ -171,7 +172,7 @@
                                 @foreach($tasks as $task)
                                 <tr
                                     data-price="{{ $task->price }}" data-supplier-id="{{ $task->supplier->id }}"
-                                    data-branch-id="{{ $task->branch_id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client_id }}" class="taskRow">
+                                    data-branch-id="{{ $task->agent->branch->id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client->name }}" data-task-id="{{ $task->id }}" class="taskRow">
                                     <td>
                                         <label class="custom-checkbox" data-tooltip="select task">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
@@ -190,7 +191,8 @@
                                             </svg>
                                         </a>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->reference }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client->name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>
@@ -263,13 +265,10 @@
         </div>
 
 
-        <!-- right -->
-        <!-- Task Details Container -->
         <div class="content-30 hidden" id="showRightDiv">
             <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div>
-            <div id="filterBox" class="panel w-full xl:mt-0 rounded-lg h-auto"><!-- opened filters div -->
+            <div id="filterBox" class="panel w-full xl:mt-0 rounded-lg h-auto ">
 
-                <!-- Filters Header -->
                 <div class="flex justify-between items-center gap-5 mb-5 FiltersHeader">
                     <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Filters</h1>
                     <div class="filter-badge flex items-center gap-3 DarkBGcolor  
@@ -280,12 +279,11 @@
                         </button>
                     </div>
                 </div>
-                <!-- Selected Filters -->
+        
                 <div class="w-full mb-5">
                     <div class="flex justify-between">
                         <div class="flex flex-wrap gap-4">
 
-                            <!-- Selected Status -->
                             <div id="selected-statuses" class="flex flex-wrap gap-2">
                                 <!-- Selected statuses will appear here dynamically -->
                             </div>
@@ -313,16 +311,11 @@
                         </div>
                     </div>
                 </div>
-                <!--./ Selected Filters -->
 
-                <!-- Filters Container -->
                 <div class="flex flex-col gap-5">
-                    <!-- Filter Options -->
                     <div class="w-full flex gap-5">
-                        <!-- Filters Container -->
                         <div class="w-full gap-5 space-y-8">
 
-                            <!-- Filter by Price -->
                             <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-5 FilltersAppliedPx FilltersAppliedPy shadow-md hover:shadow-lg">
                                 <div class="flex items-center">
                                     <input data-tooltip="filter by price" type="range" min="1" max="1000" value="500" id="priceRange"
@@ -441,9 +434,7 @@
 
                                 <!-- Select Dropdown -->
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent
-                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
-                                        <option selected value="" class="">Select Branch</option>
+                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0"> <option selected value="" class="">Select Branch</option>
                                         @foreach($branches as $branch)
                                         <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                                         @endforeach

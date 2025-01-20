@@ -443,6 +443,7 @@ thead {
     max-width: 100vw; /* Prevent it from exceeding the viewport width */
     overflow: hidden; /* Hide horizontal overflow if it exists */
     box-sizing: border-box; /* Ensure padding and border are included in the width */
+    min-height: 100vh; /* Minimum height to fill the screen */
 }
 
 .CheckBoxColor {
@@ -637,11 +638,6 @@ thead {
 /* When sidebar (details or filters) is visible */
 .content-30.visible {
     display: block;
-}
-
-/* Hide filters by default */
-#filterBox {
-    display: none;
 }
 
 /* Ensure task details are also hidden initially */
@@ -1081,11 +1077,11 @@ select::-moz-focus-inner {
     text-align: left;
     transition: all 0.2s ease-in-out;
 }
-.selectize:focus,
+/* .selectize:focus,
 .selectize:active {
     outline: none;
     border: none;
-}
+} */
 
 .nice-select .option:hover,
 .nice-select .option.focus,

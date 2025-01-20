@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AIService;
 use App\Http\Traits\Converter;
 use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
@@ -229,9 +230,8 @@ class TaskController extends Controller
     }
 
 
-    public function import(Request $request)
+    public function upload(Request $request)
     {
-
         $request->validate([
             'task_file' => 'required|mimes:pdf',
         ]);
@@ -259,7 +259,7 @@ class TaskController extends Controller
         $contents = $this->pdfToText($file);
 
         // Prepare the OpenAI request
-        $openai = new OpenAiController();
+        $openai = new OpenAiController(new AIService);
         $response = $openai->flightOrHotel($contents);
 
         if ($response['status'] == 'error') {
@@ -272,7 +272,7 @@ class TaskController extends Controller
             $response = $openai->extractHotelData($contents);
         }
 
-        return $response;
+        return response()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
 
     public function exportCsv()

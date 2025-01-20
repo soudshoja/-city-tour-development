@@ -118,13 +118,17 @@ Route::middleware(['auth'])->group(function () {
 
 
     // task routes
-    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
-    Route::get('/tasks-voucher', [TaskController::class, 'voucher'])->name('tasks.voucher');
-    Route::put('/tasks-update/{id}', [TaskController::class, 'update'])->name('tasks.update');
-    Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
-    Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
-    Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
+    Route::group([
+        'prefix' => 'tasks',
+        'as' => 'tasks.',
+    ], function () {
+        Route::get('/', [TaskController::class, 'index'])->name('index');
+        Route::get('/{id}', [TaskController::class, 'show'])->name('show');
+        Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
+        Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
+        Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
+        Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
+    });
 
     // SUPPLIERS
     Route::group([

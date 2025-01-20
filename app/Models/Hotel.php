@@ -14,7 +14,7 @@ class Hotel extends Model
         'address',
         'city',
         'state',
-        'country',
+        'country_id',
         'zip_code',
         'phone',
         'email',
@@ -24,4 +24,8 @@ class Hotel extends Model
         'description',
     ];
 
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_id');
+    }
 }

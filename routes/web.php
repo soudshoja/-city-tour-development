@@ -118,11 +118,10 @@ Route::middleware(['auth'])->group(function () {
 
 
     // task routes
-    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
     Route::get('/tasks-voucher', [TaskController::class, 'voucher'])->name('tasks.voucher');
     Route::put('/tasks-update/{id}', [TaskController::class, 'update'])->name('tasks.update');
-    Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
     Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
     Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
     Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
@@ -243,13 +242,13 @@ Route::group([
 
 
 // Route for fetching task details
-Route::get('/tasks/{id}', function ($id) {
-    $task = Task::with('client', 'supplier', 'agent.branch', 'invoiceDetail.invoice')->find($id);
-    if ($task) {
-        return response()->json($task);
-    }
-    return response()->json(['error' => 'Task not found'], 404);
-});
+// Route::get('/tasks/{id}', function ($id) {
+//     $task = Task::with('client', 'supplier', 'agent.branch', 'invoiceDetail.invoice')->find($id);
+//     if ($task) {
+//         return response()->json($task);
+//     }
+//     return response()->json(['error' => 'Task not found'], 404);
+// });
 
 
 

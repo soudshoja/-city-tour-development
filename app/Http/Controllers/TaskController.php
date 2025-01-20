@@ -272,7 +272,7 @@ class TaskController extends Controller
             $response = $openai->extractHotelData($contents);
         }
 
-        return response()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
+        return $response;
     }
 
     public function exportCsv()

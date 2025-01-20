@@ -99,7 +99,7 @@
 
                 <!-- Upload Task Button -->
                 <div class="relative flex items-center h-12">
-                    <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
+                    <form id="uploadTaskForm" action="{{ route('tasks.upload') }}" method="POST"
                         enctype="multipart/form-data" class="inline-flex">
                         @csrf
                         <input id="pdfInput" type="file" accept=".pdf" name="task_file" class="hidden"

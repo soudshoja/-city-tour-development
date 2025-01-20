@@ -1,6 +1,4 @@
 <script>
-    console.log('tasks.js loaded');
-
     let currentPage = 1;
     const rowsPerPage = 10;
     const dataTableBottom = document.querySelector(".dataTable-bottom");
@@ -27,20 +25,20 @@
         let currentlyDisplayed = null;
 
         // Toggle Filters
-        if (toggleFiltersButton && filterBox) {
-            toggleFiltersButton.addEventListener("click", function() {
-                if (currentlyDisplayed === "filters") {
-                    filterBox.style.display = "none"; // Hide filters
-                    showRightDiv.classList.add("hidden"); // Hide container if nothing else is open
-                    currentlyDisplayed = null;
-                } else {
-                    filterBox.style.display = "block"; // Show filters
-                    taskDetailsDiv.style.display = "none"; // Ensure task details are hidden
-                    showRightDiv.classList.remove("hidden"); // Show the container
-                    currentlyDisplayed = "filters";
-                }
-            });
-        }
+        // if (filterBox.style.display === "block") {
+        //     toggleFiltersButton.addEventListener("click", function() {
+        //         if (currentlyDisplayed === "filters") {
+        //             filterBox.style.display = "none"; // Hide filters
+        //             showRightDiv.classList.add("hidden"); // Hide container if nothing else is open
+        //             currentlyDisplayed = null;
+        //         } else {
+        //             filterBox.style.display = "block"; // Show filters
+        //             taskDetailsDiv.style.display = "none"; // Ensure task details are hidden
+        //             showRightDiv.classList.remove("hidden"); // Show the container
+        //             currentlyDisplayed = "filters";
+        //         }
+        //     });
+        // }
 
         // Show Task Details
         const viewTaskLinks = document.querySelectorAll(".viewTask");
@@ -341,7 +339,7 @@
             taskDetailsDiv.style.display = "none";
         }
 
-        // Example: Hook this up with existing toggling logic
+        // // Example: Hook this up with existing toggling logic
         document.getElementById("toggleFilters").addEventListener("click", function() {
             if (filterBox.style.display === "block") {
                 hideSidebar();

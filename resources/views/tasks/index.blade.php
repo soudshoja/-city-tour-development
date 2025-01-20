@@ -102,12 +102,12 @@
                     <!-- Filter & export buttons -->
                     <div class="flex customCenter gap-5 w-full justify-end">
                         <!-- Customize -->
-                        <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                        <!-- <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
                             </svg>
                             <span class="dark:text-black">Customize</span>
-                        </button>
+                        </button> -->
                         <!-- ./customize -->
 
                         <!-- Filter -->
@@ -120,12 +120,12 @@
                         <!-- ./filter -->
 
                         <!-- Export -->
-                        <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                        <!-- <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24">
+                                <path fill="#333333" d="m8.71 7.71l11 5.41v15a1 1 0 0 0 2 0v5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42m21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1h5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
                             </svg>
                             <span class="text-xs md:text-sm dark:text-black">Export</span>
-                        </button>
+                        </button> -->
                         <!-- ./export -->
                     </div>
                     <!-- ./filter & export buttons -->
@@ -180,7 +180,7 @@
                                             </svg>
                                         </label>
                                     </td>
-                                    <td class="p-3 text-sm flex gap-3">
+                                    <td class="p-3 text-sm flex gap-3 justify-center">
                                         <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300" data-task-id="{{ $task->id }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
@@ -189,9 +189,6 @@
                                                 </g>
                                             </svg>
                                         </a>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                                            <path fill="none" stroke="#e11d48" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12H8m-6 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2M4.649 5.079q.207-.22.427-.428M7.947 2.73q.273-.122.553-.229M2.732 7.942q-.124.275-.232.558" color="#e11d48" />
-                                        </svg>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)

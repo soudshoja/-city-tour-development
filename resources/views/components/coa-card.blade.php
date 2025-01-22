@@ -65,7 +65,7 @@
                     </div>
 
                     <!-- Input Field -->
-                    <input type="text" placeholder="Add {{ $type }}" class="px-3 py-2 w-full focus:outline-none focus:ring-0">
+                    <input type="text" placeholder="Add {{ $type }}" class="border-none px-3 py-2 w-full focus:outline-none focus:ring-0">
 
                     <!-- Submit Button -->
                     <button type="submit" style="background-color: #{{ $color }}" class="text-white px-4 py-2 rounded-r-lg">

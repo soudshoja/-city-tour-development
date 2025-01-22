@@ -2449,7 +2449,7 @@
             activities.push(`Payments to receive from: ${clientNameFromInput} amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`);
             // Add cumulative totals for each supplier
             supplierTotals.forEach((total, supplierName) => {
-                activities.push(`Payment need to be made to ${supplierName}: KWD${total.toFixed(2)}`);
+                activities.push(`Payment ${supplierName}: KWD${total.toFixed(2)}`);
             });
 
             // Add overall cumulative totals

@@ -1245,7 +1245,7 @@
                     <p>${item.venue}</p>
                     </td>
                     <td>
-                    <p>${item.price} KWD</p>
+                    <p>${item.total} KWD</p>
                     </td>
                     <td>
                     <p id="invPriceAtTable_${item.id}">0.00 KWD</p>
@@ -2428,8 +2428,8 @@
                 const taskId = item.reference || "Unknown Task ID"; // Task ID
                 const supplierName = item.supplier_name || "Unknown Supplier";
                 const agentName = item.agent_name || "Unknown Agent";
-                const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
-                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.price || 0); // Markup = invprice - price
+                const totalAmount = parseFloat(item.total || 0); // Payable amount to the supplier
+                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.total || 0); // Markup = invprice - price
 
                 // Update cumulative totals per supplier
                 if (!supplierTotals.has(supplierName)) {

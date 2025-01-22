@@ -230,7 +230,7 @@ class InvoiceController extends Controller
         $todayDate = Carbon::now()->format('Y-m-d');
 
         $appUrl = config('app.url');
-
+        
         return view('invoice.create', compact(
             'clients',
             'agents',

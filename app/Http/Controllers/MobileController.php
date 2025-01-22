@@ -46,7 +46,7 @@ class MobileController extends Controller
 
     public function __construct(AIService $aiService)
     {
-        $this->aiService = $aiService;        
+        $this->aiService = $aiService;
     }
 
     public function login2(LoginRequest $request): JsonResponse
@@ -178,32 +178,32 @@ class MobileController extends Controller
     public function create(Request $request)
     {
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
-    
+
         if (gettype($taskIds) == 'string') {
             $taskIdsArray = explode(',', $taskIds); // Multiple tasks
         } else {
             $taskIdsArray = $taskIds; // Single task
         }
-    
+
         $selectedTasks = Task::with('invoiceDetail.invoice')->whereIn('id', $taskIdsArray)->get();
-    
+
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
                 return response()->json(['error' => 'Task already invoiced!'], 400);
             }
         }
-    
+
         if ($request->input('user_id') != null) {
             $user = User::find($request->input('user_id'));
         } else {
             $user = Auth::user();
         }
-    
+
         $agents = collect();
         $clients = collect();
         $branches = collect();
         $company = null;
-    
+
         if ($user->role_id == Role::COMPANY) {
             $company = $user->company;
             $company = Company::with('branches.agents')->find($company->id);
@@ -217,51 +217,51 @@ class MobileController extends Controller
             $clients = $agents->flatMap->clients;
             $branches = $company->branches;
         }
-    
+
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
-    
+
         if (!$invoiceSequence) {
             $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
         }
-    
+
         $currentSequence = $invoiceSequence->current_sequence;
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
-    
+
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
-    
+
         $this->storeNotification([
             'user_id' => $user->id,
             'title' => 'Invoice ' . $invoiceNumber . ' Created By ' . $user->name,
             'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
         ]);
-    
+
         $clientIds = $selectedTasks->pluck('client_id')->unique();
         $agentIds =  $selectedTasks->pluck('agent_id')->unique();
         $selectedAgent = Agent::find($agentIds->first());
         $selectedClient = $clientIds->count() >= 1 ? Client::find($clientIds->first()) : null;
-    
-        $agentId = $selectedAgent ? $selectedAgent->id : ($user->role_id == Role::COMPANY 
-            ? $agents->pluck('id')->toArray() 
+
+        $agentId = $selectedAgent ? $selectedAgent->id : ($user->role_id == Role::COMPANY
+            ? $agents->pluck('id')->toArray()
             : $user->agent->id);
-    
-        $tasks = $agentId 
+
+        $tasks = $agentId
             ? Task::with('agent.branch')
-                ->whereIn('agent_id', (array)$agentId)
-                ->get()
-                ->map(function ($task) {
-                    $task->agent_name = $task->agent->name ?? null;
-                    $task->branch_name = $task->agent->branch->name ?? null;
-                    $task->supplier_name = $task->supplier->name ?? null;
-                    return $task;
-                })
+            ->whereIn('agent_id', (array)$agentId)
+            ->get()
+            ->map(function ($task) {
+                $task->agent_name = $task->agent->name ?? null;
+                $task->branch_name = $task->agent->branch->name ?? null;
+                $task->supplier_name = $task->supplier->name ?? null;
+                return $task;
+            })
             : collect();
-    
+
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
         $appUrl = config('app.url');
-    
+
         return response()->json([
             'clients' => $clients,
             'agents' => $agents,
@@ -280,7 +280,7 @@ class MobileController extends Controller
             'appUrl' => $appUrl
         ]);
     }
-    
+
 
     public function store(Request $request)
     {
@@ -302,7 +302,7 @@ class MobileController extends Controller
             'invoiceNumber' => 'required|string',
             'currency' => 'required|string',
         ]);
-     
+
 
         $tasks = $request->input('tasks');
         $duedate = $request->input('duedate');
@@ -408,7 +408,7 @@ class MobileController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment need to be made to: ' . $supplier->name,
+                            'description' => 'Payment: ' . $supplier->name,
                             'debit' => $selectedtask->total,
                             'credit' => 0,
                             'balance' => $selectedtask->total,
@@ -430,7 +430,7 @@ class MobileController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment need to be received from: ' . $client->name,
+                            'description' => 'Payment received from: ' . $client->name,
                             'debit' => 0,
                             'credit' => $task['price'],
                             'balance' => $task['price'],
@@ -478,7 +478,6 @@ class MobileController extends Controller
                 'message' => 'Invoice created successfully!',
                 'invoiceId' => $invoice->id,
             ]);
-
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json('Invoice creation failed!');
@@ -679,7 +678,7 @@ class MobileController extends Controller
 
     public function modifyAssistant($assistantId)
     {
-        $knowledgeBaseEntries = KnowledgeBase::select('topic','content')->get();
+        $knowledgeBaseEntries = KnowledgeBase::select('topic', 'content')->get();
 
         $instruction = 'You are an assistant in a travel agency system. You will learn everything about this system and help users to get the information they need. You can ask for help if you need it. Below are the features that exist in the system:';
 
@@ -752,15 +751,14 @@ class MobileController extends Controller
     {
         $user = User::find($userId);
 
-        if($user->role_id == Role::ADMIN){
-            return Invoice::with('invoiceDetails','invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails')->toArray();
-        } else if($user->role_id == Role::COMPANY) {
+        if ($user->role_id == Role::ADMIN) {
+            return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails')->toArray();
+        } else if ($user->role_id == Role::COMPANY) {
 
             $agentsId = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get()->pluck('id');
             return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->whereIn('agent_id', $agentsId)->toArray();
-
         } else if ($user->role_id == Role::AGENT) {
             return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->where('agent_id', $user->agent->id)->toArray();
         } else {
@@ -768,4 +766,3 @@ class MobileController extends Controller
         }
     }
 }
-

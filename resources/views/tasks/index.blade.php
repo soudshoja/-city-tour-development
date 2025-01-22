@@ -1,6 +1,7 @@
 <x-app-layout>
-
-
+    <head>
+        @vite('resources/js/tasks.js')
+    </head>
     @if($importedTask = session('importedTask'))
     <div
         x-show="importModal"
@@ -466,19 +467,18 @@
                     </svg>
                     <span class="text-sm">Create Invoice</span>
                 </button>
-                <button class="flex px-5 py-3 gap-3 btn-danger hover:bg-[#e7515aa8] rounded-lg shadow-sm items-center">
+                <!-- <button class="flex px-5 py-3 gap-3 btn-danger hover:bg-[#e7515aa8] rounded-lg shadow-sm items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#ffffff" d="M12 2c5.53 0 10 4.47 10 10s-4.47 10-10 10S2 17.53 2 12S6.47 2 12 2m5 5h-2.5l-1-1h-3l-1 1H7v2h10zM9 18h6a1 1 0 0 0 1-1v-7H8v7a1 1 0 0 0 1 1" />
                     </svg>
                     <span class="text-sm">Delete</span>
-                </button>
+                </button> -->
             </div>
-            <div id="closeFloatingActions" class="flex cursor-pointer items-center justify-center">
+            <div id="closeTaskFloatingActions" class="flex cursor-pointer items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
                     <path fill="#E53935" d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
                 </svg>
             </div>
         </div>
     </div>
-    @include('tasks.tasksjs')
 </x-app-layout>

@@ -1,4 +1,4 @@
-<script>
+    console.log('tasks.js loaded');
     let currentPage = 1;
     const rowsPerPage = 10;
     const dataTableBottom = document.querySelector(".dataTable-bottom");
@@ -355,7 +355,7 @@
         return rows.filter((row) => row.style.display !== "none");
     }
 
-    function showPage(page, visibleRows) {
+    function showPageParam(page, visibleRows) {
         const start = (page - 1) * rowsPerPage;
         const end = start + rowsPerPage;
 
@@ -371,13 +371,13 @@
         const visibleRows = filterRows();
         updatePagination(visibleRows);
         if (visibleRows.length > 0) {
-            showPage(1, visibleRows);
+            showPageParam(1, visibleRows);
         }
     });
 
     const visibleRows = filterRows();
     updatePagination(visibleRows);
-    showPage(1, visibleRows);
+    showPageParam(1, visibleRows);
 
 
     // Function to create pagination
@@ -460,7 +460,7 @@
 
 
     const floatingActions = document.getElementById("floatingActions");
-    const closeFloatingActions = document.getElementById("closeFloatingActions");
+    const closeTaskFloatingActions = document.getElementById("closeTaskFloatingActions");
     const selectAllCheckbox = document.getElementById("selectAll");
     const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
     const createInvoiceBtn = document.getElementById("createInvoiceBtn");
@@ -534,42 +534,8 @@
         }
     }
     // Close the floating div when the "X" button is clicked
-    closeFloatingActions.addEventListener("click", function() {
+    closeTaskFloatingActions.addEventListener("click", function() {
         floatingActions.classList.add("hidden");
-
-        // table pagination script 
-        const table = document.getElementById("myTable");
-        const prevPageButton = document.getElementById("prevPage");
-        const nextPageButton = document.getElementById("nextPage");
-
-        function filterRows() {
-            return rows.filter((row) => row.style.display !== "none");
-        }
-
-
-        function showPage(page, visibleRows) {
-            const start = (page - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-
-            rows.forEach((row) => (row.style.display = "none"));
-
-            visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
-
-            currentPage = page;
-            updatePagination(visibleRows);
-        }
-
-        document.addEventListener("filterUpdated", function() {
-            const visibleRows = filterRows();
-            updatePagination(visibleRows);
-            if (visibleRows.length > 0) {
-                showPage(1, visibleRows);
-            }
-        });
-
-        const visibleRows = filterRows();
-        updatePagination(visibleRows);
-        showPage(1, visibleRows);
     });
 
     document.getElementById("pdfInput").addEventListener("change", function() {
@@ -591,4 +557,3 @@
 
 
     });
-</script>

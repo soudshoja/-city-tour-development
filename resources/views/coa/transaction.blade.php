@@ -1,213 +1,119 @@
 <x-app-layout>
 
-    <div class="container mx-auto p-6 bg-white rounded-lg shadow-lg mt-6">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-4">All Transaction Records</h2>
 
-        <!-- Filters -->
-        <div class="container mx-auto p-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Level 1 Selection -->
-                <div>
-                    <label for="level1" class="block text-lg font-semibold mb-2 text-gray-700">Level 1 (Root Accounts):</label>
-                    <select id="level1" onchange="updateLevel2Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Level 1</option>
-                    </select>
-                </div>
-
-                <!-- Level 2 Selection -->
-                <div>
-                    <label for="level2" class="block text-lg font-semibold mb-2 text-gray-700">Level 2 (Child Accounts):</label>
-                    <select id="level2" onchange="updateLevel3Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Level 2</option>
-                    </select>
-                </div>
-
-                <!-- Level 3 Selection -->
-                <div>
-                    <label for="level3" class="block text-lg font-semibold mb-2 text-gray-700">Level 3 (Sub-Child Accounts):</label>
-                    <select id="level3" onchange="updateLevel4Options()" class="w-full p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Level 3</option>
-                    </select>
-                </div>
+    <!-- Page Heading -->
+    <div class="flex justify-between items-center gap-5 my-3">
+        <!-- title -->
+        <div class="flex items-center space-x-4">
+            <div class="p-3 DarkBGcolor rounded-full shadow-md flex items-center justify-center heartbeat">
+                <!-- SVG Icon -->
+                <a href="javascript:history.back()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 42 42">
+                        <path fill="#FFC107" fill-rule="evenodd" d="M27.066 1L7 21.068l19.568 19.569l4.934-4.933l-14.637-14.636L32 5.933z" />
+                    </svg>
+                </a>
             </div>
-
-               <!-- Level 4 Selection -->
-                <div>
-                    <label for="level4" class="block text-lg font-semibold mb-2 text-gray-700">Level 4 (Final Accounts):</label>
-                    <div class="flex items-center space-x-4">
-                    <select id="level4" class="w-3/4 p-1 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Level 4</option>
-                    </select>
-                    <button type="button" onclick="filterTransactions(document.getElementById('level4').value)"  class=" w-1/4 btn btn-primary">Apply Filter</button>
-                   </div>
-                </div>
+            <h2 class="text-2xl font-semibold text-gray-800 text-center dark:text-white">All Transaction Records</h2>
         </div>
+        <!--/ title -->
 
-        <!-- Table to display transactions -->
-        <div class="overflow-x-auto bg-white shadow rounded-lg">
-            <table id="transactionsTable" class="min-w-full table-auto border-collapse">
-                <thead class="bg-gray-100 text-gray-600">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Transaction Date</th>
-                        <th class="px-4 py-2 text-left">Description</th>
-                        <th class="px-4 py-2 text-left">Agent</th>
-                        <th class="px-4 py-2 text-left">Credit</th>
-                        <th class="px-4 py-2 text-left">Debit</th>
-                        <th class="px-4 py-2 text-left">Balance</th>
-                    </tr>
-                </thead>
-                <tbody id="transactionsBody" class="text-gray-800">
-                    @foreach ($transactions as $transaction)
-                       <tr class="transaction-row hover:bg-gray-50" data-level4="{{ $transaction->account_id }}">
-                            <td class="px-4 py-2 border-b">{{ $transaction->created_at }}</td>
-                            <td class="px-4 py-2 border-b">
-                                {{ $transaction->description }}
-                            </td>
-                            <td class="px-4 py-2 border-b">{{ $transaction->invoice->agent->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-2 border-b text-right">{{ $transaction->credit }}</td>
-                            <td class="px-4 py-2 border-b text-right">{{ $transaction->debit }}</td>
-                            <td class="px-4 py-2 border-b text-right">{{ $transaction->balance }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <!-- Filter, Date Picker, Export Button -->
+        <div class="flex items-center space-x-4">
+
+            <!-- Date Picker -->
+            <div class="relative">
+                <input id="datepicker" type="text" placeholder="Select rang date"
+                    class="w-80 px-3 py-2 text-gray-800 bg-transparent border border-[#1e40af] rounded-lg BoxShadow
+                           dark:bg-gray-700 dark:text-white dark:border-gray-600" style="outline: none;">
+
+            </div>
+            <script>
+                // Initialize Flatpickr
+                flatpickr("#datepicker", {
+                    mode: "range", // Select a range of dates
+                    dateFormat: "F j, Y", // Date format
+                    defaultDate: ["2023-03-11", "2023-03-18"], // Default date
+                    onChange: function(selectedDates, dateStr, instance) {
+                        console.log("Selected Dates: ", selectedDates);
+                    }
+                });
+            </script>
+            <!-- ./Date Picker -->
+
+
+            <!-- Filter Button -->
+            <button class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
+                <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                    <path fill="currentColor" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3"></path>
+                </svg>
+                <span class="text-xs md:text-sm dark:text-white">Filters</span>
+            </button>
+
+
+
+            <!-- Export Button -->
+            <button class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
+                <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1"></path>
+                </svg>
+                <span class="text-xs md:text-sm">Export</span>
+            </button>
         </div>
+        <!-- ./Filter, Date Picker, Export Button -->
+    </div>
+    <!-- ./Page Heading -->
+
+    <!-- page content -->
+    <div class="panel overflow-y-auto max-h-screen">
+        @foreach ($transactionsByDate as $date => $transactions)
+        <div class="date-group mb-6">
+            <!-- Date Heading -->
+            <h2 class="text-lg font-bold border-b-2 border-gray-300 mb-2">
+                {{ \Carbon\Carbon::parse($date)->format('d F Y') }}
+            </h2>
+
+            @if ($transactions->isEmpty())
+            <p class="text-gray-500">No transactions available.</p>
+            @else
+            <!-- Transactions List -->
+            <ul class="transaction-list space-y-4">
+                @foreach ($transactions as $transaction)
+                <li class="transaction-item flex items-center justify-between p-4 rounded-lg bg-gray-50 shadow-sm">
+                    <div class="icon bg-gray-200 rounded-full p-2">
+                        <!-- Show appropriate icon for credit/debit -->
+                        @if ($transaction->credit > 0)
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512">
+                            <path d="M448 224H288V64h-64v160H64v64h160v160h64V288h160z" fill="#00ab55" />
+                        </svg>
+                        @else
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512">
+                            <path d="M64 224h384v64H64z" fill="#e11d48" />
+                        </svg>
+                        @endif
+                    </div>
+                    <div class="transaction-details flex-grow px-4">
+                        <p class="text-gray-800 font-semibold">{{ $transaction->description ?? 'N/A' }}</p>
+                    </div>
+                    <div class="transaction-amount text-right">
+                        @if ($transaction->credit > 0)
+                        <span class="text-green-600 font-bold">+ {{ number_format($transaction->credit, 2) }} KWD</span>
+                        @else
+                        <span class="text-red-600 font-bold">- {{ number_format($transaction->debit, 2) }} KWD</span>
+                        @endif
+                    </div>
+                </li>
+                @endforeach
+            </ul>
+            @endif
+        </div>
+        @endforeach
     </div>
 
-    <script>
-        // Automatically set Level 4 filter if level4Id is provided
-         document.addEventListener('DOMContentLoaded', function() {
-            const level4Id = @json($level4Id);
-            const level4Select = document.getElementById("level4");
-
-                if (level4Id) {
-                    level4Select.value = level4Id;  
-                        filterTransactions(level4Id);  // Now filter transactions based on the selected value after a delay
-                }
-
-             
-        });
-
-   // Fetch Level 1 options
-   fetch('/get-level1-accounts')
-            .then(response => response.json())
-            .then(data => {
-                const level1Select = document.getElementById("level1");
-                data.forEach(account => {
-                    const opt = document.createElement("option");
-                    opt.value = account.id;
-                    opt.textContent = account.name;
-                    level1Select.appendChild(opt);
-                });
-            });
-
-        // Fetch and populate Level 2 options based on Level 1 selection
-        function updateLevel2Options() {
-            const level1Id = document.getElementById("level1").value;
-            const level2Select = document.getElementById("level2");
-            level2Select.innerHTML = "<option value=''>Select Level 2</option>"; // Reset Level 2
-
-            if (level1Id) {
-                fetch(`/get-level2-accounts/${level1Id}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(account => {
-                            const opt = document.createElement("option");
-                            opt.value = account.id;
-                            opt.textContent = account.name;
-                            level2Select.appendChild(opt);
-                        });
-                    });
-            }
-            updateLevel3Options(); // Reset Level 3 when Level 2 changes
-        }
-
-        // Fetch and populate Level 3 options based on Level 2 selection
-        function updateLevel3Options() {
-            const level2Id = document.getElementById("level2").value;
-            const level3Select = document.getElementById("level3");
-            level3Select.innerHTML = "<option value=''>Select Level 3</option>"; // Reset Level 3
-
-            if (level2Id) {
-                fetch(`/get-level3-accounts/${level2Id}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(account => {
-                            const opt = document.createElement("option");
-                            opt.value = account.id;
-                            opt.textContent = account.name;
-                            level3Select.appendChild(opt);
-                        });
-                    });
-            }
-            updateLevel4Options(); // Reset Level 4 when Level 3 changes
-        }
-
-        // Fetch and populate Level 4 options based on Level 3 selection
-        function updateLevel4Options() {
-            const level3Id = document.getElementById("level3").value;
-            const level4Select = document.getElementById("level4");
-            level4Select.innerHTML = "<option value=''>Select Level 4</option>"; // Reset Level 4
-
-            if (level3Id) {
-                fetch(`/get-level4-accounts/${level3Id}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(account => {
-                            const opt = document.createElement("option");
-                            opt.value = account.id;
-                            opt.textContent = account.name;
-                            level4Select.appendChild(opt);
-                        });
-                    });
-            }
-        }
 
 
-        function filterTransactions(selectedLevel4) {
 
-                    console.log('two', selectedLevel4)
-                    if (!selectedLevel4) {
-                        console.log("Please select a Level 4 account.");
-                        return;
-                    }
+    <!-- ./page content -->
 
-                    // Fetch transactions filtered by Level 4 account ID
-                    fetch(`/get-account?level4_id=${selectedLevel4}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const transactionsContainer = document.getElementById('transactionsBody');
-                            transactionsContainer.innerHTML = ''; // Clear existing transactions
-
-                            // Check if data is available
-                            if (data.length === 0) {
-                                transactionsContainer.innerHTML = '<tr><td colspan="6" class="text-center">No transactions found for this account.</td></tr>';
-                                return;
-                            }
-
-                            // Loop through each transaction and create a row
-                            data.forEach(transaction => {
-                                const row = document.createElement('tr');
-                                row.className = 'transaction-row hover:bg-gray-50';
-                                row.setAttribute('data-level4', transaction.account_id);
-
-                                row.innerHTML = `
-                                    <td class="px-4 py-2 border-b">${transaction.created_at}</td>
-                                    <td class="px-4 py-2 border-b">${transaction.description}</td>
-                                    <td class="px-4 py-2 border-b">${transaction.invoice?.agent?.name ?? 'N/A'}</td>
-                                    <td class="px-4 py-2 border-b text-right">${transaction.credit}</td>
-                                    <td class="px-4 py-2 border-b text-right">${transaction.debit}</td>
-                                    <td class="px-4 py-2 border-b text-right">${transaction.balance}</td>
-                                `;
-
-                                transactionsContainer.appendChild(row);
-                            });
-                        })
-                        .catch(error => console.error("Error fetching transactions:", error));
-                }
-
-
-    </script>
 
 
 </x-app-layout>

@@ -374,18 +374,18 @@ class CoaController extends Controller
         if (!$company) {
             return redirect()->route('some.route')->with('error', 'Company not found.');
         }
-        
-            $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
 
-            if (!$voucherSequence) {
-                $voucherSequence = Sequence::create(['current_sequence' => 1]);
-            }
+        $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
 
-            $currentSequence = $voucherSequence->current_sequence;
-            $voucherNumber = $this->generateVoucherNumber($currentSequence);
+        if (!$voucherSequence) {
+            $voucherSequence = Sequence::create(['current_sequence' => 1]);
+        }
 
-            $voucherSequence->current_sequence++;
-            $voucherSequence->save();
+        $currentSequence = $voucherSequence->current_sequence;
+        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+
+        $voucherSequence->current_sequence++;
+        $voucherSequence->save();
 
 
         return view('coa.payment', compact('company', 'voucherNumber'));
@@ -398,25 +398,25 @@ class CoaController extends Controller
         return sprintf('VOU-%s-%05d', $year, $sequence);
     }
 
-    
+
     public function getLevel1Accounts(Request $request)
     {
 
         $user = Auth::user();
         $company = Company::where('user_id', $user->id)->first();
-    
+
         // Ensure the company exists
         if (!$company) {
             return response()->json(['error' => 'Company not found.'], 404);
         }
 
-        
+
         // Fetch Level 1 accounts, assuming 'level' field defines the hierarchy level
         $accounts = Account::where('level', 1)
-                        ->whereNull('parent_id')
-                        ->where('company_id', $company->id) 
-                        ->get(['id', 'name']); // Return only necessary fields (id, name)
-        
+            ->whereNull('parent_id')
+            ->where('company_id', $company->id)
+            ->get(['id', 'name']); // Return only necessary fields (id, name)
+
         return response()->json($accounts);
     }
 
@@ -426,18 +426,18 @@ class CoaController extends Controller
 
         $user = Auth::user();
         $company = Company::where('user_id', $user->id)->first();
-    
+
         // Ensure the company exists
         if (!$company) {
             return response()->json(['error' => 'Company not found.'], 404);
         }
 
-        
+
         // Fetch child accounts for Level 1 selection
         $accounts = Account::where('parent_id', $level1Id)
-                        ->where('company_id', $company->id) 
-                        ->get(['id', 'name']);
-        
+            ->where('company_id', $company->id)
+            ->get(['id', 'name']);
+
         return response()->json($accounts);
     }
 
@@ -447,18 +447,18 @@ class CoaController extends Controller
 
         $user = Auth::user();
         $company = Company::where('user_id', $user->id)->first();
-    
+
         // Ensure the company exists
         if (!$company) {
             return response()->json(['error' => 'Company not found.'], 404);
         }
 
-        
+
         // Fetch child accounts for Level 2 selection
         $accounts = Account::where('parent_id', $level2Id)
-                        ->where('company_id', $company->id) 
-                        ->get(['id', 'name']);
-        
+            ->where('company_id', $company->id)
+            ->get(['id', 'name']);
+
         return response()->json($accounts);
     }
 
@@ -467,17 +467,17 @@ class CoaController extends Controller
 
         $user = Auth::user();
         $company = Company::where('user_id', $user->id)->first();
-    
+
         // Ensure the company exists
         if (!$company) {
             return response()->json(['error' => 'Company not found.'], 404);
         }
 
-        
+
         $accounts = Account::where('parent_id', $level3Id)
-                           ->where('company_id', $company->id) 
-                           ->get(['id', 'name', 'actual_balance']);
-        
+            ->where('company_id', $company->id)
+            ->get(['id', 'name', 'actual_balance']);
+
         return response()->json($accounts);
     }
 
@@ -485,7 +485,7 @@ class CoaController extends Controller
     {
         $user = Auth::user();
         $company = Company::where('user_id', $user->id)->first();
-    
+
         // Ensure the company exists
         if (!$company) {
             return response()->json(['error' => 'Company not found.'], 404);
@@ -510,7 +510,7 @@ class CoaController extends Controller
         if (!$company) {
             return response()->json(['error' => 'Company not found.'], 404);
         }
-        
+
         $data = $request->validate([
             'voucher_no' => 'required|string|max:255',
             'voucher_date' => 'required|date',
@@ -523,10 +523,10 @@ class CoaController extends Controller
             'entries.*.credit' => 'nullable|numeric',
         ]);
 
-       $voucherNo = $data['voucher_no'];
-       $voucherDate = $data['voucher_date'];
-       $paymentMethod = $data['payment_method'];
-       $payTo =  $data['pay_to'];
+        $voucherNo = $data['voucher_no'];
+        $voucherDate = $data['voucher_date'];
+        $paymentMethod = $data['payment_method'];
+        $payTo =  $data['pay_to'];
 
         Log::info('data', ['data' => $data]);
         // Create General Ledger entries
@@ -550,10 +550,10 @@ class CoaController extends Controller
                 'status' => 'paid',
                 'account_number' => NULL,
                 'bank_name' => NULL,
-                'swift_no'=> NULL,
-                'iban_no'=> NULL,
-                'country'=> NULL,
-                'tax'=> NULL,
+                'swift_no' => NULL,
+                'iban_no' => NULL,
+                'country' => NULL,
+                'tax' => NULL,
                 'discount' => NULL,
                 'shipping' => NULL,
                 'payment_reference' => $voucherNo,
@@ -563,7 +563,7 @@ class CoaController extends Controller
             $newBalance = $this->calculateNewBalance($account->actual_balance, $entry['debit'], $entry['credit']);
             Log::info('newBalance', ['newBalance' => $newBalance]);
             GeneralLedger::create([
-                'transaction_id' => $payment->id, 
+                'transaction_id' => $payment->id,
                 'company_id' => $company->id,
                 'account_id' => $entry['account_id'],
                 'transaction_date' => $data['voucher_date'],
@@ -573,7 +573,7 @@ class CoaController extends Controller
                 'credit' => $entry['credit'] ?? 0,
                 'balance' => $newBalance
             ]);
-            
+
             // Update the actual_balance of the Level 4 account
 
             $account->actual_balance = $newBalance;
@@ -601,13 +601,19 @@ class CoaController extends Controller
         if (!$company) {
             return redirect()->route('some.route')->with('error', 'Company not found.');
         }
-        
+
         $level3Id = $request->input('level3Id');
         $level4Id = $request->input('level4Id');
-        $transactions = GeneralLedger::all();
 
-        return view('coa.transaction', compact('company','transactions', 'level4Id', 'level3Id'));
+        // Retrieve all transactions ordered by date descending
+        $transactions = GeneralLedger::orderBy('created_at', 'desc')->get();
+
+        // Group transactions by date (e.g., "2025-01-11")
+        $transactionsByDate = $transactions->groupBy(function ($transaction) {
+            return $transaction->created_at->format('Y-m-d');
+        });
+
+        // Pass grouped transactions to the view
+        return view('coa.transaction', compact('company', 'transactionsByDate', 'level4Id', 'level3Id'));
     }
-
-
 }

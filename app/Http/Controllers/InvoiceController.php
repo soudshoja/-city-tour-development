@@ -101,9 +101,9 @@ class InvoiceController extends Controller
             $taskIdsArray = $taskIds; // Single task
         }
 
-        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
-        
-        $selectedTasks = $tasks->whereIn('id', $taskIdsArray)->get();
+        $tasks1 = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
+
+        $selectedTasks = $tasks1->whereIn('id', $taskIdsArray)->get();
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
@@ -117,7 +117,7 @@ class InvoiceController extends Controller
             $task->supplier_name = $task->supplier->name ?? null;
             return $task;
         });
-        
+
         if ($request->input('user_id') != null) {
             $user = User::find($request->input('user_id'));
         } else {
@@ -181,36 +181,47 @@ class InvoiceController extends Controller
             return $agent['id'];
         }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
 
+      
         $clientId = $selectedClient ? $selectedClient->id : null;
 
-        
 
         if ($user->role_id == Role::AGENT) {
+
             $tasks = $agentId 
-                ? $tasks
+                ? Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
                     ->where('agent_id', $agentId)
                     ->get()
+                    ->filter(function ($task) {
+                        // Filter out tasks that already have an invoice detail
+                        return !$task->invoiceDetail;
+                    })
                     ->map(function ($task) {
                         $task->agent_name = $task->agent->name ?? null;
                         $task->branch_name = $task->agent->branch->name ?? null;
                         $task->supplier_name = $task->supplier->name ?? null;
+                        $task->quantity = 1;
                         return $task;
                     })
                 : collect();
         } else {
             $tasks = $agentId 
-                ? $tasks
+                ? Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
                     ->whereIn('agent_id', (array)$agentId)
                     ->get()
+                    ->filter(function ($task) {
+                        // Filter out tasks that already have an invoice detail
+                        return !$task->invoiceDetail;
+                    })
                     ->map(function ($task) {
                         $task->agent_name = $task->agent->name ?? null;
                         $task->branch_name = $task->agent->branch->name ?? null;
                         $task->supplier_name = $task->supplier->name ?? null;
+                        $task->quantity = 1;
                         return $task;
                     })
                 : collect();
+                
         }
-        
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];

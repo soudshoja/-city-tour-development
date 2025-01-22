@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
+use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Payment;
@@ -670,21 +671,24 @@ class InvoiceController extends Controller
 
         // Get all agents under the company
         $agents = Agent::with(['branch' => function ($query) use ($user) {
-            $query->where('branch_id', $user->company->branch->id);
-        }])->pluck('id');
+            $query->where('company_id', $user->company_id);
+        }])->get();
 
+        $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch', 'client')->whereIn('agent_id', $agents)->paginate(10);
+        $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(10);
 
         // Get clients related to the agents
-        $clients = Client::whereIn('agent_id', $agents)->get();
+        $clients = Client::whereIn('agent_id', $agentIds)->get();
 
         // Get tasks related to the agents
-        $tasks = Task::whereIn('agent_id', $agents)->get();
-
+        $tasks = Task::whereIn('agent_id', $agentIds)->get();
+        $suppliers = Supplier::all();
+        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
+        $types = Task::distinct()->pluck('type');
         $totalInvoices = $invoices->total();
 
-        return view('invoice.companyAgentsInvoices', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
+        return view('invoice.companyAgentsInvoices', compact('invoices', 'types', 'suppliers','branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
     }
 
 

@@ -483,6 +483,7 @@
 
                         <!-- Added Buttons/Links Section -->
                         <section id="additional-actions" class="mt-6">
+                           <input type="hidden" name="shared" id="shared" value="false">
                             <div class="flex flex-wrap gap-4">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
 
@@ -564,7 +565,7 @@
                         </div>
 
                         <!-- Modal -->
-                        <div id="paymentModal3" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                        <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
                             <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
                                 <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
                                 <!-- Include your previous page content here -->
@@ -986,7 +987,9 @@
             const generateInvoice = document.getElementById("generate-invoice-btn");
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
             const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
-
+            const shareSection = document.getElementById('additional-actions');
+            const shared = document.getElementById('shared').value;
+            
             const options = document.querySelectorAll('.select-option');
             const selectedBranchInput = document.getElementById('selectedBranch');
 
@@ -1010,6 +1013,12 @@
                 paymentGatewaySection.style.display = 'block'; // Show the section
             } else {
                 paymentGatewaySection.style.display = 'none'; // Hide the section
+            }
+
+            if (shared === 'false') {
+                shareSection.style.display = 'none'; // hide the section
+            } else {
+                shareSection.style.display = 'block'; // show the section
             }
 
 
@@ -1049,7 +1058,7 @@
 
         function showModal(type) {
             if (type == 'split') {
-                document.getElementById('paymentModal3').classList.remove('hidden');
+                document.getElementById('paymentModal').classList.remove('hidden');
             } else if (type == 'partial') {
                 document.getElementById('paymentModal1').classList.remove('hidden');
             }
@@ -1058,7 +1067,7 @@
         }
 
         function hideModal() {
-            document.getElementById('paymentModal3').classList.add('hidden');
+            document.getElementById('paymentModal').classList.add('hidden');
             document.getElementById('paymentModal1').classList.add('hidden');
             checkInvoiceId();
         }
@@ -1556,6 +1565,7 @@
                     let modalInvoice = document.querySelector('dialog[data-modal-invoice="' + item.id + '"]');
 
                     openButton.addEventListener('click', function() {
+                        console.log(item.id);
                         modalInvoice.showModal();
                     });
 
@@ -1754,7 +1764,13 @@
 
         function renderTaskList(taskData) {
             const taskList = document.getElementById('taskList');
+              console.log('taskData', taskData);
 
+              if (!Array.isArray(taskData)) {
+                    console.error('taskData is not an array:', taskData);
+                    taskData = []; // Fallback to an empty array
+                }
+                
             taskData = taskData.filter(task =>
                 !items.some(selectedTask => selectedTask.id === task.id)
             );
@@ -2208,8 +2224,9 @@
 
             // Get the selected payment type
             const selectedOption = document.querySelector('input[name="payment_type"]:checked');
-
+            const shared = document.getElementById('shared');
             update.disabled = true;
+            shared.value = "true";
 
             // Disable all options
             paymentOptions.forEach(option => {
@@ -2451,6 +2468,9 @@
             });
         }
 
+        function viewInvoice(){
+            openInvoiceModal(document.getElementById('invoiceNumber').value);
+        }
 
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");
@@ -2510,8 +2530,10 @@
         document.addEventListener("DOMContentLoaded", function() {
 
             tasks = @json($tasks);
+            tasks = Array.isArray(tasks) ? tasks : Object.values(tasks);
             let clients = @json($clients);
-
+            console.log('tasks', tasks);
+            console.log(Array.isArray(tasks));
             // Initial rendering of items
             renderItems();
 

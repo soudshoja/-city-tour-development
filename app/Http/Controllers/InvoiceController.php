@@ -26,6 +26,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceController extends Controller
 {
@@ -713,9 +714,24 @@ class InvoiceController extends Controller
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
 
         $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paymentGateway'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paymentGateway', 'company'));
     }
+
+    public function generatePdf(string $invoiceNumber)
+    {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice')->get();
+        $invoiceDetails = $invoice->invoiceDetails;
+
+        $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
+
+        $pdf = Pdf::loadView('invoice.pdf', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paymentGateway'));
+
+        return $pdf->download("Invoice_{$invoiceNumber}.pdf");
+    }
+
 
     public function split(string $invoiceNumber, int $clientId)
     {

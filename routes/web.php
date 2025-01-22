@@ -264,6 +264,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
+Route::get('/invoice/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoice.pdf');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');

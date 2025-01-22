@@ -522,6 +522,7 @@
                                     </svg>
                                     View
                                 </button>
+                                <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to clipboard!</p>
 
                             </div>
                         </section>
@@ -2525,6 +2526,55 @@
             isSaving = false;
             isSaved = false;
             updateButtonState();
+        }
+
+
+        function copyLink() {
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const copyFeedback = document.getElementById('copyFeedback');
+            const baseUrl = window.location.origin; 
+            const invoiceLink = `${baseUrl}/invoice/${invoiceNumber}/pdf`;
+            const fetchUrl =
+                "{{ route('invoice.pdf', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
+
+            navigator.clipboard.writeText(invoiceLink).then(() => {
+                alert('Link copied to clipboard: ' + invoiceLink);  // Use invoiceLink here
+                copyFeedback.classList.remove('hidden');
+                setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
+
+                fetch(fetchUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/pdf',
+                    },
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Invoice_${invoiceNumber}.pdf`; // Filename for the downloaded PDF
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url); // Clean up the URL object
+                    })
+                    .catch(err => {
+                        console.error('Failed to download PDF: ', err);
+                        alert('Failed to download PDF. Please try again.');
+                    });
+
+            }).catch(err => {
+                alert('Failed to copy link: ' + err);
+            });
         }
 
         document.addEventListener("DOMContentLoaded", function() {

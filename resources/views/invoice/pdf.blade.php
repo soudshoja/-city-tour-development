@@ -203,40 +203,7 @@
     <!-- Payment Details -->
     <div class="mb-8 inline-flex gap-2">
       @if($invoice->status === 'unpaid')
-      <form action="{{ route('whatsapp.send') }}" method="POST">
-        @csrf
-        <input type="hidden" name="client" value='{{ $invoice->client }}'>
-        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number}}'>
-        <button type="submit" class="btn btn-primary">
-          Send Invoice To Client
-        </button>
-      </form>
-      <form id="paymentForm" action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}" method="POST">
-        @csrf
-        <input type="hidden" name="total_amount" value="{{ $invoice->amount }}">
-        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-        <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
-        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-        <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
-        <button type="submit" id="payNowBtn" class="btn btn-primary">
-          Pay Now
-        </button>
-        <div id="loadingSpinner" class="hidden mt-2">
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...
-        </div>
-      </form>
-
-      @if(auth()->user() && (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
-      <div class="flex gap-2 mt-2" id="invoice-link">
-        <p>
-          {{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}
-        </p>
-        <button onclick="copyToClipboard('{{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}')">
-          <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
-        </button>
-
-      </div>
-      @endif
+      <span class="text-nn  -600 font-bold">UNPAID</span>
       @else
       <span class="text-green-600 font-bold">PAID</span>
       @endif

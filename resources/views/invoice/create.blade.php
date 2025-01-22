@@ -1188,6 +1188,7 @@
         }
 
         function updateField(itemId, fieldId) {
+            console.log('updated',itemId +'-'+fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
             const newValue = inputField.value || NULL;
 
@@ -1673,7 +1674,7 @@
                 description: `${task.reference} - ${task.additional_info}`, // Custom description format
                 client_name: task.client_name
             });
-
+            console.log('item selected', items);
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 

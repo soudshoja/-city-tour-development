@@ -1,4 +1,5 @@
 <script>
+    
     let currentPage = 1;
     const rowsPerPage = 10;
     const dataTableBottom = document.querySelector(".dataTable-bottom");
@@ -36,7 +37,7 @@
         link.addEventListener("click", function(event) {
             event.preventDefault();
 
-            const taskId = this.getAttribute("data-task-id");
+            const taskId = this.getAttribute("data-client-id");
 
 
             toggleTasksDetails(taskId);
@@ -85,7 +86,7 @@
                     taskDetailsDiv.innerHTML = `
                                 <div class="justify-center flex items-center mb-5">
                                     <span class="text-center px-5 py-3 w-full text-lg badge bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-md dark:group-hover:bg-transparent rounded-lg text-black dark:text-gray-300">
-                                        ${data.supplier.name}
+                                        ${data.client.name}
                                     </span>
                                 </div>
                                 <div class="p-4 justify-between flex items-center gap-5">
@@ -180,7 +181,7 @@
         type: document.getElementById("selected-types"),
     };
 
-
+   
     function updateFilterCount() {
         const activeFilters = Object.keys(filters).filter((key) => {
 
@@ -246,6 +247,7 @@
 
         document.dispatchEvent(new CustomEvent("filterUpdated")); // Notify pagination script
     }
+   
 
     function handleDropdownChange(filter, container, idAttr) {
         const selectedOption = filter.element.options[filter.element.selectedIndex];
@@ -266,20 +268,8 @@
         filter.element.value = "";
     }
 
-    filters.price.element.addEventListener("input", function() {
-        filters.price.value = parseFloat(this.value) || NaN;
-        document.getElementById("ShowTaskFilters").textContent = this.value;
-        updateFilterCount();
-        filterTable();
-    });
 
-    Object.keys(filters).forEach((key) => {
-        if (key !== "price") {
-            filters[key].element.addEventListener("change", () =>
-                handleDropdownChange(filters[key], filterContainers[key], key)
-            );
-        }
-    });
+    
 
     function createFilterTag(id, name, type) {
         const tag = document.createElement("div");
@@ -298,21 +288,6 @@
             filterTable();
         }
     };
-
-    document.getElementById("clearFilters").addEventListener("click", function() {
-        Object.keys(filters).forEach((key) => {
-            if (key === "price") {
-                filters.price.value = NaN;
-                filters.price.element.value = filters.price.element.min;
-            } else {
-                filters[key].selected.clear();
-                filterContainers[key].innerHTML = "";
-            }
-        });
-
-        updateFilterCount();
-        filterTable();
-    });
 
     filterTable();
 
@@ -356,6 +331,7 @@
     }
 
     function showPage(page, visibleRows) {
+        console.log('showpage, visible');
         const start = (page - 1) * rowsPerPage;
         const end = start + rowsPerPage;
 
@@ -420,7 +396,6 @@
 
     // Function to handle page number click
     function handlePageChange(e) {
-        console.log('showhandle');
         e.preventDefault();
         const page = parseInt(e.target.dataset.page, 10);
         if (page && page !== currentPage) {
@@ -430,7 +405,7 @@
 
     // Event listener for previous button
     if (prevPageButton) {
-        console.log('showprev');
+        console.log('prevpage');
         prevPageButton.addEventListener('click', (e) => {
             e.preventDefault();
             if (currentPage > 1) {
@@ -441,7 +416,7 @@
 
     // Event listener for next button
     if (nextPageButton) {
-        console.log('shownext');
+        console.log('nextpage');
         nextPageButton.addEventListener('click', (e) => {
             e.preventDefault();
             if (currentPage < totalPages) {

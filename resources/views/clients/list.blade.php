@@ -129,7 +129,10 @@
                                 </tr>
                                 @else
                                 @foreach ($clients as $client)
-                                <tr class="taskRow">
+                                <tr 
+                                data-name="{{ $client->name }}" data-email="{{ $client->email }}"
+                                    data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"  data-client-id="{{ $client ? $client->id : null }}"  class="taskRow"
+                                >
                                     <td>
                                         <label class="custom-checkbox" data-tooltip="select client">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" data-id="{{ $client->id }}">
@@ -175,9 +178,6 @@
                         </table>
 
                     </div>
-
-
-
                     <!-- pagination -->
                     <div class="dataTable-bottom justify-center">
                         <nav class="dataTable-pagination">
@@ -205,6 +205,7 @@
                         </nav>
                     </div>
                     <!-- ./pagination -->
+
                 </div>
                 <!-- ./Table  -->
 
@@ -222,7 +223,7 @@
         <!-- ./right -->
     </div>
     <!--./page content-->
-
+    @include('clients.tasksjs')
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const viewClientLinks = document.querySelectorAll(".viewClient");

@@ -302,21 +302,32 @@ Route::group([
     'middleware' => ['auth'],
 ], function () {
 
-    Route::get('/payment', [PaymentController::class, 'showPaymentPage'])->name('payment.choose');
-    Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
-    Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
-    Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
-    Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
-    Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
-    Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
-    Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
-    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-    Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
-    Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
-    Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
-    Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
-    Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
-    Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
+    Route::group([
+        'prefix' => 'payment',
+        'as' => 'payment.',
+    ], function () {
+        Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose');
+        Route::get('/process', [PaymentController::class, 'process'])->name('process');
+        Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create');
+        Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
+        Route::get('/check', [PaymentController::class, 'check'])->name('check');
+        Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
+        Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
+    });
+
+    Route::group([
+        'prefix' => 'clients',
+        'as' => 'clients.',
+    ], function () {
+        Route::get('/', [ClientController::class, 'index'])->name('index');
+        Route::get('/create', [ClientController::class, 'create'])->name('create');
+        Route::post('/', [ClientController::class, 'store'])->name('store');
+        Route::get('/{id}', [ClientController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [ClientController::class, 'update'])->name('update');
+        Route::post('/upload', [ClientController::class, 'import'])->name('upload');
+        Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
+    });
 });
 
 // REPORTS

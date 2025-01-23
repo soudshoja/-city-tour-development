@@ -78,19 +78,38 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Agents list
-    Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
-    Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
-    Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
-    Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
-    Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
-    Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
-    Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
-    Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
-    Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
-    Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
-    Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
-    Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
+    Route::group([
+        'prefix' => 'agents',
+        'as' => 'agents.',
+    ], function () {
+        Route::get('/', [AgentController::class, 'index'])->name('index');
+        Route::get('/new', [AgentController::class, 'new'])->name('new');
+        Route::post('/', [AgentController::class, 'store'])->name('store');
+        Route::get('/upload', [AgentController::class, 'upload'])->name('upload');
+        Route::post('/upload', [AgentController::class, 'import'])->name('import');
+        Route::get('/{id}', [AgentController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [AgentController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [AgentController::class, 'update'])->name('update');
+        Route::post('/create-profile', [AgentController::class, 'createAgentProfile'])->name('create.profile');
+        Route::get('/{id}/tasks', [AgentController::class, 'getTasks'])->name('tasks');
+        Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
+        Route::get('/{id}/invoices', [AgentController::class, 'getInvoices'])->name('invoices');
+    });
 
+
+
+    // Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
+    // Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
+    // Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
+    // Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
+    // Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
+    // Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
+    // Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
+    // Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
+    // Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
+    // Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
+    // Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
+    // Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
 
 
     // Routes for creating new records
@@ -132,7 +151,6 @@ Route::middleware(['auth'])->group(function () {
 
     // SUPPLIERS
     Route::group([
-        'middleware' => ['auth'],
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
     ], function () {

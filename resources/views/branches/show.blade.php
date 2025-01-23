@@ -95,7 +95,7 @@
                                         </span>
                                     </td>
                                     <!-- <td class="px-4 py-2 flex gap-2">
-                                        <a href="{{ route('agentsshow.show', $agent->id) }}">
+                                        <a href="{{ route('agents.show', $agent->id) }}">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                                 xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
                                                 <path

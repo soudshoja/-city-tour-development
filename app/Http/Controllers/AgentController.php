@@ -34,13 +34,16 @@ class AgentController extends Controller
         if ($user->role_id == Role::COMPANY) {
             // Get agents belonging to the company
             $company_id = $user->company_id;
-            $agents = Agent::where('company_id', $user->company->id)->get();
+            $branchesId = Branch::where('company_id', $user->company->id)->pluck('id');
+            $agents = Agent::whereIn('branch_id', $branchesId)->get();
             $agentCount = $agents->count();
+
         } elseif ($user->role_id == Role::BRANCH) {
             // Get agents belonging to the branch
             $branch_id = $user->branch_id;
             $agents = Agent::where('branch_id', $branch_id)->get();
             $agentCount = $agents->count();
+
         } elseif ($user->role_id == Role::ADMIN) {
             // Admin can see all agents
             $agents = Agent::all();
@@ -48,7 +51,7 @@ class AgentController extends Controller
         }
 
         // Pass both 'agents' and 'agentCount' to the view
-        return view('agents.agentsList', compact('agents', 'agentCount'));
+        return view('agents.index', compact('agents', 'agentCount'));
     }
 
 
@@ -60,7 +63,6 @@ class AgentController extends Controller
         $companies = Company::all();
         $admin = Role::ADMIN;
 
-        return view('agents.agentsNew', compact('agents', 'companies', 'admin'));
         return view('agents.agentsNew', compact('agents', 'companies', 'admin'));
     }
 

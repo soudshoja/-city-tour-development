@@ -771,9 +771,9 @@ class InvoiceController extends Controller
     public function update(Request $request, string $id)
     {
         $invoice = Invoice::find($id);
-
+        
         if (!$invoice) {
-            return response()->json(['error' => 'Invoice not found!'], 404);
+            return redirect()->back()->with('error', 'Invoice not found!');
         }
 
         try {

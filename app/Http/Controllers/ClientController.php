@@ -111,7 +111,7 @@ class ClientController extends Controller
         $tasks = Task::where('client_id', $id)->get();
         $paid = $invoices->where('status', 'paid')->sum('amount');
         $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
-
+        
         return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid')); // Ensure the view exists
     }
 
@@ -133,7 +133,7 @@ class ClientController extends Controller
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-
+        
         // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',

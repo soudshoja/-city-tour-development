@@ -63,7 +63,7 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="{{ route('clients.list') }}" class="justify-center text-center p-3 my-3 bg-white text-gray-600 BoxShadow">Clients List</a></menuitem>
+            <menuitem><a href="{{ route('clients.index') }}" class="justify-center text-center p-3 my-3 bg-white text-gray-600 BoxShadow">Clients List</a></menuitem>
 
         </menu>
         </menuitem>

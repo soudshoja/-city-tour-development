@@ -125,7 +125,7 @@
                         </div>
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Type</p>
-                            <h5 class="text-base ml-auto">{{ $agent->type }}</h5>
+                            <h5 class="text-base ml-auto">{{ $agent->agentType->name }}</h5>
                         </div>
                         <div class="flex justify-evenly gap-2 w-full mt-2">
                             <x-paid>{{$paid}} KWD</x-paid>
@@ -158,7 +158,7 @@
                 </h2>
 
                 <!-- Modal Form -->
-                <form method="POST" action="{{ route('agents.edit', $agent->id) }}" class="space-y-4">
+                <form method="POST" action="{{ route('agents.update', $agent->id) }}" class="space-y-4">
                     @csrf
                     @method('PUT')
 
@@ -189,11 +189,14 @@
                     <!-- Type -->
                     <div class="mb-6">
                         <label for="type" class="block text-gray-700 font-semibold mb-2">Type</label>
-                        <select name="type" id="type"
+                        <select name="type_id" id="type"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
-                            <option value="staff" {{ $agent->type == 'staff' ? 'selected' : '' }}>Staff</option>
-                            <option value="manager" {{ $agent->type == 'manager' ? 'selected' : '' }}>Manager</option>
-                            <option value="admin" {{ $agent->type == 'admin' ? 'selected' : '' }}>Admin</option>
+                            @foreach($agentType as $type)
+                                <option value="{{ $type->id }}" {{ $agent->type_id == $type->id ? 'selected' : '' }}>
+                                    {{ $type->name }}
+                                </option>
+                            @endforeach
+
                         </select>
                     </div>
 

@@ -133,15 +133,15 @@
                     <div>
                         <div class="flex items-center justify-between text-white">
                             <p class="text-lg">Email</p>
-                            <h5 class="text-base ml-auto">{{ $client->email }}</h5>
+                            <h5 class="text-base ml-auto overflow-hidden pl-4">{{ $client->email ? $client->email : 'N/A' }}</h5>
                         </div>
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Phone</p>
-                            <h5 class="text-base ml-auto">{{ $client->phone }}</h5>
+                            <h5 class="text-base ml-auto">{{ $client->phone ? $client->phone : 'N/A' }}</h5>
                         </div>
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Address</p>
-                            <h5 class="text-base ml-auto">{{ $client->address }}</h5>
+                            <h5 class="text-base ml-auto">{{ $client->address ? $client->address : 'N/A' }}</h5>
                         </div>
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Agent</p>
@@ -163,7 +163,7 @@
         <div class="mt-5 panel">
             <div class="mb-5 flex justify-between">
                 <h5 class="text-lg font-semibold dark:text-white-light">
-                    <span class="customBlueColor">Invoices</span> List
+                    Invoices List
                 </h5>
                 <!-- add an icon here -->
             </div>
@@ -219,12 +219,12 @@
                                                 @csrf
                                                 <input type="hidden" name="id" value="{{ $invoice->id }}">
                                                 <input type="text" name="amount" value="{{ $invoice->amount }}" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
-                                                <select name="agent" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                                                <select name="agent_id"  class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
                                                     @foreach($agents as $agent)
                                                     <option value="{{ $agent->id }}" {{ $invoice->agent_id == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
                                                     @endforeach
                                                 </select>
-                                                <select name="status" id="" name="status" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                                                <select name="status" name="status" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
                                                     <option value="paid" {{ $invoice->status == 'paid' ? 'selected' : '' }}>Paid
                                                     </option>
                                                     <option value="partial" {{ $invoice->status == 'partial' ? 'selected' : '' }}>Partial</option>
@@ -255,7 +255,7 @@
     </div>
 
     <!-- edit Agent details modal -->
-    <div id="editClientModal" onclick="closemodalContentClientIfClickedOutside(event)"
+    <div id="editClientModal" 
         class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
         <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
 
@@ -268,8 +268,35 @@
             </button>
 
             <!-- Modal Title -->
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Edit Client Details
-            </h2>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Edit Client Details </h2>
+
+            <div class="body p-4">
+                <form action="{{ route('clients.update', $client->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="grid gap-4">
+                        <input type="text" name="name" value="{{ $client->name }}"
+                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
+                            placeholder="Client Name">
+                        <input type="email" name="email" value="{{ $client->email }}"
+                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
+                            placeholder="Client Email">
+                        <input type="text" name="phone" value="{{ $client->phone }}"
+                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
+                            placeholder="Client Phone">
+                        <input type="text" name="address" value="{{ $client->address }}"
+                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
+                            placeholder="Client Address">
+                        <select name="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                            @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" {{ $client->agent_id == $agent->id ? 'selected' : '' }}>
+                                {{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit"
+                            class="p-2 rounded-md bg-black text-white">Update</button>
+                </form>
+            </div>
 
 
         </div>
@@ -280,22 +307,23 @@
 
 
     <script>
+        let editClientModal = document.getElementById('editClientModal');
         // edit company details modal
         function EditClientDetails() {
-            document.getElementById('editClientModal').classList.remove('hidden');
+            editClientModal.classList.remove('hidden');
         }
 
         function closeClientModal() {
             // Hide the modal when "Cancel" is clicked
-            document.getElementById('editClientModal').classList.add('hidden');
+            editClientModal.classList.add('hidden');
         }
 
-        function closemodalContentClientIfClickedOutside(event) {
+       editClientModal.addEventListener('click', function(event) {
             // Close the modal if the user clicks outside of the modal content
             const modalContentClient = document.querySelector('#editClientModal > div');
             if (!modalContentClient.contains(event.target)) {
                 closeClientModal();
             }
-        }
+        });
     </script>
 </x-app-layout>

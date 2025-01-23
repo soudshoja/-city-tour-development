@@ -13,6 +13,7 @@ use App\Models\Client;
 use App\Models\Invoice;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
+use App\Models\AgentType;
 use App\Models\Branch;
 use App\Models\Role;
 use DateTimeImmutable;
@@ -68,7 +69,7 @@ class AgentController extends Controller
 
     public function show($id)
     {
-        $agent = Agent::with('branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
+        $agent = Agent::with('agentType', 'branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
 
         // Paginate all sections when viewing the main page (agentsShow)
         $tasks = Task::with('agent', 'invoiceDetail')->where('agent_id', $id)->paginate(6, ['*'], 'tasks');
@@ -102,10 +103,12 @@ class AgentController extends Controller
 
         $paid = Invoice::where('status', 'paid')->where('agent_id', $id)->sum('amount');
         $unpaid = Invoice::where('status', '<>', 'paid')->where('agent_id', $id)->sum('amount');
-        // dd(Task::with('invoiceDetail', 'client')->where('agent_id', $id)->get());
+        $agentType = AgentType::all();
+
         // Return the main view with paginated data
         return view('agents.agentsShow', compact(
             'agent',
+            'agentType',
             'tasks',
             'invoices',
             'clients',
@@ -132,8 +135,8 @@ class AgentController extends Controller
 
     public function update(Request $request, $id)
     {
-
         $agent = Agent::find($id);
+
         try {
             $agent->update($request->all());
 

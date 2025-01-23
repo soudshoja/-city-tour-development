@@ -1,4 +1,5 @@
 <x-app-layout>
+
     <head>
         @vite('resources/js/tasks.js')
     </head>
@@ -199,10 +200,17 @@
                                     @endif
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                        <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
-                                            {{ $task->invoiceDetail ? 'badge-outline-success' : 'badge-outline-danger' }}">
-                                            {{ $task->invoiceDetail ? 'Invoiced' : 'Not Yet' }}
+                                        @if($task->invoiceDetail)
+                                        <span
+                                            data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
+                                            class="invoiceModal badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
+                                            {{ $task->invoiceDetail->invoice_number }}
                                         </span>
+                                        @else
+                                        <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
+                                            Not Yet
+                                        </span>
+                                        @endif
                                     </td>
                                     <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">{{ $task->price }}</td>
                                     <td>
@@ -278,7 +286,7 @@
                         </button>
                     </div>
                 </div>
-        
+
                 <div class="w-full mb-5">
                     <div class="flex justify-between">
                         <div class="flex flex-wrap gap-4">
@@ -433,7 +441,8 @@
 
                                 <!-- Select Dropdown -->
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0"> <option selected value="" class="">Select Branch</option>
+                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Branch</option>
                                         @foreach($branches as $branch)
                                         <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                                         @endforeach
@@ -481,4 +490,49 @@
             </div>
         </div>
     </div>
+    <div id="taskInvoicePlaceholder" class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div id="invoiceModalContent">
+            <div id="invoiceModalBody" class="rounded-t-md bg-white">
+            </div>
+            <div id="invoiceFooter" class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
+                <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let invoicesModal = document.querySelectorAll('.invoiceModal');
+
+
+        invoicesModal.forEach(invoice => {
+            invoice.addEventListener('click', function() {
+
+                let invoiceNumber = invoice.getAttribute('data-invoice-number');
+                let url = `{{ route('invoice.show', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
+
+                let modalInvoice = document.getElementById('taskInvoicePlaceholder');
+                let invoiceBody = document.getElementById('invoiceModalBody');
+
+                fetch(url)
+                    .then(response => response.text())
+                    .then(data => {
+                        invoiceBody.innerHTML = data;
+                        modalInvoice.classList.remove('hidden');
+
+                        let invoiceFooter = document.getElementById('invoiceFooter');
+                        invoiceFooter.querySelector('button').addEventListener('click', function() {
+                            window.location.href = `{{ route('invoice.edit', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
+                        });
+                    })
+            });
+        });
+
+        document.addEventListener('click', function(event) {
+            let modalInvoice = document.getElementById('taskInvoicePlaceholder');
+            let invoiceBody = document.getElementById('invoiceModalBody');
+
+            if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
+                modalInvoice.classList.add('hidden');
+            }
+        });
+    </script>
 </x-app-layout>

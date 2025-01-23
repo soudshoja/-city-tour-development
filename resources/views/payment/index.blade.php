@@ -2,7 +2,7 @@
     <div class="container">
         <div class="mb-5 flex flex-col md:flex-row justify-between items-center w-full space-y-4 md:space-y-0">
             <h3 class="text-2xl font-bold text-gray-700 mb-4">Agent Invoices Detail</h3>
-            <a href="{{ route('agentsshow.show', ['id' => $agent->id]) }}" class="text-blue-500 text-xs underline hover:text-blue-700">
+            <a href="{{ route('agents.show', ['id' => $agent->id]) }}" class="text-blue-500 text-xs underline hover:text-blue-700">
                 Back to Agent Overview
             </a>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -33,20 +33,15 @@ use App\Models\Task;
 use App\Models\Charge;
 use Google\ApiCore\Testing\ProtobufMessageComparator;
 
-// Home route
-// Route::get('/', function () {
-//     return view('dashboard');
-// })->name('welcome');
-
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('admin.users.index');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // ROUTE THAT DOESN'T HAVE CONTROLLER
     Route::get('pin', function () {
         return view('auth.pin');
     })->name('pin');
@@ -56,26 +51,18 @@ Route::middleware(['auth'])->group(function () {
     })->name('verify2fa');
 
 
-
-
+    // 2FA
     Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
+    Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
-    Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
-
-
-    // Display a list of companies
+    // Admin users
+    Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('admin.users.index');
     Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
-
-    // Show the form to create a new company
     Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
-
-    // Store a new company
     Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
-
-
 
     // Agents list
     Route::group([
@@ -95,21 +82,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
         Route::get('/{id}/invoices', [AgentController::class, 'getInvoices'])->name('invoices');
     });
-
-
-
-    // Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
-    // Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
-    // Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
-    // Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
-    // Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
-    // Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
-    // Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
-    // Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
-    // Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
-    // Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
-    // Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
-    // Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
 
 
     // Routes for creating new records
@@ -136,7 +108,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
 
 
-    // task routes
+    //TASKS
     Route::group([
         'prefix' => 'tasks',
         'as' => 'tasks.',
@@ -189,8 +161,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 
-    // Account
-    Route::get('/coa', action: [CoaController::class, 'index'])->name('coa.index');
+    //ACCOUNT
+    Route::get('/coa', [CoaController::class, 'index'])->name('coa.index');
     Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');
     Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
     Route::post('/updateCode/{id}', [CoaController::class, 'updateCode']);
@@ -210,7 +182,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
     Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
-    // Branches routes
+    //BRANCHES
     Route::group([
         'as' => 'branches.',
     ], function () {
@@ -247,7 +219,6 @@ Route::middleware(['auth'])->group(function () {
 
 });
 
-Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
 // ITEMS
 // Route::get('/items', [ItemController::class, 'index'])->name('items.index');

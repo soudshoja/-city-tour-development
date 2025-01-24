@@ -218,6 +218,8 @@
         <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
         <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
         <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
+         <input type="hidden" name="invoice_partial_id[]">
+
         <button type="submit" id="payNowBtn" class="btn btn-primary">
           Pay Now
         </button>
@@ -253,8 +255,93 @@
       </div>
     </div>
   </div>
+  @if($invoice->status === 'paid')
+  <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
+      <div class="invoice">
+        <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
+        <h3 class="text-xl font-semibold text-green-700 mb-2">Receipt: #12345</h3>
+        <p><strong>Payment Date:</strong> January 23, 2025</p>
+        <p><strong>Payment Reference:</strong> February 23, 2025</p>
+        <p class="text-lg"><strong>Payment Gateway:</strong> PayPal</p>
+        <p class="text-lg"><strong>Total Paid:</strong> $175</p>
+        <p class="text-lg"><strong>Balance:</strong> January 23, 2025</p>
+      </div>
+
+      <table class="min-w-full mb-8 border border-gray-200">
+        <thead>
+          <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+            <th class="px-4 py-2 border">Select</th>
+            <th class="px-4 py-2 border">Payment Date</th>
+            <th class="px-4 py-2 border">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($invoicePartials as $partial)
+          <tr class="text-sm text-gray-700">
+            <td class="px-4 py-2 border">
+              <input type="checkbox" name="selected_partials[]" value="{{ $partial->id }}" form="paymentForm">
+            </td>
+            <td class="px-4 py-2 border">{{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}</td>
+            <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+          </tr>
+          @endforeach
+        </tbody>
+    </table>
+
+    <div class="flex justify-end mb-8">
+      <div class="w-1/3 text-sm">
+        <div class="flex justify-between py-2 border-b border-gray-200">
+          <span>Balance:</span>
+          <span>{{ number_format($invoice->amount, 2) }}</span>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
+      <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
+      <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been sent to your address.</p>
+    </div>
+    </div>
+
+
+
+</div>
+@endif
 
   <script>
+  let invoice = @json($invoice);
+  let invoicepartials = @json($invoicePartials);
+   console.log('invoice', invoice);
+   console.log('invoicepartials', invoicepartials);
+
+   const invoiceId = document.getElementById('invoice_partial_id[]');
+
+
+   if (invoice.payment_type === 'full') {
+           // Ensure there’s only one hidden input for the 'full' payment type
+            addHiddenInput("invoice_partial_id[]", invoicePartials[0]?.id, paymentForm);
+    } else if (invoice.payment_type === 'partial' || invoice.payment_type === 'split') {
+                     // Loop through all partials and add hidden inputs dynamically
+        invoicePartials.forEach(partial => {
+            addHiddenInput("invoice_partial_id[]", partial.id, paymentForm);
+        });
+    }
+
+
+    function addHiddenInput(name, value, form) {
+        // Check if the hidden input already exists
+        let existingInput = form.querySelector(`input[name="${name}"][value="${value}"]`);
+        if (!existingInput) {
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = name;
+            hiddenInput.value = value;
+            form.appendChild(hiddenInput);
+        }
+    }
+
+
     $(document).ready(function () {
       let selectedTotal = 0;
       const selectedItems = [];

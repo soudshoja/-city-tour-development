@@ -96,6 +96,7 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
                                 </tr>
@@ -153,7 +154,7 @@
 
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->agent->name }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->client->name }}</td>
-
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->payment_type }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->amount }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 @if ($invoice->status === 'paid')

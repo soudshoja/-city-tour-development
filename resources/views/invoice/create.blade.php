@@ -400,7 +400,7 @@
 
                     <!-- Payment Type Section -->
                     <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Type</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
@@ -413,7 +413,7 @@
                                     hidden
                                     class="peer"
                                     checked />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <span class="font-medium">Fully Payment</span>
                                 </div>
                             </label>
@@ -428,7 +428,7 @@
                                     onclick="showModal('partial')"
                                     hidden
                                     class="peer" />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <span class="font-medium">Partially Payment</span>
                                 </div>
                             </label>
@@ -445,7 +445,7 @@
                                     onclick="showModal('split')"
                                     hidden
                                     class="peer" />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <span class="font-medium">Split Payment</span>
                                 </div>
                             </label>
@@ -466,7 +466,7 @@
                             </div>
                             <div class="mt-4">
                                 <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
                                         <path
@@ -1194,14 +1194,31 @@
 
             const item = items.find(item => item.id === itemId);
             if (item) {
-                item[fieldId] = newValue;
-            }
+                // if (fieldId === 'invprice') {
+                    if (fieldId.includes('invprice')) {
+                        // Set fieldId to 'invprice' if it includes 'invprice'
+                        fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
+                        item[fieldId1] = newValue;
 
-            if (fieldId === 'invprice') {
-                let formattedValue = parseFloat(newValue).toFixed(2);
+                            if (fieldId === 'invprice-modal') {
+                                // Update the corresponding table input
+                                const tableInput = document.getElementById(`invprice-table-${itemId}`);
+                                if (tableInput) {
+                                    tableInput.value = newValue;
+                                }
+                            } else if (fieldId === 'invprice-table') {
+                                // Update the corresponding modal input
+                                const modalInput = document.getElementById(`invprice-modal-${itemId}`);
+                                if (modalInput) {
+                                    modalInput.value = newValue;
+                                }
+                            }
 
-                document.getElementById(`invPriceAtTable_${itemId}`).textContent = formattedValue + ' KWD';
-                calculateSubtotal();
+                            calculateSubtotal(); // Recalculate the subtotal
+                    
+                } else {
+                    item[fieldId] = newValue; // Update other fields
+                }
             }
 
         }
@@ -1246,10 +1263,16 @@
                     <p>${item.venue}</p>
                     </td>
                     <td>
-                    <p>${item.total} KWD</p>
+                    <p>${item.price} KWD</p>
                     </td>
                     <td>
-                    <p id="invPriceAtTable_${item.id}">0.00 KWD</p>
+                          <input
+                                id="invprice-table-${item.id}"
+                                type="number"
+                                class="border border-gray-300 p-2 rounded-md w-full"
+                                value="${item.invprice}"
+                                onInput="updateField(${item.id}, 'invprice-table')"
+                            />
                     </td>
                     <td>
                     <p>${item.client_name}</p>
@@ -1298,12 +1321,13 @@
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <input
-                                        id="invprice-${item.id}"
+                                        id="invprice-modal-${item.id}"
                                         type="number"
                                         name="invprice",
                                         placeholder="Enter Invoice Price",
                                         class="border border-gray-300 p-2 rounded-md"
-                                        onInput="updateField(${item.id}, 'invprice')"
+                                        onInput="updateField(${item.id}, 'invprice-modal')"
+                                        value="${item.invprice}"
                                     >
                                     <input
                                         id="remark-${item.id}"
@@ -2429,8 +2453,8 @@
                 const taskId = item.reference || "Unknown Task ID"; // Task ID
                 const supplierName = item.supplier_name || "Unknown Supplier";
                 const agentName = item.agent_name || "Unknown Agent";
-                const totalAmount = parseFloat(item.total || 0); // Payable amount to the supplier
-                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.total || 0); // Markup = invprice - price
+                const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
+                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.price || 0); // Markup = invprice - price
 
                 // Update cumulative totals per supplier
                 if (!supplierTotals.has(supplierName)) {

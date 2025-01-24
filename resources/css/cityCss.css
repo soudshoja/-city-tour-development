@@ -124,11 +124,11 @@ thead {
     background-color: #ffb958 !important;
 }
 .city-light-yellow:hover {
-    background-color: #f7b14f !important;
+    background-color: #ebc186 !important;
 }
 
 :is(.dark .city-light-yellow) {
-    background-color: #f3a126d4 !important;
+    background-color: #f1b75ed4 !important;
 }
 
 .liabilitiesText {

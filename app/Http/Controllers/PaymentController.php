@@ -6,6 +6,7 @@ use App\Http\Traits\NotificationTrait;
 use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetail;
+use App\Models\InvoicePartial;
 use App\Models\GeneralLedger;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Sequence;
@@ -66,10 +67,17 @@ class PaymentController extends Controller
             'client_phone' => 'required|string|max:15',
             // 'selected_items' => 'required|array',
             'total_amount' => 'required|numeric',
-            'payment_method' => 'required|string'
+            'payment_method' => 'required|string',
+            'invoice_partial_id' => 'required|array', // Ensure it's an array
+            'invoice_partial_id.*' => 'integer|exists:invoice_partials,id'
         ]);
 
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
+
+
+         // Process selected partials (if needed for further logic)
+       $selectedPartials = InvoicePartial::whereIn('id', $request->invoice_partial_id)->get();
+
 
         $data = [
             'invoice' => $invoice,
@@ -78,6 +86,7 @@ class PaymentController extends Controller
             'client_phone' => $request->client_phone,
             'total_amount' => $request->total_amount,
             'payment_method' => $request->payment_method,
+            'selected_partials' => $selectedPartials,
             'selected_items' => $request->selected_items,
             'redirect_url' => route('payment.process'),
             'webhook_url' => route('payment.webhook'),
@@ -140,7 +149,7 @@ class PaymentController extends Controller
         $voucherSequence->save();
 
         $invoice = $data['invoice'];
-
+        $selectedPartials = $data['selected_partials'];
 
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
@@ -372,6 +381,15 @@ class PaymentController extends Controller
         }
         $invoice->paid_date = now();
         $invoice->save();
+
+
+        $invoicePartial = InvoicePartial::where('invoice_number', $invoiceNumber)
+        ->first();
+
+    if ($invoicePartial) {
+        $invoicePartial->payment_id = $paymentId; // Save payment ID
+        $invoicePartial->save();
+    }
 
         // try {
 

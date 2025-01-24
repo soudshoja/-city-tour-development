@@ -33,7 +33,7 @@ class InvoicePartial extends Model
 
     public function payment()
     {
-        return $this->belongsTo(Invoice::class, 'payment_id');             
+        return $this->belongsTo(Payment::class, 'payment_id');             
     }
 
 }

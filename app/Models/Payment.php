@@ -50,4 +50,9 @@ class Payment extends Model
     {
         return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');
     }
+
+    public function partials()
+    {
+        return $this->hasMany(InvoicePartial::class);
+    }
 }

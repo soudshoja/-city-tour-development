@@ -697,7 +697,7 @@ class InvoiceController extends Controller
 
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
-        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice')->get();
+        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice', 'payment')->get();
 
         // Check if the invoice exists
         if (!$invoice) {
@@ -705,11 +705,11 @@ class InvoiceController extends Controller
         }
 
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
-
+        $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paymentGateway', 'company'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'company'));
     }
 
     public function generatePdf(string $invoiceNumber)

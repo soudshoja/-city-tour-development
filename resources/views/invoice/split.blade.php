@@ -119,7 +119,7 @@
         @csrf
         <input type="hidden" name="client" value='{{ $invoicePartial->client }}'>
         <input type="hidden" name="invoiceNumber" value='{{ $invoicePartial->invoice_number}}'>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
           Send Invoice To Client
         </button>
       </form>
@@ -130,7 +130,7 @@
         <input type="hidden" name="client_name" value="{{ $invoicePartial->client->name }}">
         <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
         <input type="hidden" name="payment_method" value="payment_gateway">
-        <button type="submit" id="payNowBtn" class="btn btn-primary">
+        <button type="submit" id="payNowBtn" class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
           Pay Now
         </button>
         <div id="loadingSpinner" class="hidden mt-2">

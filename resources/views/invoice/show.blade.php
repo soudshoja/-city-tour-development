@@ -191,7 +191,9 @@
       <thead>
         <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
           <th class="px-4 py-2 border">Link</th>
+          <th class="px-4 py-2 border">Client</th>
           <th class="px-4 py-2 border">Expiry Date</th>
+          <th class="px-4 py-2 border">Status</th>
           <th class="px-4 py-2 border">Amount</th>
         </tr>
       </thead>
@@ -204,7 +206,9 @@
                   View Details
               </a>
           </td>
+          <td class="px-4 py-2 border">{{ $partial->client->name }}</td>
           <td class="px-4 py-2 border">{{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}</td>
+          <td class="px-4 py-2 border">{{ $partial->status }}</td>
           <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
         </tr>
         @endforeach
@@ -257,7 +261,7 @@
             Pay Now
           </button>
           <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-            {{ number_format($invoicePartials->sum('amount'), 2) }}
+          {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
           </span>
         </div>
         <div id="loadingSpinner" class="hidden mt-2">

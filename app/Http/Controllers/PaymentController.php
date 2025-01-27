@@ -60,7 +60,7 @@ class PaymentController extends Controller
 
     public function create($invoiceNumber, Request $request)
     {
-
+        Log::info('request:', ['request' => $request]);
         $request->validate([
             'client_name' => 'required|string|max:255',
             'client_email' => 'required|email',
@@ -216,6 +216,7 @@ class PaymentController extends Controller
 
     public function process(Request $request)
     {
+        Log::info('process:', ['process' => $request]);
         $tap = new Tap();
 
         $tap_id = $request->tap_id;

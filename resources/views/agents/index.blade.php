@@ -1,248 +1,201 @@
-        <x-app-layout>
+<x-app-layout>
+    <div class="flex justify-between items-center gap-5 my-3 ">
+        <div class="flex items-center gap-5 ">
+            <h2 class="text-3xl font-bold">Agents List</h2>
 
-            <div class="grid grid-cols-5 gap-4">
-                <!-- Task Revenue & main chart -->
-                <div class="col-span-4 p-1">
-                    <!-- Task Revenue -->
-                    <div class="flex gap-4 mb-5">
-                        <div class="panel w-[5%] md:w-[5%] flex items-center justify-center">
-                            <h2 class="text-center text-sm font-semibold transform -rotate-90">
-                                <span class="text-primary">Tasks</span> Revenue
-                            </h2>
-                        </div>
+            <div data-tooltip="number of Agents" class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
+                <span class="text-xl font-bold text-white">{{ $agentCount }}</span>
+            </div>
+        </div>
 
-                        <!-- Total Tasks Card -->
-                        <div
-                            class="flex rounded-lg overflow-hidden bg-blue-500 text-white shadow-md w-[31.66%] md:w-[31.66%]">
-                            <div class="flex items-center justify-center w-1/3 bg-blue-700 p-4">
-                                <svg class="w-8 h-8" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M5.5 8C5.5 6.61929 6.61929 5.5 8 5.5H11C12.3807 5.5 13.5 6.61929 13.5 8V11C13.5 12.3807 12.3807 13.5 11 13.5H8C6.61929 13.5 5.5 12.3807 5.5 11V8Z"
-                                        stroke="#FFFFFF" stroke-width="1.5" />
-                                    <path
-                                        d="M5.5 19C5.5 17.6193 6.61929 16.5 8 16.5H11C12.3807 16.5 13.5 17.6193 13.5 19V22C13.5 23.3807 12.3807 24.5 11 24.5H8C6.61929 24.5 5.5 23.3807 5.5 22V19Z"
-                                        stroke="#FFFFFF" stroke-width="1.5" />
-                                    <path
-                                        d="M16.5 8C16.5 6.61929 17.6193 5.5 19 5.5H22C23.3807 5.5 24.5 6.61929 24.5 8V11C24.5 12.3807 23.3807 13.5 22 13.5H19C17.6193 13.5 16.5 12.3807 16.5 11V8Z"
-                                        stroke="#FFFFFF" stroke-width="1.5" />
-                                    <path
-                                        d="M16.5 19C16.5 17.6193 17.6193 16.5 19 16.5H22C23.3807 16.5 24.5 17.6193 24.5 19V22C24.5 23.3807 23.3807 24.5 22 24.5H19C17.6193 24.5 16.5 23.3807 16.5 22V19Z"
-                                        stroke="#FFFFFF" stroke-width="1.5" />
-                                </svg>
-                            </div>
-                            <div class="flex gap-2 items-center justify-center w-2/3 p-4">
-                                <p class="text-3xl font-bold" id="totalTasks"></p>
-                                <p class="text-sm">Total Tasks</p>
-                            </div>
-                        </div>
-
-                        <!-- Pending Tasks Card -->
-                        <div
-                            class="flex rounded-lg overflow-hidden bg-[#e7515a] text-white shadow-md w-[31.66%] md:w-[31.66%]">
-                            <div class="flex items-center justify-center w-1/3 bg-[#c03f4c] p-4">
-                                <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                    fill="currentColor">
-                                    <path
-                                        d="M12 12L9.0423 14.9289C6.11981 17.823 4.65857 19.27 5.06765 20.5185C5.10282 20.6258 5.14649 20.7302 5.19825 20.8307C5.80046 22 7.86697 22 12 22C16.133 22 18.1995 22 18.8017 20.8307C18.8535 20.7302 18.8972 20.6258 18.9323 20.5185C19.3414 19.27 17.8802 17.823 14.9577 14.9289L12 12ZM12 12L14.9577 9.07107C17.8802 6.177 19.3414 4.729 18.9323 3.48149C18.8972 3.37417 18.8535 3.26977 18.8017 3.16926C18.1995 2 16.133 2 12 2C7.86697 2 5.80046 2 5.19825 3.16926C5.14649 3.26977 5.10282 3.37417 5.06765 3.48149C4.65857 4.729 6.11981 6.177 9.0423 9.07107L12 12Z" />
-                                    <path d="M10 5.5H14" />
-                                    <path d="M10 18.5H14" />
-                                </svg>
-                            </div>
-                            <div class="flex gap-2 items-center justify-center w-2/3 p-4">
-                                <p class="text-3xl font-bold" id="pendingTasks"></p>
-                                <p class="text-sm">Pending Tasks</p>
-                            </div>
-                        </div>
-
-                        <!-- Completed Tasks Card -->
-                        <div
-                            class="flex rounded-lg overflow-hidden bg-green-500 text-white shadow-md w-[31.66%] md:w-[31.66%]">
-                            <div class="flex items-center justify-center w-1/3 bg-green-700 p-4">
-                                <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path opacity="0.5"
-                                        d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
-                                        stroke="#FFFFFF" stroke-width="1.5" />
-                                    <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="#FFFFFF" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                            </div>
-                            <div class="flex gap-2 items-center justify-center w-2/3 p-4">
-                                <p class="text-3xl font-bold" id="completedTasks"></p>
-                                <p class="text-sm">Completed Tasks</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- ./Task Revenue -->
-
-                    <!-- chart panel -->
-                    <div class="panel col-span-3 h-auto">
-                        <div class="mb-5 flex items-center dark:text-white-light">
-                            <h5 class="text-lg font-semibold">Income Revenue</h5>
-                            <!-- dropdown menu -->
-                            <div x-data="{ dropdown: false }" class="dropdown ml-auto ">
-                                <a href="javascript:;" @click="dropdown = ! dropdown">
-                                    <svg class="h-5 w-5 text-black/70 hover:!text-primary dark:text-white/70"
-                                        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="5" cy="12" r="2" stroke="currentColor" stroke-width="1.5" />
-                                        <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor"
-                                            stroke-width="1.5" />
-                                        <circle cx="19" cy="12" r="2" stroke="currentColor" stroke-width="1.5" />
-                                    </svg>
-                                </a>
-                                <ul x-show="dropdown" class="right-0">
-                                    <li><a href="javascript:;">Weekly</a></li>
-                                    <li><a href="javascript:;">Monthly</a></li>
-                                    <li><a href="javascript:;">Yearly</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <!-- chart -->
-                        <div class="relative overflow-hidden">
-                            <div x-data="revenueChart()" class="rounded-lg bg-white dark:bg-black">
-
-                                <!-- Chart canvas -->
-                                <canvas x-ref="revenueChartCanvas" class="w-full max-h-[290px]"></canvas>
-                            </div>
-
-
-
-
-
-
-                        </div>
-                        <!-- ./chart panel -->
-                    </div>
-                    <!-- ./chart -->
-
-                </div>
-                <!-- ./Task Revenue & main chart -->
-
-                <!-- Balance  & quick income overview -->
-                <div class="p-1">
-                    <!-- quick income overview -->
-                    <div
-                        class="flex flex-col p-3 bg-white dark:bg-gray-800 shadow-md rounded-md text-gray-800 dark:text-gray-200 mb-2">
-                        <div class="flex justify-between">
-                            <h3 class="text-lg font-semibold">Balance</h3>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M3.67981 11.3333H2.92981H3.67981ZM3.67981 13L3.15157 13.5324C3.44398 13.8225 3.91565 13.8225 4.20805 13.5324L3.67981 13ZM5.88787 11.8657C6.18191 11.574 6.18377 11.0991 5.89203 10.8051C5.60029 10.511 5.12542 10.5092 4.83138 10.8009L5.88787 11.8657ZM2.52824 10.8009C2.2342 10.5092 1.75933 10.511 1.46759 10.8051C1.17585 11.0991 1.17772 11.574 1.47176 11.8657L2.52824 10.8009ZM18.6156 7.39279C18.8325 7.74565 19.2944 7.85585 19.6473 7.63892C20.0001 7.42199 20.1103 6.96007 19.8934 6.60721L18.6156 7.39279ZM16.8931 3.60787C16.5403 3.39077 16.0784 3.50074 15.8613 3.8535C15.6442 4.20626 15.7541 4.66822 16.1069 4.88532L16.8931 3.60787ZM12.4633 3.75939C12.877 3.77966 13.2288 3.46071 13.2491 3.047C13.2694 2.63328 12.9504 2.28146 12.5367 2.26119L12.4633 3.75939ZM12.0789 2.25C7.03155 2.25 2.92981 6.3112 2.92981 11.3333H4.42981C4.42981 7.15072 7.84884 3.75 12.0789 3.75V2.25ZM2.92981 11.3333L2.92981 13H4.42981L4.42981 11.3333H2.92981ZM4.20805 13.5324L5.88787 11.8657L4.83138 10.8009L3.15157 12.4676L4.20805 13.5324ZM4.20805 12.4676L2.52824 10.8009L1.47176 11.8657L3.15157 13.5324L4.20805 12.4676ZM19.8934 6.60721C19.1441 5.38846 18.1143 4.35941 16.8931 3.60787L16.1069 4.88532C17.1287 5.51419 17.9899 6.37506 18.6156 7.39279L19.8934 6.60721ZM12.5367 2.26119C12.385 2.25376 12.2323 2.25 12.0789 2.25V3.75C12.2078 3.75 12.336 3.75316 12.4633 3.75939L12.5367 2.26119Z"
-                                    fill="currentColor" />
-                                <path
-                                    d="M11.8825 21V21.75V21ZM20.3137 12.6667H21.0637H20.3137ZM20.3137 11L20.8409 10.4666C20.5487 10.1778 20.0786 10.1778 19.7864 10.4666L20.3137 11ZM18.1002 12.1333C17.8056 12.4244 17.8028 12.8993 18.094 13.1939C18.3852 13.4885 18.86 13.4913 19.1546 13.2001L18.1002 12.1333ZM21.4727 13.2001C21.7673 13.4913 22.2421 13.4885 22.5333 13.1939C22.8245 12.8993 22.8217 12.4244 22.5271 12.1332L21.4727 13.2001ZM5.31769 16.6061C5.10016 16.2536 4.63806 16.1442 4.28557 16.3618C3.93307 16.5793 3.82366 17.0414 4.0412 17.3939L5.31769 16.6061ZM11.5331 20.2423C11.1193 20.224 10.769 20.5447 10.7507 20.9585C10.7325 21.3723 11.0531 21.7226 11.4669 21.7408L11.5331 20.2423ZM7.11292 20.4296C7.4677 20.6433 7.92861 20.529 8.14239 20.1742C8.35617 19.8195 8.24186 19.3586 7.88708 19.1448L7.11292 20.4296ZM11.8825 21.75C16.9448 21.75 21.0637 17.6915 21.0637 12.6667H19.5637C19.5637 16.8466 16.133 20.25 11.8825 20.25V21.75ZM21.0637 12.6667V11H19.5637V12.6667H21.0637ZM19.7864 10.4666L18.1002 12.1333L19.1546 13.2001L20.8409 11.5334L19.7864 10.4666ZM19.7864 11.5334L21.4727 13.2001L22.5271 12.1332L20.8409 10.4666L19.7864 11.5334ZM11.4669 21.7408C11.6047 21.7469 11.7433 21.75 11.8825 21.75V20.25C11.7653 20.25 11.6488 20.2474 11.5331 20.2423L11.4669 21.7408ZM4.0412 17.3939C4.80569 18.6327 5.86106 19.6752 7.11292 20.4296L7.88708 19.1448C6.83872 18.5131 5.95602 17.6405 5.31769 16.6061L4.0412 17.3939Z"
-                                    fill="currentColor" />
-                            </svg>
-
-                        </div>
-
-                        <div class="flex gap-1 mt-2 grid-cols-2">
-                            <h4 class="text-3xl text-success font-semibold">
-                                $528,976.<span class="opacity-50 text-gray-500 dark:text-gray-400">82</span>
-                            </h4>
-                            <div class="flex text-red-500 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M5 15l7-7 7 7" />
-                                </svg>
-                                <span class="TextXs">70.0%</span>
-                            </div>
-                        </div>
-                        <span class="text-xs text-gray-500 dark:text-gray-400 my-2">Last update - Oct 31,
-                            2024</span>
-                    </div>
-                    <!-- ./quick income overview -->
-
-
-                    <!--  quick performance overview -->
-                    <div class="space-y-2">
-                        <div
-                            class="gap-2 flex panel text-center justify-center bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-
-                            <h3 class="text-xl font-semibold">Quick Actions</h3>
-                            <div
-                                class="rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg" class="dark:stroke-white stroke-black">
-                                    <path d="M17 14.5L12 19.5L7 14.5" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                    <path opacity="0.5" d="M12 19.5C12 19.5 12 11.1667 12 9.5C12 7.83333 11 4.5 7 4.5"
-                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                </svg>
-                            </div>
-
-
-
-                        </div>
-                        <!-- Client -->
-                        <div
-                            class="bg-white flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 shadow-md rounded-md ">
-
-                            <a href="{{ route('clients.create') }}" target="_blank"
-                                class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                                <span
-                                    class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Add New Client
-                                </span>
-                            </a>
-                        </div>
-
-                        <!-- Invoices -->
-                        <div
-                            class="bg-white flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 shadow-md rounded-md ">
-                            <a href="{{ route('invoice.create') }}" target="_blank"
-                                class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                                <span
-                                    class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Create New Invoice
-                                </span>
-                            </a>
-                        </div>
-
-                        <!-- Tasks -->
-                        <div
-                            class="bg-white flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 shadow-md rounded-md ">
-                            <a href="javascript:void(0);" onclick="document.getElementById('pdfInput').click();"
-                                class="w-full relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 dark:text-gray-200 rounded-lg group bg-gradient-to-br from-green-400 to-blue-600 group-hover:from-green-400 group-hover:to-blue-600 hover:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-green-200 dark:focus:ring-green-800">
-                                <span
-                                    class="justify-center w-full gap-2 flex px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                                    Upload New Task
-                                </span>
-                            </a>
-                            <form id="uploadTaskForm" action="{{ route('tasksupload.import') }}" method="POST"
-                                enctype="multipart/form-data" class="hidden">
-                                @csrf
-                                <input id="pdfInput" type="file" accept=".pdf" name="task_file"
-                                    onchange="uploadTask()" />
-                            </form>
-                        </div>
-                    </div>
-
-
-                    <!--  ./quick performance overview -->
-
-                </div>
-
+        <div class="flex items-center gap-5">
+            <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                    <path fill="currentColor" d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z" opacity=".5" />
+                </svg>
             </div>
 
 
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const AgentDashboarddata = @json($dashboardData);
+            <a href="{{ route('companies.showCreateOptions') }}">
+                <div data-tooltip="Create new Agent" class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
 
-                // Total Tasks
-                document.getElementById('totalTasks').innerText = AgentDashboarddata
-                    .totalTasks; // Corrected key
+                </div>
+            </a>
 
-                // Pending Tasks
-                document.getElementById('pendingTasks').innerText = AgentDashboarddata.pendingTasks;
-
-                // Completed Tasks
-                document.getElementById('completedTasks').innerText = AgentDashboarddata
-                    .completedTasks; // Corrected key
-            });
-            </script>
+        </div>
 
 
-        </x-app-layout>
+    </div>
+
+    <div class="tableCon">
+        <div class="content-70">
+            <!-- Table  -->
+            <div class="panel oxShadow rounded-lg">
+                <!--  search icon -->
+                <div class="relative">
+                    <!-- Search Input -->
+                    <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
+
+                    <!-- Search Button with SVG Icon -->
+                    <button type="button" class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                        id="searchButton">
+                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
+                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- ./search icon -->
+                <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
+                    <div class="dataTable-top"></div>
+                    <!-- table -->
+                    <div class="dataTable-container h-max">
+                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                            <thead>
+                                <tr>
+                                    <!-- <th>
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" id="selectAll" class="form-checkbox hidden">
+                                            <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </label>
+                                    </th> -->
+                                    <!-- <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th> -->
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Agent Name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Amadeus (ID)</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Agent Email</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Agent Contact</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Agent Type</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if ($agents->isEmpty())
+                                <tr>
+                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No data for now.... Create new!</td>
+                                </tr>
+                                @else
+                                @foreach ($agents as $agent)
+                                <tr>
+                                    <!-- <td>
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </label>
+                                    </td> -->
+                                    <!-- <td class="p-3 text-sm">
+                                        <a href="javascript:void(0);" class="viewAgent text-blue-500 hover:underline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <g fill="none" stroke="#333333" stroke-width="1.5">
+                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
+                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                                </g>
+                                            </svg>
+                                        </a>
+                                    </td> -->
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        <a href="{{ route('agents.show' , [ 'id' => $agent->id ]) }}" class="block">
+                                            {{ $agent->name }}
+                                        </a>
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->amadeus_id ? $agent->amadeus_id : 'N/A' }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->email ? $agent->email : 'N/A' }}</td>
+
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->phone_number ? $agent->phone_number : 'N/A' }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ optional($agent->agentType)->name }}
+                                    </td>
+
+
+
+
+
+                                </tr>
+                                @endforeach
+                                @endif
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- ./table -->
+
+
+                    <!-- pagination -->
+                    @if ($agents->count() > 15)
+                    <div class="dataTable-bottom justify-center">
+                        <nav class="dataTable-pagination">
+                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
+                                <li class="pager" id="prevPage">
+                                    <a href="#">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </svg>
+                                    </a>
+                                </li>
+                                <!-- Dynamic page numbers will be injected here -->
+                                <li class="pager" id="nextPage">
+                                    <a href="#">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </svg>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    @endif
+                    <!-- ./pagination -->
+                </div>
+            </div>
+
+            <!-- ./Table  -->
+
+        </div>
+        <!-- right -->
+        <div class="content-30">
+
+            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
+                <!-- customize -->
+                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                        <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                    </svg>
+                    <span class="text-sm">Customize</span>
+                </button>
+                <!-- ./customize -->
+
+                <!-- filter -->
+                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                    </svg>
+                    <span class="text-sm">Filter</span>
+                </button>
+                <!-- ./filter -->
+
+                <!-- export -->
+                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                    </svg>
+                    <span class="text-sm">Export</span>
+                </button>
+                <!-- ./export -->
+            </div>
+            <div class="mt-5 ">
+                <div id="AgentDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div> <!-- display Agent details here-->
+
+            </div>
+        </div>
+    </div>
+</x-app-layout>

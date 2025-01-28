@@ -13,9 +13,17 @@ class Notification extends Component
     use NotificationTrait;
 
     public $notifications;
+    public $totalCount;
+    public $readCount;
+    public $unreadCount;
     public $filter = 'all';
 
-    public function mount(){
+    public function mount()
+    {
+        $this->totalCount = ModelsNotification::count();
+        $this->readCount = ModelsNotification::where('status', 'read')->count();
+        $this->unreadCount = ModelsNotification::where('status', 'unread')->count();
+
         $this->getNotification();
     }
 
@@ -26,7 +34,6 @@ class Notification extends Component
      */
     public function getNotification()
     {
-
         if ($this->filter == 'read') {
             $this->notifications = $this->getReadNotifications();
         } elseif ($this->filter == 'unread') {
@@ -34,7 +41,6 @@ class Notification extends Component
         } else {
             $this->notifications = $this->getLimitNotifications(10);
         }
-
     }
 
     public function close($id)
@@ -50,6 +56,14 @@ class Notification extends Component
         $this->filter = $filter;
         $this->getNotification();
     }
+    public function markAllAsRead()
+    {
+        ModelsNotification::where('status', 'unread')->update(['status' => 'read']);
+
+        $this->getNotification();
+        session()->flash('message', 'All notifications marked as read.');
+    }
+
 
     public function render()
     {

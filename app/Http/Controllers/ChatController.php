@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Facades\Image;
+use Smalot\PdfParser\Parser;
 use App\Http\Traits\Converter;
 use App\Models\Company;
 use App\Models\Supplier;
@@ -41,119 +43,117 @@ class ChatController extends Controller
 
 
     public function chat(Request $request)
-{
+    {
 
-    $validated = $request->validate([
-        'messages' => 'required|array',
-        'messages.*.role' => 'required|string',
-        'messages.*.content' => 'required|string',
-    ]);
+        $validated = $request->validate([
+            'messages' => 'required|array',
+            'messages.*.role' => 'required|string',
+            'messages.*.content' => 'required|string',
+        ]);
 
-    try {
-        $userMessage = collect($validated['messages'])->last()['content'];
-        $userData = $this->fetchUserBasedData();
+        try {
+            $userMessage = collect($validated['messages'])->last()['content'];
+            $userData = $this->fetchUserBasedData();
 
-        // Check if there was an error in fetching user data
-        if (isset($userData['error'])) {
-            return response()->json(['error' => $userData['error']], 403);
-        }
+            // Check if there was an error in fetching user data
+            if (isset($userData['error'])) {
+                return response()->json(['error' => $userData['error']], 403);
+            }
 
-        // Prepare messages for OpenAI with the user's role-based data
-        $messages = [
-            [
-                'role' => 'system',
-                'content' => "You are a chatbot for a travel agency that will interact with the travel agencies or the agents. Please use the following data to answer any questions.",
-            ],
-            [
-                'role' => 'user',
-                'content' => $userMessage,
-            ]
-        ];
+            // Prepare messages for OpenAI with the user's role-based data
+            $messages = [
+                [
+                    'role' => 'system',
+                    'content' => "You are a chatbot for a travel agency that will interact with the travel agencies or the agents. Please use the following data to answer any questions.",
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $userMessage,
+                ]
+            ];
 
 
-        $messagesData = [
-            [
-                'role' => 'system',
-                'content' => "You are a chatbot for a travel agency that interacts with travel agencies or agents. 
+            $messagesData = [
+                [
+                    'role' => 'system',
+                    'content' => "You are a chatbot for a travel agency that interacts with travel agencies or agents. 
                               If the user's query involves a list, ensure the response is formatted as a proper list 
                               using bullet points (-) or numbering (1., 2., 3.) for clarity. Use the following data:",
-            ],
-            [
-                'role' => 'user',
-                'content' => $userMessage,
-            ],
-            [
-                'role' => 'system',
-                'content' => json_encode($userData), // Send user data as JSON to OpenAI
-            ],
-        ];
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $userMessage,
+                ],
+                [
+                    'role' => 'system',
+                    'content' => json_encode($userData), // Send user data as JSON to OpenAI
+                ],
+            ];
 
-        // Classification Step
-        $classification = $this->classifyMessage($userMessage) ?? 'GeneralMessage';
-        \Log::info('Message classification: ' . $classification);
+            // Classification Step
+            $classification = $this->classifyMessage($userMessage) ?? 'GeneralMessage';
+            \Log::info('Message classification: ' . $classification);
 
-        // Process based on classification
-        if ($classification === 'DataQuery') {
-           $response = $this->openAIService->getChatResponse($messagesData);
+            // Process based on classification
+            if ($classification === 'DataQuery') {
+                $response = $this->openAIService->getChatResponse($messagesData);
 
-           $content = $response['choices'][0]['message']['content'] ?? '';
-           $formattedContent = $this->formatAsList($content);
+                $content = $response['choices'][0]['message']['content'] ?? '';
+                $formattedContent = $this->formatAsList($content);
 
-           $response['choices'][0]['message']['content'] = $formattedContent;
+                $response['choices'][0]['message']['content'] = $formattedContent;
 
-            return response()->json($response, 200);
-
-        } elseif ($classification === 'ActionRequest') {
-            \Log::info('action:', ['class' => $classification]);
-            return $this->handleActionRequest($userMessage, $userData);
-        } else {
-            // Pass the message to OpenAI if it's not recognized as data or action
-            $response = $this->openAIService->getChatResponse($messages);
-            return response()->json($response, 200);
+                return response()->json($response, 200);
+            } elseif ($classification === 'ActionRequest') {
+                \Log::info('action:', ['class' => $classification]);
+                return $this->handleActionRequest($userMessage, $userData);
+            } else {
+                // Pass the message to OpenAI if it's not recognized as data or action
+                $response = $this->openAIService->getChatResponse($messages);
+                return response()->json($response, 200);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Chatbot error: ' . $e->getMessage());
+            return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
         }
-
-    } catch (\Exception $e) {        
-        \Log::error('Chatbot error: ' . $e->getMessage());
-        return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
     }
-}
 
 
-        private function formatAsList($content)
-        {
-            // Check if the content is a single line (for cases like your example)
-            if (strpos($content, '-') === false && strpos($content, '1.') === false) {
-                // If it's a single line, split it by commas or other delimiters
-                $clients = preg_split('/\s*[-,;]\s*/', $content);
+    private function formatAsList($content)
+    {
+        // Check if the content is a single line (for cases like your example)
+        if (strpos($content, '-') === false && strpos($content, '1.') === false) {
+            // If it's a single line, split it by commas or other delimiters
+            $clients = preg_split('/\s*[-,;]\s*/', $content);
 
-                $formattedLines = [];
-                foreach ($clients as $client) {
-                    $trimmedClient = trim($client);
-                    if (!empty($trimmedClient)) {
-                        $formattedLines[] = '- ' . $trimmedClient; // Add bullet points
-                    }
-                }
-
-                return implode("\n", $formattedLines); // Return the formatted list
-            }
-
-            // If it's already formatted with bullet points or numbering, return as is
-            $lines = explode("\n", $content);
             $formattedLines = [];
-
-            foreach ($lines as $line) {
-                $trimmedLine = trim($line);
-
-                // Add bullet points or numbering if not already present
-                if (!preg_match('/^\d+\./', $trimmedLine) && !str_starts_with($trimmedLine, '-')) {
-                    $formattedLines[] = '- ' . $trimmedLine; // Add bullet points for plain lines
-                } else {
-                    $formattedLines[] = $trimmedLine; // Keep already formatted lines
+            foreach ($clients as $client) {
+                $trimmedClient = trim($client);
+                if (!empty($trimmedClient)) {
+                    $formattedLines[] = '- ' . $trimmedClient; // Add bullet points
                 }
             }
 
-            return implode("\n", $formattedLines);
+            return implode("\n", $formattedLines); // Return the formatted list
         }
+
+        // If it's already formatted with bullet points or numbering, return as is
+        $lines = explode("\n", $content);
+        $formattedLines = [];
+
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+
+            // Add bullet points or numbering if not already present
+            if (!preg_match('/^\d+\./', $trimmedLine) && !str_starts_with($trimmedLine, '-')) {
+                $formattedLines[] = '- ' . $trimmedLine; // Add bullet points for plain lines
+            } else {
+                $formattedLines[] = $trimmedLine; // Keep already formatted lines
+            }
+        }
+
+        return implode("\n", $formattedLines);
+    }
 
     private function classifyMessage($message)
     {
@@ -179,7 +179,7 @@ class ChatController extends Controller
         return 'GeneralMessage'; // Default to GeneralMessage if no classification is returned
     }
 
-    
+
     private function handleActionRequest($message, $userData)
     {
         // Define the messages to classify the action and extract task information
@@ -196,20 +196,20 @@ class ChatController extends Controller
                 'content' => $message,
             ],
         ];
-    
+
         \Log::info('handleActionRequest:', ['message' => $message]);
         $response = $this->openAIService->getChatResponse($actionMessages);
-    
+
         if (isset($response['choices'][0]['message']['content'])) {
             $responseContent = $response['choices'][0]['message']['content'];
-    
+
             // Attempt to decode the JSON response
             $parsedResponse = json_decode($responseContent, true);
-    
+
             if (json_last_error() === JSON_ERROR_NONE && isset($parsedResponse['action'])) {
                 $action = strtolower(trim($parsedResponse['action']));
                 $taskIds = $parsedResponse['task_ids'] ?? [];
-    
+
                 if (!is_array($taskIds)) {
                     $taskIds = [];
                 }
@@ -219,30 +219,30 @@ class ChatController extends Controller
                 switch ($action) {
                     case 'create invoice':
                         // if (!empty($taskIds)) {
-                            return $this->initiateInvoiceCreationWithTasks($taskIds, $userData);
+                        return $this->initiateInvoiceCreationWithTasks($taskIds, $userData);
                         // }
                         // return response()->json(['error' => 'At least one Task ID is required to create an invoice.'], 400);
-    
+
                     case 'create client':
                         return $this->initiatecreateClient($userData);
-                        
+
                     case 'create agent':
                         return $this->initiatecreateAgent($userData);
-    
+
                     case 'create branch':
                         return $this->initiatecreateBranch($userData);
-    
+
                     default:
                         return response()->json(['error' => 'Action not recognized: ' . $action], 400);
                 }
             }
         }
-    
+
         // Log and return error if JSON structure is invalid
         \Log::error('Invalid response from OpenAI:', ['response' => $response]);
         return response()->json(['error' => 'Unable to classify action.'], 400);
     }
-    
+
 
     private function initiateInvoiceCreationWithTasks(array $taskIds, $userData)
     {
@@ -254,26 +254,26 @@ class ChatController extends Controller
             return $this->processTaskSelection($taskIds);
         }
 
-            return response()->json([
-                'message' => 'Please choose the tasks to include in the invoice:',
-                'tasks' => collect($userData['tasks'])->map(function ($task) {
-                    return [
-                        'id' => $task['id'],
-                        'description' => $task['description'],
-                        'client' => $task['clientName'],
-                    ];
-                }),
-            ], 200);
+        return response()->json([
+            'message' => 'Please choose the tasks to include in the invoice:',
+            'tasks' => collect($userData['tasks'])->map(function ($task) {
+                return [
+                    'id' => $task['id'],
+                    'description' => $task['description'],
+                    'client' => $task['clientName'],
+                ];
+            }),
+        ], 200);
     }
 
-    
+
 
     public function processTaskSelection($taskIds)
     {
 
         // Logic to create an invoice using the provided task IDs
         \Log::info('processTaskSelection:', ['taskIds' => $taskIds]);
-        
+
         $userData = $this->fetchUserBasedData();
 
         // Cast task IDs to integers
@@ -309,7 +309,7 @@ class ChatController extends Controller
     
         // Fetch user data, including tasks
         $userData = $this->fetchUserBasedData();
-        
+
         // Ensure task IDs are integers
         $taskIds = array_map('intval', $taskIds);
               // Fetch available tasks based on the provided task IDs (with eager loading of client)
@@ -321,7 +321,7 @@ class ChatController extends Controller
         if ($availableTasks->isEmpty()) {
             return response()->json(['message' => 'No valid tasks found for the provided IDs.'], 400);
         }
-    
+
         // Map the available tasks to include necessary data for invoice pricing
         return response()->json([
             'message' => 'Please insert invoice price for each selected task:',
@@ -336,7 +336,7 @@ class ChatController extends Controller
             })->values(),
         ], 200);
     }
-    
+
 
 
     public function handleTaskPricing(Request $request)
@@ -364,7 +364,7 @@ class ChatController extends Controller
 
         if ($user->role_id == Role::COMPANY) {
             $company = Company::with('branches.agents.clients')->find($user->company->id);
-            
+
             return [
                 'supplier' => $suppliers,
                 'company' => [
@@ -431,9 +431,9 @@ class ChatController extends Controller
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
-            
+
             return [
-               'supplier' => $suppliers,
+                'supplier' => $suppliers,
                 'company' => [
                     'name' => $company->name,  // Essential company data
                     'id' => $company->id,
@@ -501,25 +501,25 @@ class ChatController extends Controller
             ];
         }
     }
-    
+
 
     private function createInvoice($tasks)
     {
         $duedate = now()->addDays(30);
-        $invdate = now();  
-        $currency =  'KWD'; 
+        $invdate = now();
+        $currency =  'KWD';
         $user = Auth::user();
         $taskIds = collect($tasks)->pluck('id')->toArray();
         // Retrieve the tasks from the database and include 'invprice' directly
-        $selectedTasks = Task::whereIn('id', $taskIds)                   
-                       ->get()
-                       ->each(function ($task) use ($tasks) {
-                           // Find the matching task and assign invprice to the task object
-                           $taskData = collect($tasks)->firstWhere('id', $task->id);
-                           if ($taskData) {
-                               $task->invprice = $taskData['invprice'];
-                           }
-                       });
+        $selectedTasks = Task::whereIn('id', $taskIds)
+            ->get()
+            ->each(function ($task) use ($tasks) {
+                // Find the matching task and assign invprice to the task object
+                $taskData = collect($tasks)->firstWhere('id', $task->id);
+                if ($taskData) {
+                    $task->invprice = $taskData['invprice'];
+                }
+            });
 
 
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
@@ -542,9 +542,9 @@ class ChatController extends Controller
 
         $subTotal = $selectedTasks->sum('invprice');
         if ($selectedTasks->count() > 0) {
-        $clientIds = $selectedTasks->pluck('client_id')->unique();
-        $agentIds =  $selectedTasks->pluck('agent_id')->unique();
-        $selectedAgent = Agent::find($agentIds->first());
+            $clientIds = $selectedTasks->pluck('client_id')->unique();
+            $agentIds =  $selectedTasks->pluck('agent_id')->unique();
+            $selectedAgent = Agent::find($agentIds->first());
 
             if ($clientIds->count() >= 1) {
                 $selectedClient = Client::find($clientIds->first());
@@ -605,7 +605,7 @@ class ChatController extends Controller
                             'invoice_id' => $invoice->id,
                             'invoice_number' => $invoiceNumber,
                             'task_id' => $task['id'],
-                            'task_description' => $task['reference'] . ' ' . $task['additional_info'],  
+                            'task_description' => $task['reference'] . ' ' . $task['additional_info'],
                             'task_remark' => $task['remark'],
                             'client_notes' => $task['note'],
                             'task_price' =>  $task['invprice'],
@@ -649,7 +649,7 @@ class ChatController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment need to be made to: ' . $supplier->name,
+                            'description' => 'Payment : ' . $supplier->name,
                             'debit' => $selectedtask->total,
                             'credit' => 0,
                             'balance' => $selectedtask->total,
@@ -671,7 +671,7 @@ class ChatController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment need to be received from: ' . $client->name,
+                            'description' => 'Payment received from: ' . $client->name,
                             'debit' => 0,
                             'credit' => $task['invprice'],
                             'balance' => $task['invprice'],
@@ -728,13 +728,10 @@ class ChatController extends Controller
                 'due_date' => $invoice->due_date,
                 'clients' => $clients
             ]);
-
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json('Invoice creation failed!');
         }
-    
-      
     }
 
 
@@ -744,17 +741,17 @@ class ChatController extends Controller
         return sprintf('INV-%s-%05d', $year, $sequence);
     }
 
-    
+
     private function sendWhatsApp($userData)
     {
         if (!isset($userData['contact_number'])) {
             return response()->json(['error' => 'No contact number provided for WhatsApp.'], 400);
         }
-    
+
         // Logic to send WhatsApp message
         $message = "Hello! This is a reminder from your travel agency.";
         // Example: WhatsAppService::send($userData['contact_number'], $message);
-    
+
         return response()->json(['success' => true, 'message' => 'WhatsApp message sent.'], 200);
     }
 
@@ -772,8 +769,8 @@ class ChatController extends Controller
     }
 
     private function initiatecreateClient($userData)
-    {    
-    
+    {
+
         $user = Auth::user();
 
         $company = Company::with('branches.agents.clients')->find($user->company->id);
@@ -785,10 +782,10 @@ class ChatController extends Controller
     }
 
     private function initiatecreateAgent($userData)
-    {    
-    
+    {
+
         $user = Auth::user();
-       
+
         $company = Company::with('branches.agents.clients')->find($user->company->id);
         $branches = $company->branches;
 
@@ -800,8 +797,8 @@ class ChatController extends Controller
 
 
     private function initiatecreateBranch($userData)
-    {    
-    
+    {
+
         $user = Auth::user();
 
         $company = Company::with('branches.agents.clients')->find($user->company->id);
@@ -818,12 +815,75 @@ class ChatController extends Controller
         // Ensure the request contains a file
         if ($request->hasFile('file')) {
             try {
+                
+                $file = $request->file('file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('uploads', $fileName, 'public');
+
                 // Get the file path
-                $imagePath = $request->file('file')->getRealPath();
-    
+                $imagePath = $file->getRealPath();  // Path to the temporary uploaded file
+                $extension = pathinfo($fileName, PATHINFO_EXTENSION); 
                 // Process the image using OCR
-                $ocrResponse = $this->processImage($imagePath); // Custom method to process image OCR
+            
+                \Log::info('extension:', ['extension' => $extension]);
+                if ($extension === 'pdf') {
+
+                    $text = $this->extractTextFromPdf($filePath);
+                    if ($text === null) {
+                        // Extract images from the PDF and process them via OCR
+                        $images = $this->extractImagesFromPdf($filePath);
+                        \Log::info('images:', ['images' => $images]);
+                        if (empty($images)) {
+                            \Log::info('No images found, converting PDF to images...');
+                             $images = $this->pdfToImage($filePath);
+                        }
     
+
+                        if (empty($images)) {
+                            return response()->json(['error' => 'No images found or generated for OCR.'], 400);
+                        }
+
+                        $ocrResponse = [];
+                        foreach ($images as $image) {
+                            // Process each extracted image with OCR
+                            $ocrText = $this->processImage($image);
+                            if ($ocrText) {
+                                $ocrResponse[] = ['ParsedText' => $ocrText];
+                            }
+                        }
+                        
+                        // If no OCR text was extracted
+                        if (empty($ocrResponse)) {
+                            return response()->json(['error' => 'Failed to extract text from the images in the PDF.'], 400);
+                        }
+    
+                    } else {
+                        // PDF contains text, use the extracted text
+                        $ocrResponse = ['ParsedResults' => [['ParsedText' => $text]]];
+                    }
+
+                } else if (in_array($extension, ['png', 'jpg', 'jpeg'])) {
+    
+                    $ocrResponse = $this->processImage($imagePath);
+                } else {
+                    return response()->json(['error' => 'Unsupported file format.'], 400);
+                }
+
+                            // Check if the OCR response is a JsonResponse object
+                    if ($ocrResponse instanceof \Illuminate\Http\JsonResponse) {
+                        $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
+                    }
+
+                
+                      // Check if OCR response contains parsed text
+                      if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to extract text from the image.',
+                        ], 400);
+                    }
+
+                    
                 // Check if the OCR response contains the required data
                 if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
                     $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
@@ -859,6 +919,11 @@ class ChatController extends Controller
 
                       $response = $this->openAIService->getChatResponse($messages);
                       \Log::info('response:', ['response' => $response]);
+
+                      // Check if $response is a JsonResponse object
+                    if ($response instanceof \Illuminate\Http\JsonResponse) {
+                        $response = $response->getData(true); // Convert to an associative array
+                    }
 
                     // Check if the OpenAI response contains the required data
                     if (isset($response['choices'][0]['message']['content'])) {
@@ -923,6 +988,51 @@ class ChatController extends Controller
         }
     }
     
+
+    // Function to extract text from PDF using Smalot PdfParser
+        private function extractTextFromPdf($filePath)
+        {
+
+            \Log::info('extractTextFromPdf:', ['filePath' => $filePath]);
+            try {
+                $parser = new Parser();
+                $pdf = $parser->parseFile(storage_path('app/public/' . $filePath));
+                \Log::info('pdf:', ['pdf' => $pdf]);
+                $text = $pdf->getText(); // Extract text content from PDF
+
+                if (empty($text)) {
+                    return null; // No text extracted
+                }
+
+                \Log::info('Extracted Text from PDF:', ['text' => $text]);
+                return $text; // Return the extracted text
+            } catch (\Exception $e) {
+                \Log::error('Error extracting text from PDF', ['error' => $e->getMessage()]);
+                return null; // Return null in case of error
+            }
+        }
+
+        private function extractImagesFromPdf($pdfFilePath)
+        {
+            try {
+                // Command to extract images from the PDF using poppler-utils (pdftohtml or pdfimages)
+                $outputDir = storage_path('app/public/outputs/');
+                $command = "pdftohtml -c -hidden -images '$pdfFilePath' '$outputDir/output.html'";
+
+                // Run the command to extract images
+                exec($command);
+
+                // Get all image paths from the output directory
+                $imagePaths = glob($outputDir . '*.jpg'); // Adjust the file extension if necessary
+
+                return $imagePaths;
+            } catch (\Exception $e) {
+                \Log::error('Error extracting images from PDF', ['error' => $e->getMessage()]);
+                return [];
+            }
+        }
+
+
     public function createClientPassport($data)
     {
         // Ensure that $data is an array and has the required fields
@@ -1053,7 +1163,7 @@ class ChatController extends Controller
 
     
 
-    
+
     public function createAgent(Request $request)
     {
         $userAuth = Auth::user();
@@ -1074,13 +1184,13 @@ class ChatController extends Controller
 
         try {
 
-        // Create a new user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make('citytour123'),
-            'role_id' => 3
-        ]);
+            // Create a new user
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make('citytour123'),
+                'role_id' => 3
+            ]);
 
             $agent = Agent::create([
                 'user_id' => $user->id,
@@ -1092,13 +1202,12 @@ class ChatController extends Controller
                 'type' => $request->type,
             ]);
 
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Agent registered successfully!',
-                'agent' => $agent, 
+                'agent' => $agent,
             ], 201);
-
         } catch (Exception $e) {
             Log::error('Failed to create agent: ' . $e->getMessage());
             return response()->json([
@@ -1107,7 +1216,6 @@ class ChatController extends Controller
                 'errors' => $e->errors() ?? [],
             ], 400);
         }
-
     }
 
     public function createBranch(Request $request)
@@ -1134,21 +1242,21 @@ class ChatController extends Controller
             'role_id' => 6
         ]);
 
-            $branch = Branch::create([
-                'user_id' => $user->id,
-                'name' => $request->branch_name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'address' => $request->address,
-                'company_id' => $company->id
-            ]);
+        $branch = Branch::create([
+            'user_id' => $user->id,
+            'name' => $request->branch_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'company_id' => $company->id
+        ]);
 
-    
-            return response()->json([
-                'success' => true,
-                'message' => 'Branch registered successfully!',
-                'branch' => $branch, // Optionally return client details
-            ], 201);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Branch registered successfully!',
+            'branch' => $branch, // Optionally return client details
+        ], 201);
     }
 
 
@@ -1160,15 +1268,15 @@ class ChatController extends Controller
             'clientId' => 'required',
             'amount' => 'required',
             'type' => 'required|string',
-            'invoiceNumber'=> 'required|string',
+            'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
         ]);
 
         $invoiceId = $request->input('invoiceId');
         $invoiceNumber = $request->input('invoiceNumber');
-        $clientId = $request->input('clientId'); 
+        $clientId = $request->input('clientId');
         $type = $request->input('type');
-        $date = $request->input('date'); 
+        $date = $request->input('date');
         $amount = $request->input('amount');
         $gateway = $request->input('gateway');
 
@@ -1177,35 +1285,31 @@ class ChatController extends Controller
 
         try {
 
-                $invoicepartial = InvoicePartial::create([
-                    'invoice_id' => $invoiceId,
-                    'invoice_number' => $invoiceNumber,
-                    'client_id' => $clientId,
-                    'amount' => $amount,
-                    'status' => 'unpaid',
-                    'expiry_date' => $date,
-                    'type' => $type,
-                    'payment_gateway' => $gateway,
-                ]);
+            $invoicepartial = InvoicePartial::create([
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'client_id' => $clientId,
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'expiry_date' => $date,
+                'type' => $type,
+                'payment_gateway' => $gateway,
+            ]);
 
-                $invoice->payment_type = $type;
-                $invoice->save();
+            $invoice->payment_type = $type;
+            $invoice->save();
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Invoice Partial created successfully!',
-                    'invoiceId' => $invoiceId,
-                ]);
-    
-            } catch (Exception $e) {
-                Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create invoice!',
-                ]);
-            }
-
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice Partial created successfully!',
+                'invoiceId' => $invoiceId,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create invoice!',
+            ]);
+        }
     }
-
-   
 }

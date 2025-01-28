@@ -23,7 +23,7 @@ return new class extends Migration
             $table->float('total_tax');
             $table->string('extra_guest_charges');
             $table->string('room_promotion');
-            $table->string('cancel_policies');
+            $table->string('cancel_policies')->nullable();
             $table->string('meal_type');
             $table->boolean('is_refundable');
             $table->boolean('with_transfer');

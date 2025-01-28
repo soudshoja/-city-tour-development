@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AIService;
 use App\Http\Traits\Converter;
 use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
@@ -36,13 +37,14 @@ class TaskController extends Controller
 {
     use NotificationTrait, Converter;
 
-    public function index($id = null)
+    public function index()
     {
         if (!auth()->user()) {
             return redirect()->route('login');
         }
 
         $user = Auth::user();
+        $id = $user->id;
         $agent = null;
         $taskCount = 0;
         $clients = collect();
@@ -88,12 +90,12 @@ class TaskController extends Controller
 
         $suppliers = Supplier::all();
 
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
+        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
 
         // Fetch distinct task types
         $types = Task::distinct()->pluck('type');
         // Return the view with the required data
-        return view('tasks.tasksList', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
     }
 
     public function voucher($id = null)
@@ -163,16 +165,22 @@ class TaskController extends Controller
 
     public function show($id)
     {
-        // Retrieve the task with related agent and client data
-        $task = Task::with(['agent', 'client', 'flightDetails', 'supplier'])->find($id);
+        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->find($id);
 
-        // Check if task exists
         if (!$task) {
             return response()->json(['error' => 'Task not found'], 404);
         }
 
+        if($task->flightDetails){
+            $task['description'] = $task->flightDetails->countryFrom->name . ' ---> ' . $task->flightDetails->countryTo->name;
+        } elseif($task->hotelDetails){
+            $task['description'] = $task->hotelDetails->hotel->name . '/' . $task->hotelDetails->hotel->country->name;
+        } else {
+            $task['description'] = 'No description';
+        }
+        
         // Return the task data as JSON for the modal to load dynamically
-        return response()->json(['task' => $task], 200);
+        return response()->json($task, 200);
     }
 
     // edit and update tasks
@@ -222,9 +230,8 @@ class TaskController extends Controller
     }
 
 
-    public function import(Request $request)
+    public function upload(Request $request)
     {
-
         $request->validate([
             'task_file' => 'required|mimes:pdf',
         ]);
@@ -252,7 +259,7 @@ class TaskController extends Controller
         $contents = $this->pdfToText($file);
 
         // Prepare the OpenAI request
-        $openai = new OpenAiController();
+        $openai = new OpenAiController(new AIService);
         $response = $openai->flightOrHotel($contents);
 
         if ($response['status'] == 'error') {

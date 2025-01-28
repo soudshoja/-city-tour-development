@@ -88,7 +88,7 @@
             <a href="{{ route('agents.index') }}" class="hover:bg-gray-300 hover:rounded-t-lg p-3">
                 Agents List
             </a>
-            <a href="{{ route('clients.list') }}" class="hover:bg-gray-300 hover:rounded-b-lg p-3">
+            <a href="{{ route('clients.index') }}" class="hover:bg-gray-300 hover:rounded-b-lg p-3">
                 Clients List
             </a>
         </div>

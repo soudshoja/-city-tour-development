@@ -64,7 +64,6 @@
         </a>
         <menu>
             <menuitem><a href="{{ route('invoices.company.agents') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices List</a></menuitem>
-            <menuitem><a href="{{ route('invoice.salelist') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Sale Invoices</a></menuitem>
 
         </menu>
         </menuitem>
@@ -91,7 +90,7 @@
         </a>
         <menu>
             <menuitem><a href="{{ route('agents.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Agents List</a></menuitem>
-            <menuitem><a href="{{ route('clients.list') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Clients List</a></menuitem>
+            <menuitem><a href="{{ route('clients.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Clients List</a></menuitem>
 
         </menu>
         </menuitem>

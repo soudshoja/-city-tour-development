@@ -2,7 +2,7 @@
     <div class="mb-6 grid gap-6 xl:grid-cols-3">
         <div class="w-full md:w-96 md:max-w-full mx-auto">
             <div class="p-6 border border-gray-300 sm:rounded-md">
-                <form method="POST" action="{{ route('agentsupload.import') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('agents.import') }}" enctype="multipart/form-data">
                     @csrf
                     <label class="block mb-6">
                         <span class="text-gray-700">Upload Agents Details</span>

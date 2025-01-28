@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Alimranahmed\LaraOCR\Facades\OCR;
 use App\Http\Traits\Converter;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -14,26 +13,15 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
 use App\Models\Branch;
 use App\Models\Role;
-use ConvertApi\ConvertApi;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
-use PhpParser\Node\Expr\Throw_;
-use thiagoalessio\TesseractOCR\TesseractOCR;
 
 class ClientController extends Controller
 {
     use Converter;
 
     public function index()
-    {
-        return view('clients.index');
-    }
-
-    // List all clients or clients by agent ID
-    public function list()
     {
         $user = Auth::user();
         if ($user->role_id == Role::COMPANY) {
@@ -53,7 +41,7 @@ class ClientController extends Controller
             // retrieve client that has the latest task
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
-            )->paginate(6);
+            )->get();
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
@@ -61,22 +49,24 @@ class ClientController extends Controller
             // retrieve client that has the latest task
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
-            )->paginate(6);
+            )->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
 
             // retrieve client that has the latest task
             $clients = Client::with('agent.branch')->where('agent_id', $agent->id)->orderByDesc(
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
-            )->paginate(6);
+            )->get();
         }
 
-
-        return view('clients.list', compact('clients', 'clientsCount'));
+        return view('clients.index', compact('clients', 'clientsCount'));
     }
 
+    public function list()
+    {
 
-    // Show the form to create a new client
+    }
+
     public function create()
     {
         return view('clients.create');
@@ -106,7 +96,7 @@ class ClientController extends Controller
             ]);
 
             // Redirect to the clients list with a success message
-            return redirect()->route('clients.list')->with('success', 'Client added successfully!');
+            return redirect()->route('clients.index')->with('success', 'Client added successfully!');
         } catch (Exception $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
@@ -121,7 +111,7 @@ class ClientController extends Controller
         $tasks = Task::where('client_id', $id)->get();
         $paid = $invoices->where('status', 'paid')->sum('amount');
         $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
-
+        
         return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid')); // Ensure the view exists
     }
 
@@ -143,7 +133,7 @@ class ClientController extends Controller
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-
+        
         // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',

@@ -74,26 +74,26 @@ class Chat extends Component
     public function render()
     {
         $user = Auth::user();
-
-        if ($user->role_id == 1) {
-            $agents = Agent::with('branch')->get();
-            $clients = Client::with('agent')->get();
+    
+        // Initialize variables with default values
+        $agents = collect();
+        $clients = collect();
+    
+        if ($user->role_id == Role::ADMIN) {
+            // Add logic for admin if necessary
         } elseif ($user->role_id == Role::COMPANY) {
             // Company can only see trips with tasks under their agents
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company->id);
             }])->get();
-
+    
             $agentIds = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company->id);
             }])->pluck('id');
-
+    
             $clients = Client::whereIn('agent_id', $agentIds)->get();
-
-        };
-
-        // $agents = Agent::with('branch')->get();
-        // $clients = Client::with('agent')->get();
+        }
+    
         return view('livewire.chat', compact('agents', 'clients'));
     }
 }

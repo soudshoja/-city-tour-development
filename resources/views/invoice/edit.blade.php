@@ -172,12 +172,16 @@
                         <table id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th>Task</th>
-                                    <th>Client</th>
-                                    <th class="w-1">Quantity</th>
-                                    <th class="w-1">Task Price</th>
-                                    <th>Invoice Price</th>
-                                    <th class="w-1"></th>
+                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
+                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="items-body">
@@ -219,115 +223,151 @@
                         <option value="USD">USD</option>
                     </select>
 
-                      <!-- Payment Type Section -->
-                      <div  id="paymentMethod" class="mt-4">
-                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
-                            <div class="flex gap-4">
-                                <!-- Full Payment Tab -->
-                                <label class="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        id="payment_type_full"
-                                        name="payment_type"
-                                        value="full"
-                                        onclick="hideModal()"
-                                        hidden
-                                        class="peer"
-                                        checked
-                                    />
-                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19a1 1 0 00.76-.36l3-4a1 1 0 00-.76-1.64H12V7a1 1 0 00-2 0v6H8a1 1 0 00-.76 1.64l3 4A1 1 0 0011 19z" />
-                                        </svg>
-                                        <span class="font-medium">Full</span>
-                                        <p class="text-sm text-gray-500">Pay the total amount.</p>
-                                    </div>
-                                </label>
+                 <!-- Payment Type Section -->
+                 <div id="paymentMethod" class="mt-4">
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
+                            <!-- Full Payment Tab -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input
+                                    type="radio"
+                                    id="payment_type_full"
+                                    name="payment_type"
+                                    value="full"
+                                    onclick="hideModal()"
+                                    hidden
+                                    class="peer"
+                                    checked />
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    <span class="font-medium">Fully Payment</span>
+                                </div>
+                            </label>
 
-                                <!-- Partial Payment Tab -->
-                                <label class="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        id="payment_type_partial"
-                                        name="payment_type"
-                                        value="partial"
-                                        onclick="showModal('partial')"
-                                        hidden
-                                        class="peer"
-                                    />
-                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-4H5a1 1 0 01-.9-1.4L8.1 7h1.7l3 4H11v4h2a1 1 0 01.9 1.4l-3.1 5H9z" />
-                                        </svg>
-                                        <span class="font-medium">Partial</span>
-                                        <p class="text-sm text-gray-500">Split the amount into parts.</p>
-                                    </div>
-                                </label>
+                            <!-- Partial Payment Tab -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input
+                                    type="radio"
+                                    id="payment_type_partial"
+                                    name="payment_type"
+                                    value="partial"
+                                    onclick="showModal('partial')"
+                                    hidden
+                                    class="peer" />
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    <span class="font-medium">Partially Payment</span>
+                                </div>
+                            </label>
 
-                                <!-- Split Payment Tab -->
-                                <label class="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        id="payment_type_split"
-                                        name="payment_type"
-                                        value="split"
-                                        onclick="showModal('split')"
-                                        hidden
-                                        class="peer"
-                                    />
-                                    <div class="peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition flex flex-col items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-500 peer-checked:text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19l-3-3m0 0l3-3m-3 3h12m-9-6V5a1 1 0 011-1h2a1 1 0 011 1v6m-5-3h6" />
-                                        </svg>
-                                        <span class="font-medium">Split</span>
-                                        <p class="text-sm text-gray-500">Split and generate links.</p>
-                                    </div>
-                                </label>
-                            </div>
 
-                                                <!-- Payment Gateway Section -->
-                              <section  id="payment_gateway_section" class="mb-6">
-                                    <div class="mt-4">
-                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                    <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
-                                        @foreach($paymentGateways as $gateway)
-                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                        @endforeach
-                                    </select>
-                                  </div>
-                                   <div class="mt-4">
-                                    <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                            <path
-                                                d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
-                                                fill="currentColor"
-                                            />
-                                            <path
-                                                d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
-                                                fill="currentColor"
-                                            />
-                                        </svg>
-                                        Save Payment Gateway
-                                    </button>
-                                    </div>
-                                </section>
+
+                            <!-- Split Payment Tab -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input
+                                    type="radio"
+                                    id="payment_type_split"
+                                    name="payment_type"
+                                    value="split"
+                                    onclick="showModal('split')"
+                                    hidden
+                                    class="peer" />
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    <span class="font-medium">Split Payment</span>
+                                </div>
+                            </label>
+
+
 
                         </div>
 
+                        <!-- Payment Gateway Section -->
+                        <section id="payment_gateway_section" class="mb-6">
+                            <div class="mt-4">
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                                    @foreach($paymentGateways as $gateway)
+                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mt-4">
+                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                        <path
+                                            d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                            fill="currentColor" />
+                                        <path
+                                            d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                            fill="currentColor" />
+                                    </svg>
+                                    Update Invoice
+                                </button>
+                            </div>
+                        </section>
 
+                        <!-- Added Buttons/Links Section -->
+                        <section id="additional-actions" class="mt-6">
+                            <div class="flex flex-wrap gap-4">
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
+
+                                <!-- Share Buttons -->
+                                <div class="flex items-center gap-2 w-full">
+                                    <form action="{{ route('whatsapp.send') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="client" id="client">
+                                        <input type="hidden" name="invoiceNumber2" value="{{$invoiceNumber}}">
+                                        <button type="submit" class="w-full items-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                            Share via WhatsApp
+                                        </button>
+                                    </form>
+
+                                    <button onclick="shareViaEmail()" class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
+                                        Share via Email
+                                    </button>
+
+                                </div>
+
+                                <button onclick="copyLink()" class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                        <g fill="none" stroke="#ffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+                                            <path d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
+                                            <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
+                                        </g>
+                                    </svg>
+                                    Copy Link
+                                </button>
+
+                                <!-- View Button -->
+                                <button onclick="viewInvoice()" class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
+                                        <path opacity="0.5" d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z" stroke="currentColor" stroke-width="1.5"></path>
+                                        <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" stroke-width="1.5"></path>
+                                    </svg>
+                                    View
+                                </button>
+
+                            </div>
+                        </section>
+
+
+                    </div>
+
+                </div>
+                <div id="viewInvoiceModal"
+                    class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
+                    <div class="relative">
+                        <!-- Modal Content -->
+                        <div class="w-full">
+
+                        </div>
+                        <div id="invoiceContent" class="">
+                            <!-- Invoice content will be loaded here dynamically -->
+                        </div>
+                    </div>
                 </div>
                 <div class="panel">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                        <div id="invoice-link-container" style="display: none;" class="mt-4">
-                            <label>Invoice Link:</label>
-                            <a id="invoice-link" href="#" class="text-blue-600 underline" target="_blank"></a>
-                        </div>
-                        <div id="invoice-link-container1" style="display: none;" class="mt-4">
-                            <label>Split Invoice Link:</label>
-                            <a id="invoice-link1" href="#" class="text-blue-600 underline" target="_blank"></a>
-                        </div>
 
                         <button id="generate-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
@@ -336,33 +376,19 @@
                                 <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                             </svg>
-                            <span id="button-text">Update</span>
+                            <span id="button-text">Save</span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
                         <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
-                        <button type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow"  >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2 ">
-                                <path
-                                    d="M17.4975 18.4851L20.6281 9.09373C21.8764 5.34874 22.5006 3.47624 21.5122 2.48782C20.5237 1.49939 18.6511 2.12356 14.906 3.37189L5.57477 6.48218C3.49295 7.1761 2.45203 7.52305 2.13608 8.28637C2.06182 8.46577 2.01692 8.65596 2.00311 8.84963C1.94433 9.67365 2.72018 10.4495 4.27188 12.0011L4.55451 12.2837C4.80921 12.5384 4.93655 12.6658 5.03282 12.8075C5.22269 13.0871 5.33046 13.4143 5.34393 13.7519C5.35076 13.9232 5.32403 14.1013 5.27057 14.4574C5.07488 15.7612 4.97703 16.4131 5.0923 16.9147C5.32205 17.9146 6.09599 18.6995 7.09257 18.9433C7.59255 19.0656 8.24576 18.977 9.5522 18.7997L9.62363 18.79C9.99191 18.74 10.1761 18.715 10.3529 18.7257C10.6738 18.745 10.9838 18.8496 11.251 19.0285C11.3981 19.1271 11.5295 19.2585 11.7923 19.5213L12.0436 19.7725C13.5539 21.2828 14.309 22.0379 15.1101 21.9985C15.3309 21.9877 15.5479 21.9365 15.7503 21.8474C16.4844 21.5244 16.8221 20.5113 17.4975 18.4851Z"
-                                    stroke="currentColor" stroke-width="1.5" />
-                                <path opacity="0.5" d="M6 18L21 3" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                            </svg>
-                            Send Invoice
-                        </button>
 
-                       
+                        <div id="errorMessage" class="hidden text-red-500">
+                            <!-- Error message -->
+                        </div>
 
-                            <div id="errorMessage" class="hidden text-red-500">
-                                <!-- Error message -->
-                            </div>
-
-                               <!-- Modal -->
+                        <!-- Modal -->
                         <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
                             <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
                                 <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
@@ -380,8 +406,20 @@
                                                         <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
                                                     </div>
                                                     <div>
-                                                        <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                        <input type="number" id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows()" />
+                                                        <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
+                                                        <select id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
+                                                            <option value="" disabled selected>Select a value</option>
+                                                            <option value="1">1</option>
+                                                            <option value="2">2</option>
+                                                            <option value="3">3</option>
+                                                            <option value="4">4</option>
+                                                            <option value="5">5</option>
+                                                            <option value="6">6</option>
+                                                            <option value="7">7</option>
+                                                            <option value="8">8</option>
+                                                            <option value="9">9</option>
+                                                            <option value="10">10</option>
+                                                        </select>
                                                     </div>
                                                 </div>
 
@@ -441,15 +479,24 @@
                                                 </div>
                                                 <div>
                                                     <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
-                                                    <span id="subT1"> 0.00</span>
+                                                    <span id="subT1">0.00</span>
                                                 </div>
                                             </div>
 
                                             <div class="grid grid-cols-3 gap-4 mb-5">
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1">Split into *</label>
-                                                    <input type="number" id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="1" oninput="updateRows1()" />
+                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
+                                                    <select id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
+                                                        <option value="" disabled selected>Select a value</option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                        <option value="3">3</option>
+                                                        <option value="4">4</option>
+                                                        <option value="5">5</option>
+                                                        <option value="6">6</option>
+                                                    </select>
                                                 </div>
+
                                                 <div>
                                                     <label class="block text-sm font-medium mb-1">Payment Gateway</label>
                                                     <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
@@ -487,48 +534,49 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Agents Modal -->
+                        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
+                            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
+                                <!-- Modal Header -->
+                                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                    <h5 class="text-lg font-bold">Agent Management</h5>
+                                    <button
+                                        type="button"
+                                        onclick="closeAgentModal()"
+                                        class="text-white-dark hover:text-dark" id="closeAgentModalButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                            class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Modal Header -->
 
-        <!-- Agents Modal -->
-        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
-                <!-- Modal Header -->
-                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
-                    <h5 class="text-lg font-bold">Agent Management</h5>
-                    <button
-                        type="button"
-                        onclick="closeAgentModal()"
-                        class="text-white-dark hover:text-dark" id="closeAgentModalButton">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                            class="h-6 w-6">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                <!-- ./Modal Header -->
+                                <!-- Search Box -->
+                                <div class="relative mb-4 px-4">
+                                    <input type="text" placeholder="Search Agent..."
+                                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                        id="agentSearchInput">
+                                </div>
+                                <!-- ./Search Box -->
 
-                <!-- Search Box -->
-                <div class="relative mb-4 px-4">
-                    <input type="text" placeholder="Search Agent..."
-                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                        id="agentSearchInput">
-                </div>
-                <!-- ./Search Box -->
+                                <!-- List of Agents -->
+                                <ul id="agentList"
+                                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
+                                    <!-- Dynamic list items go here -->
+                                    @foreach ($agents as $agent)
+                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
+                                        {{$agent->name}}
+                                    </li>
+                                    @endforeach
+                                </ul>
+                                <!-- ./List of Agents -->
+                            </div>
+                        </div>
 
-                <!-- List of Agents -->
-                <ul id="agentList"
-                    class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
-                    <!-- Dynamic list items go here -->
-                    @foreach ($agents as $agent)
-                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
-                        {{$agent->name}}
-                    </li>
-                    @endforeach
-                </ul>
-                <!-- ./List of Agents -->
-            </div>
-        </div>
+    
         <!-- End Agents Modal -->
         <!-- Clients Modal -->
         <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
@@ -711,9 +759,7 @@
     </div>
 
     <script>
-        let selectedTasks = @json($selectedTasks);
-        const clients = @json($clients);
-        const invoice = @json($invoice);
+        let invoice = @json($invoice);
         let items = [];
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
@@ -734,9 +780,12 @@
         document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
         document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
 
+        let selectedTasks1 = @json($selectedTasks);
         let selectedAgent = @json($selectedAgent);
         let selectedClient = @json($selectedClient);
-       console.log('client',selectedClient );
+
+        updateClientAgent(selectedClient.id, selectedAgent.id);
+
         const generateInvoiceButton = document.getElementById('generate-invoice-btn');
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
@@ -749,8 +798,7 @@
         function checkInvoiceId() {
         const tabs = document.querySelectorAll('input[name="payment_type"]');
         const paymentType = invoice.payment_type;
-        const initialPaymentType = document.querySelector('input[name="payment_type"]:checked').value;
-
+          console.log('paymenttype', paymentType);
         const paymentGatewaySection = document.getElementById('payment_gateway_section');
 
         if (paymentType === 'full') {
@@ -759,13 +807,6 @@
             paymentGatewaySection.style.display = 'none'; // Hide the section
         }
 
-        tabs.forEach((tab) => {
-            if (tab.value === paymentType) {
-                tab.checked = true;
-            } else {
-                tab.checked = false;
-            }
-        });
     }
 
     // Run the check on page load and whenever the input value changes
@@ -837,20 +878,6 @@
             }
         }
         
-        function showTab(tab) {
-        document.querySelectorAll('.tab-content').forEach((content) => {
-            content.classList.add('hidden');
-        });
-
-        document.querySelector(`#${tab}-payment-container`).classList.remove('hidden');
-
-        document.querySelectorAll('.border-b-2').forEach((tabButton) => {
-            tabButton.classList.remove('border-indigo-500', 'text-indigo-500');
-            tabButton.classList.add('text-gray-800');
-        });
-
-        document.querySelector(`#tab-${tab}`).classList.add('border-indigo-500', 'text-indigo-500');
-    }
 
         function updateRows() {
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
@@ -947,6 +974,7 @@
 
 
         function renderItems() {
+
           const t = tasks;
             itemsBody.innerHTML = ''; // Clear existing rows
 
@@ -957,42 +985,64 @@
                 itemsBody.appendChild(noItemsRow);
             } else {
                 // Iterate over items and create rows
+                let count = 0;
                 items.forEach(item => {
                     const row = document.createElement('tr');
                     row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
 
                     row.innerHTML = `
-                                <td>
-                                <p>${item.description}</p>
-                                </td>
-                                <td>
-                                <p>${item.client_name}</p>
-                                </td>
-                                <td>
-                                  <p>${item.quantity}</p>
-                                </td>
-                                 <td>${(item.total * item.quantity).toFixed(2)}</td>
-                                <td>
-                                        <input 
-                                        id="invprice-${item.id}" 
-                                        type="number" 
-                                        name="invprice" 
-                                        value=${item.task_price}
-                                        placeholder="Invoice Price" 
-                                        class="form-input w-2/3 lg:w-[150px]" 
-                                        oninput="updateItemPrice(${item.id})"
-                                    />
-                                </td>
+                                <td class="flex-grow">
+                    <p>${++count}</p>
+                    </td>
+                    <td class="flex-grow">
+                    <p>${item.description}</p>
+                    </td>
+                    <td>
+                    <p>${item.type}</p>
+                    </td>
+                    <td class="flex-grow">
+                    <p>${item.venue}</p>
+                    </td>
+                    <td>
+                    <p>${item.price} KWD</p>
+                    </td>
+                    <td>
+                    <p id="invPriceAtTable_${item.id}">0.00 KWD</p>
+                    </td>
+                    <td>
+                    <p>${item.client_name}</p>
+                    </td>
+                    <td>
+                    <p>${item.agent.name}</p>
+                    </td>
+                    <td>
+                    <p>${item.agent.branch.name}</p>
+                    </td>
+                    <td>
+                    <div
+                        class="inline-flex items-center justify-evenly">
+                        <div 
+                            id="modal-open-button_${item.id}"
+                            data-tooltip="See Details">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
+                            <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
 
-                                <td>
-                                    <button id="remove-button-${item.id}" type="button" onclick="" data-id="">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" 
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
-                                    </button>
-                                </td>
+                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-full min-h-80 overflow-y-scroll">
+                            <div class="flex justify-between items-center p-4 border-b border-black">
+                                <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
+                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
+                        </dialog>
+                    </div>
+                    </td>
                             `;
 
                     itemsBody.appendChild(row);
@@ -1077,7 +1127,7 @@
 
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
-
+           
             // Call a function to update the total, passing the current items array
             //  updateTotal(items);
             renderTaskList(t);
@@ -1145,7 +1195,7 @@
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
         }
-
+        console.log('helloooooo2');
         function openTaskModal() {
             document.getElementById('taskModal').classList.remove('hidden');
         }
@@ -1163,8 +1213,10 @@
         }
 
         if (Array.isArray(items)) {
+            console.log('selected task', selectedTasks1);
+            console.log('items1', items);
             // Iterate over the array and select each task
-            selectedTasks.forEach(task => selectTask(task));
+            selectedTasks1.forEach(task => selectTask(task));
         } else {
             console.log('tow', items);
             // If it's a single task object, select it directly
@@ -1203,11 +1255,49 @@
 
         // Call the function with the selectedClient object
         if (selectedClient && selectedAgent) {
+            console.log('helloooooo');
             updateFormFields(selectedClient, selectedAgent);
         }
 
+        function updateClientAgent(clientId, agentId) {
+            // Find the client by clientId
+            let client = clients.find(c => c.id === clientId);
+
+            // Find the agent by agentId
+            let agent = agents.find(a => a.id === agentId);
+            // Find the branch associated with the agent
+            let branch = branches.find(b => b.id === agent.branch_id);
+
+            // Check if client and agent exist
+            if (client && agent && branch) {
+                // Update hidden fields
+                document.getElementById('receiverId').value = client.id;
+
+                // Update input fields for client
+                document.getElementById('receiverName').value = client.name;
+                document.getElementById('receiverName1').textContent = client.name;
+                document.getElementById('receiverEmail').value = client.email;
+                document.getElementById('receiverPhone').value = client.phone;
+
+                document.getElementById('agentId').value = agent.id;
+                // Update input fields for agent
+                document.getElementById('agentName').value = agent.name;
+                document.getElementById('agentEmail').value = agent.email;
+                document.getElementById('agentPhone').value = agent.phone;
+
+                // Update the selected branch
+                document.getElementById('selectedBranch').value = branch.id;
+
+                // Update the trigger text for branch selection
+                document.querySelector('.select-trigger').textContent = branch.name;
+
+            } else {
+                console.error('Client or Agent not found');
+            }
+        }
+
         function updateFormFields(client, agent) {
-          console.log(client);
+          console.log('cliento', client);
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
 
@@ -1516,7 +1606,7 @@
                 const split = document.getElementById('payment_type_split');
                 const full = document.getElementById('payment_type_full');
                 const update = document.getElementById('update-invoice-btn');
-                const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
 
             }
 
@@ -1639,7 +1729,7 @@
 
             tasks = @json($tasks);
             let clients = @json($clients);
-
+            // /const clients = @json($clients);
 
             // Initial rendering of items
             renderItems();

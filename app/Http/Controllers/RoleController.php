@@ -70,24 +70,49 @@ class RoleController extends Controller
     {
         $request->validate([
             'role_id' => 'required',
-            'permissionsId.enabled' => 'required',
-            'permissionsId.disabled' => 'required'
+            'permissionsId' => 'array'
         ]);
 
-        $role = Role::findById($request->role_id);
+        $role = Role::with('permissions')->find($request->role_id);
+        
+        if(!$role) {
+            return redirect()->back()->with('error', 'Role not found');
+        }
 
+        if($role->permissions->count() == 0){
+            if($request->permissionId->count() == 0){
+                return redirect()->back()->with('error', 'Pick at least one permission');
+            }
+        }
+
+        $existingPermissions = $role->permissions->pluck('id')->toArray();
+        $newPermissions = $request->permissionsId ?? [];
+        $revokedPermissions = array_diff($existingPermissions, $newPermissions);
+        $addedPermissions = array_diff($newPermissions, $existingPermissions);
         try {
 
-            foreach ($request->permissionsId['enabled'] as $permissionId) {
+            foreach ($revokedPermissions as $permissionId) {
+                $permission = Permission::find($permissionId);
+                $role->revokePermissionTo($permission);
+            }
 
-                $permission = Permission::findById($permissionId);
-
+            foreach ($addedPermissions as $permissionId) {
+                $permission = Permission::find($permissionId);
                 $role->givePermissionTo($permission);
             }
 
-            foreach ($request->permissionsId['disabled'] as $permissionId) {
 
-                $permission = Permission::findById($permission
+            // foreach ($request->permissionsId['enabled'] as $permissionId) {
+
+            //     $permission = Permission::findById($permissionId);
+
+            //     $role->givePermissionTo($permission);
+            // }
+
+            // foreach ($request->permissionsId['disabled'] as $permissionId) {
+
+            //     $permission = Permission::findById($permission);
+            // }
 
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());

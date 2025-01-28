@@ -15,8 +15,9 @@ document.querySelectorAll(".refresh-icon").forEach((icon) => {
 
 /// search
 
-document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("searchInput");
+const searchInput = document.getElementById("searchInput");
+
+if (searchInput) {
     const table = document.getElementById("myTable");
     const rows = Array.from(table.querySelector("tbody").rows); // Get all rows
 
@@ -38,4 +39,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Event listener for the search input
     searchInput.addEventListener("input", filterTable);
-});
+}

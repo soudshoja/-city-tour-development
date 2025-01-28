@@ -400,7 +400,7 @@
 
                     <!-- Payment Type Section -->
                     <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Type</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
@@ -413,7 +413,7 @@
                                     hidden
                                     class="peer"
                                     checked />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <span class="font-medium">Fully Payment</span>
                                 </div>
                             </label>
@@ -428,7 +428,7 @@
                                     onclick="showModal('partial')"
                                     hidden
                                     class="peer" />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <span class="font-medium">Partially Payment</span>
                                 </div>
                             </label>
@@ -445,7 +445,7 @@
                                     onclick="showModal('split')"
                                     hidden
                                     class="peer" />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <span class="font-medium">Split Payment</span>
                                 </div>
                             </label>
@@ -466,7 +466,7 @@
                             </div>
                             <div class="mt-4">
                                 <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
                                         <path
@@ -483,6 +483,7 @@
 
                         <!-- Added Buttons/Links Section -->
                         <section id="additional-actions" class="mt-6">
+                           <input type="hidden" name="shared" id="shared" value="false">
                             <div class="flex flex-wrap gap-4">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
 
@@ -521,6 +522,7 @@
                                     </svg>
                                     View
                                 </button>
+                                <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to clipboard!</p>
 
                             </div>
                         </section>
@@ -986,7 +988,9 @@
             const generateInvoice = document.getElementById("generate-invoice-btn");
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
             const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
-
+            const shareSection = document.getElementById('additional-actions');
+            const shared = document.getElementById('shared').value;
+            
             const options = document.querySelectorAll('.select-option');
             const selectedBranchInput = document.getElementById('selectedBranch');
 
@@ -1010,6 +1014,12 @@
                 paymentGatewaySection.style.display = 'block'; // Show the section
             } else {
                 paymentGatewaySection.style.display = 'none'; // Hide the section
+            }
+
+            if (shared === 'false') {
+                shareSection.style.display = 'none'; // hide the section
+            } else {
+                shareSection.style.display = 'block'; // show the section
             }
 
 
@@ -1178,19 +1188,37 @@
         }
 
         function updateField(itemId, fieldId) {
+            console.log('updated',itemId +'-'+fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
             const newValue = inputField.value || NULL;
 
             const item = items.find(item => item.id === itemId);
             if (item) {
-                item[fieldId] = newValue;
-            }
+                // if (fieldId === 'invprice') {
+                    if (fieldId.includes('invprice')) {
+                        // Set fieldId to 'invprice' if it includes 'invprice'
+                        fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
+                        item[fieldId1] = newValue;
 
-            if (fieldId === 'invprice') {
-                let formattedValue = parseFloat(newValue).toFixed(2);
+                            if (fieldId === 'invprice-modal') {
+                                // Update the corresponding table input
+                                const tableInput = document.getElementById(`invprice-table-${itemId}`);
+                                if (tableInput) {
+                                    tableInput.value = newValue;
+                                }
+                            } else if (fieldId === 'invprice-table') {
+                                // Update the corresponding modal input
+                                const modalInput = document.getElementById(`invprice-modal-${itemId}`);
+                                if (modalInput) {
+                                    modalInput.value = newValue;
+                                }
+                            }
 
-                document.getElementById(`invPriceAtTable_${itemId}`).textContent = formattedValue + ' KWD';
-                calculateSubtotal();
+                            calculateSubtotal(); // Recalculate the subtotal
+                    
+                } else {
+                    item[fieldId] = newValue; // Update other fields
+                }
             }
 
         }
@@ -1238,7 +1266,13 @@
                     <p>${item.price} KWD</p>
                     </td>
                     <td>
-                    <p id="invPriceAtTable_${item.id}">0.00 KWD</p>
+                          <input
+                                id="invprice-table-${item.id}"
+                                type="number"
+                                class="border border-gray-300 p-2 rounded-md w-full"
+                                value="${item.invprice}"
+                                onInput="updateField(${item.id}, 'invprice-table')"
+                            />
                     </td>
                     <td>
                     <p>${item.client_name}</p>
@@ -1287,12 +1321,13 @@
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <input
-                                        id="invprice-${item.id}"
+                                        id="invprice-modal-${item.id}"
                                         type="number"
                                         name="invprice",
                                         placeholder="Enter Invoice Price",
                                         class="border border-gray-300 p-2 rounded-md"
-                                        onInput="updateField(${item.id}, 'invprice')"
+                                        onInput="updateField(${item.id}, 'invprice-modal')"
+                                        value="${item.invprice}"
                                     >
                                     <input
                                         id="remark-${item.id}"
@@ -1556,6 +1591,7 @@
                     let modalInvoice = document.querySelector('dialog[data-modal-invoice="' + item.id + '"]');
 
                     openButton.addEventListener('click', function() {
+                        console.log(item.id);
                         modalInvoice.showModal();
                     });
 
@@ -1662,7 +1698,7 @@
                 description: `${task.reference} - ${task.additional_info}`, // Custom description format
                 client_name: task.client_name
             });
-
+            console.log('item selected', items);
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
@@ -1754,7 +1790,13 @@
 
         function renderTaskList(taskData) {
             const taskList = document.getElementById('taskList');
+              console.log('taskData', taskData);
 
+              if (!Array.isArray(taskData)) {
+                    console.error('taskData is not an array:', taskData);
+                    taskData = []; // Fallback to an empty array
+                }
+                
             taskData = taskData.filter(task =>
                 !items.some(selectedTask => selectedTask.id === task.id)
             );
@@ -1881,7 +1923,7 @@
                 if (!validateFullPayment()) return;
 
                 const gateway = document.getElementById('payment_gateway').value;
-                const date = document.getElementById('duedate').value;
+                const date = document.getElementById('dueDate').value;
                 const amount = document.getElementById('subTotal').value;
                 const fullData = [];
 
@@ -2105,7 +2147,7 @@
 
         function validateFullPayment() {
             const gateway = document.getElementById('payment_gateway').value;
-            const date = document.getElementById('duedate').value;
+            const date = document.getElementById('dueDate').value;
             const amount = parseFloat(document.getElementById('subTotal').value) || 0;
 
             if (!gateway || !date || amount <= 0) {
@@ -2208,8 +2250,9 @@
 
             // Get the selected payment type
             const selectedOption = document.querySelector('input[name="payment_type"]:checked');
-
+            const shared = document.getElementById('shared');
             update.disabled = true;
+            shared.value = "true";
 
             // Disable all options
             paymentOptions.forEach(option => {
@@ -2431,7 +2474,7 @@
             activities.push(`Payments to receive from: ${clientNameFromInput} amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`);
             // Add cumulative totals for each supplier
             supplierTotals.forEach((total, supplierName) => {
-                activities.push(`Payment need to be made to ${supplierName}: KWD${total.toFixed(2)}`);
+                activities.push(`Payment ${supplierName}: KWD${total.toFixed(2)}`);
             });
 
             // Add overall cumulative totals
@@ -2451,6 +2494,9 @@
             });
         }
 
+        function viewInvoice(){
+            openInvoiceModal(document.getElementById('invoiceNumber').value);
+        }
 
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");
@@ -2507,11 +2553,62 @@
             updateButtonState();
         }
 
+
+        function copyLink() {
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const copyFeedback = document.getElementById('copyFeedback');
+            const baseUrl = window.location.origin; 
+            const invoiceLink = `${baseUrl}/invoice/${invoiceNumber}/pdf`;
+            const fetchUrl =
+                "{{ route('invoice.pdf', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
+
+            navigator.clipboard.writeText(invoiceLink).then(() => {
+                alert('Link copied to clipboard: ' + invoiceLink);  // Use invoiceLink here
+                copyFeedback.classList.remove('hidden');
+                setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
+
+                fetch(fetchUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/pdf',
+                    },
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Invoice_${invoiceNumber}.pdf`; // Filename for the downloaded PDF
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url); // Clean up the URL object
+                    })
+                    .catch(err => {
+                        console.error('Failed to download PDF: ', err);
+                        alert('Failed to download PDF. Please try again.');
+                    });
+
+            }).catch(err => {
+                alert('Failed to copy link: ' + err);
+            });
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
 
             tasks = @json($tasks);
+            tasks = Array.isArray(tasks) ? tasks : Object.values(tasks);
             let clients = @json($clients);
-
+            console.log('tasks', tasks);
+            console.log(Array.isArray(tasks));
             // Initial rendering of items
             renderItems();
 

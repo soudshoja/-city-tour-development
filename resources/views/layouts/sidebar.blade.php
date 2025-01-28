@@ -2,7 +2,7 @@
 use App\Models\Role;
 @endphp
 
-<div class="space-y-4 m-5">
+<div class="space-y-4 my-5 mt-3">
     <!-- company menu -->
     @if(Auth::user()->role_id === Role::COMPANY )
     @include('layouts.sidebars.company')

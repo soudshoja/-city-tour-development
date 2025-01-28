@@ -2,7 +2,7 @@
     <div>
         <x-breadcrumbs :breadcrumbs="[
             ['url' => route('dashboard'), 'label' => 'Dashboard'],
-            ['url' => route('clients.list'), 'label' => 'Clients List'],
+            ['url' => route('clients.index'), 'label' => 'Clients List'],
             ['label' => 'Update Client']
         ]" />
         <div class="bg-white rounded-md shadow-md p-4 m-2">

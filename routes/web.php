@@ -33,20 +33,15 @@ use App\Models\Task;
 use App\Models\Charge;
 use Google\ApiCore\Testing\ProtobufMessageComparator;
 
-// Home route
-// Route::get('/', function () {
-//     return view('dashboard');
-// })->name('welcome');
-
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('admin.users.index');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // ROUTE THAT DOESN'T HAVE CONTROLLER
     Route::get('pin', function () {
         return view('auth.pin');
     })->name('pin');
@@ -56,41 +51,37 @@ Route::middleware(['auth'])->group(function () {
     })->name('verify2fa');
 
 
-
-
+    // 2FA
     Route::get('set-up-authenticator', [TwoFAController::class, 'twofa'])->name('2fa');
+    Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
     // Add a route for search functionality
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
-    Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
-
-
-    // Display a list of companies
+    // Admin users
+    Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('admin.users.index');
     Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
-
-    // Show the form to create a new company
     Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
-
-    // Store a new company
     Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
 
-
-
     // Agents list
-    Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
-    Route::get('/agentsnew', [AgentController::class, 'new'])->name('agentsnew.new');
-    Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
-    Route::get('/agentsupload', [AgentController::class, 'upload'])->name('agentsupload.upload');
-    Route::post('/agentsupload', [AgentController::class, 'import'])->name('agentsupload.import');
-    Route::get('/agents/{id}', [AgentController::class, 'show'])->name('agentsshow.show');
-    Route::get('/agents/{id}/edit', [AgentController::class, 'edit'])->name('agents.edit');
-    Route::put('/agents/{id}', [AgentController::class, 'update'])->name('agents.update');
-    Route::post('/create-agent-profile', [AgentController::class, 'createAgentProfile'])->name('create.agent.profile');
-    Route::get('/agents/{id}/tasks', [AgentController::class, 'getTasks']);
-    Route::get('/agents/{id}/clients', [AgentController::class, 'getClients']);
-    Route::get('/agents/{id}/invoices', [AgentController::class, 'getInvoices']);
-
+    Route::group([
+        'prefix' => 'agents',
+        'as' => 'agents.',
+    ], function () {
+        Route::get('/', [AgentController::class, 'index'])->name('index');
+        Route::get('/new', [AgentController::class, 'new'])->name('new');
+        Route::post('/', [AgentController::class, 'store'])->name('store');
+        Route::get('/upload', [AgentController::class, 'upload'])->name('upload');
+        Route::post('/upload', [AgentController::class, 'import'])->name('import');
+        Route::get('/{id}', [AgentController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [AgentController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [AgentController::class, 'update'])->name('update');
+        Route::post('/create-profile', [AgentController::class, 'createAgentProfile'])->name('create.profile');
+        Route::get('/{id}/tasks', [AgentController::class, 'getTasks'])->name('tasks');
+        Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
+        Route::get('/{id}/invoices', [AgentController::class, 'getInvoices'])->name('invoices');
+    });
 
 
     // Routes for creating new records
@@ -117,21 +108,23 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
 
 
-    // task routes
-    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
-    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-    Route::get('/tasks-voucher', [TaskController::class, 'voucher'])->name('tasks.voucher');
-    Route::put('/tasks-update/{id}', [TaskController::class, 'update'])->name('tasks.update');
-    Route::get('/tasks/{id}', [TaskController::class, 'index'])->name('tasks.agent.index');
-    Route::get('/tasksupload', [TaskController::class, 'upload'])->name('tasksupload.upload');
-    Route::post('/tasksupload', [TaskController::class, 'import'])->name('tasksupload.import');
-    Route::get('/tasks/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('tasks.agent');
+    //TASKS
+    Route::group([
+        'prefix' => 'tasks',
+        'as' => 'tasks.',
+    ], function () {
+        Route::get('/', [TaskController::class, 'index'])->name('index');
+        Route::get('/{id}', [TaskController::class, 'show'])->name('show');
+        Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
+        Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
+        Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
+        Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
+    });
 
     // SUPPLIERS
     Route::group([
-            'middleware' => ['auth'],
-            'prefix' => 'suppliers',
-            'as' => 'suppliers.',
+        'prefix' => 'suppliers',
+        'as' => 'suppliers.',
     ], function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
@@ -149,6 +142,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('city/{cityCode}/hotel', [TBOController::class, 'hotelCityList'])->name('hotel-list');
             Route::get('hotel', [TBOController::class, 'hotelCodeList'])->name('hotel-code-list');
             Route::get('hotel/{hotelCode}', [TBOController::class, 'hotelDetails'])->name('hotel-details');
+            Route::get('booking-detail',[TBOController::class, 'bookingDetail'])->name('booking-detail');
             Route::get('booking-details-by-date', [TBOController::class, 'bookingDetailByDate'])->name('booking-details-by-date');
             Route::get('prebook/index', [TBOController::class, 'preBookIndex'])->name('prebook.index');
             Route::post('prebook', [TBOController::class, 'preBookStore'])->name('prebook.store');
@@ -168,8 +162,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 
-    // Account
-    Route::get('/coa', action: [CoaController::class, 'index'])->name('coa.index');
+    //ACCOUNT
+    Route::get('/coa', [CoaController::class, 'index'])->name('coa.index');
     Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');
     Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
     Route::post('/updateCode/{id}', [CoaController::class, 'updateCode']);
@@ -189,7 +183,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
     Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
-    // Branches routes
+    //BRANCHES
     Route::group([
         'as' => 'branches.',
     ], function () {
@@ -211,7 +205,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');
     Route::post('/open-ai', [OpenAiController::class, 'store'])->name('open-ai.store');
     Route::get('/fine-tuning', [OpenAiController::class, 'fineTuningView'])->name('fine-tuning');
-    Route::get('/testclient',[OpenAiController::class, 'getClient']);
+    Route::get('/testclient', [OpenAiController::class, 'getClient']);
     Route::get('/openai/steps', [OpenAiController::class, 'steps'])->name('steps');
     Route::get('/openai/function-tools', [OpenAiController::class, 'addFunctionTool'])->name('function-tools');
 
@@ -226,7 +220,6 @@ Route::middleware(['auth'])->group(function () {
 
 });
 
-Route::get('enable2fa', [TwoFAController::class, 'twofaEnable'])->name('enable2fa');
 
 // ITEMS
 // Route::get('/items', [ItemController::class, 'index'])->name('items.index');
@@ -243,13 +236,13 @@ Route::group([
 
 
 // Route for fetching task details
-Route::get('/tasks/{id}', function ($id) {
-    $task = Task::with('client', 'supplier', 'agent.branch', 'invoiceDetail.invoice')->find($id);
-    if ($task) {
-        return response()->json($task);
-    }
-    return response()->json(['error' => 'Task not found'], 404);
-});
+// Route::get('/tasks/{id}', function ($id) {
+//     $task = Task::with('client', 'supplier', 'agent.branch', 'invoiceDetail.invoice')->find($id);
+//     if ($task) {
+//         return response()->json($task);
+//     }
+//     return response()->json(['error' => 'Task not found'], 404);
+// });
 
 
 
@@ -261,13 +254,14 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
+Route::get('/invoice/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoice.pdf');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');   
-Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial'); 
+Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
+Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial');
 Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 
@@ -298,21 +292,32 @@ Route::group([
     'middleware' => ['auth'],
 ], function () {
 
-    Route::get('/payment', [PaymentController::class, 'showPaymentPage'])->name('payment.choose');
-    Route::get('/payment/process', [PaymentController::class, 'process'])->name('payment.process');
-    Route::post('/payment-create/{invoiceNumber}', [PaymentController::class, 'create'])->name('payment.create');
-    Route::post('/payment-webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
-    Route::get('/payment-check', [PaymentController::class, 'check'])->name('payment.check');
-    Route::get('/payment-clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('payment.clients');
-    Route::get('/payment-clients-process', [PaymentController::class, 'paymentClientProcess'])->name('payment.clients.process');
-    Route::get('/clients/create', action: [ClientController::class, 'create'])->name('clients.create');
-    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-    Route::get('/clients/list', [ClientController::class, 'list'])->name('clients.list');
-    Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
-    Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
-    Route::put('clients/{id}', [ClientController::class, 'update'])->name('clients.update');
-    Route::post('/clientsupload', [ClientController::class, 'import'])->name('clientsupload.import');
-    Route::put('/client/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('client.changeAgent');
+    Route::group([
+        'prefix' => 'payment',
+        'as' => 'payment.',
+    ], function () {
+        Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose');
+        Route::get('/process', [PaymentController::class, 'process'])->name('process');
+        Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create');
+        Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
+        Route::get('/check', [PaymentController::class, 'check'])->name('check');
+        Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
+        Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
+    });
+
+    Route::group([
+        'prefix' => 'clients',
+        'as' => 'clients.',
+    ], function () {
+        Route::get('/', [ClientController::class, 'index'])->name('index');
+        Route::get('/create', [ClientController::class, 'create'])->name('create');
+        Route::post('/', [ClientController::class, 'store'])->name('store');
+        Route::get('/{id}', [ClientController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [ClientController::class, 'update'])->name('update');
+        Route::post('/upload', [ClientController::class, 'import'])->name('upload');
+        Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
+    });
 });
 
 // REPORTS

@@ -15,6 +15,9 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 
 
 
@@ -29,7 +32,7 @@
     <!-- CSS -->
 
     @vite(['resources/css/app.css', 'resources/css/cityCss.css', 'resources/css/style.css'])
-    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js', 'resources/js/tools.js'])
+    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js', 'resources/js/tools.js','resources/js/nice-select2.js'])
 
     @livewireStyles
 

@@ -11,6 +11,8 @@ export default defineConfig({
                 "resources/js/jsbyNisma.js",
                 "resources/js/app.js",
                 "resources/js/tools.js",
+                "resources/js/nice-select2.js",
+                "resources/js/tasks.js"
             ],
             refresh: true,
         }),

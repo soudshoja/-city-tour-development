@@ -6,6 +6,7 @@ use App\Http\Traits\NotificationTrait;
 use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetail;
+use App\Models\InvoicePartial;
 use App\Models\GeneralLedger;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Sequence;
@@ -59,17 +60,22 @@ class PaymentController extends Controller
 
     public function create($invoiceNumber, Request $request)
     {
-
+        Log::info('request:', ['request' => $request]);
         $request->validate([
             'client_name' => 'required|string|max:255',
             'client_email' => 'required|email',
             'client_phone' => 'required|string|max:15',
             // 'selected_items' => 'required|array',
             'total_amount' => 'required|numeric',
-            'payment_method' => 'required|string'
+            'payment_method' => 'required|string',
+            'invoice_partial_id' => 'required|array'
         ]);
 
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
+            
+         // Process selected partials (if needed for further logic)
+       $selectedPartials = InvoicePartial::whereIn('id', $request->invoice_partial_id)->get();
+
 
         $data = [
             'invoice' => $invoice,
@@ -78,6 +84,8 @@ class PaymentController extends Controller
             'client_phone' => $request->client_phone,
             'total_amount' => $request->total_amount,
             'payment_method' => $request->payment_method,
+            'invoice_partial_id' =>  $request->invoice_partial_id,
+            'selected_partials' => $selectedPartials,
             'selected_items' => $request->selected_items,
             'redirect_url' => route('payment.process'),
             'webhook_url' => route('payment.webhook'),
@@ -140,7 +148,7 @@ class PaymentController extends Controller
         $voucherSequence->save();
 
         $invoice = $data['invoice'];
-
+        $selectedPartials = $data['selected_partials'];
 
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
@@ -170,6 +178,7 @@ class PaymentController extends Controller
             'metadata' => [
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
+                'invoice_partial_id' => json_encode($data['invoice_partial_id']),
             ],
             'redirect' => [
                 'url' => $data['redirect_url'],
@@ -187,11 +196,13 @@ class PaymentController extends Controller
         }
 
         $tap = new Tap();
-
+        Log::info('requestTap', ['requestTap' => $requestTap]);
         $response = $tap->createCharge($requestTap);
         if (isset($response['error'])) {
             return response()->json(['error' => $response['error']['description']], 500);
         }
+
+
 
         $payment->payment_reference = $response['id'];
         $payment->status = 'initiate';
@@ -205,6 +216,7 @@ class PaymentController extends Controller
 
     public function process(Request $request)
     {
+        Log::info('process:', ['process' => $request]);
         $tap = new Tap();
 
         $tap_id = $request->tap_id;
@@ -241,6 +253,8 @@ class PaymentController extends Controller
         $totalAmount = $response['amount'];
         $paymentId = $response['metadata']['payment_id'];
         $invoiceNumber = $response['metadata']['invoice_number'];
+       // $invoicePartialIds = $response['metadata']['invoice_partial_id'];
+        $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'], true);
 
         $this->storeNotification([
             'user_id' => Auth::id(),
@@ -363,13 +377,29 @@ class PaymentController extends Controller
             }
         }
 
-        // Update the invoice status based on the payment received
-        $totalPaid = Payment::where('invoice_id', $invoice->id)->sum('amount');
-        if ($totalPaid >= $invoice->amount) {
-            $invoice->status = 'paid';
-        } else {
-            $invoice->status = 'partial'; // Change to 'partial' if not fully paid
+
+        $selectedPartials = InvoicePartial::whereIn('id', $invoicePartialIds)->get();
+
+        foreach ($selectedPartials as $invoicePartial) {
+            $invoicePartial->payment_id = $payment->id; // Save the payment ID to each partial
+            $invoicePartial->status = 'paid'; 
+            $invoicePartial->save();
         }
+        Log::info('selectedPartials:', ['selectedPartials' => $selectedPartials]);
+        $invoicePartials = InvoicePartial::where('invoice_id', $invoice->id)->get();
+        // Update the invoice status based on the payment received
+        Log::info('invoicePartials:', ['invoicePartials' => $invoicePartials]);
+        $paidCount = $invoicePartials->where('status', 'paid')->count();
+        Log::info('paidCount:', ['paidCount' => $paidCount]);
+        // Determine the invoice status based on the number of paid partials
+        if ($paidCount === $invoicePartials->count()) {
+            $invoice->status = 'paid'; // All partials are paid
+        } elseif ($paidCount > 0) {
+            $invoice->status = 'partial'; // Some partials are paid
+        } else {
+            $invoice->status = 'unpaid'; // No partials are paid
+        }
+
         $invoice->paid_date = now();
         $invoice->save();
 

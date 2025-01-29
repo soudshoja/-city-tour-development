@@ -158,7 +158,7 @@
 
         </div>
         <!-- right -->
-        <div class="content-30">
+        <div class="content-30 hidden">
 
             <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
                 <!-- customize -->

@@ -13,7 +13,7 @@
                     </svg>
                 </a>
             </div>
-            <h2 class="text-2xl font-semibold text-gray-800 text-center dark:text-white">All Transaction Records</h2>
+            <h2 class="text-3xl font-bold dark:text-white">All Transaction Records</h2>
         </div>
         <!--/ title -->
 
@@ -108,10 +108,6 @@
         </div>
         @endforeach
     </div>
-
-
-
-
     <!-- ./page content -->
 
 

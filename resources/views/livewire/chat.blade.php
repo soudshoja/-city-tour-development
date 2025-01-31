@@ -565,7 +565,6 @@
             </form>
         </div>
     </div>
-
 </div>
 
 
@@ -581,6 +580,7 @@
     const createClient = $("#create-client");
     const createAgent = $("#create-agent");
     const createBranch = $("#create-branch");
+    const invoiceList = $("#invoice-list");
     const pricingFields = $("#pricing-fields");
     const clientFields = $("#client-fields");
     const agentFields = $("#agent-fields");
@@ -597,11 +597,29 @@
     appendMessage("cityTour", "Welcome to City Tour. You can ask anything.");
 
     function appendMessage(role, content) {
-            const messageClass = role === "user" ? "text-end" : "text-start";
-            const message = `<div class="${messageClass}"><strong>${role}:</strong> ${content}</div>`;
-            chatLog.append(message);
-            chatLog.scrollTop(chatLog.prop("scrollHeight"));
-        }
+    const messageClass = role === "user" ? "text-end" : "text-start";
+    const messageContainer = document.createElement("div");
+    messageContainer.classList.add(messageClass);
+
+    const roleElement = document.createElement("strong");
+    roleElement.textContent = `${role}: `;
+    messageContainer.appendChild(roleElement);
+
+    if (typeof content === "string" && content.startsWith("<div>")) {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = content;
+        messageContainer.appendChild(wrapper);
+    } else {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = content;
+        messageContainer.appendChild(wrapper);
+    }
+
+    const chatLog = document.getElementById("chat-log");
+    chatLog.appendChild(messageContainer);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
 
 
 
@@ -637,12 +655,11 @@
                     loadBranch(response.branch);
                 } else {
                     if (response && response.choices && response.choices.length > 0) {
-                        const botMessage = response.choices[0].message.content;
-                        if (botMessage.includes('-') || botMessage.includes('•')) {
-                            appendMessage('cityTour', formatList(botMessage));
-                        } else {
-                            appendMessage('cityTour', botMessage);
-                        }
+                        let botMessage = response.choices[0].message.content;
+
+                             // Clean up the message to remove any extra characters
+                             botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim(); 
+                             appendMessage('cityTour', botMessage);
                     } else {
                         appendMessage('cityTour', "No response from chatbot. Please try again.");
                     }
@@ -690,12 +707,9 @@
                         loadBranch(response.branch);
                     } else {
                         if (response && response.choices && response.choices.length > 0) {
-                            const botMessage = response.choices[0].message.content;
-                            if (botMessage.includes('-') || botMessage.includes('•')) {
-                                appendMessage('cityTour', formatList(botMessage));
-                            } else {
-                                appendMessage('cityTour', botMessage);
-                            }
+                            let botMessage = response.choices[0].message.content;
+
+                            appendMessage('cityTour', botMessage);
                         } else {
                             appendMessage('cityTour', "No response from chatbot. Please try again.");
                         }
@@ -712,6 +726,8 @@
 
 
     function loadTaskSelection(tasks) {
+        tasks = Object.values(tasks);
+        console.log(tasks);
         taskList.empty();
         taskSelection.show();
         tasks.forEach(task => {
@@ -724,16 +740,19 @@
         });
     }
 
+
     function formatList(message) {
-        // Handle both bullet points and dashed lists (you can add more formatting cases if necessary)
-        let listItems = [];
-        if (message.includes('-')) {
-            listItems = message.split('-').map(item => `<li>${item.trim()}</li>`).filter(item => item.trim().length > 0);
-        } else if (message.includes('•')) {
-            listItems = message.split('•').map(item => `<li>${item.trim()}</li>`).filter(item => item.trim().length > 0);
-        }
-        return `<ul>${listItems.join('')}</ul>`;
-    }
+    // Split the message by list numbering (e.g., "1.", "2.", "3.")
+    const listItems = message.split(/\d+\.\s/).filter(item => item.trim() !== '');
+
+    // Add numbering back and format each item with <br> for line breaks
+    return listItems
+        .map((item, index) => `${index + 1}. ${item.trim()}`)
+        .join('<br>');
+}
+
+
+
 
     confirmTasksButton.on("click", function() {
         selectedTasks = taskList.find("input[type='checkbox']:checked").map(function() {
@@ -1548,6 +1567,7 @@
             },
         });
     });
+
 
          const agentDropdown = new TomSelect("#agent_idChat", {
                     placeholder: "Select Agent",  // Placeholder text

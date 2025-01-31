@@ -171,7 +171,7 @@ class MobileController extends Controller
 
     public function getInvoiceById($Id)
     {
-        $invoice = Invoice::with('client')->find($Id);
+        $invoice = Invoice::with('client', 'agent', 'invoiceDetails', 'invoicePartials')->find($Id);
     
         if (!$invoice) { // Check if it's null
             return response()->json(['message' => 'Invoice not found.'], 404);

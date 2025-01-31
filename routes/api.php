@@ -23,6 +23,7 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::get('/invoice/create', [MobileController::class, 'create'])->name('invoice.create');
         Route::post('/invoice', [MobileController::class, 'store']);
         Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
+        Route::get('/invoice/{Id}', [MobileController::class, 'getInvoiceById']);
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
 
 

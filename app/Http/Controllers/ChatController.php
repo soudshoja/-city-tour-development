@@ -373,8 +373,11 @@ class ChatController extends Controller
                     return [
                         'name' => $agent->name,
                         'id' => $agent->id,
+                        'email' => $agent->email,
+                        'contact' => $agent->phone_number,
                         'branchId' => $agent->branch_id,
-                        'role' => $agent->role,
+                        'branchName' => $agent->branch->name,
+                        'type' => $agent->type,
                     ];
                 }),
                 'clients' => $company->branches->flatMap->agents->flatMap->clients->map(function ($client) {
@@ -382,7 +385,11 @@ class ChatController extends Controller
                         'name' => $client->name,
                         'id' => $client->id,
                         'agentId' => $client->agent_id,
-                        'contact' => $client->contact_details,  // Only essential client details
+                        'agentName' => $client->agent->name,
+                        'contact' => $client->phone,  
+                        'email' => $client->email,
+                        'address' => $client->address,
+                        'passportNo' => $client->passport_no,
                     ];
                 }),
                 'tasks' => $company->branches
@@ -430,11 +437,15 @@ class ChatController extends Controller
                         'date' => $invoice->invoice_date,
                         'invoice_number' => $invoice->invoice_number,
                         'total_amount' => $invoice->amount,
+                        'invoice_date' => $invoice->invoice_date,
+                        'due_date' => $invoice->due_date,
                         'status' => $invoice->status,  // Only essential invoice details
                         'agentId' => $invoice->agent_id,
                         'agentName' => $invoice->agent->name,
                         'clientId' => $invoice->client_id,
                         'clientName' => $invoice->client->name,
+                        'payment_type' => $invoice->payment_type,
+                        'paid_date' => $invoice->paid_date,
                     ];
                 }),
                 'invoiceDetails' => $company->branches->flatMap->agents->flatMap->invoices->flatMap->invoiceDetails->map(function ($detail) {
@@ -445,6 +456,18 @@ class ChatController extends Controller
                         'task_description' => $detail->task_description,
                         'supplier_price' => $detail->supplier_price,
                         'markup_price' => $detail->markup_price,
+                        'invoice_price' => $detail->task_price,
+                    ];
+                }),
+                'invoicePartials' => $company->branches->flatMap->agents->flatMap->invoices->flatMap->invoicePartials->map(function ($detail) {
+                    return [
+                        'id' => $detail->id,
+                        'client_id' => $detail->client_id,
+                        'invoice_id' => $detail->invoice_id,
+                        'amount' => $detail->amount,
+                        'status' => $detail->status,
+                        'type' => $detail->type,
+                        'payment_gateway' => $detail->payment_gateway,
                     ];
                 }),
             ];

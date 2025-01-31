@@ -171,15 +171,22 @@ class MobileController extends Controller
 
     public function getInvoiceById($Id)
     {
-        $invoice = Invoice::with('client', 'agent', 'invoiceDetails', 'invoicePartials')->find($Id);
+        // Load the invoice with all necessary relationships, including nested relationships
+        $invoice = Invoice::with([
+            'client',
+            'agent',
+            'invoiceDetails.task', // Nested eager loading for task
+            'invoicePartials'
+        ])->find($Id);
     
-        if (!$invoice) { // Check if it's null
+        // Check if the invoice exists
+        if (!$invoice) {
             return response()->json(['message' => 'Invoice not found.'], 404);
         }
     
+        // Return the invoice with all relationships as a JSON response
         return response()->json($invoice, 200);
     }
-
 
 
     public function client()

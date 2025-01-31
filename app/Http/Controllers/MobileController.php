@@ -169,6 +169,16 @@ class MobileController extends Controller
         return response()->json($invoices, 200);
     }
 
+    public function getInvoiceById($Id)
+    {
+        $invoice = Invoice::with('client')->find($Id);
+        if ($invoices->isEmpty()) {
+            return response()->json(['message' => 'No invoices found for this agent.'], 404);
+        }
+        return response()->json($invoices, 200);
+    }
+
+
 
     public function client()
     {

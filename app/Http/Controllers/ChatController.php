@@ -73,39 +73,15 @@ class ChatController extends Controller
             ];
 
 
-            $messagesData = [
-                [
-                    'role' => 'system',
-                    'content' => "You are a chatbot for a travel agency that interacts with travel agencies or agents. 
-                              If the user's query involves a list, ensure the response is formatted as a proper list 
-                              using bullet points (-) or numbering (1., 2., 3.) for clarity. Use the following data:",
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $userMessage,
-                ],
-                [
-                    'role' => 'system',
-                    'content' => json_encode($userData), // Send user data as JSON to OpenAI
-                ],
-            ];
-
             // Classification Step
             $classification = $this->classifyMessage($userMessage) ?? 'GeneralMessage';
-            \Log::info('Message classification: ' . $classification);
 
             // Process based on classification
             if ($classification === 'DataQuery') {
-                $response = $this->openAIService->getChatResponse($messagesData);
+                return $this->handleDataRequest($userMessage, $userData);
 
-                $content = $response['choices'][0]['message']['content'] ?? '';
-                $formattedContent = $this->formatAsList($content);
-
-                $response['choices'][0]['message']['content'] = $formattedContent;
-
-                return response()->json($response, 200);
             } elseif ($classification === 'ActionRequest') {
-                \Log::info('action:', ['class' => $classification]);
+          
                 return $this->handleActionRequest($userMessage, $userData);
             } else {
                 // Pass the message to OpenAI if it's not recognized as data or action
@@ -118,42 +94,6 @@ class ChatController extends Controller
         }
     }
 
-
-    private function formatAsList($content)
-    {
-        // Check if the content is a single line (for cases like your example)
-        if (strpos($content, '-') === false && strpos($content, '1.') === false) {
-            // If it's a single line, split it by commas or other delimiters
-            $clients = preg_split('/\s*[-,;]\s*/', $content);
-
-            $formattedLines = [];
-            foreach ($clients as $client) {
-                $trimmedClient = trim($client);
-                if (!empty($trimmedClient)) {
-                    $formattedLines[] = '- ' . $trimmedClient; // Add bullet points
-                }
-            }
-
-            return implode("\n", $formattedLines); // Return the formatted list
-        }
-
-        // If it's already formatted with bullet points or numbering, return as is
-        $lines = explode("\n", $content);
-        $formattedLines = [];
-
-        foreach ($lines as $line) {
-            $trimmedLine = trim($line);
-
-            // Add bullet points or numbering if not already present
-            if (!preg_match('/^\d+\./', $trimmedLine) && !str_starts_with($trimmedLine, '-')) {
-                $formattedLines[] = '- ' . $trimmedLine; // Add bullet points for plain lines
-            } else {
-                $formattedLines[] = $trimmedLine; // Keep already formatted lines
-            }
-        }
-
-        return implode("\n", $formattedLines);
-    }
 
     private function classifyMessage($message)
     {
@@ -179,6 +119,59 @@ class ChatController extends Controller
         return 'GeneralMessage'; // Default to GeneralMessage if no classification is returned
     }
 
+    private function handleDataRequest($userMessage, $userData)
+    {
+        $messagesData = [
+            [
+                'role' => 'system',
+                'content' => "You are a chatbot for a travel agency. Classify the user's query into the following categories:
+                - 'general': The user is asking a question or seeking information.
+                - 'listing': The user is requesting a list of items or data.
+        
+                If the query is classified as 'listing', further identify the type of list being requested as one of the following:
+                - 'task list': If the user is requesting tasks or assignments.
+                - 'invoice list': If the user is requesting a list of invoices.
+                - 'client list': If the user is requesting a list of clients.
+                - 'agent list': If the user is requesting a list of agents.
+                - 'branch list': If the user is requesting a list of branches.
+        
+                **Always respond in HTML format** for listing queries:
+                - For a general question: Just return a simple text response.
+                - For a listing, return an HTML table with a grey background color for both headers and content.
+        
+                **Example Outputs:**
+                - User query: 'Show me all tasks'
+                - Response:
+                  `<table border='1' style='border-collapse: collapse; width: 100%;'>
+                    <tr><th style='background-color: #f2f2f2; padding: 8px;'>ID</th><th style='background-color: #f2f2f2; padding: 8px;'>Task</th></tr>
+                    <tr><td style='background-color: #f2f2f2; padding: 8px;'>1</td><td style='background-color: #f2f2f2; padding: 8px;'>Task 1</td></tr>
+                    <tr><td style='background-color: #f2f2f2; padding: 8px;'>2</td><td style='background-color: #f2f2f2; padding: 8px;'>Task 2</td></tr>
+                  </table>`
+        
+                - User query: 'I need the invoice list'
+                - Response:
+                  `<table border='1' style='border-collapse: collapse; width: 100%;'>
+                    <tr><th style='background-color: #f2f2f2; padding: 8px;'>Invoice Number</th><th style='background-color: #f2f2f2; padding: 8px;'>Amount</th></tr>
+                    <tr><td style='background-color: #f2f2f2; padding: 8px;'>101</td><td style='background-color: #f2f2f2; padding: 8px;'>$500.00</td></tr>
+                  </table>`
+        
+                Format all listings as an HTML table with relevant headers and a grey background color for both headers and content.",
+            ],
+            [
+                'role' => 'user',
+                'content' => $userMessage,
+            ],
+            [
+                'role' => 'system',
+                'content' => json_encode($userData), // Providing user data for context
+            ],
+        ];
+        
+        $response = $this->openAIService->getChatResponse($messagesData);
+    
+        return response()->json($response, 200);
+    }
+    
 
     private function handleActionRequest($message, $userData)
     {
@@ -197,7 +190,6 @@ class ChatController extends Controller
             ],
         ];
 
-        \Log::info('handleActionRequest:', ['message' => $message]);
         $response = $this->openAIService->getChatResponse($actionMessages);
 
         if (isset($response['choices'][0]['message']['content'])) {
@@ -256,7 +248,7 @@ class ChatController extends Controller
 
         return response()->json([
             'message' => 'Please choose the tasks to include in the invoice:',
-            'tasks' => collect($userData['tasks'])->map(function ($task) {
+            'tasks' => collect($userData['selectedtasks'])->map(function ($task) {
                 return [
                     'id' => $task['id'],
                     'description' => $task['description'],
@@ -381,8 +373,11 @@ class ChatController extends Controller
                     return [
                         'name' => $agent->name,
                         'id' => $agent->id,
+                        'email' => $agent->email,
+                        'contact' => $agent->phone_number,
                         'branchId' => $agent->branch_id,
-                        'role' => $agent->role,
+                        'branchName' => $agent->branch->name,
+                        'type' => $agent->type,
                     ];
                 }),
                 'clients' => $company->branches->flatMap->agents->flatMap->clients->map(function ($client) {
@@ -390,10 +385,16 @@ class ChatController extends Controller
                         'name' => $client->name,
                         'id' => $client->id,
                         'agentId' => $client->agent_id,
-                        'contact' => $client->contact_details,  // Only essential client details
+                        'agentName' => $client->agent->name,
+                        'contact' => $client->phone,  
+                        'email' => $client->email,
+                        'address' => $client->address,
+                        'passportNo' => $client->passport_no,
                     ];
                 }),
-                'tasks' => $company->branches->flatMap->agents->flatMap->clients->flatMap->tasks->map(function ($task) {
+                'tasks' => $company->branches
+                ->flatMap->agents->flatMap->clients->flatMap->tasks
+                ->map(function ($task) {
                     return [
                         'id' => $task->id,
                         'description' => $task->reference . ' - ' . $task->additional_info,
@@ -402,6 +403,29 @@ class ChatController extends Controller
                         'agentName' => $task->agent->name,
                         'clientId' => $task->client_id,
                         'clientName' => $task->client->name,
+                        'supplierName' => $task->supplier->name,
+                        'supplierId' => $task->supplier_id,
+                        'invprice' =>  $task->invoice_price,
+                        'price' => $task->total,
+                    ];
+                }),
+                'selectedtasks' => $company->branches()
+                ->with(['agents.clients.tasks.invoiceDetail']) // Eager load all nested relationships
+                ->get()
+                ->flatMap->agents->flatMap->clients->flatMap->tasks
+                ->filter(function ($task) {
+                    return !$task->invoiceDetail;
+                })
+                ->map(function ($task) {
+                    return [
+                        'id' => $task->id,
+                        'description' => $task->reference . ' - ' . $task->additional_info,
+                        'status' => $task->status,
+                        'agentId' => $task->agent_id,
+                        'agentName' => $task->agent->name,
+                        'clientId' => $task->client_id,
+                        'clientName' => $task->client->name,
+                        'supplierName' => $task->supplier->name,
                         'supplierId' => $task->supplier_id,
                         'invprice' =>  $task->invoice_price,
                         'price' => $task->total,
@@ -410,11 +434,18 @@ class ChatController extends Controller
                 'invoices' => $company->branches->flatMap->agents->flatMap->invoices->map(function ($invoice) {
                     return [
                         'id' => $invoice->id,
+                        'date' => $invoice->invoice_date,
                         'invoice_number' => $invoice->invoice_number,
                         'total_amount' => $invoice->amount,
+                        'invoice_date' => $invoice->invoice_date,
+                        'due_date' => $invoice->due_date,
                         'status' => $invoice->status,  // Only essential invoice details
                         'agentId' => $invoice->agent_id,
+                        'agentName' => $invoice->agent->name,
                         'clientId' => $invoice->client_id,
+                        'clientName' => $invoice->client->name,
+                        'payment_type' => $invoice->payment_type,
+                        'paid_date' => $invoice->paid_date,
                     ];
                 }),
                 'invoiceDetails' => $company->branches->flatMap->agents->flatMap->invoices->flatMap->invoiceDetails->map(function ($detail) {
@@ -425,6 +456,18 @@ class ChatController extends Controller
                         'task_description' => $detail->task_description,
                         'supplier_price' => $detail->supplier_price,
                         'markup_price' => $detail->markup_price,
+                        'invoice_price' => $detail->task_price,
+                    ];
+                }),
+                'invoicePartials' => $company->branches->flatMap->agents->flatMap->invoices->flatMap->invoicePartials->map(function ($detail) {
+                    return [
+                        'id' => $detail->id,
+                        'client_id' => $detail->client_id,
+                        'invoice_id' => $detail->invoice_id,
+                        'amount' => $detail->amount,
+                        'status' => $detail->status,
+                        'type' => $detail->type,
+                        'payment_gateway' => $detail->payment_gateway,
                     ];
                 }),
             ];

@@ -26,7 +26,7 @@
                             <td>{{ $role['name'] }}</td>
                             <td>{{ $role['description'] }}</td>
                             <td x-data="{ openModal: false }" class="">
-                                @foreach($role->permissions as $permission)
+                                @foreach($role->permissions->take(3) as $permission)
                                 <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">{{ $permission['name'] }}</span>
                                 @endforeach
                                 @if(count($role['permissions']) > 3)
@@ -46,7 +46,7 @@
                                                 <div id="permissionsContainer_{{ $role['id'] }}" class="h-64 overflow-y-auto">
                                                     @foreach($role['permissions'] as $permission)
                                                     <div id="" class="permission-item flex items-center justify-between border-b py-2">
-                                                        <span>{{ $permission }}</span>
+                                                        <span>{{ $permission->name }}</span>
                                                     </div>
                                                     @endforeach
                                                 </div>

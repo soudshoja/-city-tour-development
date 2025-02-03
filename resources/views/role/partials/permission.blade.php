@@ -16,7 +16,11 @@
               @foreach($groupPermission as $permission)
               <div class="grid grid-cols-4 border">
                   <div class="inline-block align-middle m-auto">
+                    @if(Route::is('role.edit'))
                       <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId[]" value="{{ $permission['id'] }}" {{ $permission['checked'] ? 'checked' : '' }}>
+                    @else
+                        <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId[]" value="{{ $permission['id'] }}">
+                    @endif
                   </div>
                   <div class="inline-block align-middle m-auto col-span-3">
                       <label for="{{$permission['id']}}">{{$permission['name']}}</label>

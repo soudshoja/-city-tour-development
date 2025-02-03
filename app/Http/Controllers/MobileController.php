@@ -120,7 +120,12 @@ class MobileController extends Controller
 
     public function task()
     {
-        return response()->json(Task::all(), 200);
+        $tasks = Task::with('invoiceDetail')->get()->map(function ($task) {
+            $task->is_invoiced = $task->invoiceDetail()->exists();
+            return $task;
+        });
+    
+        return response()->json($tasks, 200);
     }
 
     public function getTasksByAgentId($agentId)

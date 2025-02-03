@@ -49,31 +49,31 @@
         <div class="content-70">
             <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
-              <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                <!--  search icon -->
-                <div class="relative w-full">
-                    <!-- Search Input -->
-                    <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
+                <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
+                    <!--  search icon -->
+                    <div class="relative w-full">
+                        <!-- Search Input -->
+                        <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
 
-                    <!-- Search Button with SVG Icon -->
-                    <button type="button" class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                        id="searchButton">
-                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
-                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
-                        </svg>
-                    </button>
-                </div>
+                        <!-- Search Button with SVG Icon -->
+                        <button type="button" class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                            id="searchButton">
+                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
+                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
+                            </svg>
+                        </button>
+                    </div>
 
-                <!-- ./search icon -->
-                   <div class="flex customCenter gap-5 w-full justify-end">
-                      <button id="toggleFilters" class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                    <!-- ./search icon -->
+                    <div class="flex customCenter gap-5 w-full justify-end">
+                        <button id="toggleFilters" class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                 <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
                             </svg>
                             <span class="text-xs md:text-sm dark:text-black">Filters</span>
                         </button>
-                   </div>
+                    </div>
                 </div>
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
@@ -92,7 +92,6 @@
                                         </label>
                                     </th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Edit</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client name</th>
@@ -108,67 +107,67 @@
                                 </tr>
                                 @else
                                 @foreach ($invoices as $invoice)
-                                  @foreach ($invoice->invoiceDetails as $invoiceDetail)
-                                        <tr
-                                        data-price="{{ $invoice->total }}" data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
-                                            data-branch-id="{{ $invoice->agent->branch->id }}" data-agent-id="{{ $invoice->agent_id }}" data-status="{{ $invoice->status }}" data-type="{{ $invoiceDetail->task->type }}" data-client-id="{{ $invoice->client ? $invoice->client->id : null }}" data-task-id="{{ $invoice->id }}" class="taskRow"
-                                        >
-                                            <td>
-                                                <label class="custom-checkbox">
-                                                    <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                        <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
-                                                    </svg>
-                                                </label>
-                                            </td>
-                                            <td class="p-3 text-sm">
-                                                <a href="javascript:void(0);" class="viewInvoice text-blue-500 hover:underline" onclick="openInvoiceModal('{{ $invoice->invoice_number }}')">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                        <g fill="none" stroke="#333333" stroke-width="1.5">
-                                                            <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
-                                                            <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                                        </g>
-                                                    </svg>
-                                                </a>
-                                                <div id="viewInvoiceModal"
-                                                    class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
-                                                    <div class="relative">
-                                                        <!-- Modal Content -->
-                                                        <div class="w-full">
+                                @foreach ($invoice->invoiceDetails as $invoiceDetail)
+                                <tr
+                                    data-price="{{ $invoice->total }}" data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
+                                    data-branch-id="{{ $invoice->agent->branch->id }}" data-agent-id="{{ $invoice->agent_id }}" data-status="{{ $invoice->status }}" data-type="{{ $invoiceDetail->task->type }}" data-client-id="{{ $invoice->client ? $invoice->client->id : null }}" data-task-id="{{ $invoice->id }}" class="taskRow">
+                                    <td>
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                            </svg>
+                                        </label>
+                                    </td>
+                                    <td class="p-3 text-sm flex gap-2">
+                                        <a href="javascript:void(0);" class="viewInvoice text-blue-500 hover:underline" onclick="openInvoiceModal('{{ $invoice->invoice_number }}')">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <g fill="none" stroke="currentColor" stroke-width="1">
+                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5"></path>
+                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
+                                                </g>
+                                            </svg>
+                                        </a>
+                                        <a href="{{ route('invoice.edit', ['invoiceNumber' => $invoice->invoice_number]) }}"
+                                            class="text-sm font-medium text-blue-600 hover:underline">
 
-                                                        </div>
-                                                        <div id="invoiceInvoiceContent" class="">
-                                                            <!-- Invoice content will be loaded here dynamically -->
-                                                        </div>
-                                                    </div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                <path fill="none" stroke="#00ab55" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42" opacity=".5" />
+                                            </svg>
+                                        </a>
+                                        <div id="viewInvoiceModal"
+                                            class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
+                                            <div class="relative">
+                                                <!-- Modal Content -->
+                                                <div class="w-full">
+
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <a href="{{ route('invoice.edit', ['invoiceNumber' => $invoice->invoice_number]) }}"
-                                                    class="text-sm font-medium text-blue-600 hover:underline">
-                                                    Edit
-                                                </a>
+                                                <div id="invoiceInvoiceContent" class="">
+                                                    <!-- Invoice content will be loaded here dynamically -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
 
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
 
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->agent->name }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->client->name }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->payment_type }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->amount }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                @if ($invoice->status === 'paid')
-                                                <span class="badge badge-outline-success">{{ $invoice->status }}</span>
-                                                @else
-                                                <span class="badge badge-outline-danger">{{ $invoice->status }}</span>
-                                                @endif
-                                            </td>
-
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->agent->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->client->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->payment_type }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->amount }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        @if ($invoice->status === 'paid')
+                                        <span class="badge badge-outline-success">{{ $invoice->status }}</span>
+                                        @else
+                                        <span class="badge badge-outline-danger">{{ $invoice->status }}</span>
+                                        @endif
+                                    </td>
 
 
-                                        </tr>
-                                        @endforeach
-                                  @endforeach
+
+                                </tr>
+                                @endforeach
+                                @endforeach
                                 @endif
                             </tbody>
                         </table>
@@ -226,7 +225,7 @@
                         </button>
                     </div>
                 </div>
-        
+
                 <div class="w-full mb-5">
                     <div class="flex justify-between">
                         <div class="flex flex-wrap gap-4">
@@ -376,7 +375,8 @@
 
                                 <!-- Select Dropdown -->
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0"> <option selected value="" class="">Select Branch</option>
+                                    <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0">
+                                        <option selected value="" class="">Select Branch</option>
                                         @foreach($branches as $branch)
                                         <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                                         @endforeach
@@ -389,57 +389,57 @@
                     </div>
                 </div>
 
-        <!-- ./right -->
-    </div>
-    <!--./page content-->
-    @include('invoice.tasksjs')
-    <script>
-        function openInvoiceModal(invoiceNumber) {
-            const modal = document.getElementById("viewInvoiceModal");
-            const contentDiv = document.getElementById("invoiceInvoiceContent");
+                <!-- ./right -->
+            </div>
+            <!--./page content-->
+            @include('invoice.tasksjs')
+            <script>
+                function openInvoiceModal(invoiceNumber) {
+                    const modal = document.getElementById("viewInvoiceModal");
+                    const contentDiv = document.getElementById("invoiceInvoiceContent");
 
-            // Clear previous content
-            contentDiv.innerHTML = "";
+                    // Clear previous content
+                    contentDiv.innerHTML = "";
 
-            // Open the modal
-            modal.classList.remove("hidden");
-            url =
-                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                    ":invoiceNumber",
-                    invoiceNumber
-                );
+                    // Open the modal
+                    modal.classList.remove("hidden");
+                    url =
+                        "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                            ":invoiceNumber",
+                            invoiceNumber
+                        );
 
-            // Fetch the invoice details
-            fetch(url)
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error("Network response was not ok");
-                    }
-                    return response.text();
-                })
-                .then((data) => {
-                    contentDiv.innerHTML = data;
+                    // Fetch the invoice details
+                    fetch(url)
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error("Network response was not ok");
+                            }
+                            return response.text();
+                        })
+                        .then((data) => {
+                            contentDiv.innerHTML = data;
 
-                    // Close the modal when the backdrop is clicked
-                    modal.addEventListener("click", (event) => {
-                        if (event.target === modal) {
-                            closeInvoiceModal();
-                        }
-                    });
+                            // Close the modal when the backdrop is clicked
+                            modal.addEventListener("click", (event) => {
+                                if (event.target === modal) {
+                                    closeInvoiceModal();
+                                }
+                            });
 
 
-                })
-                .catch((error) => {
-                    console.error("Error fetching invoice details:", error);
-                    contentDiv.innerHTML =
-                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
+                        })
+                        .catch((error) => {
+                            console.error("Error fetching invoice details:", error);
+                            contentDiv.innerHTML =
+                                '<p class="text-center text-red-500">Failed to load invoice details.</p>';
 
-                });
-        }
+                        });
+                }
 
-        function closeInvoiceModal() {
-            const modal = document.getElementById("viewInvoiceModal");
-            modal.classList.add("hidden");
-        }
-    </script>
+                function closeInvoiceModal() {
+                    const modal = document.getElementById("viewInvoiceModal");
+                    modal.classList.add("hidden");
+                }
+            </script>
 </x-app-layout>

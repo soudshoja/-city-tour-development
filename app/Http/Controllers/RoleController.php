@@ -22,7 +22,6 @@ class RoleController extends Controller
 
     public function index()
     {
-
         $roles = $this->getAllRole();
 
         return view('role.index', compact('roles'));
@@ -34,8 +33,30 @@ class RoleController extends Controller
         return view('role.create', compact('permissions'));
     }
 
-    public function store()
+    public function store(Request $request)
     {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string|max:255',
+            'permissionsId' => 'required|array'
+        ], [
+            // 'name.required' => 'The role name is required.',
+            // 'name.string' => 'The role name must be a string.',
+            // 'name.max' => 'The role name may not be greater than 255 characters.',
+            // 'description.required' => 'The description is required.',
+            // 'description.string' => 'The description must be a string.',
+            // 'description.max' => 'The description may not be greater than 255 characters.',
+            // 'permissionsId.array' => 'The permissions must be an array.',
+            'permissionsId.required' => 'Please select at least one permission.'
+        ]);
+
+        $role = Role::create([
+            'name' => $request->name,
+            'description' => $request->description
+        ]);
+        $permissions = Permission::whereIn('id', $request->permissionsId)->get();
+        $role->syncPermissions($permissions);
+        
         return redirect()->route('role.index');
     }
 
@@ -61,8 +82,6 @@ class RoleController extends Controller
 
         $permissions = $groupedPermissions;
 
-        // foreach($permissions as $key => $permission) dump($key);
-        // dd($permissions);
         return view('role.edit', compact('role','permissions'));
     }
 
@@ -80,39 +99,15 @@ class RoleController extends Controller
         }
 
         if($role->permissions->count() == 0){
-            if($request->permissionId->count() == 0){
+            if(count($request->permissionsId) == 0){
                 return redirect()->back()->with('error', 'Pick at least one permission');
             }
         }
 
-        $existingPermissions = $role->permissions->pluck('id')->toArray();
-        $newPermissions = $request->permissionsId ?? [];
-        $revokedPermissions = array_diff($existingPermissions, $newPermissions);
-        $addedPermissions = array_diff($newPermissions, $existingPermissions);
         try {
 
-            foreach ($revokedPermissions as $permissionId) {
-                $permission = Permission::find($permissionId);
-                $role->revokePermissionTo($permission);
-            }
-
-            foreach ($addedPermissions as $permissionId) {
-                $permission = Permission::find($permissionId);
-                $role->givePermissionTo($permission);
-            }
-
-
-            // foreach ($request->permissionsId['enabled'] as $permissionId) {
-
-            //     $permission = Permission::findById($permissionId);
-
-            //     $role->givePermissionTo($permission);
-            // }
-
-            // foreach ($request->permissionsId['disabled'] as $permissionId) {
-
-            //     $permission = Permission::findById($permission);
-            // }
+            $permissions = Permission::whereIn('id', $request->permissionsId)->get();
+            $role->syncPermissions($permissions);
 
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
@@ -155,16 +150,4 @@ class RoleController extends Controller
         return Role::with('permissions')->get();
     }
 
-    public function getRole($id)
-    {
-        $roles = $this->getAllRole();
-
-        foreach ($roles as $role) {
-            if ($role['id'] == $id) {
-                return $role;
-            }
-        }
-
-        return null;
-    }
 }

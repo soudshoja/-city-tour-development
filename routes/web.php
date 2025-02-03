@@ -93,7 +93,9 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Routes for creating new records
-    Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions')->middleware('role:admin');
+    Route::get('/companies', [CompanyController::class, 'index'])->name('companies.list');
+    Route::get('/companies/list' , [CompanyController::class, 'listAjax'])->name('companies.list.ajax');
+    Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
     Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
     Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');
@@ -114,6 +116,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
     Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
     Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
+    Route::delete('/companies/{id}', [CompanyController::class, 'destroy'])->name('companies.destroy');
 
 
     //TASKS

@@ -34,7 +34,13 @@ class CompanyController extends Controller
 {
     use AuthorizesRequests;
 
+    public function index(Company $company)
+    {
+        Gate::authorize('view', $company);
 
+        $companies = Company::all();
+        return view('companies.list', compact('companies'));
+    }
 
     public function getTransaction()
     {
@@ -520,5 +526,16 @@ class CompanyController extends Controller
 
         // Redirect back with a success message
         return redirect()->back()->with('success', 'Agent type deleted successfully.');
+    }
+
+    public function destroy($id)
+    {
+        Gate::authorize('delete', Company::class);
+
+        $company = Company::findOrFail($id);
+
+        $company->delete();
+
+        return redirect()->route('companies.index')->with('success', 'Company deleted successfully.');
     }
 }

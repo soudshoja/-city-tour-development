@@ -58,17 +58,17 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
 
-    protected function twoFactorCode(): Attribute
-    {
-        return new Attribute(
-            function ($value) {
-                return $value ? decrypt($value) : null;
-            },
-            function ($value) {
-                return $value ? encrypt($value) : null;
-            }
-        );
-    }
+    // protected function twoFactorCode(): Attribute
+    // {
+    //     return new Attribute(
+    //         function ($value) {
+    //             return $value ? decrypt($value) : null;
+    //         },
+    //         function ($value) {
+    //             return $value ? encrypt($value) : null;
+    //         }
+    //     );
+    // }
 
     public function agent()
     {

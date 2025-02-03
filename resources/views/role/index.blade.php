@@ -8,7 +8,7 @@
     </style>
     <div class="">
         <div class="dt-permission">
-            <div class="bg-white rounded-md text-center shadow-md my-2 p-2">
+            <div class="bg-white rounded-md text-center shadow-md my-2 p-4">
                 <table id="newTestTable">
                     <thead>
                         <tr>

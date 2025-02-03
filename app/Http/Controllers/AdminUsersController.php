@@ -10,23 +10,47 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use App\Models\Branch;
 use App\Models\Agent;
-use App\Models\Role;
-
+use Spatie\Permission\Models\Role;
 use App\Models\User;
+use Exception;
 use Illuminate\Http\Request;
 
 class AdminUsersController extends Controller
 {
     public function index()
     {
-        $NumberOfAdmins = User::where('role', 'admin')->count();
-        $adminUsers = User::where('role', 'admin')->get();
-
-        return view('adminsList', compact('adminUsers', 'NumberOfAdmins'));
+        $usersCount = User::all()->count();
+        $users = User::with('roles')->get();
+        
+        return view('users.index', compact('users', 'usersCount'));
     }
 
+    public function editRole($roleId)
+    {
+        $user = User::find($roleId);
+        $roles = Role::all();
 
+        return view('users.edit', compact('user', 'roles'));
+    }
 
+    public function storeRole(Request $request)
+    {
+        $validatedData = $request->validate([
+            'role_id' => 'required|integer|exists:roles,id',
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        $user = User::find($validatedData['user_id']);
+        $role = Role::find($validatedData['role_id']);
+        try {
+            $user->syncRoles($role);
+        } catch (Exception $e) {
+            logger($e->getMessage());
+            return redirect()->route('users.index')->with('error', 'Role assignment failed.');
+        }
+
+        return redirect()->route('users.index')->with('success', 'Role assigned successfully.');
+    }
 
     public function newCompany()
     {
@@ -116,7 +140,6 @@ class AdminUsersController extends Controller
 
         return redirect()->route('companies.index')->with('success', 'Company registered successfully.');
     }
-
 
     public function ShowCompanies(Request $request)
     {

@@ -14,7 +14,7 @@ class CompanyPolicy
      */
     public function viewAny(User $user): bool
     {
-    return true;
+        return true;
     }
 
     /**
@@ -22,7 +22,10 @@ class CompanyPolicy
      */
     public function view(User $user, Company $company): bool
     {
-        return $user->role_id === Role::ADMIN;
+        if ($user->can('read company')) return true;
+
+        return $user->id == $company->user_id;
+
     }
 
     /**
@@ -38,7 +41,9 @@ class CompanyPolicy
      */
     public function update(User $user, Company $company): bool
     {
-        return $user->role_id === Role::ADMIN;
+        if ($user->can('update company')) return true;
+
+        return $user->id == $company->user_id;
     }
 
     /**
@@ -46,7 +51,9 @@ class CompanyPolicy
      */
     public function delete(User $user, Company $company): bool
     {
-        //
+        if($user->can('delete company')) return true;
+
+        return false;
     }
 
     /**

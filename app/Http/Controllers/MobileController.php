@@ -131,6 +131,12 @@ class MobileController extends Controller
         return response()->json($tasks, 200);
     }
 
+    public function taskPending()
+    {
+        $tasks = Task::whereDoesntHave('invoiceDetail')->get();
+        return response()->json($tasks, 200);
+    }
+
     public function getClientByAgentId($agentId)
     {
         // Retrieve agents where the 'user_id' column matches the provided userId

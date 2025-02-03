@@ -3,7 +3,7 @@
 
 
 <header>
-    <div class="relative h-3 w-full -z-10 px-6 py-4 top5Up">
+    <div class="relative h-3 w-full -z-10 px-3 py-4 top5Up">
         <p class="text-center text-background">
             CityTourApp
         </p>
@@ -249,7 +249,7 @@
         font-weight: bold;
         text-transform: uppercase;
         font-family: 'Archivo Black', sans-serif;
-        letter-spacing: 3.1rem;
+        letter-spacing: 2.5rem;
         -webkit-background-clip: text;
         background-clip: text;
         text-align: center;

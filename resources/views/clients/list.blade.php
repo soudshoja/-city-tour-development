@@ -155,8 +155,27 @@
     <!-- Client Details Container -->
     <div class="w-[30%] hidden" id="showClientRightDiv">
         <div id="clientDetails" class="panel w-full xl:mt-0 rounded-lg h-auto">
-            <!-- Client details will be rendered here -->
         </div>
+            <!-- Client details will be rendered here -->
+                     <!-- Form to add new client -->
+        <div class="panel w-full xl:mt-0 rounded-lg h-auto">
+            <h3 class="text-lg font-bold mb-4">Add New Client</h3>
+            <form id="addClientForm" class="space-y-4">
+                <div>
+                    <label for="clientName" class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" id="clientName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Client Name" required>
+                </div>
+                <div>
+                    <label for="clientEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="clientEmail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Client Email" required>
+                </div>
+                <div>
+                    <label for="clientPhone" class="block text-sm font-medium text-gray-700">Phone</label>
+                    <input type="text" id="clientPhone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Client Phone" required>
+                </div>
+                <button type="submit" class="w-full mt-4 bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600">Add Client</button>
+            </form>
+          </div>
     </div>
     <!-- ./right -->
 </div>

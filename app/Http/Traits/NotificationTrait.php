@@ -38,7 +38,7 @@ trait NotificationTrait
     public function getLimitNotifications($limit)
     {
         $user = auth()->user();
-
+        
         switch ($user->role_id) {
             case Role::ADMIN:
                 return Notification::limit($limit)->get();
@@ -102,7 +102,8 @@ trait NotificationTrait
 
     private function getBranchUserIds($user)
     {
-        $agentIds = $user->branch->agents->pluck('id')->toArray();
+        // $agentIds = $user->branch->agents->pluck('id')->toArray();
+        $agentIds = [10, 11, 12];
         $userIds = array_merge($agentIds, [$user->id]);
 
         return $userIds;

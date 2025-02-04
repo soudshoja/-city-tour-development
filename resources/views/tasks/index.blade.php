@@ -145,6 +145,7 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
+                                    @can('create', 'App\Models\Invoice')
                                     <th>
                                         <label class="custom-checkbox">
                                             <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
@@ -153,6 +154,7 @@
                                             </svg>
                                         </label>
                                     </th>
+                                    @endcan
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Task Id</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
@@ -164,7 +166,9 @@
                                     @endif
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Billing</th>
+                                    @can('viewPrice', 'App\Models\Task')
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</th>
+                                    @endcan
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</th>
                                 </tr>
@@ -174,6 +178,7 @@
                                 <tr
                                     data-price="{{ $task->price }}" data-supplier-id="{{ $task->supplier->id }}"
                                     data-branch-id="{{ $task->agent->branch->id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client ? $task->client->id : null }}" data-task-id="{{ $task->id }}" class="taskRow">
+                                    @can('create', 'App\Models\Invoice')
                                     <td>
                                         <label class="custom-checkbox" data-tooltip="select task">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
@@ -182,8 +187,9 @@
                                             </svg>
                                         </label>
                                     </td>
+                                    @endcan
                                     <td class="p-3 text-sm flex gap-3 justify-center">
-                                        <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300" data-task-id="{{ $task->id }}">
+                                        <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300" data-task-id="{{ $task->id }}" data-task-url="{{ route('tasks.show', $task->id) }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
                                                     <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
@@ -212,7 +218,9 @@
                                         </span>
                                         @endif
                                     </td>
+                                    @can('viewPrice', 'App\Models\Task')
                                     <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">{{ $task->price }}</td>
+                                    @endcan
                                     <td>
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
                                         {{ $task->status === 'Completed' ? 'badge-outline-success' : '' }}

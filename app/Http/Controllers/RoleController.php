@@ -8,8 +8,8 @@ use App\Models\Client;
 use App\Models\OpenAi;
 use Exception;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Permission;
+use App\Models\Role;
 
 class RoleController extends Controller
 {
@@ -62,9 +62,10 @@ class RoleController extends Controller
 
     public function edit($roleId)
     {
-        $groupedPermissions = cache()->remember('permissions', 60, function () {
+        $groupedPermissions = cache()->remember('permissions', 3600, function () {
             return $this->getAllPermission();
         });
+
         $role = Role::with('permissions')->find($roleId);
 
         // compare permissions with role permissions and check if the role already has the same permission
@@ -118,8 +119,15 @@ class RoleController extends Controller
 
     public function getAllPermission()
     {
-        $permissions = Permission::all();
+        $permissions = Permission::getGroupedByGroup();
 
+        return $permissions;
+    }
+
+    public function getAllPermissionGroupedByAI()
+    {
+        $permissions = Permission::all();
+        
         $message = [
             [
                 'role' => 'user',
@@ -140,7 +148,7 @@ class RoleController extends Controller
         ];
 
         $response = $this->aiService->chatCompletionJsonResponse($message);
-
+        
         return json_decode($response['choices'][0]['message']['content'],true);
 
     }

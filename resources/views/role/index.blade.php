@@ -5,6 +5,9 @@
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
         }
+        #dt-search-0{
+            width: 100%;
+        }
     </style>
     <div class="">
         <div class="dt-permission">
@@ -26,29 +29,31 @@
                             <td>{{ $role['name'] }}</td>
                             <td>{{ $role['description'] }}</td>
                             <td x-data="{ openModal: false }" class="">
-                                @foreach($role->permissions->take(3) as $permission)
-                                <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">{{ $permission['name'] }}</span>
-                                @endforeach
-                                @if(count($role['permissions']) > 3)
-                                <button type="button" class="text-blue-500 text-xs" @click="openModal = true">See All</button>
-                                @endif
-
-                                <!-- Modal -->
-                                <div x-show="openModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-400 bg-opacity-50" x-on:keydown.escape.window="openModal = false">
-                                    <div class="flex items-center justify-center min-h-screen px-4">
-                                        <div class="bg-white rounded-lg shadow-lg w-full max-w-md" @click.away="openModal = false">
-                                            <div class="p-4 border-b flex justify-between">
-                                                <h2 class="text-lg font-semibold">Permissions</h2>
-                                                <button type="button" class="text-gray-500 hover:text-gray-700" @click="openModal = false">Close</button>
-                                            </div>
-                                            <div class="p-4">
-                                                <input type="text" id="searchInput_{{ $role['id'] }}" placeholder="Search..." class="w-full mb-4 p-2 border rounded" onkeyup="filterPermissions({{ $role['id'] }})">
-                                                <div id="permissionsContainer_{{ $role['id'] }}" class="h-64 overflow-y-auto">
-                                                    @foreach($role['permissions'] as $permission)
-                                                    <div id="" class="permission-item flex items-center justify-between border-b py-2">
-                                                        <span>{{ $permission->name }}</span>
+                                <div class="flex gap-2 flex-col lg:flex-row">
+                                    @foreach($role->permissions->take(3) as $permission)
+                                    <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">{{ $permission['name'] }}</span>
+                                    @endforeach
+                                    @if(count($role['permissions']) > 3)
+                                    <button type="button" class="text-blue-500 text-xs" @click="openModal = true">See All</button>
+                                    @endif
+    
+                                    <!-- Modal -->
+                                    <div x-show="openModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-400 bg-opacity-50" x-on:keydown.escape.window="openModal = false">
+                                        <div class="flex items-center justify-center min-h-screen px-4">
+                                            <div class="bg-white rounded-lg shadow-lg w-full max-w-md" @click.away="openModal = false">
+                                                <div class="p-4 border-b flex justify-between">
+                                                    <h2 class="text-lg font-semibold">Permissions</h2>
+                                                    <button type="button" class="text-gray-500 hover:text-gray-700" @click="openModal = false">Close</button>
+                                                </div>
+                                                <div class="p-4">
+                                                    <input type="text" id="searchInput_{{ $role['id'] }}" placeholder="Search..." class="w-full mb-4 p-2 border rounded" onkeyup="filterPermissions({{ $role['id'] }})">
+                                                    <div id="permissionsContainer_{{ $role['id'] }}" class="h-64 overflow-y-auto">
+                                                        @foreach($role['permissions'] as $permission)
+                                                        <div id="" class="permission-item flex items-center justify-between border-b py-2">
+                                                            <span>{{ $permission->name }}</span>
+                                                        </div>
+                                                        @endforeach
                                                     </div>
-                                                    @endforeach
                                                 </div>
                                             </div>
                                         </div>

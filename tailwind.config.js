@@ -28,20 +28,16 @@ export default {
             zIndex: {
                 60: 60
             },
-            width: {
-                120: "30rem",
-                160: "40rem",
-            },
-            maxWidth: {
-                120: "30rem",
-                160: "40rem",
-            },
-            height: {
-                120: "30rem",
-                160: "40rem",
-                'near-full' : "80%",
-            },
-            maxHeight: {
+            // width: {
+            //     120: "30rem",
+            //     160: "40rem",
+            // },
+            // maxWidth: {
+            //     120: "30rem",
+            //     160: "40rem",
+            // },
+            spacing: {
+                18: "4.5rem",
                 120: "30rem",
                 160: "40rem",
                 'near-full' : "80%",

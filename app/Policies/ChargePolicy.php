@@ -2,27 +2,28 @@
 
 namespace App\Policies;
 
-use App\Models\Invoice;
-use App\Models\Role;
+use App\Models\Charge;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class InvoicePolicy
+class ChargePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        //
+        if($user->roles('admin')) return true;
+
+        return $user->can('read charges');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Invoice $invoice): bool
+    public function view(User $user, Charge $charge): bool
     {
-        //
+        return false;
     }
 
     /**
@@ -30,47 +31,38 @@ class InvoicePolicy
      */
     public function create(User $user): bool
     {
-        if($user->roles('admin')) return true;
-
-        return $user->can('create invoice');
+        return false;
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Invoice $invoice): bool
+    public function update(User $user, Charge $charge): bool
     {
-        // if($user->roles('admin')) return true;
-
-        return $user->can('update invoice');
+        return false;
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Invoice $invoice): bool
+    public function delete(User $user, Charge $charge): bool
     {
-        //
+        return false;
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, Invoice $invoice): bool
+    public function restore(User $user, Charge $charge): bool
     {
-        //
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, Invoice $invoice): bool
+    public function forceDelete(User $user, Charge $charge): bool
     {
-        //
-    }
-
-    public function pickAgent(User $user): bool
-    {
-        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
+        return false;
     }
 }

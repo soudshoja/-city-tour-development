@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Traits\Converter;
 use App\Models\Client;
+use App\Models\ClientGroup;
 use App\Models\Invoice;
 use App\Models\Agent;
 use App\Models\Task;
@@ -13,6 +14,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
 use App\Models\Branch;
 use App\Models\Role;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -111,8 +114,14 @@ class ClientController extends Controller
         $tasks = Task::where('client_id', $id)->get();
         $paid = $invoices->where('status', 'paid')->sum('amount');
         $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
+        $clients = Client::with('agent.branch')->get();
+            // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
+            $childClients = ClientGroup::where('parent_client_id', $id)
+            ->with('childClient') // Load related child clients
+            ->get()
+            ->pluck('childClient'); // Extract the child clients
         
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid')); // Ensure the view exists
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'childClients', 'clients')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -273,4 +282,64 @@ class ClientController extends Controller
         fclose($handle);
         exit();
     }
+
+
+    public function addToGroup(Request $request)
+    {
+        $request->validate([
+            'parent_client_id' => 'required|exists:clients,id',
+            'child_client_id' => 'required|exists:clients,id|different:parent_client_id',
+        ]);
+
+        // Check if relationship already exists
+        $exists = ClientGroup::where('parent_client_id', $request->parent_client_id)
+                             ->where('child_client_id', $request->child_client_id)
+                             ->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Client is already in this group'], 409);
+        }
+
+        // Create the client group relationship
+        ClientGroup::create([
+            'parent_client_id' => $request->parent_client_id,
+            'child_client_id' => $request->child_client_id,
+        ]);
+
+        return response()->json(['message' => 'Client added to the group successfully'], 201);
+    }
+
+    /**
+     * Remove a client from a group.
+     */
+    public function removeFromGroup(Request $request)
+    {
+        $request->validate([
+            'parent_client_id' => 'required|exists:clients,id',
+            'child_client_id' => 'required|exists:clients,id',
+        ]);
+
+        $deleted = ClientGroup::where('parent_client_id', $request->parent_client_id)
+                              ->where('child_client_id', $request->child_client_id)
+                              ->delete();
+
+        if ($deleted) {
+            return response()->json(['message' => 'Client removed from the group'], 200);
+        }
+
+        return response()->json(['message' => 'Client not found in this group'], 404);
+    }
+
+    public function getSubClients(int $parentClientId)
+    {
+        Log::info('clientId:', ['clientId' => $parentClientId]);
+        $subClients = ClientGroup::where('parent_client_id', $parentClientId)
+            ->with('childClient') // Load the full client details
+            ->get()
+            ->pluck('childClient'); // Extract only child clients
+
+            Log::info('subClients:', ['subClients' => $subClients]);
+        return response()->json($subClients);
+    }
+
 }

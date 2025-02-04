@@ -225,7 +225,7 @@
         font-weight: bold;
         text-transform: uppercase;
         font-family: 'Archivo Black', sans-serif;
-        letter-spacing: 3.1rem;
+        letter-spacing: 2.5rem;
         -webkit-background-clip: text;
         background-clip: text;
         text-align: center;

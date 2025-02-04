@@ -180,8 +180,8 @@ thead {
 
 /* Optional: Style the checkbox when disabled */
 .custom-checkbox input[type="checkbox"]:disabled + .checkbox-svg rect {
-    stroke: #191e3a; /* Light gray stroke when disabled */
-    fill: #191e3a; /* Light gray fill when disabled */
+    stroke: #535769; /* Light gray stroke when disabled */
+    fill: #535769; /* Light gray fill when disabled */
     cursor: not-allowed;
 }
 
@@ -645,7 +645,6 @@ thead {
 .content-30 {
     width: 30%;
     transition: all 0.3s ease;
-    display: none; /* Hide by default */
 }
 
 /* When sidebar (details or filters) is visible */

@@ -7,17 +7,17 @@
             CityTourApp
         </p>
     </div>
-    <div class="container mx-auto flex flex-wrap items-center justify-between px-6 py-4">
+    <div class="container mx-auto flex flex-wrap justify-center items-center gap-4 px-6 py-4">
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <a href="{{ url('/') }}" class="flex items-center">
                 <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-12 mr-4">
             </a>
 
-            <div class="ml-5 lg:block xl:block sc768" id="responsiveMenu">
+            <div class="hidden md:block" id="responsiveMenu">
                 @include('layouts.menu')
             </div>
 
-            <div class="menu-icon" id="menu-icon">
+            <div class="block md:invisible" id="menu-icon">
                 <i class="fa fa-bars"></i>
             </div>
 
@@ -200,7 +200,7 @@
 
 <script>
     $(document).ready(function() {
-        $('.menu-icon').click(function() {
+        $('#menu-icon').click(function() {
             $('#responsiveMenu').toggle();
         });
     });
@@ -242,7 +242,7 @@
         }
     }
 
-    @media (max-width: 575px) {
+    @media (max-width: 640px) {
         .text-background {
             font-size: 2.5rem;
             /* Adjust font size for mobile */

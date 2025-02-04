@@ -182,8 +182,6 @@ class CompanyController extends Controller
         return view('companies.index', compact('company', 'dashboardData'));
     }
 
-
-
     public function show($id)
     {
         // Fetch the specific company with its agents, tasks, clients, invoices, and items    

@@ -1,50 +1,27 @@
-<link href='https://fonts.googleapis.com/css?family=Archivo+Black' rel='stylesheet'>
 
 
 
 <header>
-    <div class="relative h-3 w-full -z-10 px-6 py-4 top5Up">
+    <div class="relative h-3 w-full -z-10 px-6 py-4 -top-18">
         <p class="text-center text-background">
             CityTourApp
         </p>
     </div>
     <div class="container mx-auto flex flex-wrap items-center justify-between px-6 py-4">
-        <!-- Logo -->
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
-            <!-- Logo Image & home link -->
             <a href="{{ url('/') }}" class="flex items-center">
                 <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-12 mr-4">
             </a>
 
             <div class="ml-5 lg:block xl:block sc768" id="responsiveMenu">
-                <!-- company menu -->
-                @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-                @include('layouts.menus.company')
-                @endif
-
-                <!-- branch menu -->
-                @if(Auth()->user()->role_id ==\App\Models\Role::BRANCH)
-                @include('layouts.menus.branch')
-                @endif
-
-                <!-- agent menu -->
-                @if(Auth()->user()->role_id ==\App\Models\Role::AGENT)
-                @include('layouts.menus.agent')
-                @endif
-
-                <!-- admin menu -->
-                @if(Auth()->user()->role_id ==\App\Models\Role::ADMIN)
-                @include('layouts.menus.admin')
-                @endif
-
+                @include('layouts.menu')
             </div>
 
             <div class="menu-icon" id="menu-icon">
-                <i class="fa fa-bars"></i> <!-- Font Awesome Icon for Hamburger -->
+                <i class="fa fa-bars"></i>
             </div>
 
         </div>
-        <!-- ./Logo -->
 
         <!-- Right Section -->
         <div x-data="{ 
@@ -218,7 +195,6 @@
                 @endif
             </div>
         </div>
-        <!-- ./Right Section -->
     </div>
 </header>
 

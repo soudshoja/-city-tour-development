@@ -2,17 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Company;
 use App\Models\Role;
 use App\Models\TBO;
 use App\Models\TBORoom;
 use Exception;
-use Google\Protobuf\Field\Kind;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redirect;
-use PhpParser\Node\Expr\Throw_;
 
 class TBOController extends Controller
 {
@@ -49,7 +46,7 @@ class TBOController extends Controller
 
         $countries->setPath($request->url());
 
-        $startDate = date('Y-m-d', strtotime('-100 days'));
+        $startDate = date('Y-m-d', strtotime('-60 days'));
         $endDate = date('Y-m-d');
 
         $data = new Request([
@@ -58,6 +55,11 @@ class TBOController extends Controller
         ]);
 
         $pastBookings = $this->bookingDetailByDate($data);
+        
+        if(isset($pastBookings['error'])) {
+            return Redirect::back()->withErrors($pastBookings['error']);
+        }
+
         return view('suppliers.tbo.index', compact('countries', 'pastBookings', 'startDate', 'endDate'));
     }
 
@@ -65,7 +67,9 @@ class TBOController extends Controller
     {
         logger("TBO GET URL: " . $this->apiUrl . $url);
 
-        return Http::withBasicAuth($this->username, $this->password)->get($this->apiUrl . $url);
+        $response = Http::withBasicAuth($this->username, $this->password)->get($this->apiUrl . $url);
+      
+        return $response->json();
     }
 
     public function tboPostAuthentication(string $url,array $data)
@@ -74,8 +78,10 @@ class TBOController extends Controller
 
         logger("Data: ", $data);
 
-        return Http::withBasicAuth($this->username, $this->password)->post($this->apiUrl . $url, $data);
-
+        $response = Http::withBasicAuth($this->username, $this->password)->post($this->apiUrl . $url, $data);
+        
+        // might cause error
+        return $response->json();
     }
 
     public function searchIndex(Request $request)

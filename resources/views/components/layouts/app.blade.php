@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
@@ -16,18 +15,11 @@
 
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Archivo+Black' rel='stylesheet'>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-
-
-
-
-
+    
     <title>{{ config('app.name', 'Laravel') }}</title>
-
-
-
-
+    
     @include('layouts.links')
     <!-- CSS -->
 

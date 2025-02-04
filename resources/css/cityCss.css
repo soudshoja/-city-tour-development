@@ -679,7 +679,7 @@ thead {
 }
 
 /* Mobile View */
-@media (max-width: 575px) {
+@media (max-width: 640px) {
     .sc768 {
         display: none; /* Hide menu items on mobile by default */
     }

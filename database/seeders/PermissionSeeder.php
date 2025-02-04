@@ -41,5 +41,24 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'read agent']);
         Permission::firstOrCreate(['name' => 'update agent']);
         Permission::firstOrCreate(['name' => 'delete agent']);
+        Permission::firstOrCreate(['name' => 'view task price']);
+        Permission::firstOrCreate(['name' => 'create invoice']);
+        Permission::firstOrCreate(['name' => 'read invoice']);
+        Permission::firstOrCreate(['name' => 'update invoice']);
+        Permission::firstOrCreate(['name' => 'update invoice payment method']);
+        Permission::firstOrCreate(['name' => 'delete invoice']);
+        Permission::firstOrCreate(['name' => 'create coa']);
+        Permission::firstOrCreate(['name' => 'read coa']);
+        Permission::firstOrCreate(['name' => 'update coa']);
+        Permission::firstOrCreate(['name' => 'delete coa']);
+        Permission::firstOrCreate(['name' => 'create charges']);
+        Permission::firstOrCreate(['name' => 'read charges']);
+        Permission::firstOrCreate(['name' => 'update charges']);
+        Permission::firstOrCreate(['name' => 'delete charges']);
+        Permission::firstOrCreate(['name' => 'create account']);
+        Permission::firstOrCreate(['name' => 'read account']);
+        Permission::firstOrCreate(['name' => 'update account']);
+        Permission::firstOrCreate(['name' => 'delete account']);
+        Permission::firstOrCreate(['name' => 'read company summary']);
     }
 }

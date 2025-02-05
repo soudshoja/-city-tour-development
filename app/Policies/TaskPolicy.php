@@ -18,7 +18,7 @@ class TaskPolicy
     {
         if($user->roles('admin')) return true;
 
-        return $user->can('read task');
+        return $user->can('view task');
     }
 
     public function viewPrice(User $user): bool

@@ -15,7 +15,7 @@ class ChargePolicy
     {
         if($user->roles('admin')) return true;
 
-        return $user->can('read charges');
+        return $user->can('view charges');
     }
 
     /**

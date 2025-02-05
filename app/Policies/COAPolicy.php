@@ -15,7 +15,7 @@ class COAPolicy
     {
         if($user->roles('admin')) return true;
         
-        return $user->can('read coa');
+        return $user->can('view coa');
     }
 
     /**
@@ -26,7 +26,7 @@ class COAPolicy
         if($user->roles('admin')){
             return true;
         }
-        return $user->can('read coa');
+        return $user->can('view coa');
 
     }
 

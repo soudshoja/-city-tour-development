@@ -9,16 +9,16 @@ class AccountPolicy
 {
     public function viewAny(User $user) : bool
     {
-        return $user->can('read account');
+        return $user->can('view account');
     }
 
     public function view(User $user, Account $account) : bool
     {
-        return $user->can('read account') || $user->id == $account->user_id;
+        return $user->can('view account') || $user->id == $account->user_id;
     }
 
     public function viewCompanySummary(User $user) : bool
     {
-        return $user->can('read company summary');
+        return $user->can('view company summary');
     }
 }

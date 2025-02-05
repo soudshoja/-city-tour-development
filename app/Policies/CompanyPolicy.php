@@ -22,7 +22,7 @@ class CompanyPolicy
      */
     public function view(User $user, Company $company): bool
     {
-        if ($user->can('read company')) return true;
+        if ($user->can('view company')) return true;
 
         return $user->id == $company->user_id;
 

@@ -17,8 +17,7 @@
                     type="text" name="name" placeholder="Company Name"
                     class="mb-5 w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400" />
                 <input
-                    type="email" name="email" placeholder="Company email"
-                    class="mb-5 w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400" />
+                    type="email" name="email" placeholder="Company email" class="mb-5 w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400" />
                 <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <div class="mb-6">
@@ -49,10 +48,10 @@
 
                 <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <input type="password" name="password" placeholder="password" class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400" required>
+                        <input type="password" name="password" placeholder="password" class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400" required autocomplete="on">
                     </div>
                     <div>
-                        <input type="password" name="password_confirmation" placeholder="confirm password" class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400" required>
+                        <input type="password" name="password_confirmation" placeholder="confirm password" class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400" required autocomplete="on">
                     </div>
                 </div>
 
@@ -190,13 +189,12 @@
 
                                         <!-- Email -->
                                         <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" id="branch_email"
-                                                class="custom-input" required placeholder="Branch Email">
+                                            <input type="email" name="email" id="branch_email" class="custom-input" required placeholder="Branch Email">
                                         </div>
 
                                         <!-- Password -->
                                         <div class="mb-6">
-                                            <input type="password" name="password" class="custom-input" required placeholder="Branch Password">
+                                            <input type="password" name="password" class="custom-input" required placeholder="Branch Password" autocomplete="on">
                                         </div>
 
 
@@ -265,8 +263,7 @@
 
                                         <!-- Password -->
                                         <div class="mb-6">
-                                            <input type="password" name="password"
-                                                class="custom-input" placeholder="Agent Password">
+                                            <input type="password" name="password" class="custom-input" placeholder="Agent Password" autocomplete="on">
                                         </div>
 
 
@@ -392,8 +389,7 @@
 
                                         <!-- Client Email -->
                                         <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" class="custom-input"
-                                                required placeholder="Client Email">
+                                            <input type="email" name="email" class="custom-input" required placeholder="Client Email">
                                         </div>
 
                                         <!-- Client Phone -->

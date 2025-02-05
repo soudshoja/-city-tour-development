@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use App\Models\Branch;
 use App\Models\Agent;
+use App\Models\AgentType;
 use App\Models\Role;
 use App\Models\User;
 use Exception;
@@ -56,6 +57,15 @@ class AdminUsersController extends Controller
     {
         $countries = Country::all(); // Fetch all countries from the `countries` table
         return view('admin.addnewCompany', compact('countries'));
+    }
+
+    public function create()
+    {
+        $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+        $agentTypes = AgentType::all(); 
+        $countries = Country::all(); 
+
+        return view('users.create', compact('branches', 'agentTypes', 'countries'));
     }
 
     public function store(Request $request)

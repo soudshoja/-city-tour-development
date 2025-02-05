@@ -62,11 +62,12 @@ Route::middleware(['auth'])->group(function () {
     Route::group([
         'prefix' => 'users',
         // 'as' => 'users.',
-        'middleware' => ['role:admin'],
+        // 'middleware' => ['role:admin'],
     ], function () {
         Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('users.index');
         Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
         Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
+        Route::get('/create',[AdminUsersController::class, 'create'])->name('users.create');
         Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
         Route::get('/edit/{roleId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');

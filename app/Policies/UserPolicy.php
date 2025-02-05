@@ -8,7 +8,7 @@ class UserPolicy
 {
     public function viewAny(User $user)
     {
-        return $user->can('read user');
+        return $user->can('view user');
     }
 
     public function create(User $user)

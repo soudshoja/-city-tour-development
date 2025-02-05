@@ -60,8 +60,9 @@
             </svg>
         </a>
         <menu>
+            @can('viewAny', App\Models\Invoice::class)
             <menuitem><a href="{{ route('invoices.company.agents') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices List</a></menuitem>
-
+            @endcan
         </menu>
         </menuitem>
 

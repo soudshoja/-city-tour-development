@@ -64,5 +64,9 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view report', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'update report', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'delete report', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'create supplier', 'group' => 'supplier']);
+        Permission::firstOrCreate(['name' => 'view supplier', 'group' => 'supplier']);
+        Permission::firstOrCreate(['name' => 'update supplier', 'group' => 'supplier']);
+        Permission::firstOrCreate(['name' => 'delete supplier', 'group' => 'supplier']);
     }
 }

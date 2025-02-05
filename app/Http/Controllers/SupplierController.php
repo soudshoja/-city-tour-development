@@ -9,7 +9,9 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
 use DateTime;
 use Generator;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 class SupplierController extends Controller
 {
@@ -17,18 +19,19 @@ class SupplierController extends Controller
 
     public function index(Request $request)
     {
-        // Check if the user has an admin role
-        if (Auth::user()->role_id !== Role::ADMIN && Auth::user()->role_id !== Role::COMPANY) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        // Get all the suppliers
+        Gate::authorize('view supplier');
+        
         $suppliers = Supplier::all();
-
-        // Count the suppliers
+        foreach ($suppliers as $supplier) {
+            if (!is_null($supplier->route)) {
+                $route = Route::getRoutes()->getByName('suppliers.'. $supplier->route . '.index');
+                $supplier->named_route = $route ? $route->getName() : null;
+            } else {
+                $supplier->named_route = null;
+            }
+        }
         $suppliersCount = Supplier::count();
-
-        // Return view with suppliers and the count
+       
         return view('suppliers.index', compact('suppliers', 'suppliersCount'));
     }
 

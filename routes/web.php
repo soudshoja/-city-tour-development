@@ -130,7 +130,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
-        Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
+        Route::get('/agents/{agentId}', [TaskController::class, 'getTasks'])->name('agent');
     });
 
     // SUPPLIERS

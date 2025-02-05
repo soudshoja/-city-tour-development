@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Gate;
 
 class InvoiceController extends Controller
 {
@@ -126,23 +127,33 @@ class InvoiceController extends Controller
             $user = Auth::user();
         }
 
+        $selectedCompany = null;
         $agents = collect();
         $clients = collect();
 
-        if ($user->role_id == Role::COMPANY) {
-            $company = $user->company;
-            $company = Company::with('branches.agents')->find($company->id);
+        if($user->role_id == Role::ADMIN){
+            $agents = Agent::get();
+            $clients = Client::get();
+            $branches = Branch::get();
+            $companies = Company::get();
+            
+        }elseif ($user->role_id == Role::COMPANY) {
+            
+            $company = Company::with('branches.agents')->find($user->company->id);
             $agents = $company->branches->flatMap->agents;
             $clients = $agents->flatMap->clients;
             $branches = $company->branches;
+            $selectedCompany = $company;
+
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $agents = $company->branches->flatMap->agents;
             $clients = $agents->flatMap->clients;
             $branches = $company->branches;
+            $selectedCompany = $company;
         }
-
+        
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
 
         if (!$invoiceSequence) {
@@ -179,11 +190,23 @@ class InvoiceController extends Controller
         }
 
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
-        $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
-            return $agent['id'];
-        }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
+        // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
+        //     return $agent['id'];
+        // }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
 
-      
+        if($user->role_id == Role::ADMIN){
+            $agentId = Agent::get()->pluck('id');
+        } else if($user->role_id == Role::COMPANY){
+            $agentId = $user->company->branches->flatMap->agents->pluck('id');
+        } else if($user->role_id == Role::BRANCH){
+            $agentId = $user->branch->agents->pluck('id');
+        } else if($user->role_id == Role::AGENT){
+            $agentId = $user->agent->id;
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+        $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
+
         $clientId = $selectedClient ? $selectedClient->id : null;
 
 
@@ -208,7 +231,7 @@ class InvoiceController extends Controller
         } else {
             $tasks = $agentId 
                 ? Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
-                    ->whereIn('agent_id', (array)$agentId)
+                    ->whereIn('agent_id', $agentId)
                     ->get()
                     ->filter(function ($task) {
                         // Filter out tasks that already have an invoice detail
@@ -230,7 +253,6 @@ class InvoiceController extends Controller
         $todayDate = Carbon::now()->format('Y-m-d');
 
         $appUrl = config('app.url');
-        
         return view('invoice.create', compact(
             'clients',
             'agents',
@@ -238,12 +260,13 @@ class InvoiceController extends Controller
             'agentId',
             'clientId',
             'tasks',
-            'company',
+            'companies',
             'suppliers',
             'invoiceNumber',
             'selectedTasks',
             'selectedAgent',
             'selectedClient',
+            'selectedCompany',
             'paymentGateways',
             'todayDate',
             'appUrl'
@@ -658,10 +681,7 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
 
-        // Ensure that the user is a company
-        if ($user->role_id !== Role::COMPANY) {
-            return redirect()->back()->with('error', 'Unauthorized access.');
-        }
+        Gate::authorize('viewAny', Invoice::class);
 
         // Get all agents under the company
         $agents = Agent::with(['branch' => function ($query) use ($user) {

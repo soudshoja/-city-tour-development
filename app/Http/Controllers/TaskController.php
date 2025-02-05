@@ -277,6 +277,7 @@ class TaskController extends Controller
 
     public function exportCsv()
     {
+        
         // Fetch all agents data
         $tasks = Task::with('agent')->get();
 
@@ -307,16 +308,15 @@ class TaskController extends Controller
     }
 
     public function fileToTask() {}
-
     /**
      * Get all tasks for a specific agent
      * @param $agentId
      * @return array
      */
-    public function getAgentTask($agentId)
+    public function getTasks($agentId)
     {
         // get tasks that doesnt have invoice only
-        $tasks = Task::whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
 
         return response()->json($tasks);
     }

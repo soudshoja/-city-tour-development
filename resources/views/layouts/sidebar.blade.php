@@ -35,6 +35,7 @@
                 </a>
             </div>
 
+            @can('create', App\Models\User::class)
             <div class="flex flex-col items-center ">
                 <a href="{{ route('users.create') }}">
                     <div class="relative ">
@@ -51,7 +52,7 @@
                     </div>
                 </a>
             </div>
-
+            @endcan
 
             <div class="flex flex-col items-center ">
                 <a

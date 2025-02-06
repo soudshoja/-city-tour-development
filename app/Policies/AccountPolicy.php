@@ -17,6 +17,11 @@ class AccountPolicy
         return $user->can('view account') || $user->id == $account->user_id;
     }
 
+    public function create(User $user)
+    {
+        return $user->can('create account');
+    }
+
     public function viewCompanySummary(User $user) : bool
     {
         return $user->can('view company summary');

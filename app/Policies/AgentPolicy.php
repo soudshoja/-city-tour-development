@@ -14,7 +14,7 @@ class AgentPolicy
      */
     public function viewAny(User $user): bool
     {
-    return true;
+        return $user->can('view agent');
     }
 
     /**
@@ -22,7 +22,19 @@ class AgentPolicy
      */
     public function view(User $user, Agent $agent): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
+        if($user->can('view agent')) return true;
+
+        if($user->branch) {
+            return $user->branch->id === $agent->branch_id;
+        }
+
+        if($user->company) {
+
+            $branchesId = $user->company->branches->pluck('id')->toArray();
+            return in_array($agent->branch_id, $branchesId);
+        }
+
+        return false;
     }
 
     /**
@@ -30,7 +42,7 @@ class AgentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
+        return $user->can('create agent');
     }
 
     /**

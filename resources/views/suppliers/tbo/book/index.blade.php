@@ -13,6 +13,11 @@
             <span>Search Rooms</span>
         </li>
     </ul>
+    @if(session('tbo.url') == env('TBO_URL'))
+    <div class="w-full bg-red-200 text-red-500 p-2 rounded-md mb-2">
+        Careful!!! You Are You Using Live Credentials !
+    </div>
+    @endif
     <div id="search-header" class="bg-white dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-500 font-semibold p-2 my-2 rounded-md text-center">
         Search Hotels
     </div>
@@ -125,12 +130,12 @@
 
             const guestNationality = document.getElementById('guestNationality').value;
 
-            if(!hotel){
+            if (!hotel) {
                 alert('Please select a hotel');
                 return;
             }
 
-            if(!checkInDate || !checkOutDate ){
+            if (!checkInDate || !checkOutDate) {
                 alert('Please fill the correct date');
                 return;
             }
@@ -140,7 +145,7 @@
             let adultQuantity = 0;
             let childrenQuantity = 0;
 
-            for (let i = 1; i <= roomCount ; i++) {
+            for (let i = 1; i <= roomCount; i++) {
                 const adults = document.getElementById('room' + i + '-adults').value;
                 const children = document.getElementsByClassName('children-for-room' + i);
                 const childrenArray = [];
@@ -154,7 +159,7 @@
                     childrenAges: childrenArray
                 });
 
-              
+
             }
 
             const url = "{!! route('suppliers.tbo.search') !!}";
@@ -183,7 +188,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    
+
                     if (data.Status.Code !== 200) {
                         searchResult.innerHTML = '';
                         alert(data.Status.Description);
@@ -206,7 +211,7 @@
 
                             form.innerHTML += `@csrf`;
 
-                            for(let i = 0; i < rooms.length ; i++){
+                            for (let i = 0; i < rooms.length; i++) {
                                 let adultInput = document.createElement('input');
                                 adultInput.type = 'hidden';
                                 adultInput.name = 'rooms[' + i + '][adults]';
@@ -243,13 +248,13 @@
                                 </div>
                             `;
 
-                            if(room.RoomPromotion.length > 0){
+                            if (room.RoomPromotion.length > 0) {
                                 form.innerHTML += `
                                   <div>Room Promotion: ${room.RoomPromotion.join(', ')}</div>
                                 `;
                             }
 
-                            if(room.Supplements.length > 0){
+                            if (room.Supplements.length > 0) {
                                 form.innerHTML += `
                                   <div>Supplements:</div>
                                 `;
@@ -335,7 +340,7 @@
             element.parentElement.remove();
         }
 
-        function removeRoom(roomId){
+        function removeRoom(roomId) {
             roomId.remove();
             roomCount--;
         }

@@ -1,4 +1,5 @@
 @props([
+    'id' => null,
     'name',
     'show' => false,
     'maxWidth' => '2xl'
@@ -48,6 +49,7 @@ $maxWidth = [
     x-show="show"
     class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50"
     style="display: {{ $show ? 'block' : 'none' }};"
+    id="{{ $id }}"
 >
     <div
         x-show="show"

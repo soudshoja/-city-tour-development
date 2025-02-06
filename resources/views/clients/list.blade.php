@@ -229,6 +229,46 @@
                             </div>
                         </div>
 
+                         <!-- edit Agent details modal -->
+    <div id="editClientModal" 
+        class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+
+            <!-- Close Button (Top Right) -->
+            <button onclick="closeClientEditModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                    stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <!-- Modal Title -->
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Define Relationship </h2>
+
+            <div class="body p-4">
+                    <div class="grid gap-4">
+                        <div id="clientDetails2" class="panel w-full xl:mt-0 rounded-lg h-auto">
+                        </div>
+                            <input id="selectedId" type="hidden" name="selectedId" />
+                            <label for="relation" class="w-full text-sm font-semibold">Relationship</label>
+                            <select name="relation" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                                <option value="parents">Parents</option>
+                                <option value="children">Children</option>
+                                <option value="spouse">Spouse</option>
+                                <option value="friends">Friends</option>
+                                <option value="maid">Maid</option>
+                                <option value="driver">Driver</option>
+                           </select>
+                        <button onclick="updateClientGroup()" 
+                            class="p-2 rounded-md bg-black text-white">Update</button>
+            </div>
+
+
+        </div>
+    </div>
+    <!-- ./edit agent details modal -->
+
+
 <script>
     let clients = @json($clients);
     const viewClientLinks = document.querySelectorAll(".viewClient");
@@ -311,7 +351,7 @@
 
                 subClients.forEach(client => {
                     const listItem = document.createElement("li");
-                    listItem.textContent = `${client.name} - ${client.email}`;
+                    listItem.textContent = `${client.client.name} - ${client.relation}`;
                     listItem.classList.add("border", "p-2", "rounded-md", "mb-2");
 
                     subClientList.appendChild(listItem);
@@ -354,12 +394,6 @@
             renderClientList(filteredClients);
         }
 
-        function selectClient(client) {   
-            // document.getElementById("parentId").value = clientId;
-            closeClientModal();
-
-        }
-
         async function addGroup(childClientId) {
             const groupUrl = "{{ route('clients.group.add') }}";
             const csrfToken = "{{ csrf_token() }}";
@@ -389,9 +423,114 @@
             } catch (error) {
                 console.error("Error adding client to group:", error);
             }
-            fetchSubClients(parentClientId)
+            fetchSubClients(parentClientId);
             closeClientModal();
+            openClientEditModal(childClientId);
         }
+
+
+        function openClientEditModal(clientId) {
+            const modal = document.getElementById("editClientModal");
+            modal.classList.remove("hidden"); // Show the modal
+
+            // Update hidden input field with selected client ID
+            document.getElementById("selectedId").value = clientId;
+
+            // Fetch client details and update modal content
+            fetchClientDetails(clientId);
+        }
+
+        // Function to fetch and update client details in modal
+            async function fetchClientDetails(id) {
+
+                const fetchUrl = `/clients/${id}/getDetails`; 
+
+                    try {
+                        const response = await fetch(fetchUrl, {
+                            method: "GET",
+                            headers: {
+                                "Accept": "application/json", // Expecting JSON response
+                            },
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+
+                        const data = await response.json(); // Parse response as JSON
+                        updateSubClient(data);
+                    } catch (error) {
+                        console.error("Error fetching sub-clients:", error);
+                        alert("Failed to fetch sub-clients. Please try again.");
+                    }
+
+            }
+
+
+            function updateSubClient(client) {
+                const subClient = document.getElementById("clientDetails2");
+                subClient.innerHTML = ""; // Clear existing list
+
+
+                subClient.innerHTML = `
+                            <h3 class="text-lg font-bold mb-4">Client Details</h3>
+                            <p><strong>Name:</strong> ${client.name}</p>
+                            <p><strong>Email:</strong> ${client.email}</p>
+                            <p><strong>Phone:</strong> ${client.phone}</p>
+                        `;
+
+            }
+
+            async function updateClientGroup() {
+                    const id = document.getElementById("parentId").value;
+                    const updateUrl = `/clients/${id}/update-group`; // Adjust the route if needed
+                    const csrfToken = "{{ csrf_token() }}"; // Laravel CSRF token for security
+                    const relation = document.querySelector("select[name='relation']").value; // Get selected relation
+                    let selectedId = document.getElementById("selectedId").value;
+                    const parentClientId =  document.getElementById("parentId").value;
+
+                        // Ensure selectedId is an integer
+                    selectedId = parseInt(selectedId, 10);
+
+                    // Log the data before sending
+                    console.log({
+                        relation: relation,
+                        selectedId: selectedId
+                    });
+
+                    try {
+                        const response = await fetch(updateUrl, {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": csrfToken,
+                            },
+                            body: JSON.stringify({
+                                relation: relation,
+                                selectedId: selectedId,
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            console.log("Client group updated successfully", data);
+                            closeClientEditModal(); // Close modal if applicable
+                            fetchSubClients(parentClientId);
+                        } else {
+                            console.error("Failed to update client group", data);
+                        }
+                    } catch (error) {
+                        console.error("Error updating client group:", error);
+                    }
+                }
+
+
+
+            function closeClientEditModal() {
+                    document.getElementById("editClientModal").classList.add("hidden");
+                }
+
 
 
     async function removeGroup(parentClientId, childClientId) {

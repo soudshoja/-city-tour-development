@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Auth;
 class DashboardController extends Controller
 {
 
-
     public function index()
     {
 
@@ -329,8 +328,6 @@ class DashboardController extends Controller
 
     public function agentDashboard()
     {
-        // Get count for companies, agents, clients, invoices, and tasks
-
         $companyCount = Company::count();
         $agentCount = Agent::count();
         $clientCount = Client::count();
@@ -349,14 +346,13 @@ class DashboardController extends Controller
         $agents = Agent::with('branch.company')->get();
         $clients = Client::all();
         $companies = Company::all();
-        // Prepare clients with task count and invoice count
+        
         $clientsWithDetails = $clients->map(function ($client) {
-            // Count the number of tasks related to this client
+            
             $taskCount = Task::where('client_id', $client->id)->count();
 
-            // Count the total number of invoices related to this client
             $totalInvoices = Invoice::where('client_id', $client->id)->count();
-            // Count the unpaid invoices for this client
+
             $unpaidInvoices = Invoice::where('client_id', $client->id)
                 ->where('status', 'unpaid')
                 ->count();
@@ -369,41 +365,68 @@ class DashboardController extends Controller
             ];
         });
 
-        $agentsWithDetails = $agents->map(function ($agent) {
+        $agents->map(function ($agent) {
             $taskCount = Task::where('agent_id', $agent->id)->count();
             $pendingTasks = Task::where('agent_id', $agent->id)
-                ->where('status', 'pending')
-                ->count();
+            ->where('status', 'pending')
+            ->count();
             $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
 
-            return [
-                'name' => $agent->name,
-                'companyName' => $agent->company ? $agent->company->name : 'N/A', // Safely access company name
-                'taskCount' => $taskCount,
-                'totalInvoices' => $totalInvoices,
-                'pendingTasks' => $pendingTasks,
-            ];
+            // $data = [
+            // 'taskCount' => $taskCount,
+            // 'totalInvoices' => $totalInvoices,
+            // 'pendingTasks' => $pendingTasks,
+            // ];
+            $agent->taskCount = $taskCount;
+            $agent->totalInvoices = $totalInvoices;
+            $agent->pendingTasks = $pendingTasks;
+
         });
 
+       
 
-        $dashboardData = [
-            'totalTasks' => $taskCount,
-            'pendingTasks' => $pendingTask,
-            'completedTasks' => $completedTask,
-            'totalInvoices' => $invoiceCount,
-            'totalInvoiceAmount' => $totalInvoiceAmount,
-            'totalPaidAmount' => $totalPaidAmount,
-            'totalUnpaidAmount' => $totalUnpaidAmount,
-            'paidInvoices' => $paidInvoices,
-            'unpaidInvoices' => $unpaidInvoices,
-            'clientsCount' => $clientCount,
-            'agentsCount' => $agentCount,
-            'companiesCount' => $companyCount,
-            'agents' => $agentsWithDetails,
-            'clients' => $clientsWithDetails,
-        ];
+        // $dashboardData = [
+        //     'totalTasks' => $taskCount,
+        //     'pendingTasks' => $pendingTask,
+        //     'completedTasks' => $completedTask,
+        //     'totalInvoices' => $invoiceCount,
+        //     'totalInvoiceAmount' => $totalInvoiceAmount,
+        //     'totalPaidAmount' => $totalPaidAmount,
+        //     'totalUnpaidAmount' => $totalUnpaidAmount,
+        //     'paidInvoices' => $paidInvoices,
+        //     'unpaidInvoices' => $unpaidInvoices,
+        //     'clientsCount' => $clientCount,
+        //     'agentCount' => $agentCount,
+        //     'companiesCount' => $companyCount,
+        //     'agents' => $agentsWithDetails,
+        //     'clients' => $clientsWithDetails,
+        // ];
+       
+      
+        $totalTasks = $taskCount;
+        $pendingTasks = $pendingTask;
+        $completedTasks = $completedTask;
+        $totalInvoices = $invoiceCount;
+        $clientsCount = $clientCount;
+        $companiesCount = $companyCount;
+        $clients = $clientsWithDetails;
 
-        return view('dashboard', compact('dashboardData'));
+        return view('agents.index', compact(
+            'totalTasks',
+            'pendingTasks',
+            'completedTasks',
+            'totalInvoices',
+            'totalInvoiceAmount',
+            'totalPaidAmount',
+            'totalUnpaidAmount',
+            'paidInvoices',
+            'unpaidInvoices',
+            'clientsCount',
+            'agentCount',
+            'companiesCount',
+            'agents',
+            'clients',
+        ));
     }
 
     public function branchDashboard()

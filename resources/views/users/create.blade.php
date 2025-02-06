@@ -114,7 +114,7 @@
                         </div>
                         @endcan
 
-                        @can('create' , App\Models\Agent::class)
+                        @can('create', App\Models\Agent::class)
                         <div data-form="agentForm" class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                             <button class="text-left flex rounded-lg w-full ">
                                 <span class="text-md font-bold dark:text-white">Agent</span>

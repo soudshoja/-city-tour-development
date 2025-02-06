@@ -22,7 +22,7 @@ class BranchPolicy
      */
     public function view(User $user, Branch $branch): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || ($user->role_id === Role::BRANCH && $branch->user_id === $user->id);
+        return $user->can('view branch') || $user->company->id === $branch->company_id;
     }
 
     /**
@@ -30,7 +30,7 @@ class BranchPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
+        return $user->can('create branch');
     }
 
     /**
@@ -38,7 +38,7 @@ class BranchPolicy
      */
     public function update(User $user, Branch $branch): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || ($user->role_id === Role::BRANCH && $branch->user_id === $user->id);
+        return $user->can('update branch');
     }
 
     /**
@@ -46,7 +46,7 @@ class BranchPolicy
      */
     public function delete(User $user, Branch $branch): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY;
+        return $user->can('delete branch');
     }
 
     /**

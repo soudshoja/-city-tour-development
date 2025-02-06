@@ -16,12 +16,42 @@ class TBOController extends Controller
     private $apiUrl;
     private $username;
     private $password;
-
+    
     public function __construct()
     {
-        $this->apiUrl = config('services.tbo.url');
-        $this->username = config('services.tbo.username');
-        $this->password = config('services.tbo.password');
+        $this->apiUrl = session('tbo.url') ?? config('services.tbo.url');
+        $this->username = session('tbo.username') ?? config('services.tbo.username');
+        $this->password = session('tbo.password') ?? config('services.tbo.password');
+    }
+
+    public function destroyTBOSession()
+    {
+        session()->forget('tbo');
+
+        return Redirect::route('suppliers.tbo.index')->with('success', 'credentials reset');
+    }
+
+    public function setCredentials(Request $request)
+    {
+        $request->validate([
+            'url' => 'required',
+            'username' => 'required',
+            'password' => 'required'
+        ]);
+
+        session([
+            'tbo' => [
+                'url' => $request->url,
+                'username' => $request->username,
+                'password' => $request->password
+            ]
+        ]);
+
+        $this->apiUrl = $request->url;
+        $this->username = $request->username;
+        $this->password = $request->password;
+
+        return Redirect::route('suppliers.tbo.index')->with('success', 'Credentials set successfully');
     }
 
     public function index(Request $request)
@@ -84,7 +114,7 @@ class TBOController extends Controller
         return $response->json();
     }
 
-    public function searchIndex(Request $request)
+    public function bookIndex(Request $request)
     {
         $hotelList = [];
         $cityList = [];
@@ -139,7 +169,7 @@ class TBOController extends Controller
 
         if($request->query('guestNationality')) $guestNationality = $request->query('guestNationality');
 
-        return view('suppliers.tbo.search.index', compact(
+        return view('suppliers.tbo.book.index', compact(
             'countryCode',
             'cityCode',
             'hotelCode',

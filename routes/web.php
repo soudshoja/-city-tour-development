@@ -135,7 +135,7 @@ Route::middleware(['auth'])->group(function () {
             'as' => 'tbo.',
         ], function () {
             Route::get('index', [TBOController::class, 'index'])->name('index');
-            Route::get('search/index', [TBOController::class, 'searchIndex'])->name('search.index');
+            Route::get('book/index', [TBOController::class, 'bookIndex'])->name('book.index');
             Route::post('search', [TBOController::class, 'search'])->name('search');
             Route::get('country', [TBOController::class, 'countryList'])->name('country-list');
             Route::get('country/{countryCode}/city', [TBOController::class, 'cityListPage'])->name('city-list');
@@ -149,6 +149,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('prebook/{tboId}', [TBOController::class, 'preBookShow'])->name('prebook.show');
             Route::post('book', [TBOController::class, 'book'])->name('book');
             Route::get('cancel-booking/{confirmationNo}', [TBOController::class, 'cancel'])->name('cancel-booking');
+            Route::post('credentials', [TBOController::class, 'setCredentials'])->name('credentials');
+            Route::get('reset-tbo-credentials',[TBOController::class, 'destroyTBOSession'])->name('reset');
         });
     });
 

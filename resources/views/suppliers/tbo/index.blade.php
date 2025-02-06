@@ -1,21 +1,27 @@
 <x-app-layout>
     <div class="flex justify-between">
-    <ul class="flex space-x-2 rtl:space-x-reverse pb-5 px-5 text-base md:text-lg sm:text-sm">
-        <li>
-            <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
-        </li>
-        <li class="before:content-['/'] before:mr-1 ">
-            <a href="{{ route('suppliers.index') }}" class="customBlueColor hover:underline">Suppliers List</a>
-        </li>
-        <li class="before:content-['/'] before:mr-1">
-            <span>TBO Holidays</span>
-        </li>
-    </ul>
-    <div class="inline-flex gap-2">
-        <a href="{{ route('suppliers.tbo.prebook.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center "> Prebook </a>
-        <a href="{{ route('suppliers.tbo.search.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center"> Book Rooms </a>
+        <ul class="flex space-x-2 rtl:space-x-reverse pb-5 px-5 text-base md:text-lg sm:text-sm">
+            <li>
+                <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
+            </li>
+            <li class="before:content-['/'] before:mr-1 ">
+                <a href="{{ route('suppliers.index') }}" class="customBlueColor hover:underline">Suppliers List</a>
+            </li>
+            <li class="before:content-['/'] before:mr-1">
+                <span>TBO Holidays</span>
+            </li>
+        </ul>
+        <div class="inline-flex gap-2">
+            <a href="{{ route('suppliers.tbo.reset') }} " class="bg-red-500 text-white font-semibold p-2 my-2 rounded-md text-center"> Reset Credentials </a>
+            <a href="{{ route('suppliers.tbo.prebook.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center "> Prebook </a>
+            <a href="{{ route('suppliers.tbo.book.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center"> Book Rooms </a>
+        </div>
     </div>
+    @if(session('tbo.url') == env('TBO_URL'))
+    <div class="w-full bg-red-200 text-red-500 p-2 rounded-md mb-2">
+        Careful!!! You Are You Using Live Credentials !
     </div>
+    @endif
     @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings])
     <div class="">
         <div class="bg-white p-4 dark:bg-gray-600 overflow-hidden shadow-sm rounded-lg font-semibold">

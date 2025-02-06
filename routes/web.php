@@ -59,10 +59,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/search', [SearchController::class, 'search'])->name('search'); // Assuming you will create this controller
 
     // Admin users
-    Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('admin.users.index');
-    Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
-    Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
-    Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
+    Route::group([
+        'prefix' => 'users',
+        // 'as' => 'users.',
+        // 'middleware' => ['role:admin'],
+    ], function () {
+        Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('users.index');
+        Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
+        Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
+        Route::get('/create',[AdminUsersController::class, 'create'])->name('users.create');
+        Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
+        Route::get('/edit/{roleId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
+        Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
+    });
 
     // Agents list
     Route::group([
@@ -85,6 +94,8 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Routes for creating new records
+    Route::get('/companies', [CompanyController::class, 'index'])->name('companies.list');
+    Route::get('/companies/list' , [CompanyController::class, 'listAjax'])->name('companies.list.ajax');
     Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
     Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
@@ -106,6 +117,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
     Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
     Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
+    Route::delete('/companies/{id}', [CompanyController::class, 'destroy'])->name('companies.destroy');
 
 
     //TASKS
@@ -118,13 +130,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
-        Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
+        Route::get('/agents/{agentId}', [TaskController::class, 'getTasks'])->name('agent');
     });
 
     // SUPPLIERS
     Route::group([
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
+        // 'middleware' => ['can:manage-suppliers'],
     ], function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
@@ -154,10 +167,11 @@ Route::middleware(['auth'])->group(function () {
 
     //ROLE
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');
+    Route::get('/role/permission',[RoleController::class, 'getAllPermission'])->name('role.all-permission');
     Route::get('/create-role', [RoleController::class, 'create'])->name('role.create');
     Route::post('/role', [RoleController::class, 'store'])->name('role.store');
-    Route::get('/edit-role/{role}', [RoleController::class, 'edit'])->name('role.edit');
-    Route::put('/role/{role}', [RoleController::class, 'update'])->name('role.update');
+    Route::get('/role/{roleId}', [RoleController::class, 'edit'])->name('role.edit');
+    Route::put('/role', [RoleController::class, 'update'])->name('role.update');
     Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
 
@@ -316,6 +330,13 @@ Route::group([
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
         Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
+
+        // Routes for Client Group Management
+        Route::post('/group/add', [ClientController::class, 'addToGroup'])->name('group.add');
+        Route::post('/group/remove', [ClientController::class, 'removeFromGroup'])->name('group.remove');
+        Route::get('/{parentClientId}/subclients', [ClientController::class, 'getSubClients'])
+        ->name('client.subclients');
+
     });
 });
 
@@ -323,13 +344,16 @@ Route::group([
 Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 
-
-Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('reports.agent');
-Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('reports.client');
-Route::get('/reports/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('reports.clientmgmnt');
-Route::get('/reports/performance', [ReportController::class, 'performance'])->name('reports.performance');
-Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
-Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('reports.accsummary');
+Route::group([
+    'middleware' => ['permission:view report'],
+], function(){
+    Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('reports.agent');
+    Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('reports.client');
+    Route::get('/reports/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('reports.clientmgmnt');
+    Route::get('/reports/performance', [ReportController::class, 'performance'])->name('reports.performance');
+    Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
+    Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('reports.accsummary');
+});
 
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');

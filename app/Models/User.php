@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -57,17 +58,17 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
 
-    protected function twoFactorCode(): Attribute
-    {
-        return new Attribute(
-            function ($value) {
-                return $value ? decrypt($value) : null;
-            },
-            function ($value) {
-                return $value ? encrypt($value) : null;
-            }
-        );
-    }
+    // protected function twoFactorCode(): Attribute
+    // {
+    //     return new Attribute(
+    //         function ($value) {
+    //             return $value ? decrypt($value) : null;
+    //         },
+    //         function ($value) {
+    //             return $value ? encrypt($value) : null;
+    //         }
+    //     );
+    // }
 
     public function agent()
     {

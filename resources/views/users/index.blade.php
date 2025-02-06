@@ -1,64 +1,63 @@
 <x-app-layout>
 
     <style>
-    #searchInput:focus {
-        outline: none !important;
-        /* Removes the blue outline */
-        box-shadow: none !important;
-        /* Removes any focus box-shadow */
-        border-color: inherit !important;
-        /* Keeps the border color unchanged */
-    }
-
-    .CheckBoxColor {
-        color: #bec7e3 !important;
-    }
-
-    /* Custom scrollbar styling for webkit browsers */
-    .custom-scrollbar {
-        scrollbar-width: thin;
-        /* For Firefox */
-        scrollbar-color: #bec7e3 #edf2f7;
-        /* Thumb color and track color for Firefox */
-    }
-
-    /* WebKit browsers (Chrome, Safari, etc.) */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 8px;
-        /* Width of the scrollbar */
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: #bec7e3;
-        /* Track color */
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: #4fd1c5;
-        /* Thumb color */
-        border-radius: 10px;
-        /* Rounded edges */
-        border: 2px solid #edf2f7;
-        /* Adds a little padding around the thumb */
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: #000;
-        /* Thumb color on hover */
-    }
-
-    .mt07 {
-        margin-top: 0.7rem !important;
-    }
-
-    @media screen and (min-width: 1024px) {
-        .mt07 {
-            margin-top: 0 !important;
+        #searchInput:focus {
+            outline: none !important;
+            /* Removes the blue outline */
+            box-shadow: none !important;
+            /* Removes any focus box-shadow */
+            border-color: inherit !important;
+            /* Keeps the border color unchanged */
         }
 
-    }
-    </style>
+        .CheckBoxColor {
+            color: #bec7e3 !important;
+        }
 
+        /* Custom scrollbar styling for webkit browsers */
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            /* For Firefox */
+            scrollbar-color: #bec7e3 #edf2f7;
+            /* Thumb color and track color for Firefox */
+        }
+
+        /* WebKit browsers (Chrome, Safari, etc.) */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            /* Width of the scrollbar */
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #bec7e3;
+            /* Track color */
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #4fd1c5;
+            /* Thumb color */
+            border-radius: 10px;
+            /* Rounded edges */
+            border: 2px solid #edf2f7;
+            /* Adds a little padding around the thumb */
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #000;
+            /* Thumb color on hover */
+        }
+
+        .mt07 {
+            margin-top: 0.7rem !important;
+        }
+
+        @media screen and (min-width: 1024px) {
+            .mt07 {
+                margin-top: 0 !important;
+            }
+
+        }
+    </style>
 
     <div>
         <!-- Breadcrumbs -->
@@ -67,26 +66,10 @@
                 <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
             </li>
             <li class="before:content-['/'] before:mr-1 ">
-                <span>Admins List</span>
+                <span>Users</span>
             </li>
         </ul>
         <!-- ./Breadcrumbs -->
-        <!-- session status -->
-        @if (session('success'))
-        <div class="my-5 flex items-center rounded bg-success-light p-3.5 text-success dark:bg-success-dark-light">
-            <span class="ltr:pr-2 rtl:pl-2"><strong class="ltr:mr-1 rtl:ml-1">Success!
-                </strong>{{ session('success') }}</span>
-            <button type="button" class="hover:opacity-80 ltr:ml-auto rtl:mr-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                    class="h-5 w-5">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        @endif
-        <!-- ./session status -->
 
         <!-- Controls Section -->
         <div
@@ -101,12 +84,12 @@
                         href="#">
                         <span
                             class="pl-3 text-black ltr:pl-3 rtl:pr-3 dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Total
-                            Admins</span>
+                            Users</span>
 
 
                     </a>
                     <a class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg bg-info-light dark:bg-gray-700"
-                        href="#"><span id="totalAdmins"></span>
+                        href="#"><span id="userCount"></span>
                     </a>
                 </div>
 
@@ -136,7 +119,7 @@
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Add Admin
+                    Add User
                 </button>
             </div>
 
@@ -178,23 +161,28 @@
                                 </svg>
                                 <span>Name</span>
                             </th>
-                            <th class="px-4 py-2">Email</th>
+                            <th class="px-4 py-2 text-start">Email</th>
+                            <th class="px-4 py-2">Role</th>
                             <th class="px-4 py-2">Actions</th>
 
 
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300">
-                        @foreach ($adminUsers as $admin)
+                        @foreach ($users as $user)
                         <tr>
                             <td class="px-4 py-2">
                                 <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                             </td>
-                            <td class="px-4 py-2">{{ $admin->name }}</td>
-                            <td class="px-4 py-2">{{ $admin->email }}</td>
-
-                            <td class="px-4 py-2 flex gap-2">
-                                <a href="">
+                            <td class="px-4 py-2">{{ $user->name }}</td>
+                            <td class="px-4 py-2">{{ $user->email }}</td>
+                            <td class="px-4 py-2 text-center">
+                                @foreach($user->getRoleNames() as $role)
+                                <span class="bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300 rounded-full px-2 py-1 text-xs font-semibold">{{ $role }}</span>
+                                @endforeach
+                            </td>
+                            <td class="px-4 py-2 flex gap-2 flex justify-center">
+                                <!-- <a href="">
                                     <svg class="dark:fill-white" width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
                                         <path
@@ -204,8 +192,8 @@
                                             d="M2 12C2 13.6394 2.42496 14.1915 3.27489 15.2957C4.97196 17.5004 7.81811 20 12 20C16.1819 20 19.028 17.5004 20.7251 15.2957C21.575 14.1915 22 13.6394 22 12C22 10.3606 21.575 9.80853 20.7251 8.70433C19.028 6.49956 16.1819 4 12 4C7.81811 4 4.97196 6.49956 3.27489 8.70433C2.42496 9.80853 2 10.3606 2 12ZM12 8.25C9.92893 8.25 8.25 9.92893 8.25 12C8.25 14.0711 9.92893 15.75 12 15.75C14.0711 15.75 15.75 14.0711 15.75 12C15.75 9.92893 14.0711 8.25 12 8.25Z"
                                             fill="currentColor" />
                                     </svg>
-                                </a>
-                                <a href="">
+                                </a> -->
+                                <a href="{{ route('users.edit', $user->id) }}">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg" class="dark:fill-white">
                                         <path fill-rule="evenodd" clip-rule="evenodd"
@@ -325,236 +313,236 @@
     <!-- ./add admin modal -->
 
     <script>
-    // BSZ95 New code
-    document.addEventListener("DOMContentLoaded", function() {
-        // Access the data passed from the controller
-        const NumberOfAdmins = @json($NumberOfAdmins);
-        document.getElementById("totalAdmins").innerText = NumberOfAdmins;
-    });
+        // BSZ95 New code
+        document.addEventListener("DOMContentLoaded", function() {
+            // Access the data passed from the controller
+            const usersCount = @json($usersCount);
+            document.getElementById("userCount").innerText = usersCount;
+        });
 
 
-    document.addEventListener("DOMContentLoaded", function() {
-        const selectAllSVG = document.getElementById("selectAllSVG");
-        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+        document.addEventListener("DOMContentLoaded", function() {
+            const selectAllSVG = document.getElementById("selectAllSVG");
+            const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
 
-        // Toggle "Select All" functionality with the SVG
-        selectAllSVG.addEventListener("click", function() {
-            const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+            // Toggle "Select All" functionality with the SVG
+            selectAllSVG.addEventListener("click", function() {
+                const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+                rowCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = !allChecked;
+                });
+            });
+
+            // Optional: Update the SVG color or style if all checkboxes are selected/deselected
             rowCheckboxes.forEach(function(checkbox) {
-                checkbox.checked = !allChecked;
+                checkbox.addEventListener("change", function() {
+                    const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                    if (allChecked) {
+                        selectAllSVG.style.fill = "#4fd1c5"; // Example color when all are selected
+                    } else {
+                        selectAllSVG.style.fill = "#1C274C"; // Reset to original color
+                    }
+                });
             });
         });
 
-        // Optional: Update the SVG color or style if all checkboxes are selected/deselected
-        rowCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener("change", function() {
-                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-                if (allChecked) {
-                    selectAllSVG.style.fill = "#4fd1c5"; // Example color when all are selected
-                } else {
-                    selectAllSVG.style.fill = "#1C274C"; // Reset to original color
-                }
+        // search functionality
+        document.addEventListener("DOMContentLoaded", function() {
+            const searchInput = document.getElementById("searchInput");
+            const tableRows = document.querySelectorAll(".CityMobileTable tbody tr");
+
+            searchInput.addEventListener("input", function() {
+                const query = searchInput.value.toLowerCase();
+
+                tableRows.forEach(row => {
+                    const cells = row.querySelectorAll("td");
+                    let rowContainsQuery = false;
+
+                    cells.forEach(cell => {
+                        if (cell.innerText.toLowerCase().includes(query)) {
+                            rowContainsQuery = true;
+                        }
+                    });
+
+                    if (rowContainsQuery) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                });
             });
         });
-    });
 
-    // search functionality
-    document.addEventListener("DOMContentLoaded", function() {
-        const searchInput = document.getElementById("searchInput");
-        const tableRows = document.querySelectorAll(".CityMobileTable tbody tr");
+        // Sorting functionality
 
-        searchInput.addEventListener("input", function() {
-            const query = searchInput.value.toLowerCase();
+        document.addEventListener("DOMContentLoaded", function() {
+            const nameHeader = document.getElementById("nameHeader");
+            const tableBody = document.querySelector(".AgentTable tbody");
+            let sortAscending = true;
 
-            tableRows.forEach(row => {
-                const cells = row.querySelectorAll("td");
-                let rowContainsQuery = false;
+            nameHeader.addEventListener("click", function() {
+                const rows = Array.from(tableBody.querySelectorAll("tr"));
 
-                cells.forEach(cell => {
-                    if (cell.innerText.toLowerCase().includes(query)) {
-                        rowContainsQuery = true;
+                rows.sort((a, b) => {
+                    const nameA = a.querySelector("td:nth-child(2)").innerText.toLowerCase();
+                    const nameB = b.querySelector("td:nth-child(2)").innerText.toLowerCase();
+
+                    if (nameA < nameB) {
+                        return sortAscending ? -1 : 1;
+                    } else if (nameA > nameB) {
+                        return sortAscending ? 1 : -1;
+                    } else {
+                        return 0;
                     }
                 });
 
-                if (rowContainsQuery) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
+                // Append the sorted rows back to the table body
+                rows.forEach(row => tableBody.appendChild(row));
+
+                // Toggle the sort order for next click
+                sortAscending = !sortAscending;
+
+                // Update the sort icon
+                document.getElementById("sortIcon").innerText = sortAscending ? "⬆" : "⬇";
             });
         });
-    });
-
-    // Sorting functionality
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const nameHeader = document.getElementById("nameHeader");
-        const tableBody = document.querySelector(".AgentTable tbody");
-        let sortAscending = true;
-
-        nameHeader.addEventListener("click", function() {
-            const rows = Array.from(tableBody.querySelectorAll("tr"));
-
-            rows.sort((a, b) => {
-                const nameA = a.querySelector("td:nth-child(2)").innerText.toLowerCase();
-                const nameB = b.querySelector("td:nth-child(2)").innerText.toLowerCase();
-
-                if (nameA < nameB) {
-                    return sortAscending ? -1 : 1;
-                } else if (nameA > nameB) {
-                    return sortAscending ? 1 : -1;
-                } else {
-                    return 0;
-                }
-            });
-
-            // Append the sorted rows back to the table body
-            rows.forEach(row => tableBody.appendChild(row));
-
-            // Toggle the sort order for next click
-            sortAscending = !sortAscending;
-
-            // Update the sort icon
-            document.getElementById("sortIcon").innerText = sortAscending ? "⬆" : "⬇";
-        });
-    });
 
 
 
 
-    // Toggle status functionality
-    function toggleStatus(companyId, currentStatus) {
-        // Define the next status
-        let nextStatus = currentStatus == 1 ? 0 : 1;
+        // Toggle status functionality
+        function toggleStatus(companyId, currentStatus) {
+            // Define the next status
+            let nextStatus = currentStatus == 1 ? 0 : 1;
 
-        // Update backend using an API call, AJAX, or form submission
-        fetch(`/company/${companyId}/toggle-status`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    status: nextStatus
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update the SVG fill color and circle position
-                    const svg = document.getElementById(`toggle-${companyId}`);
-                    const rect = svg.querySelector('rect');
-                    const circle = svg.querySelector('circle');
-
-                    // Toggle the status in data attribute
-                    svg.dataset.status = nextStatus;
-
-                    // Update SVG styles accordingly
-                    rect.setAttribute('fill', nextStatus == 1 ? '#00ab55' : '#ccc');
-                    circle.setAttribute('cx', nextStatus == 0 ? '32' : '12');
-                } else {
-                    console.error('Failed to update the status');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    }
-
-
-
-    function addAdmin() {
-
-        document.getElementById('addAdminModal').classList.remove('hidden');
-    }
-
-    function closeAddAdminModal() {
-        // Hide the modal when "Cancel" is clicked
-        document.getElementById('addAdminModal').classList.add('hidden');
-    }
-
-    function closeModalIfClickedOutside(event) {
-        // Close the modal if the user clicks outside of the modal content
-        const modalContent = document.querySelector('#addAdminModal > div');
-        if (!modalContent.contains(event.target)) {
-            closeAddAdminModal();
-        }
-    }
-
-
-    // BSZ95 New code ./
-
-
-
-
-
-
-
-
-
-    // Upload Excel functionality
-    document.getElementById('uploadExcelBtn').addEventListener('click', function(event) {
-        event.preventDefault();
-        document.getElementById('excelFileInput').click(); // Trigger the file input click
-    });
-
-    // When a file is selected, submit via AJAX (or other method)
-    document.getElementById('excelFileInput').addEventListener('change', function() {
-        let file = this.files[0];
-        if (file) {
-            let formData = new FormData();
-            formData.append('excel_file', file);
-
-            // Show the loading spinner
-            document.getElementById('loadingSpinner').classList.remove('hidden');
-            document.getElementById('statusMessage').classList.add('hidden'); // Hide previous messages
-
-
-            // Use fetch or Axios to send the file via AJAX to the backend
-            fetch("{{ route('companiesupload.import') }}", {
+            // Update backend using an API call, AJAX, or form submission
+            fetch(`/company/${companyId}/toggle-status`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': "{{ csrf_token() }}", // Include CSRF token for security
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: formData,
+                    body: JSON.stringify({
+                        status: nextStatus
+                    })
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // Hide the loading spinner
-                    document.getElementById('loadingSpinner').classList.add('hidden');
+                    if (data.success) {
+                        // Update the SVG fill color and circle position
+                        const svg = document.getElementById(`toggle-${companyId}`);
+                        const rect = svg.querySelector('rect');
+                        const circle = svg.querySelector('circle');
 
-                    // Show success message
-                    document.getElementById('statusMessage').classList.remove('hidden');
-                    document.getElementById('statusMessage').innerHTML =
-                        `<p class="text-green-600">File uploaded successfully!</p>`;
+                        // Toggle the status in data attribute
+                        svg.dataset.status = nextStatus;
 
-                    alert('File uploaded successfully!');
-
-                    // Refresh the page after a short delay
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000); // Adjust the delay as needed (2000 ms = 2 seconds)
-
+                        // Update SVG styles accordingly
+                        rect.setAttribute('fill', nextStatus == 1 ? '#00ab55' : '#ccc');
+                        circle.setAttribute('cx', nextStatus == 0 ? '32' : '12');
+                    } else {
+                        console.error('Failed to update the status');
+                    }
                 })
                 .catch(error => {
-
-                    // Hide the loading spinner
-                    document.getElementById('loadingSpinner').classList.add('hidden');
-
-                    // Show error message
-                    document.getElementById('statusMessage').classList.remove('hidden');
-                    document.getElementById('statusMessage').innerHTML =
-                        `<p class="text-red-600">Error uploading file: ${error.message}</p>`;
-
-                    console.error('Error uploading file:', error);
-
-                    // Refresh the page after a short delay
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000); // Adjust the delay as needed (2000 ms = 2 seconds)
+                    console.error('Error:', error);
                 });
         }
-    });
+
+
+
+        function addAdmin() {
+
+            document.getElementById('addAdminModal').classList.remove('hidden');
+        }
+
+        function closeAddAdminModal() {
+            // Hide the modal when "Cancel" is clicked
+            document.getElementById('addAdminModal').classList.add('hidden');
+        }
+
+        function closeModalIfClickedOutside(event) {
+            // Close the modal if the user clicks outside of the modal content
+            const modalContent = document.querySelector('#addAdminModal > div');
+            if (!modalContent.contains(event.target)) {
+                closeAddAdminModal();
+            }
+        }
+
+
+        // BSZ95 New code ./
+
+
+
+
+
+
+
+
+
+        // Upload Excel functionality
+        document.getElementById('uploadExcelBtn').addEventListener('click', function(event) {
+            event.preventDefault();
+            document.getElementById('excelFileInput').click(); // Trigger the file input click
+        });
+
+        // When a file is selected, submit via AJAX (or other method)
+        document.getElementById('excelFileInput').addEventListener('change', function() {
+            let file = this.files[0];
+            if (file) {
+                let formData = new FormData();
+                formData.append('excel_file', file);
+
+                // Show the loading spinner
+                document.getElementById('loadingSpinner').classList.remove('hidden');
+                document.getElementById('statusMessage').classList.add('hidden'); // Hide previous messages
+
+
+                // Use fetch or Axios to send the file via AJAX to the backend
+                fetch("{{ route('companiesupload.import') }}", {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': "{{ csrf_token() }}", // Include CSRF token for security
+                        },
+                        body: formData,
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Hide the loading spinner
+                        document.getElementById('loadingSpinner').classList.add('hidden');
+
+                        // Show success message
+                        document.getElementById('statusMessage').classList.remove('hidden');
+                        document.getElementById('statusMessage').innerHTML =
+                            `<p class="text-green-600">File uploaded successfully!</p>`;
+
+                        alert('File uploaded successfully!');
+
+                        // Refresh the page after a short delay
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000); // Adjust the delay as needed (2000 ms = 2 seconds)
+
+                    })
+                    .catch(error => {
+
+                        // Hide the loading spinner
+                        document.getElementById('loadingSpinner').classList.add('hidden');
+
+                        // Show error message
+                        document.getElementById('statusMessage').classList.remove('hidden');
+                        document.getElementById('statusMessage').innerHTML =
+                            `<p class="text-red-600">Error uploading file: ${error.message}</p>`;
+
+                        console.error('Error uploading file:', error);
+
+                        // Refresh the page after a short delay
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000); // Adjust the delay as needed (2000 ms = 2 seconds)
+                    });
+            }
+        });
     </script>
 
 

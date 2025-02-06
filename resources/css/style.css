@@ -1179,7 +1179,7 @@ table.table-compact thead tr th {
 .dataTable-dropdown label {
     margin-bottom: 0;
 }
-@media screen and (max-width: 767px) {
+@media screen and (max-width: 768px) {
     .dataTable-bottom {
         flex-direction: column;
     }
@@ -1350,14 +1350,6 @@ textarea {
 button,
 select {
     text-transform: none;
-}
-[type="button"],
-[type="reset"],
-[type="submit"],
-button {
-    -webkit-appearance: button;
-    background-color: initial;
-    background-image: none;
 }
 :-moz-focusring {
     outline: auto;

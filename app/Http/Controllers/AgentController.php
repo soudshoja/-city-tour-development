@@ -38,7 +38,6 @@ class AgentController extends Controller
             $branchesId = Branch::where('company_id', $user->company->id)->pluck('id');
             $agents = Agent::whereIn('branch_id', $branchesId)->get();
             $agentCount = $agents->count();
-
         } elseif ($user->role_id == Role::BRANCH) {
             // Get agents belonging to the branch
             $branch_id = $user->branch_id;
@@ -54,9 +53,6 @@ class AgentController extends Controller
         // Pass both 'agents' and 'agentCount' to the view
         return view('agents.index', compact('agents', 'agentCount'));
     }
-
-
-
 
     public function new()
     {

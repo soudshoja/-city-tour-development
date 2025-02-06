@@ -2,30 +2,28 @@
 
 namespace App\Policies;
 
-use App\Models\Company;
-use App\Models\Role;
+use App\Models\Charge;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class CompanyPolicy
+class ChargePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view company');
+        if($user->roles('admin')) return true;
+
+        return $user->can('view charges');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Company $company): bool
+    public function view(User $user, Charge $charge): bool
     {
-        if ($user->can('view company')) return true;
-
-        return $user->id == $company->user_id;
-
+        return false;
     }
 
     /**
@@ -33,42 +31,38 @@ class CompanyPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create company');
+        return false;
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Company $company): bool
+    public function update(User $user, Charge $charge): bool
     {
-        if ($user->can('update company')) return true;
-
-        return $user->id == $company->user_id;
+        return false;
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Company $company): bool
+    public function delete(User $user, Charge $charge): bool
     {
-        if($user->can('delete company')) return true;
-
         return false;
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, Company $company): bool
+    public function restore(User $user, Charge $charge): bool
     {
-        //
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, Company $company): bool
+    public function forceDelete(User $user, Charge $charge): bool
     {
-        //
+        return false;
     }
 }

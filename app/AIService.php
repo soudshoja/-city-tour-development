@@ -22,6 +22,34 @@ class AIService
         $this->apiKey = config('services.open-ai.key');
         $this->apiUrl = config('services.open-ai.url');
     }
+   
+
+    public function chatCompletionJsonResponse(array $message)
+    {
+        $url = $this->apiUrl . '/chat/completions';
+        $header = [
+            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Content-Type: application/json',
+        ];
+
+        array_push($message, [
+            'role' => 'user',
+            'content' => 'Please respond with JSON format',
+        ]);
+
+        $data = [
+            'model' => config('services.open-ai.model'),
+            'messages' => $message,
+            'response_format' => [
+                'type' => 'json_object',
+            ]
+        ];
+
+        $response =  $this->postRequest($url, $header, json_encode($data));
+
+        logger('chat completion response: ', $response);
+        return $response;
+    }
 
     public function createAssistant() : array
     {

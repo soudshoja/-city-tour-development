@@ -20,7 +20,7 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="{{ route('clients.index') }}" class="justify-center text-center p-3 my-3 bg-white text-gray-600 BoxShadow">Companies List</a></menuitem>
+            <menuitem><a href="{{ route('companies.list') }}" class="justify-center text-center p-3 my-3 bg-white text-gray-600 BoxShadow">Companies List</a></menuitem>
         </menu>
         </menuitem>
         <!-- ./Companies -->
@@ -44,7 +44,7 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="{{ route('clients.index') }}" class="justify-center text-center p-3 my-3 bg-white text-gray-600 BoxShadow">Admins List</a></menuitem>
+            <menuitem><a href="{{ route('users.index') }}" class="justify-center text-center p-3 my-3 bg-white text-gray-600 BoxShadow">Admins List</a></menuitem>
 
         </menu>
         </menuitem>

@@ -350,43 +350,41 @@ thead {
 }
 
 .custom-input {
-    width: 100%; /* Full width */
-    padding: 10px; /* Padding inside the input */
-    border: 1px solid #d1d5db !important; /* Gray border */
+    width: 100%; 
+    padding: 10px; 
+    /* border: 1px solid #d1d5db !important; */
     border-radius: 0.5rem;
-    color: black; /* Light mode text color */
-    transition: all 0.3s ease; /* Smooth transition for dark mode */
+    color: black; 
+    transition: all 0.3s ease; 
     background: transparent;
 }
 
-/* Placeholder style */
-.custom-input::placeholder {
-    color: #747985; /* Placeholder color */
-    opacity: 0.7; /* Slightly faded */
+/* .custom-input::placeholder {
+    color: #747985; 
+    opacity: 0.7; 
 }
 
-/* Focus effect */
 .custom-input:focus {
-    outline: none; /* Remove default outline */
+    outline: none; 
     box-shadow: 2px 4px 12px #00000014;
-}
+} */
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-    .custom-input {
-        background-color: #1e1e1e; /* Dark background */
-        color: white; /* Light text color */
-        border-color: #d1d5db; /* Dark gray border */
+    /* .custom-input {
+        background-color: #1e1e1e; 
+        color: white;
+        border-color: #d1d5db; 
     }
 
     .custom-input::placeholder {
-        color: #000; /* Lighter gray placeholder in dark mode */
+        color: #000; 
     }
 
     .custom-input:focus {
-        border-color: cyan; /* Cyan focus color in dark mode */
-        box-shadow: 0 0 5px rgba(0, 255, 255, 0.5); /* Subtle glow effect */
-    }
+        border-color: cyan; 
+        box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    } */
 }
 
 .SVGsColor {
@@ -678,7 +676,7 @@ thead {
 }
 
 /* Mobile View */
-@media (max-width: 575px) {
+@media (max-width: 640px) {
     .sc768 {
         display: none; /* Hide menu items on mobile by default */
     }

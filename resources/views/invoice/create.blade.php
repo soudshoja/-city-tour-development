@@ -156,47 +156,53 @@
             <div class="panel flex-1 px-0 py-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]">
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-6 ">
-                    <div class=" shrink-0 items-center text-black dark:text-white">
+                    <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                         <x-application-logo class="custom-logo-size" />
 
+                        @if($selectedCompany)
                         <div class="pl-2">
-                            @if($company)
-                            <h3>{{ $company->name }}</h3>
-                            <p>{{ $company->address }}</p>
-                            @else
-                            <p>No company assigned</p>
-                            @endif
+                            <h3>{{ $selectedCompany->name }}</h3>
+                            <p>{{ $selectedCompany->address }}</p>
                         </div>
+                        <div class="flex">
+                            <p class="pl-1">{{ $selectedCompany->email }}</p>
+                        </div>
+                        <div class="flex">
+                            <p class="pl-1">{{ $selectedCompany->phone }}</p>
+                        </div>
+                        @else
 
-                        <div class="flex">
-                            <p class="pl-1">{{ $company->email }}</p>
-                        </div>
-                        <div class="flex">
-                            <p class="pl-1">{{ $company->phone }}</p>
-                        </div>
-                        <!-- Branch Select Dropdown -->
                         <div class="custom-select w-full border rounded-lg mt-4">
-                            <!-- Trigger -->
-                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
+                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company</div>
+                            <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                @foreach ($companies as $company)
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer" data-value="{{ $company->id }}">
+                                    {{ $company->name }}
+                                </div>
+                                @endforeach
+                            </div>
 
-                            <!-- Options Container -->
+                            <input type="hidden" name="branch_id" id="selectedBranch">
+                        </div>
+
+                        @endif
+
+                        <div class="custom-select w-full border rounded-lg mt-4">
+                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
                             <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
-                                    border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
                                     {{ $branch->name }}
                                 </div>
                                 @endforeach
                             </div>
 
-                            <!-- Hidden input to store selected value -->
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
-                        <!-- ./Branch Selection -->
 
                     </div>
                     <!-- invoice details -->
-                    <div class="space-y-1 text-gray-900 dark:text-gray-400">
+                    <div class="space-y-1 text-gray-900 dark:text-gray-400 mt-2">
 
                         <div class="flex items-center w-full">
                             <label for="invoiceNumber" class="w-full text-sm font-semibold">Invoice Number</label>
@@ -483,7 +489,7 @@
 
                         <!-- Added Buttons/Links Section -->
                         <section id="additional-actions" class="mt-6">
-                           <input type="hidden" name="shared" id="shared" value="false">
+                            <input type="hidden" name="shared" id="shared" value="false">
                             <div class="flex flex-wrap gap-4">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
 
@@ -990,7 +996,7 @@
             const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
             const shareSection = document.getElementById('additional-actions');
             const shared = document.getElementById('shared').value;
-            
+
             const options = document.querySelectorAll('.select-option');
             const selectedBranchInput = document.getElementById('selectedBranch');
 
@@ -1188,34 +1194,34 @@
         }
 
         function updateField(itemId, fieldId) {
-            console.log('updated',itemId +'-'+fieldId);
+            console.log('updated', itemId + '-' + fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
             const newValue = inputField.value || NULL;
 
             const item = items.find(item => item.id === itemId);
             if (item) {
                 // if (fieldId === 'invprice') {
-                    if (fieldId.includes('invprice')) {
-                        // Set fieldId to 'invprice' if it includes 'invprice'
-                        fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
-                        item[fieldId1] = newValue;
+                if (fieldId.includes('invprice')) {
+                    // Set fieldId to 'invprice' if it includes 'invprice'
+                    fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
+                    item[fieldId1] = newValue;
 
-                            if (fieldId === 'invprice-modal') {
-                                // Update the corresponding table input
-                                const tableInput = document.getElementById(`invprice-table-${itemId}`);
-                                if (tableInput) {
-                                    tableInput.value = newValue;
-                                }
-                            } else if (fieldId === 'invprice-table') {
-                                // Update the corresponding modal input
-                                const modalInput = document.getElementById(`invprice-modal-${itemId}`);
-                                if (modalInput) {
-                                    modalInput.value = newValue;
-                                }
-                            }
+                    if (fieldId === 'invprice-modal') {
+                        // Update the corresponding table input
+                        const tableInput = document.getElementById(`invprice-table-${itemId}`);
+                        if (tableInput) {
+                            tableInput.value = newValue;
+                        }
+                    } else if (fieldId === 'invprice-table') {
+                        // Update the corresponding modal input
+                        const modalInput = document.getElementById(`invprice-modal-${itemId}`);
+                        if (modalInput) {
+                            modalInput.value = newValue;
+                        }
+                    }
 
-                            calculateSubtotal(); // Recalculate the subtotal
-                    
+                    calculateSubtotal(); // Recalculate the subtotal
+
                 } else {
                     item[fieldId] = newValue; // Update other fields
                 }
@@ -1790,13 +1796,13 @@
 
         function renderTaskList(taskData) {
             const taskList = document.getElementById('taskList');
-              console.log('taskData', taskData);
+            console.log('taskData', taskData);
 
-              if (!Array.isArray(taskData)) {
-                    console.error('taskData is not an array:', taskData);
-                    taskData = []; // Fallback to an empty array
-                }
-                
+            if (!Array.isArray(taskData)) {
+                console.error('taskData is not an array:', taskData);
+                taskData = []; // Fallback to an empty array
+            }
+
             taskData = taskData.filter(task =>
                 !items.some(selectedTask => selectedTask.id === task.id)
             );
@@ -2057,9 +2063,9 @@
                             gateway
                         } = item;
 
-                        console.log(invoiceId, clientId, type, date, amount);
-                        console.log(csrfToken);
-                        console.log(clientName)
+                        // console.log(invoiceId, clientId, type, date, amount);
+                        // console.log(csrfToken);
+                        // console.log(clientName)
                         // Send POST request for each client
                         const response = await fetch(invoiceUrl, {
                             method: 'POST',
@@ -2402,7 +2408,6 @@
                 const {
                     invoiceId
                 } = result;
-                console.log(invoiceId);
 
                 document.getElementById('invoiceId').value = invoiceId;
                 const generatedLink = appUrl + '/invoice/' + invoiceNumber;
@@ -2494,7 +2499,7 @@
             });
         }
 
-        function viewInvoice(){
+        function viewInvoice() {
             openInvoiceModal(document.getElementById('invoiceNumber').value);
         }
 
@@ -2557,7 +2562,7 @@
         function copyLink() {
             const invoiceNumber = document.getElementById('invoiceNumber').value;
             const copyFeedback = document.getElementById('copyFeedback');
-            const baseUrl = window.location.origin; 
+            const baseUrl = window.location.origin;
             const invoiceLink = `${baseUrl}/invoice/${invoiceNumber}/pdf`;
             const fetchUrl =
                 "{{ route('invoice.pdf', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
@@ -2566,16 +2571,16 @@
                 );
 
             navigator.clipboard.writeText(invoiceLink).then(() => {
-                alert('Link copied to clipboard: ' + invoiceLink);  // Use invoiceLink here
+                alert('Link copied to clipboard: ' + invoiceLink); // Use invoiceLink here
                 copyFeedback.classList.remove('hidden');
                 setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
 
                 fetch(fetchUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/pdf',
-                    },
-                })
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/pdf',
+                        },
+                    })
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);

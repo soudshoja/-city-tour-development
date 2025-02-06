@@ -56,10 +56,6 @@ class TBOController extends Controller
 
     public function index(Request $request)
     {
-        if(auth()->user()->role_id !== Role::COMPANY) {
-            abort(403, 'Unauthorized action.');
-        }
-
         $countries = $this->countryList();
 
         $currentPage = $request->query('page', 1);

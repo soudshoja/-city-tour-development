@@ -40,4 +40,15 @@ class Client extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function subClients()
+    {
+        return $this->hasMany(ClientGroup::class, 'parent_client_id');
+    }
+
+    public function parentClients()
+    {
+        return $this->hasMany(ClientGroup::class, 'child_client_id');
+    }
+
 }

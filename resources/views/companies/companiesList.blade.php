@@ -590,14 +590,6 @@
 
         // BSZ95 New code ./
 
-
-
-
-
-
-
-
-
         // Upload Excel functionality
         document.getElementById('uploadExcelBtn').addEventListener('click', function(event) {
             event.preventDefault();

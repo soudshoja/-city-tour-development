@@ -422,7 +422,7 @@
                                      />
                                 </div>
                            </div>
-                           <input id="clientForm" type="hidden" name="clientForm" />    
+                           <input id="chatClientForm" type="hidden" name="clientForm" />    
                            <input id="clientId" type="hidden" name="clientId" />    
                             <!-- Submit Button -->
                             <div class="flex items-center justify-center">
@@ -1340,7 +1340,7 @@
 
             $('#fill-form-btn').on('click', function () {
                 // Show the client creation form
-                document.getElementById('clientForm').value ="new";
+                document.getElementById('chatClientForm').value ="new";
                 createClient.show();
                 clientOption.hide(); // Hide the options modal
             });
@@ -1404,7 +1404,7 @@
 
 
                                         // Populate other form fields
-                                        document.getElementById('clientForm').value = "update";
+                                        document.getElementById('chatClientForm').value = "update";
                                         document.getElementById('clientId').value = client.id || '';
                                         document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
                                         document.getElementById('nameChat').value = client.name || '';

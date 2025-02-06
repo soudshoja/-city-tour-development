@@ -33,21 +33,21 @@ body.dark {
 [data-tooltip] {
     position: relative;
     cursor: pointer;
-    z-index: 1;
+    overflow: visible;
 }
 
 /* Tooltip text style */
 [data-tooltip]::before {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 110%; /* Increased to give more space above */
-    left: 50%;
-    transform: translateX(-50%);
+    /* transform: translateX(-50%); */
     background-color: #0e1726;
+    left: 100%;
+    margin-left: 10px;
     color: #fff;
     padding: 5px 8px;
     border-radius: 4px;
-    font-size: 9px;
+    font-size: 0.8em;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
@@ -55,8 +55,36 @@ body.dark {
     z-index: 9999; /* Ensure the tooltip is on top */
 }
 
+[data-tooltip-left]{
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
+}
+
+[data-tooltip-left]::before {
+    content: attr(data-tooltip-left);
+    /* content: 'test'; */
+    position: absolute;
+    background-color: #0e1726;
+    right: 100%;
+    margin-right: 10px;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 9999; /* Ensure the tooltip is on top */
+}
+
+[data-tooltip-left]:hover::before {
+    opacity: 1;
+}
+
 /* Tooltip arrow */
-[data-tooltip]::after {
+/* [data-tooltip]::after {
     content: "";
     position: absolute;
     bottom: 100%;
@@ -68,9 +96,8 @@ body.dark {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
-    z-index: 9999; /* Ensure the tooltip is on top */
-}
-
+    z-index: 9999; // Ensure the tooltip is on top 
+} */
 /* Show tooltip on hover */
 [data-tooltip]:hover::before,
 [data-tooltip]:hover::after {

@@ -318,6 +318,15 @@ Route::group([
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
         Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
+
+        // Routes for Client Group Management
+        Route::post('/group/add', [ClientController::class, 'addToGroup'])->name('group.add');
+        Route::post('/group/remove', [ClientController::class, 'removeFromGroup'])->name('group.remove');
+        Route::get('/{parentClientId}/subclients', [ClientController::class, 'getSubClients'])
+        ->name('client.subclients');
+        Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('updateGroup');
+        Route::get('/{id}/getDetails', [ClientController::class, 'getDetails'])->name('getDetails');
+
     });
 });
 

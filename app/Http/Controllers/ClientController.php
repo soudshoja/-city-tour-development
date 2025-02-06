@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Traits\Converter;
 use App\Models\Client;
+use App\Models\ClientGroup;
 use App\Models\Invoice;
 use App\Models\Agent;
 use App\Models\Task;
@@ -13,6 +14,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
 use App\Models\Branch;
 use App\Models\Role;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -111,8 +114,19 @@ class ClientController extends Controller
         $tasks = Task::where('client_id', $id)->get();
         $paid = $invoices->where('status', 'paid')->sum('amount');
         $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
-        
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid')); // Ensure the view exists
+        $clients = Client::with('agent.branch')->get();
+            // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
+            $childClients = ClientGroup::where('parent_client_id', $id)
+            ->with('childClient') // Load related child clients
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'client' => $group->childClient, // Extract child client details
+                    'relation' => $group->relation, // Include relation column
+                ];
+            });
+
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'childClients', 'clients')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -273,4 +287,152 @@ class ClientController extends Controller
         fclose($handle);
         exit();
     }
+
+
+    public function addToGroup(Request $request)
+    {
+        $request->validate([
+            'parent_client_id' => 'required|exists:clients,id',
+            'child_client_id' => 'required|exists:clients,id|different:parent_client_id',
+        ]);
+
+        // Check if relationship already exists
+        $exists = ClientGroup::where('parent_client_id', $request->parent_client_id)
+                             ->where('child_client_id', $request->child_client_id)
+                             ->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Client is already in this group'], 409);
+        }
+
+        // Create the client group relationship
+        ClientGroup::create([
+            'parent_client_id' => $request->parent_client_id,
+            'child_client_id' => $request->child_client_id,
+        ]);
+
+        return response()->json(['message' => 'Client added to the group successfully'], 201);
+    }
+
+    /**
+     * Remove a client from a group.
+     */
+    public function removeFromGroup(Request $request)
+    {
+        $request->validate([
+            'parent_client_id' => 'required|exists:clients,id',
+            'child_client_id' => 'required|exists:clients,id',
+        ]);
+
+        $deleted = ClientGroup::where('parent_client_id', $request->parent_client_id)
+                              ->where('child_client_id', $request->child_client_id)
+                              ->delete();
+
+        if ($deleted) {
+            return response()->json(['message' => 'Client removed from the group'], 200);
+        }
+
+        return response()->json(['message' => 'Client not found in this group'], 404);
+    }
+
+    public function getSubClients(int $parentClientId)
+    {
+       
+        $childClients = ClientGroup::where('parent_client_id', $parentClientId)
+        ->with('childClient') // Load related child clients
+        ->get()
+        ->map(function ($group) {
+            return [
+                'client' => $group->childClient, // Extract child client details
+                'relation' => $group->relation, // Include relation column
+            ];
+        });
+        return response()->json($childClients);
+    }
+
+
+    public function getDetails($id)
+    {
+        // Retrieve client details along with related client groups
+        $client = Client::find($id);
+
+        // Check if client exists
+        if (!$client) {
+            return response()->json(['error' => 'Client not found'], 404);
+        }
+
+        return response()->json($client);
+    }
+
+
+    public function updateGroup(Request $request, int $id)
+    {
+        // Validate request
+        $request->validate([
+            'relation' => 'required|string|max:255',
+            'selectedId' => 'required|exists:clients,id',
+        ]);
+    
+        // Ensure that relation is a valid string
+        $relation = (string)$request->relation;
+    
+        // Log query parameters for debugging
+        Log::info('Query parameters:', [
+            'parent_client_id' => $id,
+            'child_client_id' => $request->selectedId,
+        ]);
+    
+        // Find the client group based on parent_client_id and child_client_id
+        $clientGroup = ClientGroup::where('parent_client_id', $id)
+                                  ->where('child_client_id', $request->selectedId)
+                                  ->first();
+    
+        // Log if the client group is found or not
+        Log::info('clientGroup found:', ['clientGroup' => $clientGroup]);
+    
+        // If no client group is found, return an error response
+        if (!$clientGroup) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Client relationship not found!',
+            ], 404);
+        }
+    
+        // Check current value of relation before updating
+        Log::info('Current relation value:', ['relation' => $clientGroup->relation]);
+    
+        // If relation is null, set a default value
+        if ($clientGroup->relation === null) {
+            Log::warning('Relation is null, setting a default value.');
+            $clientGroup->relation = 'parents'; // Or whatever default you prefer
+        }
+    
+        // Update the specific client group's relation field
+        $clientGroup->relation = $relation;
+    
+        // Log the updated relation value
+        Log::info('Updated relation value:', ['relation' => $clientGroup->relation]);
+    
+        // Save the updated record explicitly
+        try {
+            $clientGroup->save();
+        } catch (\Exception $e) {
+            Log::error('Error saving client group:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update client relationship!',
+            ], 500);
+        }
+    
+        // Return response with updated client group data
+        return response()->json([
+            'success' => true,
+            'message' => 'Client relationship updated successfully!',
+            'clientGroup' => $clientGroup,
+        ]);
+    }
+    
+    
+
+
 }

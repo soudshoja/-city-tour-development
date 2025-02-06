@@ -34,24 +34,20 @@ viewTaskLinks.forEach((link) => {
         event.preventDefault();
 
         const taskId = this.getAttribute("data-task-id");
+        const url = this.getAttribute("data-task-url");
 
-        toggleTasksDetails(taskId);
+        toggleTasksDetails(taskId, url);
         // If the same task is clicked again, hide the details
     });
 });
 
-function toggleTasksDetails(taskId) {
+function toggleTasksDetails(taskId, url) {
     if (currentlyDisplayed === `task-${taskId}`) {
         hideSidebar();
         return;
     }
 
     showSidebar("details");
-
-    let url = "{!! route('tasks.show', '__taskId__') !!}".replace(
-        "__taskId__",
-        taskId
-    );
 
     fetch(url)
         .then((response) => {

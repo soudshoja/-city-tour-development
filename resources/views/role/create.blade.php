@@ -32,7 +32,6 @@
                                         <button type="submit" class="btn btn-primary mx-2">Create</button>
                                         <button type="button" @click="open = false" class="btn btn-secondary mx">Cancel</button>
                                     </div>
-                                </form>
                             </dialog>
                         </div>
                     </div>
@@ -41,5 +40,6 @@
         </div>
 
         @include('role.partials.permission', ['permissions' => $permissions])
+        </form>
     </div>
 </x-app-layout>

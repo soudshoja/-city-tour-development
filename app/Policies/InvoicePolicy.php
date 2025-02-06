@@ -14,7 +14,7 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
-        //
+       return $user->can('view invoice');
     }
 
     /**
@@ -22,7 +22,7 @@ class InvoicePolicy
      */
     public function view(User $user, Invoice $invoice): bool
     {
-        //
+        return $user->can('view invoice') || $user->id == $invoice->user_id;
     }
 
     /**
@@ -30,7 +30,9 @@ class InvoicePolicy
      */
     public function create(User $user): bool
     {
-        //
+        if($user->roles('admin')) return true;
+
+        return $user->can('create invoice');
     }
 
     /**
@@ -38,7 +40,9 @@ class InvoicePolicy
      */
     public function update(User $user, Invoice $invoice): bool
     {
-        //
+        // if($user->roles('admin')) return true;
+
+        return $user->can('update invoice');
     }
 
     /**

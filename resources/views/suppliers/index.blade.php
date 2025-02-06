@@ -59,7 +59,7 @@
                     <th class="px-4 py-2">Actions</th>
                 </tr>
             </thead>
-            <tbody class="bg-white dark:bg-dark rounded-md p-2">
+            <tbody class="bg-white dark:bg-dark rounded-md p-2" id="suppliersTable">
                 @foreach ($suppliers as $supplier)
                 <tr class=" hover:bg-gray-200 dark:hover:bg-gray-600">
                     <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
@@ -70,11 +70,8 @@
                     <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2">
                         <button class="bg-green-500 text-white px-2 py-1 rounded">Activate</button>
                         <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Deactivate</button>
-                        @php
-                        $indexRoute = 'suppliers.' . $supplier->route . '.index';
-                        @endphp
-                        @if(Route::has($indexRoute))
-                        <a href="{{ route($indexRoute) }}" class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</a>
+                        @if($supplier->named_route != null)
+                        <a href="{{ route($supplier->named_route) }}" class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</a>
                         @endif
                     </td>
                 </tr>
@@ -82,4 +79,43 @@
             </tbody>
         </table>
     </div>
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const suppliersData = document.getElementById('suppliersData');
+        const suppliers = @json($suppliers);
+
+        searchInput.addEventListener('input', (e) => {
+
+            const searchValue = e.target.value;
+            const filteredSuppliers = suppliers.filter(supplier => supplier.name.toLowerCase().includes(searchValue.toLowerCase()));
+            suppliersData.innerText = filteredSuppliers.length;
+            const suppliersTable = document.getElementById('suppliersTable');
+            const basedUrl = @json(config('app.url'));
+
+            suppliersTable.innerHTML = '';
+            filteredSuppliers.forEach(supplier => {
+
+                let url = basedUrl + '/suppliers/' + supplier.route + '/index';
+
+                const tr = document.createElement('tr');
+                tr.classList.add('hover:bg-gray-200', 'dark:hover:bg-gray-600');
+                tr.innerHTML = `
+                    <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
+                        <a href="{{ route('suppliers.show', $supplier->id) }}">
+                            <span class="font-bold">» ${supplier.name}</span><br>
+                        </a>
+                    </td>
+                    <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2">
+                        <button class="bg-green-500 text-white px-2 py-1 rounded">Activate</button>
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Deactivate</button>
+                        ${supplier.named_route ? `<a href="${url}" class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</a>` : ''}
+                    </td>
+                `;
+                suppliersTable.appendChild(tr);
+            });
+
+
+
+        });
+    </script>
 </x-app-layout>

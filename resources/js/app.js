@@ -51,19 +51,20 @@ updateIcon(currentTheme);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // tooltip js
 
-document.addEventListener("mouseover", (e) => {
-    const target = e.target.closest("[data-tooltip]");
-    if (target) {
-        target.classList.add("tooltip-active");
-    }
-});
+// document.addEventListener("hover", (e) => {
+//     console.log('mouseover');
+//     const target = e.target.closest("[data-tooltip]");
+//     if (target) {
+//         target.classList.add("tooltip-active");
+//     }
+// });
 
-document.addEventListener("mouseout", (e) => {
-    const target = e.target.closest("[data-tooltip]");
-    if (target) {
-        target.classList.remove("tooltip-active");
-    }
-});
+// document.addEventListener("mouseout", (e) => {
+//     const target = e.target.closest("[data-tooltip]");
+//     if (target) {
+//         target.classList.remove("tooltip-active");
+//     }
+// });
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // custom select js
@@ -496,3 +497,4 @@ document.querySelectorAll(".custom-select").forEach((select) => {
         );
     })();
 });
+

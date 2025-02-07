@@ -200,7 +200,7 @@
 
                                         <div class="grid grid-cols-2 gap-4">
                                             <div class="mb-6">
-                                                <input type="tel" name="phone" id="branch_phone" class="custom-input" placeholder="phone number" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
+                                                <input type="tel" name="phone" id="branch_phone" class="custom-input" placeholder="phone number">
                                             </div>
 
 

@@ -251,15 +251,8 @@
                         </div>
                             <input id="selectedId" type="hidden" name="selectedId" />
                             <label for="relation" class="w-full text-sm font-semibold">Relationship</label>
-                            <select name="relation" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
-                                <option value="parents">Parents</option>
-                                <option value="children">Children</option>
-                                <option value="spouse">Spouse</option>
-                                <option value="friends">Friends</option>
-                                <option value="maid">Maid</option>
-                                <option value="driver">Driver</option>
-                           </select>
-                        <button onclick="updateClientGroup()" 
+                            <select id="relation" name="relation" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"></select>
+                            <button onclick="updateClientGroup()" 
                             class="p-2 rounded-md bg-black text-white">Update</button>
             </div>
 
@@ -274,6 +267,26 @@
     const viewClientLinks = document.querySelectorAll(".viewClient");
     const showClientRightDiv = document.getElementById("showClientRightDiv"); // Correct element ID
     const clientDetailsDiv = document.getElementById("clientDetails");
+    const relationships = [
+        "Father", "Mother", "Driver", "Maid", "Son", "Daughter", "Husband", "Wife", "Brother", "Sister",
+        "Grandfather", "Grandmother", "Uncle", "Aunt", "Nephew", "Niece", "Cousin", "Guardian", "Employer",
+        "Employee", "Manager", "Supervisor", "Client", "Customer", "Supplier", "Partner", "Friend", "Neighbor",
+        "Doctor", "Teacher", "Lawyer", "Counselor", "Patient", "Student", "Coach", "Tutor", "Admin",
+        "Receptionist", "Colleague", "Accountant", "Consultant", "Investor", "Banker"
+    ];
+
+
+    // Get the select element
+    const relationSelect = document.getElementById("relation");
+
+    // Populate the select dropdown
+    relationships.forEach(relation => {
+        let option = document.createElement("option");
+        option.value = relation.toLowerCase(); // Use lowercase values
+        option.textContent = relation; // Display text
+        relationSelect.appendChild(option);
+    });
+
 
     renderClientList(clients);
 

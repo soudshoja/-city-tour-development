@@ -177,7 +177,14 @@
           <input id="childId" type="hidden" name="childId" />
 
           <div class="panel w-full xl:mt-0 rounded-lg h-auto">
-            <h2 class="text-lg font-bold">Client Group</h2>
+            <h2 class="text-lg font-bold">Belongs To</h2>
+                <ul id="par-client-list">
+                    <!-- Sub-clients will be listed here dynamically -->
+                </ul>
+        </div>
+
+          <div class="panel w-full xl:mt-0 rounded-lg h-auto">
+            <h2 class="text-lg font-bold">Child Group</h2>
                 <ul id="sub-client-list">
                     <!-- Sub-clients will be listed here dynamically -->
                 </ul>
@@ -313,7 +320,7 @@
 
             
             fetchSubClients(clientId);
-
+            fetchParClients(clientId);
             if (showClientRightDiv.classList.contains("hidden")) {
 
                 showClientRightDiv.classList.remove("hidden");
@@ -348,7 +355,6 @@
                 updateSubClientList(data);
             } catch (error) {
                 console.error("Error fetching sub-clients:", error);
-                alert("Failed to fetch sub-clients. Please try again.");
             }
         }
 
@@ -368,6 +374,47 @@
                     listItem.classList.add("border", "p-2", "rounded-md", "mb-2");
 
                     subClientList.appendChild(listItem);
+                });
+            }
+
+            async function fetchParClients(childClientId) {
+                const fetchUrl = `/clients/${childClientId}/parclients`; 
+
+
+                    try {
+                        const response = await fetch(fetchUrl, {
+                            method: "GET",
+                            headers: {
+                                "Accept": "application/json", // Expecting JSON response
+                            },
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+
+                        const data = await response.json(); // Parse response as JSON
+                        updateParClientList(data);
+                    } catch (error) {
+                        console.error("Error fetching par-clients:", error);
+                    }
+                }
+                
+        function updateParClientList(parClients) {
+                const parClientList = document.getElementById("par-client-list");
+                parClientList.innerHTML = ""; // Clear existing list
+
+                if (parClients.length === 0) {
+                    parClientList.innerHTML = "<li>No parent-clients found.</li>";
+                    return;
+                }
+
+                parClients.forEach(client => {
+                    const listItem = document.createElement("li");
+                    listItem.textContent = `${client.client.name} - ${client.client.email}`;
+                    listItem.classList.add("border", "p-2", "rounded-md", "mb-2");
+
+                    parClientList.appendChild(listItem);
                 });
             }
 

@@ -179,7 +179,13 @@ class MobileController extends Controller
 
     public function getInvoiceByAgentId($agentId)
     {
-        $invoices = Invoice::where('agent_id', $agentId)->get();
+        $invoices = Invoice::with([
+            'client',
+            'agent',
+            'invoiceDetails.task', // Nested eager loading for task
+            'invoicePartials'
+        ])->
+        where('agent_id', $agentId)->get();
         if ($invoices->isEmpty()) {
             return response()->json(['message' => 'No invoices found for this agent.'], 404);
         }

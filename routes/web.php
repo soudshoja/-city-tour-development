@@ -335,6 +335,8 @@ Route::group([
         Route::post('/group/remove', [ClientController::class, 'removeFromGroup'])->name('group.remove');
         Route::get('/{parentClientId}/subclients', [ClientController::class, 'getSubClients'])
         ->name('client.subclients');
+        Route::get('/{childClientId}/parclients', [ClientController::class, 'getParClients'])
+        ->name('client.parclients');
         Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('updateGroup');
         Route::get('/{id}/getDetails', [ClientController::class, 'getDetails'])->name('getDetails');
 

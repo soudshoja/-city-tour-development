@@ -308,7 +308,7 @@
                             @endforeach
                         </table>
                         @else
-                        <p class="text-gray-500 dark:text-gray-400">No tasks found for this client.</p>
+                        <p class="text-gray-500 dark:text-gray-400">No group found for this client.</p>
                         @endif
 
                     </div>
@@ -336,6 +336,56 @@
                     <input id="childId" type="hidden" name="childId" />
                 </div>    
            </div>
+       </div>
+    </div>
+
+
+    <div class="mt-5 panel">
+      <div class="md:flex gap-2">
+        <div class="panel w-[50%] md:w-[75%]">
+                <div class="mb-5 flex justify-between">
+                    <h5 class="text-lg font-semibold dark:text-white-light">
+                        <span class="customBlueColor">Belongs</span> To
+                    </h5>
+                    <!-- add an icon here -->
+                </div>
+                <!-- tasks Section -->
+                <div class="mt-5 overflow-x-auto">
+                    <div class="max-h-96 overflow-y-auto custom-scrollbar">
+                        <!-- Client Orders Section -->
+                        @if($parentClients->count() > 0)
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Contact</th>
+                                </tr>
+                            </thead>
+                            @foreach($parentClients as $group)
+                            <tbody>
+                                <tr>
+                                    <td>{{ $group['client']->name }}</td>
+                                    <td>{{ $group['client']->email }}</td>
+                                    <td>{{ $group['client']->phone }}</td>
+                                </tr>
+                            </tbody>
+                            <!-- <li class="border-b border-gray-200 dark:border-gray-600 py-2">
+                                <strong class="text-gray-900 dark:text-gray-100">Task:
+                                    {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}:</strong> <span
+                                    class="text-gray-500 dark:text-gray-400">{{ $task->type }}</span> -
+                                <span class="text-gray-500 dark:text-gray-400">{{ $task->status }}</span>
+                            </li> -->
+                            @endforeach
+                        </table>
+                        @else
+                        <p class="text-gray-500 dark:text-gray-400">No parent found for this client.</p>
+                        @endif
+
+                    </div>
+                </div>
+                <!-- ./tasks Section -->
+            </div>
        </div>
     </div>
 

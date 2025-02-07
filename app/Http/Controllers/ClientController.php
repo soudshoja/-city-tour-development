@@ -126,7 +126,18 @@ class ClientController extends Controller
                 ];
             });
 
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'childClients', 'clients')); // Ensure the view exists
+            $parentClients = ClientGroup::where('child_client_id', $id)
+            ->with('parentClient') // Load related child clients
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'client' => $group->parentClient, // Extract child client details
+                    'relation' => $group->relation, // Include relation column
+                ];
+            });
+
+
+        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'childClients', 'parentClients', 'clients')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -349,6 +360,23 @@ class ClientController extends Controller
         });
         return response()->json($childClients);
     }
+
+
+    public function getParClients(int $childClientId)
+    {
+        $parentClients = ClientGroup::where('child_client_id', $childClientId) // Fetch parents using child ID
+            ->with('parentClient') // Load related parent clients
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'client' => $group->parentClient, // Extract parent client details
+                    'relation' => $group->relation, // Include relation column
+                ];
+            });
+    
+        return response()->json($parentClients);
+    }
+
 
 
     public function getDetails($id)

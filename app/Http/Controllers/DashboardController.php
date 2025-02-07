@@ -86,7 +86,6 @@ class DashboardController extends Controller
             'clients' => $clients,
             'companiesSales' => $companiesSales,
             'companiesNames' => $companies->pluck('name'),
-            'colors' => $colors,
             // 'notifications' => $notifications,
         ];
     }

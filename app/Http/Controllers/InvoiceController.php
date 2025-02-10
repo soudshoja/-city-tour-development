@@ -260,7 +260,6 @@ class InvoiceController extends Controller
             'agentId',
             'clientId',
             'tasks',
-            'companies',
             'suppliers',
             'invoiceNumber',
             'selectedTasks',
@@ -485,8 +484,6 @@ class InvoiceController extends Controller
         $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
-
-        Log::info('Company ID:', ['companyId' => $companyId]);
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
             ->where('company_id', $companyId)

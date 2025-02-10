@@ -1,12 +1,314 @@
-   @if(Auth()->user()->role_id === \App\Models\Role::ADMIN)
+<x-app-layout>
+    <style>
+        #dashboard-revenue>div {
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+        }
+    </style>
+    <div class="">
+        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mt-3">
+            @can('viewAny', App\Models\Company::class)
+            <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
+                <div class="w-full">
+                    <h1 class="text-2xl font-bold text-green-800 dark:text-green-300">{{ $companies->count() }}</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Companies</p>
+                </div>
+                <div class="mt-4 w-full text-center">
+                </div>
+            </div>
+            @endcan
+            @can('viewAny', App\Models\Branch::class)
+            <div class="p-4 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg shadow-md w-full flex">
+                <div class="w-full">
+                    <h1 class="text-2xl font-bold text-blue-800 dark:text-blue-300">{{ $branches->count() }}</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Branches</p>
+                </div>
+                <div class="mt-4 w-full text-center">
+                </div>
+            </div>
+            @endcan
+            @can('viewAny', App\Models\Agent::class)
+            <div class="p-4 bg-red-100/50 dark:bg-red-900/50 rounded-lg shadow-md w-full flex">
+                <div class="w-full">
+                    <h1 class="text-2xl font-bold text-red-800 dark:text-red-300">{{ $agents->count() }}</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Agents</p>
+                </div>
+                <div class="mt-4 w-full text-center">
+                </div>
+            </div>
+            @endcan
+            @can('viewAny', App\Models\Client::class)
+            <div class="p-4 bg-yellow-100/50 dark:bg-yellow-900/50 rounded-lg shadow-md w-full flex">
+                <div class="w-full">
+                    <h1 class="text-2xl font-bold text-yellow-800 dark:text-yellow-300">{{ $clients->count() }}</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"> Total Clients</p>
+                </div>
+                <div class="mt-4 w-full text-center">
+                </div>
+            </div>
+            @endcan
+        </div>
 
-   @elseif(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
-   <div>
-       @include('companies.index')
-   </div>
+        <div class="my-5 w-full p-3">
+            <div class="flex flex-col lg:flex-row gap-3">
+                <div class="p-2 bg-white rounded-md shadow-md w-full">
+                    <h1>
+                        Revenue
+                    </h1>
+                </div>
+                <div class="p-10 pt-2 bg-white rounded-md shadow-md flex flex-col w-full lg:w-1/2">
+                    <h1>
+                        {{ $pieChartTitle }}
+                    </h1>
+                    <div x-data="chart" class="flex justify-center">
+                        <div x-ref="donutChart" class="bg-white dark:bg-black rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- <div id="dashboard-revenue" class="mb-2 rounded-md min-h-32 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-md bg-red-300 min-h-full">
+                    Task
+                </div>
+                <div class="rounded-md bg-koromiko-300 ">
+                    Invoices
+                </div>
+                <div class="rounded-md bg-amber-300">
 
-   @elseif(Auth()->user()->role_id ==\App\Models\Role::AGENT)
-   <div>
-       @include('agents.index')
-   </div>
-   @endif
+                </div>
+                <div class="rounded-md bg-green-300">
+
+                </div>
+            </div> -->
+            @if(isset($paidAmounts) && isset($unpaidAmounts))
+            <div class="my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800">
+                <h2 class="text-3xl font-bold">Earnings</h2>
+                <div id="earnings" class="relative w-full min-h-96" data-paid="{{ json_encode($paidAmounts) }}" data-unpaid="{{ json_encode($unpaidAmounts) }}">
+                    <canvas id="earningsChart"></canvas>
+                </div>
+            </div>
+            @endif
+
+        </div>
+    </div>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            let pieChartNumbers = @json($pieChartNumbers);
+            let pieChartLabels = @json($pieChartLabels);
+            let pieChartColors = @json($pieChartColors);
+
+            Alpine.data('chart', () => ({
+                init() {
+                    let donutChart = new ApexCharts(this.$refs.donutChart, {
+                        series: pieChartNumbers,
+                        labels: pieChartLabels,
+                        // colors: pieChartColors,
+                        chart: {
+                            type: 'donut',
+                            zoom: {
+                                enabled: true
+                            },
+                            toolbar: {
+                                show: true
+                            },
+                            width: '100%',
+                            // foreColor: '#fff'
+                        },
+                        stroke: {
+                            show: false,
+                        },
+                        legend: {
+                            position: 'bottom',
+                            formatter: function(seriesName, opts) {
+                                return [seriesName, " - ", opts.w.globals.series[opts.seriesIndex] , 'KWD']
+                            }
+                        },
+                        tooltip:{
+                            enabled: false
+                        },
+                        dataLabels: {
+                            style: {
+                                fontSize: '0.8em',
+                                colors: ['black']
+                            },
+                            background: {
+                                enabled: true,
+                                borderRadius: 4,
+                                borderWidth: 1,
+                                borderColor: 'black',
+                                opacity: 0.8,
+                            },
+
+                        },
+                        plotOptions: {
+                            pie: {
+                                donut: {
+                                    size: '75%'
+                                }
+                            }
+                        },
+                        responsive: [{
+                            breakpoint: 370,
+                            options: {
+                                chart: {
+                                    width: 250
+                                },
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                dataLabels: {
+                                    style: {
+                                        fontSize: '0.6em',
+                                    }
+                                }
+                            }
+                        }]
+
+
+                    });
+
+
+                    donutChart.render();
+
+                }
+            }))
+        })
+
+
+        const ctx = document.getElementById('earningsChart').getContext('2d');
+
+        const labels = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        const earningsDiv = document.getElementById('earnings');
+
+        const paidAmounts = JSON.parse(earningsDiv.getAttribute('data-paid'));
+        const unpaidAmounts = JSON.parse(earningsDiv.getAttribute('data-unpaid'));
+
+        const data = {
+            labels: labels,
+            datasets: [{
+                    label: 'Paid Amounts - Invoices',
+                    data: paidAmounts,
+                    borderColor: 'rgb(34 197 94)',
+                    backgroundColor: 'rgb(34 197 94)',
+                    borderWidth: 3,
+                    borderRadius: 10, // Medium rounded corners
+                    borderSkipped: 'start',
+                    hoverBackgroundColor: 'rgb(74 222 128)',
+                    hoverBorderColor: 'rgb(74 222 128)',
+                },
+                {
+                    label: 'unpaid Amounts - Invoices',
+                    data: unpaidAmounts,
+                    borderColor: 'rgb(239 68 68)',
+                    backgroundColor: 'rgb(239 68 68)',
+                    borderWidth: 3,
+                    borderRadius: 10, // Medium rounded corners
+                    borderSkipped: 'start',
+                    hoverBackgroundColor: 'rgb(248 113 113)',
+                    hoverBorderColor: 'rgb(248 113 113)',
+                },
+            ],
+        };
+
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true, // Chart resizes with container
+                maintainAspectRatio: false, // Disable fixed aspect ratio to fill height
+
+                plugins: {
+                    legend: {
+                        gap: 30, // Add 30px of space between legend items
+                        position: 'top', // Place legend on the top
+                        align: 'end', // Align legend to the right
+                        labels: {
+                            usePointStyle: true, // Use point style for legend box
+                            boxWidth: 20, // Width of the legend box
+                            padding: 10, // Padding around the legend text
+                            font: {
+                                size: 12, // Font size for legend text
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false, // Removes vertical grid lines
+                            drawOnChartArea: false, // Make sure grid lines are not drawn over the chart area
+                            drawTicks: false, // Remove tick marks on the x-axis
+                        },
+                        border: {
+                            display: false, // Removes the border line for the x-axis
+                        },
+                        ticks: {
+                            display: true, // Keep the tick labels (months)
+                            font: {
+                                size: 12, // Adjust size if needed
+                            },
+                            color: 'rgb(75, 85, 99)', // Gray color for labels
+                        },
+                        offset: true, // Adds space between the chart area and the first/last bars
+                    },
+                    y: {
+                        grid: {
+                            display: false, // Removes horizontal grid lines
+                            drawOnChartArea: false, // Make sure grid lines are not drawn over the chart area
+                            drawTicks: false, // Remove tick marks on the y-axis
+                        },
+                        border: {
+                            display: false, // Removes the border line for the y-axis
+                        },
+                        ticks: {
+                            display: true, // Keep the tick labels (numbers)
+                            font: {
+                                size: 12, // Adjust size if needed
+                            },
+                            color: 'rgb(75, 85, 99)', // Gray color for labels
+                        },
+                        beginAtZero: true,
+                        grace: '10%', // Adds padding to the top of the y-axis to provide space above the highest bar
+                    },
+                },
+                elements: {
+                    bar: {
+                        barPercentage: 0.8, // Adjust bar size to provide more spacing between bars and axes
+                        categoryPercentage: 0.9, // Adjust category percentage to provide spacing between bars within categories
+                    },
+                },
+            },
+            animations: {
+                tension: {
+                    duration: 1000, // Duration in milliseconds
+                    easing: 'linear', // Animation easing type
+                    from: 1,
+                    to: 0,
+                    loop: true,
+                },
+            },
+        };
+
+        // Create the chart
+        const earningsChart = new Chart(ctx, config);
+
+        // Actions (e.g., randomize data)
+        // const actions = [{
+        //     name: 'Randomize',
+        //     handler(chart) {
+        //         chart.data.datasets.forEach((dataset) => {
+        //             dataset.data = generateRandomNumbers(12, -100, 100);
+        //         });
+        //         chart.update();
+        //     },
+        // }, ];
+    </script>
+</x-app-layout>

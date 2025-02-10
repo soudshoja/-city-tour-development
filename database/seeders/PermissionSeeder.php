@@ -68,5 +68,9 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view supplier', 'group' => 'supplier']);
         Permission::firstOrCreate(['name' => 'update supplier', 'group' => 'supplier']);
         Permission::firstOrCreate(['name' => 'delete supplier', 'group' => 'supplier']);
+        Permission::firstOrCreate(['name' => 'create client', 'group' => 'client']);
+        Permission::firstOrCreate(['name' => 'view client', 'group' => 'client']);
+        Permission::firstOrCreate(['name' => 'update client', 'group' => 'client']);
+        Permission::firstOrCreate(['name' => 'delete client', 'group' => 'client']);
     }
 }

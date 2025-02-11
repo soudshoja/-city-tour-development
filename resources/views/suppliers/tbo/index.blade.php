@@ -22,7 +22,7 @@
         Careful!!! You Are You Using Live Credentials !
     </div>
     @endif
-    @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings])
+    @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings, 'startDate' => $startDate, 'endDate' => $endDate])
     <div class="">
         <div class="bg-white p-4 dark:bg-gray-600 overflow-hidden shadow-sm rounded-lg font-semibold">
             COUNTRY AVAILABLE

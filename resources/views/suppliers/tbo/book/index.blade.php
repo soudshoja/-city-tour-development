@@ -25,9 +25,9 @@
         <div class="flex justify-evenly gap-4">
             <div class="flex flex-col gap-2">
                 <label for="checkInDate">Check In</label>
-                <input type="date" id="checkInDate" class="dark:bg-gray-800 dark:border-gray-800">
+                <input type="date" id="checkInDate" class="dark:bg-gray-800 dark:border-gray-800" value="{{ old('checkInDate') }}">
                 <label for="checkOutDate">Check Out</label>
-                <input type="date" id="checkOutDate" class="dark:bg-gray-800 dark:border-gray-900">
+                <input type="date" id="checkOutDate" class="dark:bg-gray-800 dark:border-gray-900" value="{{ old('checkOutDate') }}">
             </div>
             <div class="flex flex-col gap-2 max-w-120">
                 <div class="flex flex-col gap-2">
@@ -67,7 +67,8 @@
                     <select name="hotel" id="hotel" class="h-12 p-2 dark:bg-gray-800 dark:border-gray-900">
                         <option value="">Select Hotel</option>
                         @foreach($hotelList as $hotel)
-                        <option value="{{ $hotel['HotelCode'] }}">{{ $hotel['HotelName'] }} - {{ $hotel['HotelCode'] }}</option>
+                        <option value="{{ $hotel['HotelCode'] }}" {{ $hotel['HotelCode'] === old('hotelCode') ? 'selected' : '' }}
+                        >{{ $hotel['HotelName'] }} - {{ $hotel['HotelCode'] }}</option>
                         @endforeach
                     </select>
                     @endif
@@ -199,6 +200,7 @@
 
                     const hotels = data.HotelResult;
                     hotels.forEach(hotel => {
+                        console.log('hotel: ', hotel);
                         hotel.Rooms.forEach(room => {
                             console.log(room);
                             const roomResultDiv = document.createElement('div');
@@ -228,6 +230,9 @@
                             }
 
                             form.innerHTML += `
+                                <input type="hidden" name="checkInDate" value="${checkInDate}">
+                                <input type="hidden" name="checkOutDate" value="${checkOutDate}">
+                                <input type="hidden" name="hotelCode" value="${hotel.HotelCode}">
                                 <input type="hidden" name="hotelName" value="${hotelName}">
                                 <input type="hidden" name="bookingCode" value="${room.BookingCode}">
                                 <input type="hidden" name="totalFare" value="${room.TotalFare}">
@@ -248,13 +253,13 @@
                                 </div>
                             `;
 
-                            if (room.RoomPromotion.length > 0) {
+                            if (room.RoomPromotion && room.RoomPromotion.length > 0) {
                                 form.innerHTML += `
                                   <div>Room Promotion: ${room.RoomPromotion.join(', ')}</div>
                                 `;
                             }
 
-                            if (room.Supplements.length > 0) {
+                            if (room.Supplements && room.Supplements.length > 0) {
                                 form.innerHTML += `
                                   <div>Supplements:</div>
                                 `;

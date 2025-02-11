@@ -25,6 +25,8 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::post('/invoice', [MobileController::class, 'store']);
         Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
         Route::get('/invoice/by/{Id}', [MobileController::class, 'getInvoiceById']);
+        Route::post('/invoice/partial', [MobileController::class, 'savePartial']);
+        Route::post('/invoice/remove/partial', [MobileController::class, 'removePartial']);
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
 
 

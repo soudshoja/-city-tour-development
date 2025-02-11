@@ -8,6 +8,7 @@ use App\Models\TBORoom;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redirect;
 
@@ -57,6 +58,10 @@ class TBOController extends Controller
     public function index(Request $request)
     {
         $countries = $this->countryList();
+
+        if(isset($countries['Status']['Code']) && $countries['Status']['Code'] !== 200){
+            return Redirect::back()->withErrors($countries['Status']['Description']);
+        }
 
         $currentPage = $request->query('page', 1);
         $perPage = 20;
@@ -117,6 +122,10 @@ class TBOController extends Controller
         $hotelCode = '';
         $guestNationality = '';
         $countryList = $this->countryList();
+
+        if(isset($countryList['Status']['Code']) && $countryList['Status']['Code'] !== 200){
+            return Redirect::back()->with('error', $countryList['Status']['Description']);
+        }
 
         $countryCode = '';
         $cityCode = '';
@@ -207,9 +216,9 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger("Search Response: ", $response->json());
+        logger("Search Response: ", $response);
 
-        return $response->json();
+        return $response;
     }
  
     public function preBookStore(Request $request)
@@ -230,10 +239,10 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger('Prebook Response: ', $response->json());
+        logger('Prebook Response: ', $response);
 
         if($response['Status']['Code'] !== 200){
-            return Redirect::back()->withErrors($response['Status']['Description']);
+            return Redirect::back()->withInput()->withErrors($response['Status']['Description']);
         }
 
         $hotelResult = $response['HotelResult'];
@@ -259,11 +268,11 @@ class TBOController extends Controller
                         'with_transfer' => $rooms['WithTransfer'] ?? false,
                     ]);
 
-                    foreach($request->rooms as $room){
+                    foreach($request->rooms as $key => $room){
                         try{
                             TBORoom::create([
                                 'tbo_id' => $tboPreBook->id,
-                                // 'room_name' => $room['roomName'],
+                                'room_name' => $rooms['Name'][$key],
                                 'adult_quantity' => $room['adults'],
                                 'child_quantity' => $room['children'],
                             ]);
@@ -271,12 +280,12 @@ class TBOController extends Controller
 
                             $tboPreBook->delete();
                             logger('Error: '. $e->getMessage());
-                            return Redirect::back()->with('error', $e->getMessage());
+                            return Redirect::back()->with('error', 'Something went wrong. Please try again or contact support');
                         }
                     }
                 } catch (Exception $e) {
                     logger('Error: '. $e->getMessage()); 
-                    return Redirect::back()->with('error', $e->getMessage());
+                    return Redirect::back()->withInput()->with('error', 'Something went wrong. Please try again or contact support');
                 }
             }
         }
@@ -426,7 +435,7 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger('Booking Response: ', $response->json());
+        logger('Booking Response: ', $response);
 
         if($response['Status']['Code'] !== 200){
 
@@ -468,7 +477,7 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger('Booking Detail Response: ', $response->json());
+        logger('Booking Detail Response: ', $response);
 
         if($response['Status']['Code'] !== 200){
             return [
@@ -491,7 +500,7 @@ class TBOController extends Controller
             "ToDate" => $endDate
         ]);
 
-        // logger('Booking Detail By Date Response: ', $response->json());
+        // logger('Booking Detail By Date Response: ', $response);
 
         if($response['Status']['Code'] !== 200){
             
@@ -513,7 +522,7 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        logger('Cancel Response: ', $response->json());
+        logger('Cancel Response: ', $response);
 
         if($response['Status']['Code'] !== 200){
             return Redirect::back()->withErrors($response['Status']['Description']);
@@ -526,15 +535,18 @@ class TBOController extends Controller
     {
         $url = '/CountryList';
         $cacheKey = 'country_list';
-        $cacheTime = 60 * 60; // Cache for 1 hour
+        $cacheTime = 60 * 60 * 24; // Cache for 1 day
 
         if (cache()->has($cacheKey)) {
             return cache()->get($cacheKey);
         }
 
-        $response = $this->tboGetAuthentication($url)['CountryList'];
+        $response = $this->tboGetAuthentication($url);
 
-        cache()->put($cacheKey, $response, $cacheTime);
+        if($response['Status']['Code'] == 200){
+            $response = $response['CountryList'];
+            cache()->put($cacheKey, $response, $cacheTime);
+        }
 
         return $response;
     }
@@ -547,9 +559,8 @@ class TBOController extends Controller
             "CountryCode" => $countryCode
         ];
 
-        $response = $this->tboPostAuthentication($url, $data);
+        return $this->tboPostAuthentication($url, $data);
         
-        return $response->json();
     }
 
     public function cityListPage($countryCode)
@@ -576,19 +587,56 @@ class TBOController extends Controller
 
         $response = $this->tboPostAuthentication($url, $data);
 
-        return $response->json();
+        return $response;
     }
 
+    /* hotelCodeList only returns an array of hotel codes
+           no status code is returned
+
+           example: 
+           
+           'HotelCodes' => [
+                '100001',
+                '100002',
+                '100003',
+           ]
+
+           while all api calls return a status code
+
+           example:
+
+              'Status' => [
+                 'Code' => 200,
+                 'Description' => 'Success'
+              ]
+              'RelatedData' => Data[]
+
+            due to this, the response is not consistent with other api calls
+
+            Please be aware of this when using this function
+    */
     public function hotelCodeList()
     {
         $url = '/HotelCodeList';
+        $cacheKey = 'hotel_code_list';
+        $cacheTime = 60 * 60 * 24; // Cache for 1 day
+
+        if (cache()->has($cacheKey)) {
+            return cache()->get($cacheKey);
+        }
 
         $response = $this->tboGetAuthentication($url);
+
+        if (isset($response['HotelCodes']) && count($response['HotelCodes']) > 0) {
+            $response = $response['HotelCodes'];
+
+            cache()->put($cacheKey, $response, $cacheTime);
+        }
 
         return $response;
     }
 
-    public function hotelDetails($hotelCode)
+    public function hotelDetails(int $hotelCode)
     {
         $url = '/HotelDetails';
 
@@ -598,7 +646,22 @@ class TBOController extends Controller
         ];
 
         $response = $this->tboPostAuthentication($url, $data)['HotelDetails'];
+
         return $response;
+    }
+
+    public function getAllDestinations()
+    {
+        if(!auth()->user()->hasRole('admin'))
+        {
+            return Redirect::back()->withErrors('You are not authorized to perform this action');
+        }
+
+        // get all countries
+        $countries = $this->countryList();
+
+        return $countries;
+        // return as 
     }
 
 }

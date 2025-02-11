@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('booking_code');
             $table->string('hotel_code');
+            $table->string('hotel_name');
             $table->string('room_name');
             $table->string('inclusion');
             $table->string('currency');

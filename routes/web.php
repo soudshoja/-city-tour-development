@@ -161,6 +161,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('cancel-booking/{confirmationNo}', [TBOController::class, 'cancel'])->name('cancel-booking');
             Route::post('credentials', [TBOController::class, 'setCredentials'])->name('credentials');
             Route::get('reset-tbo-credentials',[TBOController::class, 'destroyTBOSession'])->name('reset');
+            Route::get('get-all-destinations',[TBOController::class, 'getAllDestinations'])->name('all-destinations');
         });
     });
 

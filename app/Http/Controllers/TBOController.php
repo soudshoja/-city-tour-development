@@ -59,6 +59,10 @@ class TBOController extends Controller
     {
         $countries = $this->countryList();
 
+        if(isset($countries['Status']['Code']) && $countries['Status']['Code'] !== 200){
+            return Redirect::back()->withErrors($countries['Status']['Description']);
+        }
+
         $currentPage = $request->query('page', 1);
         $perPage = 20;
         $offset = ($currentPage - 1) * $perPage;
@@ -118,6 +122,10 @@ class TBOController extends Controller
         $hotelCode = '';
         $guestNationality = '';
         $countryList = $this->countryList();
+
+        if(isset($countryList['Status']['Code']) && $countryList['Status']['Code'] !== 200){
+            return Redirect::back()->with('error', $countryList['Status']['Description']);
+        }
 
         $countryCode = '';
         $cityCode = '';
@@ -527,15 +535,18 @@ class TBOController extends Controller
     {
         $url = '/CountryList';
         $cacheKey = 'country_list';
-        $cacheTime = 60 * 60; // Cache for 1 hour
+        $cacheTime = 60 * 60 * 24; // Cache for 1 day
 
         if (cache()->has($cacheKey)) {
             return cache()->get($cacheKey);
         }
 
-        $response = $this->tboGetAuthentication($url)['CountryList'];
+        $response = $this->tboGetAuthentication($url);
 
-        cache()->put($cacheKey, $response, $cacheTime);
+        if($response['Status']['Code'] == 200){
+            $response = $response['CountryList'];
+            cache()->put($cacheKey, $response, $cacheTime);
+        }
 
         return $response;
     }
@@ -579,16 +590,53 @@ class TBOController extends Controller
         return $response;
     }
 
+    /* hotelCodeList only returns an array of hotel codes
+           no status code is returned
+
+           example: 
+           
+           'HotelCodes' => [
+                '100001',
+                '100002',
+                '100003',
+           ]
+
+           while all api calls return a status code
+
+           example:
+
+              'Status' => [
+                 'Code' => 200,
+                 'Description' => 'Success'
+              ]
+              'RelatedData' => Data[]
+
+            due to this, the response is not consistent with other api calls
+
+            Please be aware of this when using this function
+    */
     public function hotelCodeList()
     {
         $url = '/HotelCodeList';
+        $cacheKey = 'hotel_code_list';
+        $cacheTime = 60 * 60 * 24; // Cache for 1 day
+
+        if (cache()->has($cacheKey)) {
+            return cache()->get($cacheKey);
+        }
 
         $response = $this->tboGetAuthentication($url);
+
+        if (isset($response['HotelCodes']) && count($response['HotelCodes']) > 0) {
+            $response = $response['HotelCodes'];
+
+            cache()->put($cacheKey, $response, $cacheTime);
+        }
 
         return $response;
     }
 
-    public function hotelDetails($hotelCode)
+    public function hotelDetails(int $hotelCode)
     {
         $url = '/HotelDetails';
 
@@ -598,20 +646,21 @@ class TBOController extends Controller
         ];
 
         $response = $this->tboPostAuthentication($url, $data)['HotelDetails'];
+
         return $response;
     }
 
     public function getAllDestinations()
     {
-
-        Gate::authorize('role:admin');
+        if(!auth()->user()->hasRole('admin'))
+        {
+            return Redirect::back()->withErrors('You are not authorized to perform this action');
+        }
 
         // get all countries
+        $countries = $this->countryList();
 
-        // get all cities
-
-        // get all hotels
-
+        return $countries;
         // return as 
     }
 

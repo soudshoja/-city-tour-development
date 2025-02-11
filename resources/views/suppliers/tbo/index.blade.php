@@ -15,6 +15,11 @@
             <a href="{{ route('suppliers.tbo.reset') }} " class="bg-red-500 text-white font-semibold p-2 my-2 rounded-md text-center"> Reset Credentials </a>
             <a href="{{ route('suppliers.tbo.prebook.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center "> Prebook </a>
             <a href="{{ route('suppliers.tbo.book.index') }}" class="bg-blue-500 text-white font-semibold p-2 my-2 rounded-md text-center"> Book Rooms </a>
+            @role('admin')
+                <x-primary-button class="p-2 my-2 h-max" onclick="window.location.href='{{ route('suppliers.tbo.all-destinations') }}'">
+                    Get All Destinations
+                </x-primary-button>
+            @endrole
         </div>
     </div>
     @if(session('tbo.url') == env('TBO_URL'))
@@ -22,7 +27,7 @@
         Careful!!! You Are You Using Live Credentials !
     </div>
     @endif
-    @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings])
+    @include('suppliers.tbo.past_booking', ['pastBookings' => $pastBookings, 'startDate' => $startDate, 'endDate' => $endDate])
     <div class="">
         <div class="bg-white p-4 dark:bg-gray-600 overflow-hidden shadow-sm rounded-lg font-semibold">
             COUNTRY AVAILABLE

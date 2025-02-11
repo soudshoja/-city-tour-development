@@ -21,6 +21,7 @@ class InvoicePartial extends Model
         'payment_gateway',
         'payment_id',
     ];
+    
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');

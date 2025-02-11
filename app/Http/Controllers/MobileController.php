@@ -324,6 +324,101 @@ class MobileController extends Controller
     }
 
 
+    public function savePartial(Request $request)
+    {
+        $request->validate([
+            'invoiceId' => 'required',
+            'date' => 'required',
+            'clientId' => 'required',
+            'amount' => 'required',
+            'type' => 'required|string',
+            'invoiceNumber' => 'required|string',
+            'gateway' => 'required|string',
+        ]);
+
+        $invoiceId = $request->input('invoiceId');
+        $invoiceNumber = $request->input('invoiceNumber');
+        $clientId = $request->input('clientId');
+        $type = $request->input('type');
+        $date = $request->input('date');
+        $amount = $request->input('amount');
+        $gateway = $request->input('gateway');
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+
+
+        try {
+
+            $invoicepartial = InvoicePartial::create([
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'client_id' => $clientId,
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'expiry_date' => $date,
+                'type' => $type,
+                'payment_gateway' => $gateway,
+            ]);
+
+            $invoice->payment_type = $type;
+            $invoice->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice Partial created successfully!',
+                'invoiceId' => $invoiceId,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create invoice!',
+            ]);
+        }
+    }
+
+    public function removePartial(Request $request)
+    {
+        $request->validate([
+            'invoiceId' => 'required',
+            'invoiceNumber' => 'required|string',
+        ]);
+
+        $invoiceId = $request->input('invoiceId');
+        $invoiceNumber = $request->input('invoiceNumber');
+
+        try {
+            // Find the invoice partial to be deleted
+            $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)
+                ->first();
+
+            // Check if the partial exists
+            if (!$invoicePartial) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invoice partial not found!',
+                ]);
+            }
+
+            // Delete the invoice partial
+            $invoicePartial->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice partial removed successfully!',
+                'invoiceId' => $invoiceId,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to remove InvoicePartial: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove invoice partial!',
+            ]);
+        }
+    }
+
+
+
     public function store(Request $request)
     {
 
@@ -587,6 +682,8 @@ class MobileController extends Controller
 
         return redirect()->route('agents.index')->with('success', 'Agent updated successfully');
     }
+
+
 
 
     public function upload()

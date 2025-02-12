@@ -62,9 +62,8 @@
             </svg>
         </a>
         <menu>
-            @can('viewAny', App\Models\Invoice::class)
             <menuitem><a href="{{ route('invoices.company.agents') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices List</a></menuitem>
-            @endcan
+            <menuitem><a href="{{ route('invoices.link') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices Link</a></menuitem>
         </menu>
         </menuitem>
 
@@ -163,6 +162,7 @@
             <menuitem><a href="{{route('suppliers.index')}}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Suppliers</a></menuitem>
             @endcan
             <menuitem><a href="{{ route('role.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Roles</a></menuitem>
+            <menuitem><a href="{{ route('version.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Version</a></menuitem>
             <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a></menuitem>
             <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help</a></menuitem>
         </menu>

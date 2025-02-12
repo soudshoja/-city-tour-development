@@ -12,6 +12,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\VersionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\ChargeController;
@@ -174,6 +175,10 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/role', [RoleController::class, 'update'])->name('role.update');
     Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
+   //VERSION
+   Route::get('/version', [VersionController::class, 'index'])->name('version.index');
+   Route::get('/version/{versionId}', [VersionController::class, 'edit'])->name('version.edit');
+   Route::post('/version', [RoleController::class, 'store'])->name('version.store');
 
     //ACCOUNT
     Route::get('/coa', [CoaController::class, 'index'])->name('coa.index');
@@ -264,6 +269,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
     Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
     Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgentsInvoices'])->name('invoices.company.agents');
+    Route::get('/invoices/link', [InvoiceController::class, 'link'])->name('invoices.link');
 });
 
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');

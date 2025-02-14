@@ -35,6 +35,7 @@
                 <h3 class="text-xl font-semibold mb-2">Development Server</h3>
                 <p class="text-gray-600">IP: <span class="font-mono text-blue-500">192.168.0.32</span></p>
                 <p class="text-gray-600">Current Version: <span id="devVersion" class="font-bold text-green-600">Loading...</span></p>
+                <p class="text-gray-600">Commit: <span id="devSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchVersion('dev', '192.168.0.32')" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
                     <button onclick="pullLatest('dev', '192.168.0.32')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
@@ -46,6 +47,7 @@
                 <h3 class="text-xl font-semibold mb-2">UAT Server</h3>
                 <p class="text-gray-600">IP: <span class="font-mono text-blue-500">192.168.0.33</span></p>
                 <p class="text-gray-600">Current Version: <span id="uatVersion" class="font-bold text-green-600">Loading...</span></p>
+                <p class="text-gray-600">Commit: <span id="uatSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchVersion('uat', '192.168.0.33')" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
                     <button onclick="pullLatest('uat', '192.168.0.33')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
@@ -57,6 +59,7 @@
                 <h3 class="text-xl font-semibold mb-2">Production Server</h3>
                 <p class="text-gray-600">Domain: <span class="font-mono text-blue-500">tour.citytravellers.com</span></p>
                 <p class="text-gray-600">Current Version: <span id="prodVersion" class="font-bold text-green-600">Loading...</span></p>
+                <p class="text-gray-600">Commit: <span id="prodSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchVersion('prod', 'tour.citytravellers.com')" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
                     <button onclick="pullLatest('prod', 'tour.citytravellers.com')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
@@ -194,20 +197,38 @@
 </body>
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
     <script>
+     let versions = @json($versions);
 
-    async function fetchVersions() {
+     async function fetchAllVersions() {
+            const url = "/monitor-versions"; // Laravel API to get all versions
+
             try {
-                const response = await fetch('/monitor-versions');
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch versions");
+                }
+
                 const data = await response.json();
-                console.log(data);
-
+                updateVersionDisplay(data);
             } catch (error) {
-   
+                console.error("Error fetching versions:", error);
+                document.getElementById("errorMsg").innerText = "Error fetching versions";
             }
+        }
 
+        function updateVersionDisplay(data) {
+            for (const server in data) {
+                let commit = data[server].commit || "Unknown";
+                let versionInfo = versions.find(v => v.sha === commit);
+                let version = versionInfo ? versionInfo.version : "Not Found";
+                let sha = data[server].commit;
+                console.log(sha);
+                document.getElementById(`${server}Version`).innerText = version;
+                document.getElementById(`${server}Sha`).innerText = sha;
             }
+        }
 
-            fetchVersions();
+            fetchAllVersions();
 
     // Add Version Button Click Event
     document.getElementById("createRoleButton").addEventListener("click", function () {

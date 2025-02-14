@@ -268,16 +268,19 @@ Route::group([
 
     Route::get('/monitor-versions', function () {
         $servers = [
-            'development' => 'http://192.168.0.32/api/version',
-            'uat'         => 'http://192.168.0.33/api/version',
-            'production'  => 'https://tour.citytravelers.co/api/version',
+            'dev' => 'http://192.168.0.32/api/version',
+            'uat'  => 'http://192.168.0.33/api/version',
+            'prod'  => 'https://tour.citytravelers.co/api/version',
         ];
     
         $results = [];
     
         foreach ($servers as $name => $url) {
             try {
-                $response = Http::timeout(5)->get($url);
+                $response = Http::withOptions([
+                    'verify' => false, // Ignore SSL
+                ])->timeout(5)->get($url);
+    
                 if ($response->successful()) {
                     $results[$name] = $response->json();
                 } else {

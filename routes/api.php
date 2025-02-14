@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\VersionApiController;
 use App\Http\Controllers\Auth\TwoFAController;
 use App\Http\Controllers\KnowledgeBaseController;
 
@@ -50,6 +51,20 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::post('/test-user-task/{userId}', [MobileController::class, 'getUserTask']);
         Route::get('/get-invoices/{userId}',[MobileController::class, 'getInvoices']);
         Route::post('knowledge', [KnowledgeBaseController::class, 'fetchRelevantKnowledge']);
+
+
+        Route::get('/version/{versionId}', [VersionApiController::class, 'edit']);
+        Route::post('/version', [VersionApiController::class, 'store']);
+        Route::put('/version/update/{id}', [VersionApiController::class, 'update']);
+        Route::post('/version/update/current', [VersionApiController::class, 'updateCurrent']);
+        Route::get('/current', [VersionApiController::class, 'getCurrent']);
+        Route::get('/version', function () {
+            return response()->json([
+                'commit' => trim(exec('git rev-parse --short HEAD')),
+                'branch' => trim(exec('git rev-parse --abbrev-ref HEAD')),
+                'date'   => trim(exec('git log -1 --format=%ci')),
+            ]);
+        });
 
         Route::get('pin', function(){
             return view('auth.pin');

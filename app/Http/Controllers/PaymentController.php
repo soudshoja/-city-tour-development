@@ -60,7 +60,6 @@ class PaymentController extends Controller
 
     public function create($invoiceNumber, Request $request)
     {
-        Log::info('request:', ['request' => $request]);
         $request->validate([
             'client_name' => 'required|string|max:255',
             'client_email' => 'required|email',

@@ -1,7 +1,7 @@
 <!-- start footer section -->
 <!-- desktok footer section -->
 <div class="CityDisplaayNone  p-6 pt-5 text-center dark:text-[#f3f4f6] bg-white dark:bg-gray-900">
-    © <span id="footer-year">2024</span> city tour. <span>Version 1.0</span>
+    © <span id="footer-year">2024</span> city tour.  <span id="footer-version">Version 1.0</span>
 </div>
 <!-- desktok footer section end-->
 <!-- Mobile footer section -->
@@ -21,6 +21,20 @@
 <!-- Scripts -->
 
 <script>
+
+fetch("{{ route('version.getCurrent') }}")
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.value) { 
+                // Assuming `value` holds the version, update the version dynamically
+                const versionElement = document.getElementById('footer-version');
+                if (versionElement) {
+                    versionElement.textContent = `Version ${data.value}`;
+                }
+            }
+        })
+        .catch(error => console.error("Error fetching version:", error));
+
 // Check localStorage for the dark mode setting before the page is fully loaded
 if (localStorage.getItem('darkMode') === 'true') {
     document.documentElement.classList.add('dark');

@@ -34,3 +34,7 @@ jobs:
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
         dry-run: false
+
+    - name: Generate version.json
+      run: |
+        echo "{ \"commit\": \"$(git rev-parse --short HEAD)\", \"branch\": \"$(git rev-parse --abbrev-ref HEAD)\", \"date\": \"$(git log -1 --format=%ci)\" }" > public/version.json

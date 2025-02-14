@@ -1,1 +1,5 @@
-{ "commit": "$(git rev-parse --short HEAD)", "branch": "$(git rev-parse --abbrev-ref HEAD)", "date": "$(git log -1 --format=%ci)" } 
+﻿{
+  "commit": "682b234",
+  "branch": "main",
+  "date": "2025-02-14 17:13:19 +0800"
+}

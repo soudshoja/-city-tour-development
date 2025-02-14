@@ -57,7 +57,7 @@
             <!-- Production Server -->
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-xl font-semibold mb-2">Production Server</h3>
-                <p class="text-gray-600">Domain: <span class="font-mono text-blue-500">tour.citytravellers.com</span></p>
+                <p class="text-gray-600">Domain: <span class="font-mono text-blue-500">tour.citytravellers.co</span></p>
                 <p class="text-gray-600">Current Version: <span id="prodVersion" class="font-bold text-green-600">Loading...</span></p>
                 <p class="text-gray-600">Commit: <span id="prodSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">

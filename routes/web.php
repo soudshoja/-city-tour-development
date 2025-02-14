@@ -266,6 +266,32 @@ Route::group([
     Route::post('/version/update/current', [VersionController::class, 'updateCurrent'])->name('version.current');
     Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.getCurrent');
 
+    Route::get('/monitor-versions', function () {
+        $servers = [
+            'development' => 'http://192.168.0.32/api/version',
+            'uat'         => 'http://192.168.0.33/api/version',
+            'production'  => 'https://tour.citytravelers.co/api/version',
+        ];
+    
+        $results = [];
+    
+        foreach ($servers as $name => $url) {
+            try {
+                $response = Http::timeout(5)->get($url);
+                if ($response->successful()) {
+                    $results[$name] = $response->json();
+                } else {
+                    $results[$name] = ['error' => 'Failed to fetch version'];
+                }
+            } catch (\Exception $e) {
+                $results[$name] = ['error' => $e->getMessage()];
+            }
+        }
+    
+        return response()->json($results);
+    });
+
+    
 // INVOICE
 Route::middleware('auth')->group(function () {
     Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');

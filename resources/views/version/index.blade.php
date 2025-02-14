@@ -65,7 +65,7 @@
 
         </div>
     </div>
-    
+
     <div class="container mx-auto p-4">
         <div class="bg-white shadow-md rounded-md p-4">
 
@@ -83,7 +83,7 @@
                             <th class="p-2">Id</th>
                             <th class="p-2">Version</th>
                             <th class="p-2">Description</th>
-                            <th class="p-2">Current Version</th>
+                            <th class="p-2">Commit</th>
                             <th class="p-2">Updated On</th>
                             <th class="p-2">Actions</th>
                         </tr>
@@ -94,10 +94,10 @@
                             <td class="p-2">{{ $version['id'] }}</td>
                             <td class="p-2">{{ $version['version'] }}</td>
                             <td class="p-2">{{ $version['descriptions'] }}</td>
-                            <td class="p-2">{{ $version['current'] }}</td>
+                            <td class="p-2">{{ $version['sha'] }}</td>
                             <td class="p-2">{{ $version['updated_at'] }}</td>
                             <td class="p-2">
-                                <a href="#" class="text-blue-500 text-xs" onclick="openModalWithData(event, '{{ $version['id'] }}', '{{ $version['version'] }}', '{{ $version['descriptions'] }}')">
+                                <a href="#" class="text-blue-500 text-xs" onclick="openModalWithData(event, '{{ $version['id'] }}', '{{ $version['version'] }}', '{{ $version['descriptions'] }}', '{{ $version['sha'] }}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 bg-green-100 border border-green-500 rounded" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM6 12v2H4v2h2v2h2v-2h2v-2H8v-2H6z" />
                                     </svg>
@@ -116,7 +116,7 @@
     </div>
 
     <div x-data="{ 
-    openModal: false, id: '', version: '', descriptions: '',
+    openModal: false, id: '', version: '', descriptions: '', sha:'',
     openUpdateModal: false, currentVersion: '', currentVersionId: ''
 }"
     x-on:open-modal.window="
@@ -124,6 +124,7 @@
         id = $event.detail.id;
         version = $event.detail.version;
         descriptions = $event.detail.descriptions;
+        sha = $event.detail.sha;
     "
     x-on:open-update-modal.window="
         openUpdateModal = true;
@@ -153,6 +154,11 @@
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700">Description</label>
                     <textarea name="descriptions" x-model="descriptions" class="w-full p-2 border border-gray-300 rounded-md" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-gray-700">Commit</label>
+                    <input type="text" name="sha" x-model="sha" class="w-full p-2 border border-gray-300 rounded-md">
                 </div>
 
                 <div class="flex justify-end space-x-2">
@@ -188,6 +194,20 @@
 </body>
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
     <script>
+
+    async function fetchVersions() {
+            try {
+                const response = await fetch('/monitor-versions');
+                const data = await response.json();
+                console.log(data);
+
+            } catch (error) {
+   
+            }
+
+            }
+
+            fetchVersions();
 
     // Add Version Button Click Event
     document.getElementById("createRoleButton").addEventListener("click", function () {
@@ -262,11 +282,11 @@
             }
         });
 
-        function openModalWithData(event, id, version, descriptions) {
+        function openModalWithData(event, id, version, descriptions, sha) {
             event.preventDefault();
 
             window.dispatchEvent(new CustomEvent('open-modal', {
-                detail: { id, version, descriptions }
+                detail: { id, version, descriptions, sha }
             }));
          }
 

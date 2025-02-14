@@ -58,7 +58,13 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::put('/version/update/{id}', [VersionApiController::class, 'update']);
         Route::post('/version/update/current', [VersionApiController::class, 'updateCurrent']);
         Route::get('/current', [VersionApiController::class, 'getCurrent']);
-        Route::get('/version', [VersionApiController::class, 'getVersion']);
+        Route::get('/version', function () {
+            return response()->json([
+                'commit' => trim(exec('git rev-parse --short HEAD')),
+                'branch' => trim(exec('git rev-parse --abbrev-ref HEAD')),
+                'date'   => trim(exec('git log -1 --format=%ci')),
+            ]);
+        });
 
         Route::get('pin', function(){
             return view('auth.pin');

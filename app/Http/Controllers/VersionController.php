@@ -118,32 +118,34 @@ class VersionController extends Controller
 
     public function monitorVersions()
     {
-
         $servers = [
-            'dev' => 'http://192.168.0.32/api/version',
+            'dev'  => 'http://192.168.0.32/api/version',
             'uat'  => 'http://192.168.0.33/api/version',
-            'prod'  => 'https://tour.citytravelers.co/api/version',
+            'prod' => public_path('version.json') // Read from the deployed JSON file
         ];
-
+    
         $results = [];
-
+    
         foreach ($servers as $name => $url) {
             try {
-                $response = Http::withOptions([
-                    'verify' => false, // Ignore SSL verification (use with caution)
-                ])->timeout(5)->get($url);
-
-                if ($response->successful()) {
-                    $results[$name] = $response->json();
+                if ($name === 'prod') {
+                    // Read version.json for prod
+                    if (file_exists($url)) {
+                        $results[$name] = json_decode(file_get_contents($url), true);
+                    } else {
+                        $results[$name] = ['error' => 'Version file not found'];
+                    }
                 } else {
-                    $results[$name] = ['error' => 'Failed to fetch version'];
+                    // Use HTTP request for Dev/UAT
+                    $response = Http::timeout(5)->get($url);
+                    $results[$name] = $response->successful() ? $response->json() : ['error' => 'Failed to fetch version'];
                 }
             } catch (\Exception $e) {
                 $results[$name] = ['error' => $e->getMessage()];
             }
         }
-
+    
         return response()->json($results);
     }
-
+    
 }

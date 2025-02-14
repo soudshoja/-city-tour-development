@@ -40,6 +40,7 @@ class VersionController extends Controller
             'version' => $request->version,
             'descriptions' => $request->descriptions,
             'current' => $masterVersion,
+            'sha' => $request->sha,
         ]);
 
         return redirect()->route('version.index')->with('success', 'Client added successfully!');
@@ -67,6 +68,7 @@ class VersionController extends Controller
             'version' => $request->version,
             'descriptions' => $request->descriptions,
             'current' => $masterVersion,
+            'sha' => $request->sha,
         ]);
 
         } catch (Exception $e) {

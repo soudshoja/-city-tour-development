@@ -31,6 +31,7 @@ use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\GeneralLedger;
 use App\Models\InvoiceDetail;
+use App\Models\InvoicePartial;
 use App\Models\KnowledgeBase;
 use App\Models\Role;
 use DateTime;

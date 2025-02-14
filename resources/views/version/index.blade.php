@@ -217,6 +217,7 @@
         }
 
         function updateVersionDisplay(data) {
+            console.log(data)
             for (const server in data) {
                 let commit = data[server].commit || "Unknown";
                 let versionInfo = versions.find(v => v.sha === commit);

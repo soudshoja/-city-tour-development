@@ -39,7 +39,7 @@ class VersionController extends Controller
         $version = Version::create([
             'version' => $request->version,
             'descriptions' => $request->descriptions,
-            'current' => $masterVersion,
+            'reference' => $masterVersion,
             'sha' => $request->sha,
         ]);
 
@@ -67,7 +67,7 @@ class VersionController extends Controller
         $version->update([
             'version' => $request->version,
             'descriptions' => $request->descriptions,
-            'current' => $masterVersion,
+            'reference' => $masterVersion,
             'sha' => $request->sha,
         ]);
 

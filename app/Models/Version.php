@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class Version extends Model
 {
     use HasFactory;
-    protected $fillable = ['version','descriptions', 'current'];
+    protected $fillable = ['version','descriptions', 'reference', 'sha'];
 }

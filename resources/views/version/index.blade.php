@@ -209,6 +209,7 @@
                 }
 
                 const data = await response.json();
+                console.log(data)
                 updateVersionDisplay(data);
             } catch (error) {
                 console.error("Error fetching versions:", error);

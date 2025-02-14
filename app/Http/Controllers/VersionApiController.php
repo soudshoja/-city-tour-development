@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use App\Models\Master;
 use App\Models\Version;
 
@@ -92,4 +93,18 @@ class VersionApiController extends Controller
 
         return response()->json(['success' => true, 'data' => ['id' => $version->id, 'value' => $version->value]], 200);
     }
+
+    public function getVersion()
+    {
+        $commit = Process::run('git rev-parse --short HEAD')->output();
+        $branch = Process::run('git rev-parse --abbrev-ref HEAD')->output();
+        $date   = Process::run('git log -1 --format=%ci')->output();
+
+        return response()->json([
+            'commit' => trim($commit),
+            'branch' => trim($branch),
+            'date'   => trim($date),
+        ]);
+    }
+
 }

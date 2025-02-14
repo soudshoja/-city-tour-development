@@ -94,17 +94,17 @@ class VersionApiController extends Controller
         return response()->json(['success' => true, 'data' => ['id' => $version->id, 'value' => $version->value]], 200);
     }
 
-    public function getVersion()
-    {
-        $commit = Process::run('git rev-parse --short HEAD')->output();
-        $branch = Process::run('git rev-parse --abbrev-ref HEAD')->output();
-        $date   = Process::run('git log -1 --format=%ci')->output();
 
-        return response()->json([
-            'commit' => trim($commit),
-            'branch' => trim($branch),
-            'date'   => trim($date),
-        ]);
+        public function getVersion()
+    {
+        $filePath = public_path('version.json');
+
+        if (!file_exists($filePath)) {
+            return response()->json(['error' => 'Version file not found'], 500);
+        }
+
+        return response()->json(json_decode(file_get_contents($filePath), true));
     }
+
 
 }

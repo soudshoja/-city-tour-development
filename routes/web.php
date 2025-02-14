@@ -175,11 +175,16 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/role', [RoleController::class, 'update'])->name('role.update');
     Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
-   //VERSION
-   Route::get('/version', [VersionController::class, 'index'])->name('version.index');
-   Route::get('/version/{versionId}', [VersionController::class, 'edit'])->name('version.edit');
-   Route::post('/version', [RoleController::class, 'store'])->name('version.store');
 
+    Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
+
+    //VERSION
+    Route::get('/version', [VersionController::class, 'index'])->name('version.index');
+    Route::get('/version/{versionId}', [VersionController::class, 'edit'])->name('version.edit');
+    Route::post('/version', [VersionController::class, 'store'])->name('version.store');
+    Route::put('/version/update/{id}', [VersionController::class, 'update'])->name('version.update');
+    Route::post('/version/update/current', [VersionController::class, 'updateCurrent'])->name('version.current');
+    Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.getCurrent');
     //ACCOUNT
     Route::get('/coa', [CoaController::class, 'index'])->name('coa.index');
     Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');

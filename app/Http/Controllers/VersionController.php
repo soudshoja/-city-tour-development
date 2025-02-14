@@ -133,8 +133,6 @@ class VersionController extends Controller
                     'verify' => false, // Ignore SSL verification (use with caution)
                 ])->timeout(5)->get($url);
 
-                Log::info('response:', ['response' => $response]);
-
                 if ($response->successful()) {
                     $results[$name] = $response->json();
                 } else {

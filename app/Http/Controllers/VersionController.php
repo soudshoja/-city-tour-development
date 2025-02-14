@@ -115,37 +115,53 @@ class VersionController extends Controller
             'value' => $version->value,
         ]);
     }
-
+    
     public function monitorVersions()
     {
         $servers = [
             'dev'  => 'http://192.168.0.32/api/version',
             'uat'  => 'http://192.168.0.33/api/version',
-            'prod' => public_path('version.json') // Read from the deployed JSON file
+            'prod' => 'https://tour.citytravelers.co/version.json', // URL for production
         ];
     
         $results = [];
     
         foreach ($servers as $name => $url) {
             try {
-                if ($name === 'prod') {
-                    // Read version.json for prod
-                    if (file_exists($url)) {
-                        $results[$name] = json_decode(file_get_contents($url), true);
-                    } else {
-                        $results[$name] = ['error' => 'Version file not found'];
-                    }
+                // Disable SSL verification for prod (use only for debugging)
+                $options = $name === 'prod' ? ['verify' => false] : [];
+    
+                // Fetch JSON from URL for all environments
+                $response = Http::withOptions($options)->timeout(5)->get($url);
+    
+                // Log the raw response for debugging
+                Log::info("Response for $name: ", ['status' => $response->status(), 'body' => $response->body()]);
+    
+                // Check if the response is successful
+                if ($response->successful()) {
+                    // Remove BOM (if any) before decoding the JSON
+                    $body = preg_replace('/^\xEF\xBB\xBF/', '', $response->body());
+                    $results[$name] = json_decode($body, true);
                 } else {
-                    // Use HTTP request for Dev/UAT
-                    $response = Http::timeout(5)->get($url);
-                    $results[$name] = $response->successful() ? $response->json() : ['error' => 'Failed to fetch version'];
+                    // Log the error and store it in the results
+                    Log::error("Failed to fetch version from $name: {$response->status()} - {$response->body()}");
+                    $results[$name] = ['error' => 'Failed to fetch version. Status Code: ' . $response->status()];
                 }
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                // Specific catch for connection-related errors
+                Log::error("Connection error while fetching version from $name: {$e->getMessage()}");
+                $results[$name] = ['error' => 'Connection error: ' . $e->getMessage()];
             } catch (\Exception $e) {
-                $results[$name] = ['error' => $e->getMessage()];
+                // General catch for other exceptions
+                Log::error("Error while fetching version from $name: {$e->getMessage()}");
+                $results[$name] = ['error' => 'Error: ' . $e->getMessage()];
             }
         }
     
+        // Return the results as a JSON response
         return response()->json($results);
     }
+    
+    
     
 }

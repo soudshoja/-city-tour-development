@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Models\Master;
 use App\Models\Version;
 
@@ -34,7 +35,6 @@ class VersionController extends Controller
         ]);
 
         $masterVersion = Master::where('name', 'VERSION')->value('value');
-        Log::info('masterVersion:', ['masterVersion' => $masterVersion]);
 
         $version = Version::create([
             'version' => $request->version,
@@ -114,6 +114,38 @@ class VersionController extends Controller
             'id' => $version->id,
             'value' => $version->value,
         ]);
+    }
+
+    public function monitorVersions()
+    {
+
+        $servers = [
+            'dev' => 'http://192.168.0.32/api/version',
+            'uat'  => 'http://192.168.0.33/api/version',
+            'prod'  => 'https://tour.citytravelers.co/api/version',
+        ];
+
+        $results = [];
+
+        foreach ($servers as $name => $url) {
+            try {
+                $response = Http::withOptions([
+                    'verify' => false, // Ignore SSL verification (use with caution)
+                ])->timeout(5)->get($url);
+
+                Log::info('response:', ['response' => $response]);
+
+                if ($response->successful()) {
+                    $results[$name] = $response->json();
+                } else {
+                    $results[$name] = ['error' => 'Failed to fetch version'];
+                }
+            } catch (\Exception $e) {
+                $results[$name] = ['error' => $e->getMessage()];
+            }
+        }
+
+        return response()->json($results);
     }
 
 }

@@ -63,7 +63,7 @@ use App\Http\Controllers\KnowledgeBaseController;
                 'commit' => trim(exec('git rev-parse --short HEAD')),   // Short commit hash
                 'branch' => trim(exec('git rev-parse --abbrev-ref HEAD')), // Current branch name
                 'date'   => trim(exec('git log -1 --format=%ci')), // Commit date
-                'message' => trim(exec('git log -1 --pretty=%B')) // Commit message
+                'message' => trim(exec('git log -1 --pretty=%s'))  // Commit message
             ]);
         });
 

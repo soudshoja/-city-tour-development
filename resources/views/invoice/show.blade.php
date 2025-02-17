@@ -350,6 +350,7 @@
   <script>
   let invoice = @json($invoice);
   let invoicePartials = @json($invoicePartials);
+
    console.log('invoice', invoice);
    console.log('invoicePartials', invoicePartials);
 
@@ -357,11 +358,14 @@
    let totalPaidAmount = invoicePartials.filter(partial => partial.status === 'paid')
                                           .reduce((sum, partial) => sum + parseFloat(partial.amount), 0);
 
+                                          
     // Calculate balance
     let balance = invoice.amount - totalPaidAmount;
 
-    // Display balance
-    document.getElementById('balance').textContent = balance.toFixed(2);
+    let balanceElement = document.getElementById('balance');
+    if (balanceElement) {
+      balanceElement.textContent = balance.toFixed(2);
+    }
 
    const totalAmountDisplay = document.getElementById("totalAmountDisplay");
    const paymentForm = document.getElementById('paymentForm');
@@ -415,6 +419,7 @@
 
     function addHiddenInput(name, value, form) {
         // Check if the hidden input already exists
+        console.log(name);
         let existingInput = form.querySelector(`input[name="${name}"][value="${value}"]`);
         if (!existingInput) {
             const hiddenInput = document.createElement("input");

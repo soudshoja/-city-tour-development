@@ -28,6 +28,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Arr;
 
 class InvoiceController extends Controller
 {
@@ -103,10 +104,18 @@ class InvoiceController extends Controller
         } else {
             $taskIdsArray = $taskIds; // Single task
         }
+  
+        $taskIdsArray = array_map('intval', $taskIdsArray);
+        $taskIdsArray = Arr::flatten($taskIdsArray);
+
+        if (count($taskIdsArray) !== count(Arr::flatten($taskIdsArray, 1))) {
+            throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
+        }
 
         $tasks1 = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
 
         $selectedTasks = $tasks1->whereIn('id', $taskIdsArray)->get();
+       
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
@@ -188,7 +197,7 @@ class InvoiceController extends Controller
             $selectedClient = null; // No tasks selected
             $selectedAgent = null;
         }
-
+         
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
         // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
         //     return $agent['id'];
@@ -229,9 +238,10 @@ class InvoiceController extends Controller
                     })
                 : collect();
         } else {
+            Log::info('agentId', ['agentId' => $agentId]);
             $tasks = $agentId 
                 ? Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
-                    ->whereIn('agent_id', $agentId)
+                    ->whereIn('agent_id', $agentId instanceof \Illuminate\Support\Collection ? $agentId->toArray() : [$agentId]) 
                     ->get()
                     ->filter(function ($task) {
                         // Filter out tasks that already have an invoice detail
@@ -245,8 +255,9 @@ class InvoiceController extends Controller
                         return $task;
                     })
                 : collect();
-                
+                Log::info('tasks', ['tasks' => $tasks]);
         }
+
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];

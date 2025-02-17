@@ -264,6 +264,7 @@ Route::group([
     Route::post('/version', [VersionController::class, 'store'])->name('version.store');
     Route::put('/version/update/{id}', [VersionController::class, 'update'])->name('version.update');
     Route::post('/version/update/current', [VersionController::class, 'updateCurrent'])->name('version.current');
+    Route::post('/version/updateMaster', [VersionController::class, 'updateMaster'])->name('version.updateMaster');
     Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.getCurrent');
 
     Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);

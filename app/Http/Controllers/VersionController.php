@@ -29,21 +29,14 @@ class VersionController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'version' => 'required|string|max:255',
-            'descriptions' => 'required|string|max:255'
-        ]);
-
-        $masterVersion = Master::where('name', 'VERSION')->value('value');
-
+        Log::info('request', ['request' => $request]);
         $version = Version::create([
             'version' => $request->version,
             'descriptions' => $request->descriptions,
-            'reference' => $masterVersion,
             'sha' => $request->sha,
         ]);
 
-        return redirect()->route('version.index')->with('success', 'Client added successfully!');
+        return redirect()->route('version.index')->with('success', 'Version added successfully!');
     }
 
     public function update(Request $request)
@@ -102,6 +95,24 @@ class VersionController extends Controller
         }
     }
 
+    public function updateMaster(Request $request)
+    {
+        $version = Master::where('name', 'VERSION')->first();
+
+        if ($version) {
+            $version->value = $request->value;
+            $version->save();
+        } else {
+            Master::create([
+                'name' => 'VERSION',
+                'value' => $request->value,
+            ]);
+        }
+
+        return response()->json(['success' => true, 'new_version' => $request->version]);
+    }
+
+
     public function getAllVersions()
     {
         return Version::all();
@@ -133,9 +144,6 @@ class VersionController extends Controller
     
                 // Fetch JSON from URL for all environments
                 $response = Http::withOptions($options)->timeout(5)->get($url);
-    
-                // Log the raw response for debugging
-                Log::info("Response for $name: ", ['status' => $response->status(), 'body' => $response->body()]);
     
                 // Check if the response is successful
                 if ($response->successful()) {

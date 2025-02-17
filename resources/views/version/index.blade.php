@@ -37,7 +37,7 @@
                 <p class="text-gray-600">Current Version: <span id="devVersion" class="font-bold text-green-600">Loading...</span></p>
                 <p class="text-gray-600">Commit: <span id="devSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
-                    <button onclick="fetchVersion('dev', '192.168.0.32')" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
+                    <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
                     <button onclick="pullLatest('dev', '192.168.0.32')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
                 </div>
             </div>
@@ -49,7 +49,7 @@
                 <p class="text-gray-600">Current Version: <span id="uatVersion" class="font-bold text-green-600">Loading...</span></p>
                 <p class="text-gray-600">Commit: <span id="uatSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
-                    <button onclick="fetchVersion('uat', '192.168.0.33')" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
+                    <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
                     <button onclick="pullLatest('uat', '192.168.0.33')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
                 </div>
             </div>
@@ -61,7 +61,7 @@
                 <p class="text-gray-600">Current Version: <span id="prodVersion" class="font-bold text-green-600">Loading...</span></p>
                 <p class="text-gray-600">Commit: <span id="prodSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
-                    <button onclick="fetchVersion('prod', 'tour.citytravellers.com')" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
+                    <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
                     <button onclick="pullLatest('prod', 'tour.citytravellers.com')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
                 </div>
             </div>
@@ -209,7 +209,7 @@
                 }
 
                 const data = await response.json();
-                console.log(data)
+                console.log('data1', data)
                 updateVersionDisplay(data);
             } catch (error) {
                 console.error("Error fetching versions:", error);
@@ -217,20 +217,115 @@
             }
         }
 
-        function updateVersionDisplay(data) {
-            console.log(data)
-            for (const server in data) {
-                let commit = data[server].commit || "Unknown";
-                let versionInfo = versions.find(v => v.sha === commit);
-                let version = versionInfo ? versionInfo.version : "Not Found";
-                let sha = data[server].commit;
-                console.log(sha);
-                document.getElementById(`${server}Version`).innerText = version;
-                document.getElementById(`${server}Sha`).innerText = sha;
+        
+        async function updateVersionDisplay(data) {
+                try {
+                    const response = await fetch("{{ route('version.getCurrent') }}");
+                    const versionData = await response.json();
+
+                    console.log('versionData', versionData);
+
+                    if (versionData && versionData.value) {
+                        let currentVersion = versionData.value;
+
+                        for (const server in data) {
+                            let commit = data[server].commit || "Unknown";
+                            let versionInfo = versions.find(v => v.sha === commit);
+
+                            if (!versionInfo) {
+                                // If version not found, generate next version
+                                let newVersion = getNextVersion(currentVersion);
+
+                                await updateMasterVersion(newVersion); // Update Master table
+                                await autoAddVersion(newVersion, commit);
+
+                                versionInfo = { version: newVersion, sha: commit };
+                                versions.push(versionInfo); // Update local list
+
+                                currentVersion = newVersion;
+                            }
+
+                            let version = versionInfo.version;
+                            let sha = commit;
+
+                            console.log(`Server: ${server}, Version: ${version}, SHA: ${sha}`);
+                            document.getElementById(`${server}Version`).innerText = version;
+                            document.getElementById(`${server}Sha`).innerText = sha;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching current version:", error);
+                }
             }
+
+        function getNextVersion(currentVersion) {
+            let parts = currentVersion.split(".");
+            let main = parseInt(parts[0], 10);
+            let sub = parseInt(parts[1], 10) + 1; // Increment subversion
+
+            return `${main}.${sub.toString().padStart(3, '0')}`;
         }
 
+        async function autoAddVersion(version, sha) {
+                const versionStoreUrl = "{{ route('version.store') }}"; 
+                const csrfToken = "{{ csrf_token() }}";
+
+                try {
+                    const response = await fetch(versionStoreUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            version: version,
+                            sha: sha,
+                            descriptions: "" 
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to auto-add version: ${version}`);
+                    }
+
+                    const result = await response.json();
+                    console.log("Version added successfully:", result);
+                } catch (error) {
+                    console.error("Error adding version:", error);
+                }
+            }
+ 
+        async function updateMasterVersion(newVersion) {
+                const masterUpdateUrl = "{{ route('version.updateMaster') }}"; 
+                const csrfToken = "{{ csrf_token() }}";
+
+                try {
+                    const response = await fetch(masterUpdateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            value: newVersion,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to update master version to: ${version}`);
+                    }
+
+                    const result = await response.json();
+                    console.log("Master version updated successfully:", result);
+                } catch (error) {
+                    console.error("Error updating master version:", error);
+                }
+            }
+
+
             fetchAllVersions();
+
+
 
     // Add Version Button Click Event
     document.getElementById("createRoleButton").addEventListener("click", function () {

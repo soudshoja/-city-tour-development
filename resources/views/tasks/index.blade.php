@@ -1,8 +1,5 @@
 <x-app-layout>
 
-    <head>
-        @vite('resources/js/tasks.js')
-    </head>
     @if($importedTask = session('importedTask'))
     <div
         x-show="importModal"
@@ -478,7 +475,7 @@
         <div id="floatingActions" class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-50 p-3">
 
             <div class="flex justify-between gap-5 items-center h-full">
-                <button id="createInvoiceBtn" class="flex px-5 py-3 gap-3 btn-success hover:bg-[#00ab5599] rounded-lg shadow-sm items-center">
+                <button id="createInvoiceBtn" data-route="{{ route('invoice.create') }}" class="flex px-5 py-3 gap-3 btn-success hover:bg-[#00ab5599] rounded-lg shadow-sm items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#ffffff" d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
                     </svg>
@@ -507,6 +504,8 @@
             </div>
         </div>
     </div>
+
+            @vite('resources/js/tasks.js')
     <script>
         let invoicesModal = document.querySelectorAll('.invoiceModal');
 

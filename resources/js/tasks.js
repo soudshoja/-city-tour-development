@@ -572,10 +572,12 @@ createInvoiceBtn.addEventListener("click", function () {
         alert("No tasks selected!");
         return;
     }
-
+     
+    console.log(selectedTaskIds);
+    const route = this.getAttribute("data-route");
+    const url = route + "?task_ids=" + selectedTaskIds.join(",");
     // Example: Redirect to the batch invoice creation route
-    const url =
-        "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
+
     window.location.href = url;
 });
 

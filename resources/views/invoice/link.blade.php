@@ -91,10 +91,10 @@
                                             </svg>
                                         </label>
                                     </th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Link</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Expiry Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
@@ -106,6 +106,7 @@
                                     <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No data for now.... Create new!</td>
                                 </tr>
                                 @else
+
                                 @foreach ($invoices as $invoice)
                                 @foreach ($invoice->invoiceDetails as $invoiceDetail)
                                 <tr
@@ -119,56 +120,17 @@
                                             </svg>
                                         </label>
                                     </td>
-                                    <td class="p-3 text-sm flex gap-2">
-                                        <a href="javascript:void(0);" class="viewInvoice text-blue-500 hover:underline" onclick="openInvoiceModal('{{ $invoice->invoice_number }}')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <g fill="none" stroke="currentColor" stroke-width="1">
-                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5"></path>
-                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
-                                                </g>
-                                            </svg>
-                                        </a>
-                                        <a href="{{ route('invoice.edit', ['invoiceNumber' => $invoice->invoice_number]) }}"
-                                            class="text-sm font-medium text-blue-600 hover:underline">
-
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <path fill="none" stroke="#00ab55" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42" opacity=".5" />
-                                            </svg>
-                                        </a>
-                                        <div id="viewInvoiceModal"
-                                            class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
-                                            <div class="relative">
-                                                <!-- Modal Content -->
-                                                <div class="w-full">
-
-                                                </div>
-                                                <div id="invoiceInvoiceContent" class="">
-                                                    <!-- Invoice content will be loaded here dynamically -->
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <!-- Main Invoice Link -->
                                         <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" target="_blank">
                                             {{ url('/invoice/' . $invoice->invoice_number) }}
                                         </a>
-
-                                        <!-- Split Invoice Links -->
-                                        @if ($invoice->payment_type === 'split' && $invoice->invoicePartials->count() > 0)
-                                            <br>
-                                            @foreach ($invoice->invoicePartials as $partial)
-                                                <a href="{{  url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}" class="text-green-500 hover:underline" target="_blank">
-                                                    {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}
-                                                </a>
-                                                <br>
-                                            @endforeach
-                                        @endif
+                                    
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->payment_type }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->amount }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->due_date }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
                                         <span class="badge badge-outline-success">{{ $invoice->status }}</span>
@@ -189,6 +151,50 @@
 
 
                                 </tr>
+
+                               <!-- Separate row for each partial invoice -->
+                                    @foreach ($invoice->invoicePartials as $partial)
+                                       @if ($partial->type === 'split')
+                                        <tr data-price="{{ $invoice->total }}" data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
+                                            data-branch-id="{{ $invoice->agent->branch->id }}" data-agent-id="{{ $invoice->agent_id }}" data-status="{{ $invoice->status }}" data-type="{{ $invoiceDetail->task->type }}" data-client-id="{{ $invoice->client ? $invoice->client->id : null }}" data-task-id="{{ $invoice->id }}" class="taskRow">
+                                            <td>
+                                                <label class="custom-checkbox">
+                                                    <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                        <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                                                    </svg>
+                                                </label>
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}" class="text-green-500 hover:underline" target="_blank">
+                                                    {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}
+                                                </a>
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $partial->type }}</td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $partial->amount }}</td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $partial->expiry_date }}</td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                @if ($partial->status === 'paid')
+                                                    <span class="badge badge-outline-success">{{ $partial->status }}</span>
+                                                @else
+                                                    <span class="badge badge-outline-danger">{{ $partial->status }}</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <form action="{{ route('whatsapp.send') }}" method="POST">
+                                                    @csrf
+                                                    <input type="hidden" name="client" id="client" value="{{ $invoice->client }}">
+                                                    <input type="hidden" name="invoiceNumber" value="{{ $invoice->invoice_number }}">
+                                                    <button type="submit" class="badge badge-outline-success">
+                                                        Share via WhatsApp
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        @endif
+                                    @endforeach
+
                                 @endforeach
                                 @endforeach
                                 @endif

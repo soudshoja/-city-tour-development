@@ -267,7 +267,7 @@
         </div>
     </div>
     <!-- ./edit agent details modal -->
-
+</div>
 
 <script>
     let clients = @json($clients);

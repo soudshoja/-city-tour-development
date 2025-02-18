@@ -368,6 +368,7 @@
             </div>
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
                 <div class="panel mb-5">
+                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Currency</h2>
                     <select id="currency" name="currency" class="form-select">
                         <!-- You can add your options here -->
                         <option value="KWD">KWD</option>
@@ -377,7 +378,7 @@
 
                  <!-- Payment Type Section -->
                  <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2>
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : {{$invoice-> }}</h2> 
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
@@ -909,6 +910,10 @@
         </div>
         <!-- end main content section -->
     </div>
+    </div>
+ </div>
+</div>
+</div>
 
     <script>
         let invoice = @json($invoice);
@@ -916,7 +921,7 @@
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
-
+        console.log('invoice', invoice);
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
         const addTabButton = document.getElementById('addTabButton');

@@ -38,6 +38,9 @@
             @can('viewAny', 'App\Models\Charge')
             <menuitem><a href="{{ route('charges.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Charges</a></menuitem>
             @endcan
+            @can('viewAny', 'App\Models\CoaCategory')
+            <menuitem><a href="{{ route('coa.payment') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Voucher</a></menuitem>
+            @endcan
             @can('viewAny', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.transaction') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transactions</a></menuitem>
             @endcan
@@ -84,7 +87,7 @@
             </svg>
         </a>
         <menu>
-            @can('viewAny', App\Models\Company::class)
+            @can('viewAny', 'App\Models\Company')
             <menuitem><a href="{{ route('companies.list') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Companies List</a></menuitem>
             @endcan
             @can('viewAny', App\Models\Branch::class)
@@ -93,9 +96,9 @@
             @can('viewAny', App\Models\Agent::class)
             <menuitem><a href="{{ route('agents.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Agents List</a></menuitem>
             @endcan
-            @can('viewAny', App\Models\Client::class)
+
             <menuitem><a href="{{ route('clients.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Clients List</a></menuitem>
-            @endcan
+
 
         </menu>
         </menuitem>
@@ -162,7 +165,6 @@
             <menuitem><a href="{{route('suppliers.index')}}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Suppliers</a></menuitem>
             @endcan
             <menuitem><a href="{{ route('role.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Roles</a></menuitem>
-            <menuitem><a href="{{ route('version.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Version</a></menuitem>
             <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a></menuitem>
             <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help</a></menuitem>
         </menu>

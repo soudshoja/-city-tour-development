@@ -378,8 +378,9 @@
     // Function to create pagination
     function createPagination() {
         // Remove existing page numbers
+        if (paginationList) {
         Array.from(paginationList.querySelectorAll('li.page-number')).forEach((el) => el.remove());
-
+    
         // Create and add page numbers dynamically
         for (let i = 1; i <= totalPages; i++) {
             const li = document.createElement('li');
@@ -395,6 +396,7 @@
                 paginationList.appendChild(li);
             }
         }
+      }
     }
 
     // Function to show rows for the current page
@@ -441,11 +443,13 @@
     }
 
     // Event listener for page numbers
+    if(paginationList){
     paginationList.addEventListener('click', (e) => {
         if (e.target.tagName === 'A' && e.target.dataset.page) {
             handlePageChange(e);
         }
     });
+    }
 
     // Initialize pagination
     if (totalPages > 1) {
@@ -470,7 +474,10 @@
     // Toggle "Create Invoice" button based on selected checkboxes
     const toggleCreateInvoiceButton = () => {
         const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
+
+        if(createInvoiceBtn){
         createInvoiceBtn.disabled = !isAnySelected;
+        }
     };
     // Add change event to each row checkbox
     rowCheckboxes.forEach(checkbox => {
@@ -495,6 +502,7 @@
     // Initialize button state on page load
     toggleCreateInvoiceButton();
 
+    if(createInvoiceBtn){
     // Gather selected task IDs and submit them
     createInvoiceBtn.addEventListener("click", function() {
         const selectedTaskIds = Array.from(rowCheckboxes)
@@ -510,15 +518,14 @@
         const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
         window.location.href = url;
     });
-
+   }
 
     function updatePagination(visibleRows) {
         const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
-
+       if (dataTableBottom) { 
         dataTableBottom.style.display = visibleRows.length > rowsPerPage ? "flex" : "none";
-
         paginationList.querySelectorAll("li.page-number").forEach((el) => el.remove());
-
+       }
         if (totalPages > 1) {
             for (let i = 1; i <= totalPages; i++) {
                 const li = document.createElement("li");
@@ -528,6 +535,8 @@
             }
         }
     }
+
+    if(closeFloatingActions){
     // Close the floating div when the "X" button is clicked
     closeFloatingActions.addEventListener("click", function() {
         floatingActions.classList.add("hidden");
@@ -566,11 +575,15 @@
         updatePagination(visibleRows);
         showPage(1, visibleRows);
     });
+  }
 
+  if(document.getElementById("pdfInput")){
     document.getElementById("pdfInput").addEventListener("change", function() {
         // submit the form
         this.form.submit();
     });
+}
+
     document.addEventListener('DOMContentLoaded', function(e) {
 
 

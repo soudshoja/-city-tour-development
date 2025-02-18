@@ -20,7 +20,62 @@
         #dt-search-0 {
             width: 100%;
         }
+        .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none; /* Hide by default */
+}
+
+.spinner:not(.hidden) {
+    display: block; /* Show when not hidden */
+}
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Add custom styling for buttons */
+        .button {
+            background-color: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            width: 220px;
+            text-align: center;
+            margin: 15px;
+            cursor: pointer;
+            position: relative; /* Position the spinner inside the button */
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #2980b9;
+        }
+
+        .status {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        .button .text {
+            visibility: visible;
+        }
+
+        .button.loading .text {
+            visibility: hidden;
+        }
     </style>
+
 </head>
 
 <body class="font-nunito antialiased bg-gray-100">
@@ -38,9 +93,10 @@
                 <p class="text-gray-600">Commit: <span id="devSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
-                    <button onclick="triggerJenkinsJob('city_tour_dev_no_pipeline')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
-                    <div class="spinner hidden" id="devSpinner"></div>
-                    <span class="text">Deploy to Dev</span>
+                    <button onclick="triggerJenkinsJob('city_tour_dev_no_pipeline')" class="bg-red-500 text-white px-4 py-2 rounded-lg" id="devButton">
+                        <div class="spinner hidden" id="devSpinner"></div>
+                        <span class="text">Pull to Dev</span>
+                    </button>
                 </div>
             </div>
 
@@ -52,9 +108,10 @@
                 <p class="text-gray-600">Commit: <span id="uatSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
-                    <button onclick="triggerJenkinsJob('UAT publish')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
+                    <button onclick="triggerJenkinsJob('UAT publish')" class="bg-red-500 text-white px-4 py-2 rounded-lg" id="uatButton">
                     <div class="spinner hidden" id="uatSpinner"></div>
-                    <span class="text">Deploy to UAT</span>
+                    <span class="text">Pull to UAT</span>
+                    </button>
                 </div>
             </div>
 
@@ -336,6 +393,7 @@
 
                     // Show the spinner and update the status text to "Deploying..."
                     const button = document.getElementById(`${jobName === 'city_tour_dev_no_pipeline' ? 'dev' : 'uat'}Button`);
+                    
                     const spinner = button.querySelector('.spinner');
                     const text = button.querySelector('.text');
 

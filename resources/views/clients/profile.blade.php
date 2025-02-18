@@ -88,12 +88,6 @@
                                     </td>
                                 </tr>
                             </tbody>
-                            <!-- <li class="border-b border-gray-200 dark:border-gray-600 py-2">
-                                <strong class="text-gray-900 dark:text-gray-100">Task:
-                                    {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}:</strong> <span
-                                    class="text-gray-500 dark:text-gray-400">{{ $task->type }}</span> -
-                                <span class="text-gray-500 dark:text-gray-400">{{ $task->status }}</span>
-                            </li> -->
                             @endforeach
                         </table>
                         @else
@@ -299,12 +293,6 @@
                                     </td>
                                 </tr>
                             </tbody>
-                            <!-- <li class="border-b border-gray-200 dark:border-gray-600 py-2">
-                                <strong class="text-gray-900 dark:text-gray-100">Task:
-                                    {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}:</strong> <span
-                                    class="text-gray-500 dark:text-gray-400">{{ $task->type }}</span> -
-                                <span class="text-gray-500 dark:text-gray-400">{{ $task->status }}</span>
-                            </li> -->
                             @endforeach
                         </table>
                         @else
@@ -370,12 +358,6 @@
                                     <td>{{ $group['client']->phone }}</td>
                                 </tr>
                             </tbody>
-                            <!-- <li class="border-b border-gray-200 dark:border-gray-600 py-2">
-                                <strong class="text-gray-900 dark:text-gray-100">Task:
-                                    {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}:</strong> <span
-                                    class="text-gray-500 dark:text-gray-400">{{ $task->type }}</span> -
-                                <span class="text-gray-500 dark:text-gray-400">{{ $task->status }}</span>
-                            </li> -->
                             @endforeach
                         </table>
                         @else

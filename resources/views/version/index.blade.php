@@ -138,7 +138,7 @@
             <button id="createRoleButton" class="bg-white-500 text-white px-4 py-2 rounded"></button>
 
             <!-- Update Current Version Button -->
-            <button id="updateVersionButton" class="bg-white-500 text-white px-4 py-2 rounded"></button>
+
         </div>
 
             <table id="newTestTable" class="w-full border-collapse">
@@ -456,20 +456,6 @@
                 window.dispatchEvent(new Event('open-modal'));
             });
 
-        // Update Current Version Button Click Event
-        document.getElementById("updateVersionButton").addEventListener("click", function () {
-            fetch("{{ route('version.getCurrent') }}")
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.value) {
-                        window.dispatchEvent(new CustomEvent('open-update-modal', {
-                            detail: { version: data.value, id: data.id }
-                        }));
-                    }
-                })
-                .catch(error => console.error("Error fetching version:", error));
-        });
-
         let dataTable = new DataTable("#newTestTable", {
             lengthMenu: [10, 20, 50],
             language: {
@@ -487,27 +473,6 @@
                     };
 
                         return createRoleButton;
-                    },
-                    function() {
-                        let updateVersionButton = document.createElement('button');
-                        updateVersionButton.classList.add('bg-green-500',  'text-white', 'px-4', 'py-2', 'rounded');
-                        updateVersionButton.innerText = 'Update Current Version';
-
-                        updateVersionButton.onclick = function() {
-                            // Fetch the latest version from the server dynamically (replace this with actual logic)
-                            fetch("{{ route('version.getCurrent') }}")
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data && data.value) { // Assuming `value` holds the version
-                                    window.dispatchEvent(new CustomEvent('open-update-modal', {
-                                        detail: { version: data.value, id: data.id }
-                                    }));
-                                }
-                            })
-                            .catch(error => console.error("Error fetching version:", error));
-                        };
-
-                        return updateVersionButton;
                     },
                     {
 

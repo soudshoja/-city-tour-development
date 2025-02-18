@@ -121,7 +121,7 @@
                     <!-- Split Payment Tab Content -->
                     <div id="split-payment-container" class="tab-content">
 
-                        <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                        <select id="payment_gatewayChat" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
                             <option value="Tap">Tap</option>
                             <option value="Hesabe">Hesabe</option>
                             <option value="MyFatoorah">MyFatoorah</option>
@@ -765,25 +765,30 @@
             return;
         }
 
-        $.ajax({
-            url: "{{ route('chat.select') }}",
+        fetch("{{ route('chat.select') }}", {
             method: "POST",
-            data: {
-                tasks: selectedTasks // Send selected task IDs
-            },
             headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), // Ensure CSRF token is included
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content") // Ensure CSRF token is included
             },
-            success: function(response) {
-                loadTaskPricing(response.taskPricing);
-            },
-            error: function(xhr) {
-                alert("Error: " + (xhr.responseJSON?.error || xhr.statusText));
-            },
+            body: JSON.stringify({ tasks: selectedTasks }) // Send selected task IDs
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadTaskPricing(data.taskPricing);
+        })
+        .catch(error => {
+            alert("Error: " + (error.error || "Something went wrong!"));
         });
 
         taskSelection.hide();
     });
+
 
     function loadTaskPricing(tasks) {
         pricingFields.empty();
@@ -830,17 +835,21 @@
         console.log("Submitting tasks:", JSON.stringify({
             tasks
         }));
-        $.ajax({
-            url: "{{ route('chat.create') }}",
-            method: "POST",
-            contentType: 'application/json',
-            data: JSON.stringify({
-                tasks
-            }),
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), // Ensure CSRF token is included
-            },
-            success: function(response) {
+        fetch("{{ route('chat.create') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content") // Ensure CSRF token is included
+                },
+                body: JSON.stringify({ tasks }) // Send tasks as JSON
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(response => {
                 if (response.success) {
                     const generatedLink = response.invoiceLink;
                     const invoiceNumber = response.invoiceNumber; // Assuming this is part of the response
@@ -853,24 +862,25 @@
                     const clickableLink = `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
                     appendMessage("cityTour", clickableLink);
 
-                    document.getElementById('invoiceNumberChat').value = response.invoiceNumber;
-                    document.getElementById('invoiceIdChat').value = response.invoiceId;
-                    document.getElementById('invoiceAmountChat').value = response.invoiceAmount;
-                    document.getElementById('subTotalChat').value = response.invoiceAmount;
+                    document.getElementById('invoiceNumberChat').value = invoiceNumber;
+                    document.getElementById('invoiceIdChat').value = invoiceId;
+                    document.getElementById('invoiceAmountChat').value = invoiceAmount;
+                    document.getElementById('subTotalChat').value = invoiceAmount;
                     document.getElementById('receiverIdChat').value = response.clientId;
 
                     // Serialize the clients array as a JSON string
-                    document.getElementById('total-amountChat').value = response.invoiceAmount;
-                    document.getElementById('due_dateChat').value = response.due_date;
-                    document.getElementById('subT1Chat').textContent = `${response.invoiceAmount.toFixed(2)}`;
+                    document.getElementById('total-amountChat').value = invoiceAmount;
+                    document.getElementById('due_dateChat').value = due_date;
+                    document.getElementById('subT1Chat').textContent = `${invoiceAmount.toFixed(2)}`;
+
                     // Show payment type selection
                     showPaymentTypeSelection();
                 }
-            },
-            error: function(xhr) {
-                alert("Error: " + (xhr.responseJSON?.error || xhr.statusText));
-            },
-        });
+            })
+            .catch(error => {
+                alert("Error: " + (error.error || "Something went wrong!"));
+            });
+
         taskPricing.hide();
     });
 
@@ -1371,67 +1381,56 @@
                     const formData = new FormData();
                     formData.append('file', file);
 
-                    // Perform AJAX request to upload the file
-                    $.ajax({
-                        url: "{{ route('chat.handleFileUpload') }}",
-                        method: 'POST',
-                        data: formData,
-                        contentType: false, // Needed for FormData
-                        processData: false, // Needed for FormData
+                // Create FormData for file upload
+
+                    fetch("{{ route('chat.handleFileUpload') }}", {
+                        method: "POST",
+                        body: formData,
                         headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), // Add CSRF token for security
-                        },
-                        beforeSend: function () {
-                            // Show a loader or disable the upload button during the request
-                            $('#upload-status').text('Uploading...');
-                        },
-                        success: function (response) {
-                            // Handle success response
-                            if (response.success) {
-                                $('#upload-status').text('Upload successful!');
-                                console.log(response.message);
-                                console.log(response.data);
-                                // Optionally, update UI with extracted data (if returned)
-                                if (response.data) {
-                                        const client = response.data;
-
-                                        // Display client details
-                                        $('#passport-details').html(`
-                                            <p>Passport Number: ${client.passport_no}</p>
-                                            <p>Date of Birth: ${client.date_of_birth}</p>
-                                            <p>Address: ${client.address || 'N/A'}</p>
-                                            <p>Status: ${client.status}</p>
-                                        `);
-
-
-                                        // Populate other form fields
-                                        document.getElementById('chatClientForm').value = "update";
-                                        document.getElementById('clientId').value = client.id || '';
-                                        document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
-                                        document.getElementById('nameChat').value = client.name || '';
-                                        document.getElementById('addressChat').value = client.address || '';
-                                        document.getElementById('civil_noChat').value = client.civil_no || '';
-                                        document.getElementById('passport_noChat').value = client.passport_no || '';
-
-                                        // Hide the passport modal and show the client form
-                                        passport.hide();
-                                        clientOption.hide();
-                                        createClient.show();
-                                    }
-
-                            } else {
-                                $('#upload-status').text('Upload failed: ' + response.message);
-                            }
-                        },
-                        error: function (xhr) {
-                            // Handle error response
-                            $('#upload-status').text('Error uploading file. Please try again.');
-                            console.error(xhr.responseText);
-                        },
-                        complete: function () {
-                            // Remove loader or re-enable the upload button
+                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content") // Add CSRF token for security
                         }
+                    })
+                    .then(response => response.json()) // Parse JSON response
+                    .then(response => {
+                        if (response.success) {
+                            document.getElementById('upload-status').textContent = 'Upload successful!';
+                            console.log(response.message);
+                            console.log(response.data);
+
+                            if (response.data) {
+                                const client = response.data;
+
+                                // Display client details
+                                document.getElementById('passport-details').innerHTML = `
+                                    <p>Passport Number: ${client.passport_no}</p>
+                                    <p>Date of Birth: ${client.date_of_birth}</p>
+                                    <p>Address: ${client.address || 'N/A'}</p>
+                                    <p>Status: ${client.status}</p>
+                                `;
+
+                                // Populate other form fields
+                                document.getElementById('chatClientForm').value = "update";
+                                document.getElementById('clientId').value = client.id || '';
+                                document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
+                                document.getElementById('nameChat').value = client.name || '';
+                                document.getElementById('addressChat').value = client.address || '';
+                                document.getElementById('civil_noChat').value = client.civil_no || '';
+                                document.getElementById('passport_noChat').value = client.passport_no || '';
+
+                                // Hide the passport modal and show the client form
+                                passport.hide();
+                                clientOption.hide();
+                                createClient.show();
+                            }
+                        } else {
+                            document.getElementById('upload-status').textContent = 'Upload failed: ' + response.message;
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('upload-status').textContent = 'Error uploading file. Please try again.';
+                        console.error(error);
                     });
+
                 } else {
                     // Handle case where no file is selected
                     $('#upload-status').text('No file selected.');
@@ -1447,20 +1446,20 @@
             // Collect form data
             const formData = $(this).serialize();
 
-            // Submit the form via AJAX
-            $.ajax({
-                url: "{{ route('chat.client') }}",
+            fetch("{{ route('chat.client') }}", {
                 method: "POST",
-                data: formData,
+                body: formData,
                 headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-                },
-                success: function (response) {
-                    if (response.success) {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                }
+            })
+            .then(response => response.json()) // Convert response to JSON
+            .then(response => {
+                if (response.success) {
                     const client = response.client;
                     const action = response.action;
 
-                                // Determine the message based on the action
+                    // Determine the message based on the action
                     const actionMessage = action === 'create' 
                         ? `New client created: <span style="color: #ff9800; font-weight: bold;">${client.name}</span>` 
                         : `Client updated: <span style="color: #4caf50; font-weight: bold;">${client.name}</span>`;
@@ -1468,12 +1467,10 @@
                     // Append the message
                     appendMessage("cityTour", actionMessage);
                     createClient.hide();
-
-                    }
-                },
-                error: function (xhr) {
-                    alert("Error: " + (xhr.responseJSON?.message || "Unable to register client."));
-                },
+                }
+            })
+            .catch(error => {
+                alert("Error: " + (error.message || "Unable to register client."));
             });
         });
 
@@ -1512,24 +1509,23 @@
         const formData = $(this).serialize();
         console.log('data:', formData);
         // Submit the form via AJAX
-        $.ajax({
-            url: "{{ route('chat.agent') }}",
+        fetch("{{ route('chat.agent') }}", {
             method: "POST",
-            data: formData,
+            body: formData,
             headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-            },
-            success: function(response) {
-                if (response.success) {
-                    const agent = response.agent;
-                    appendMessage("cityTour", `New agent created: <span style="color: #ff9800; font-weight: bold;">${agent.name}</span>`);
-                    createAgent.hide();
-
-                }
-            },
-            error: function(xhr) {
-                alert("Error: " + (xhr.responseJSON?.message || "Unable to register agent."));
-            },
+                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+            }
+        })
+        .then(response => response.json()) // Convert response to JSON
+        .then(response => {
+            if (response.success) {
+                const agent = response.agent;
+                appendMessage("cityTour", `New agent created: <span style="color: #ff9800; font-weight: bold;">${agent.name}</span>`);
+                createAgent.hide();
+            }
+        })
+        .catch(error => {
+            alert("Error: " + (error.message || "Unable to register agent."));
         });
     });
 
@@ -1547,25 +1543,23 @@
         // Collect form data
         const formData = $(this).serialize();
 
-        // Submit the form via AJAX
-        $.ajax({
-            url: "{{ route('chat.branch') }}",
+        fetch("{{ route('chat.branch') }}", {
             method: "POST",
-            data: formData,
+            body: formData,
             headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-            },
-            success: function(response) {
-                if (response.success) {
-                    const branch = response.branch;
-                    appendMessage("cityTour", `New branch created: <span style="color: #ff9800; font-weight: bold;">${branch.name}</span>`);
-                    createBranch.hide();
-
-                }
-            },
-            error: function(xhr) {
-                alert("Error: " + (xhr.responseJSON?.message || "Unable to register branch."));
-            },
+                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+            }
+        })
+        .then(response => response.json()) // Convert response to JSON
+        .then(response => {
+            if (response.success) {
+                const branch = response.branch;
+                appendMessage("cityTour", `New branch created: <span style="color: #ff9800; font-weight: bold;">${branch.name}</span>`);
+                createBranch.hide();
+            }
+        })
+        .catch(error => {
+            alert("Error: " + (error.message || "Unable to register branch."));
         });
     });
 

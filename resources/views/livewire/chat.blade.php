@@ -621,28 +621,26 @@
     }
 
 
-
-
     // Send message on button click
     sendMessageButton.on("click", function() {
         const userMessage = userMessageInput.val().trim();
+        console.log('send', userMessage);
         if (!userMessage) return;
 
         appendMessage("user", userMessage);
-
-        $.ajax({
-            url: "{{ route('chat.process') }}",
-            method: "POST",
-            data: {
-                messages: [{
-                    role: "user",
-                    content: userMessage
-                }],
-            },
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), // Ensure CSRF token is included
-            },
-            success: function(response) {
+   
+        fetch("{{ route('chat.process') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content') // CSRF token
+                },
+                body: JSON.stringify({
+                    messages: [{ role: "user", content: userMessage }]
+                })
+            })
+            .then(response => response.json()) 
+            .then(response => {
                 if (response.tasks) {
                     loadTaskSelection(response.tasks);
                 } else if (response.taskPricing) {
@@ -654,21 +652,22 @@
                 } else if (response.branch) {
                     loadBranch(response.branch);
                 } else {
-                    if (response && response.choices && response.choices.length > 0) {
+                    if (response?.choices?.length > 0) {
                         let botMessage = response.choices[0].message.content;
 
-                             // Clean up the message to remove any extra characters
-                             botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim(); 
-                             appendMessage('cityTour', botMessage);
+                        // Clean up the message to remove any extra characters
+                        botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim(); 
+                        appendMessage('cityTour', botMessage);
                     } else {
                         appendMessage('cityTour', "No response from chatbot. Please try again.");
                     }
                 }
-            },
-            error: function(xhr) {
-                appendMessage("cityTour", "Error: " + (xhr.responseJSON?.error || xhr.statusText));
-            },
-        });
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                appendMessage("cityTour", "Error: " + error.message);
+            });
+
 
         userMessageInput.val("");
     });
@@ -682,19 +681,18 @@
 
             appendMessage("user", userMessage);
 
-            $.ajax({
-                url: "{{ route('chat.process') }}",
-                method: "POST",
-                data: {
-                    messages: [{
-                        role: "user",
-                        content: userMessage
-                    }],
-                },
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), // Ensure CSRF token is included
-                },
-                success: function(response) {
+            fetch("{{ route('chat.process') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content') // CSRF token
+                    },
+                    body: JSON.stringify({
+                        messages: [{ role: "user", content: userMessage }]
+                    })
+                })
+                .then(response => response.json()) 
+                .then(response => {
                     if (response.tasks) {
                         loadTaskSelection(response.tasks);
                     } else if (response.taskPricing) {
@@ -706,19 +704,22 @@
                     } else if (response.branch) {
                         loadBranch(response.branch);
                     } else {
-                        if (response && response.choices && response.choices.length > 0) {
+                        if (response?.choices?.length > 0) {
                             let botMessage = response.choices[0].message.content;
 
+                            // Clean up the message to remove any extra characters
+                            botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim(); 
                             appendMessage('cityTour', botMessage);
                         } else {
                             appendMessage('cityTour', "No response from chatbot. Please try again.");
                         }
                     }
-                },
-                error: function(xhr) {
-                    appendMessage("cityTour", "Error: " + (xhr.responseJSON?.error || xhr.statusText));
-                },
-            });
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    appendMessage("cityTour", "Error: " + error.message);
+                });
+
 
             userMessageInput.val("");
         }

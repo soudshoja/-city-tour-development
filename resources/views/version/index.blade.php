@@ -38,7 +38,9 @@
                 <p class="text-gray-600">Commit: <span id="devSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
-                    <button onclick="pullLatest('dev', '192.168.0.32')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
+                    <button onclick="triggerJenkinsJob('city_tour_dev_no_pipeline')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
+                    <div class="spinner hidden" id="devSpinner"></div>
+                    <span class="text">Deploy to Dev</span>
                 </div>
             </div>
 
@@ -50,7 +52,9 @@
                 <p class="text-gray-600">Commit: <span id="uatSha" class="font-bold text-green-600">Loading...</span></p>
                 <div class="mt-4 flex space-x-2">
                     <button onclick="fetchAllVersions()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">Refresh</button>
-                    <button onclick="pullLatest('uat', '192.168.0.33')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
+                    <button onclick="triggerJenkinsJob('UAT publish')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
+                    <div class="spinner hidden" id="uatSpinner"></div>
+                    <span class="text">Deploy to UAT</span>
                 </div>
             </div>
 
@@ -65,7 +69,7 @@
                     <button onclick="pullLatest('prod', 'tour.citytravellers.com')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Pull Latest</button>
                 </div>
             </div>
-
+            <p id="status" class="status text-gray-700"></p>
         </div>
     </div>
 
@@ -230,6 +234,7 @@
 
                         for (const server in data) {
                             let commit = data[server].commit || "Unknown";
+                            let description = data[server].message || "No Descriptions";
                             let versionInfo = versions.find(v => v.sha === commit);
 
                             if (!versionInfo) {
@@ -237,7 +242,7 @@
                                 let newVersion = getNextVersion(currentVersion);
 
                                 await updateMasterVersion(newVersion); // Update Master table
-                                await autoAddVersion(newVersion, commit);
+                                await autoAddVersion(newVersion, commit, description);
 
                                 versionInfo = { version: newVersion, sha: commit };
                                 versions.push(versionInfo); // Update local list
@@ -266,7 +271,7 @@
             return `${main}.${sub.toString().padStart(3, '0')}`;
         }
 
-        async function autoAddVersion(version, sha) {
+        async function autoAddVersion(version, sha, description) {
                 const versionStoreUrl = "{{ route('version.store') }}"; 
                 const csrfToken = "{{ csrf_token() }}";
 
@@ -280,7 +285,7 @@
                         body: JSON.stringify({
                             version: version,
                             sha: sha,
-                            descriptions: "" 
+                            descriptions: description
                         }),
                     });
 
@@ -324,6 +329,67 @@
 
 
             fetchAllVersions();
+
+
+            function triggerJenkinsJob(jobName) {
+                    console.log(`Triggering job: ${jobName}`);
+
+                    // Show the spinner and update the status text to "Deploying..."
+                    const button = document.getElementById(`${jobName === 'city_tour_dev_no_pipeline' ? 'dev' : 'uat'}Button`);
+                    const spinner = button.querySelector('.spinner');
+                    const text = button.querySelector('.text');
+
+                    // Set loading state to true
+                    button.classList.add('loading');
+                    spinner.classList.remove('hidden'); // Show the spinner
+                    text.classList.add('hidden');
+                    document.getElementById('status').innerText = 'Deploying... Please wait.';
+
+                    const jenkinsUrl = "http://192.168.0.32:8080";
+                    const jobUrl = `${jenkinsUrl}/job/${encodeURIComponent(jobName)}/build`;
+
+                    const username = "admin";  // Replace with your Jenkins username
+                    const apiToken = "1182ebdb5d0e5bd269a11afd66472ffac4";  // Replace with your real API token
+
+                    // Get CSRF crumb first
+                    fetch(`${jenkinsUrl}/crumbIssuer/api/json`, {
+                        method: "GET",
+                        headers: {
+                            "Authorization": "Basic " + btoa(username + ":" + apiToken)
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const crumb = data.crumb;
+                        console.log(`Crumb received: ${crumb}`);
+
+                        // Now trigger the Jenkins job
+                        return fetch(jobUrl, {
+                            method: "POST",
+                            headers: {
+                                "Authorization": "Basic " + btoa(username + ":" + apiToken),
+                                "Jenkins-Crumb": crumb  // Add the crumb to avoid CSRF error
+                            }
+                        });
+                    })
+                    .then(response =>    {
+                        if (response.ok) {
+                            document.getElementById("status").innerText = `✅ Job ${jobName} triggered successfully!`;
+                        } else {
+                            document.getElementById("status").innerText = `❌ Failed to trigger job ${jobName}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error:", error);
+                        document.getElementById("status").innerText = `❌ Failed to trigger job ${jobName}`;
+                    })
+                    .finally(() => {
+                        // Hide the spinner and show the button text after the job trigger process is complete (either success or failure)
+                        button.classList.remove('loading');
+                        spinner.classList.add('hidden'); // Hide the spinner
+                        text.classList.remove('hidden');
+                    });
+                }
 
 
 

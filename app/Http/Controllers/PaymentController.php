@@ -201,7 +201,7 @@ class PaymentController extends Controller
             return response()->json(['error' => $response['error']['description']], 500);
         }
 
-
+        Log::info('response', ['response' => $response['id']]);
 
         $payment->payment_reference = $response['id'];
         $payment->status = 'initiate';

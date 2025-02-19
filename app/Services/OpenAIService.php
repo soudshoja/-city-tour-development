@@ -9,7 +9,9 @@ class OpenAIService
     public function getChatResponse(array $messages)
     {
         $apiKey = config('services.open-ai.key'); // API key from config
-        $response = Http::withToken($apiKey)->post('https://api.openai.com/v1/chat/completions', [
+        $response = Http::withToken($apiKey)
+        ->withoutVerifying()
+        ->post('https://api.openai.com/v1/chat/completions', [
             'model' => 'gpt-3.5-turbo', // Use the appropriate model for your use case
             'messages' => $messages,
         ]);

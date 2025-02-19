@@ -917,7 +917,6 @@
 
     <script>
 
-        //testing
         let invoice = @json($invoice);
         let items = [];
         let tasks = [];

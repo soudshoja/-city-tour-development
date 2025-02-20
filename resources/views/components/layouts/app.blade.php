@@ -12,10 +12,10 @@
     
     <!-- CSS -->
     @vite(['resources/css/app.css', 'resources/css/cityCss.css', 'resources/css/style.css'])
-    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js', 'resources/js/tools.js','resources/js/nice-select2.js'])
+    @vite(['resources/js/jsbyNisma.js', 'resources/js/app.js', 'resources/js/tools.js'])
 
     @livewireStyles
-
+    <script src="{{ asset('js/nice-select2.js') }}"></script>
     <!-- Scripts -->
 </head>
 

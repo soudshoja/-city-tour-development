@@ -205,7 +205,7 @@
                     hoverBorderColor: 'rgb(74 222 128)',
                 },
                 {
-                    label: 'unpaid Amounts - Invoices',
+                    label: 'Unpaid Amounts - Invoices',
                     data: unpaidAmounts,
                     borderColor: 'rgb(239 68 68)',
                     backgroundColor: 'rgb(239 68 68)',

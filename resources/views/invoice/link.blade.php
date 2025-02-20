@@ -206,7 +206,6 @@
 
 
                     <!-- pagination -->
-                    @if ($invoices->count() > 15)
                     <div class="dataTable-bottom justify-center">
                         <nav class="dataTable-pagination">
                             <ul class="dataTable-pagination-list flex gap-2 mt-4">
@@ -230,7 +229,7 @@
                             </ul>
                         </nav>
                     </div>
-                    @endif
+
                     <!-- ./pagination -->
                 </div>
             </div>

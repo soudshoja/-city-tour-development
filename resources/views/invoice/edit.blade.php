@@ -378,7 +378,7 @@
 
                  <!-- Payment Type Section -->
                  <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type</h2> 
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span class="font-large text-success"> {{$invoice->payment_type}}</span></h2> 
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">

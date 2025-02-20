@@ -460,47 +460,47 @@
 
     const floatingActions = document.getElementById("floatingActions");
     const closeFloatingActions = document.getElementById("closeFloatingActions");
-    const selectAllCheckbox = document.getElementById("selectAll");
-    const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+    // const selectAllCheckbox = document.getElementById("selectAll");
+    // const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
     const createInvoiceBtn = document.getElementById("createInvoiceBtn");
 
 
     // Select/Deselect all checkboxes
-    selectAllCheckbox.addEventListener("change", function() {
-        rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
-        toggleCreateInvoiceButton(); // Update button state
-    });
+    // selectAllCheckbox.addEventListener("change", function() {
+    //     rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+    //     toggleCreateInvoiceButton(); // Update button state
+    // });
 
     // Toggle "Create Invoice" button based on selected checkboxes
-    const toggleCreateInvoiceButton = () => {
-        const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
+    // const toggleCreateInvoiceButton = () => {
+    //     const isAnySelected = Array.from(rowCheckboxes).some(checkbox => checkbox.checked);
 
-        if(createInvoiceBtn){
-        createInvoiceBtn.disabled = !isAnySelected;
-        }
-    };
+    //     if(createInvoiceBtn){
+    //     createInvoiceBtn.disabled = !isAnySelected;
+    //     }
+    // };
     // Add change event to each row checkbox
-    rowCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener("change", function() {
-            // Update the "Select All" checkbox state
-            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-            selectAllCheckbox.checked = allChecked;
+    // rowCheckboxes.forEach(checkbox => {
+    //     checkbox.addEventListener("change", function() {
+    //         // Update the "Select All" checkbox state
+    //         const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+    //         selectAllCheckbox.checked = allChecked;
 
-            // Update button state
-            toggleCreateInvoiceButton();
+    //         // Update button state
+    //         toggleCreateInvoiceButton();
 
-            // Show or hide the floating div based on any checkbox selection
-            const isAnyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
-            if (isAnyChecked) {
-                floatingActions.classList.remove("hidden");
-            } else {
-                floatingActions.classList.add("hidden");
-            }
-        });
-    });
+    //         // Show or hide the floating div based on any checkbox selection
+    //         const isAnyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+    //         if (isAnyChecked) {
+    //             floatingActions.classList.remove("hidden");
+    //         } else {
+    //             floatingActions.classList.add("hidden");
+    //         }
+    //     });
+    // });
 
     // Initialize button state on page load
-    toggleCreateInvoiceButton();
+    // toggleCreateInvoiceButton();
 
     if(createInvoiceBtn){
     // Gather selected task IDs and submit them

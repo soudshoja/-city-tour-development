@@ -83,19 +83,19 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
-                                    <th>
+                                    <!-- <th>
                                         <label class="custom-checkbox">
                                             <input type="checkbox" id="selectAll" class="form-checkbox hidden">
                                             <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
                                                 <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
-                                    </th>
+                                    </th> -->
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Link</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Expiry Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Expiry Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
                                 </tr>
@@ -112,14 +112,14 @@
                                 <tr
                                     data-price="{{ $invoice->total }}" data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
                                     data-branch-id="{{ $invoice->agent->branch->id }}" data-agent-id="{{ $invoice->agent_id }}" data-status="{{ $invoice->status }}" data-type="{{ $invoiceDetail->task->type }}" data-client-id="{{ $invoice->client ? $invoice->client->id : null }}" data-task-id="{{ $invoice->id }}" class="taskRow">
-                                    <td>
+                                    <!-- <td>
                                         <label class="custom-checkbox">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
                                                 <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                             </svg>
                                         </label>
-                                    </td>
+                                    </td> -->
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <!-- Main Invoice Link -->
@@ -155,16 +155,16 @@
                                <!-- Separate row for each partial invoice -->
                                     @foreach ($invoice->invoicePartials as $partial)
                                        @if ($partial->type === 'split')
-                                        <tr data-price="{{ $invoice->total }}" data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
-                                            data-branch-id="{{ $invoice->agent->branch->id }}" data-agent-id="{{ $invoice->agent_id }}" data-status="{{ $invoice->status }}" data-type="{{ $invoiceDetail->task->type }}" data-client-id="{{ $invoice->client ? $invoice->client->id : null }}" data-task-id="{{ $invoice->id }}" class="taskRow">
-                                            <td>
+                                        <tr data-price="{{ $partial->total }}" data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
+                                            data-branch-id="{{ $invoice->agent->branch->id }}" data-agent-id="{{ $invoice->agent_id }}" data-status="{{ $partial->status }}" data-type="{{ $partial->type }}" data-client-id="{{ $invoice->client ? $invoice->client->id : null }}" data-task-id="{{ $invoice->id }}" class="taskRow">
+                                            <!-- <td>
                                                 <label class="custom-checkbox">
                                                     <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
                                                         <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
                                                     </svg>
                                                 </label>
-                                            </td>
+                                            </td> -->
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}" class="text-green-500 hover:underline" target="_blank">

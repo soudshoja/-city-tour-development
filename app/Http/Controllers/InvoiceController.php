@@ -702,7 +702,7 @@ class InvoiceController extends Controller
 
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(10);
+        $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(100);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
@@ -731,7 +731,7 @@ class InvoiceController extends Controller
 
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch','invoiceDetails.task','invoicePartials', 'client')->whereIn('agent_id', $agentIds)->paginate(10);
+        $invoices = Invoice::with('agent.branch','invoiceDetails.task','invoicePartials', 'client')->whereIn('agent_id', $agentIds)->paginate(100);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();

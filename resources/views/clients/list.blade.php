@@ -154,11 +154,11 @@
     <!-- right -->
     <!-- Client Details Container -->
     <div class="w-[30%] hidden" id="showClientRightDiv">
-        <div id="clientDetails" class="panel w-full xl:mt-0 rounded-lg h-auto">
+        <div id="clientDetails" class="mt-0 mb-0 my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800  m-0">
         </div>
             <!-- Client details will be rendered here -->
                      <!-- Form to add new client -->
-        <div class="panel w-full xl:mt-0 rounded-lg h-auto">
+        <div class="mt-0 mb-0 my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800">
             <button type="button" id="openClientModalButton"
                 class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
@@ -176,14 +176,14 @@
           <input id="parentId" type="hidden" name="parentId" />
           <input id="childId" type="hidden" name="childId" />
 
-          <div class="panel w-full xl:mt-0 rounded-lg h-auto">
+          <div class="mt-0 mb-0 my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800">
             <h2 class="text-lg font-bold">Belongs To</h2>
                 <ul id="par-client-list">
                     <!-- Sub-clients will be listed here dynamically -->
                 </ul>
         </div>
 
-          <div class="panel w-full xl:mt-0 rounded-lg h-auto">
+          <div class="mt-0 mb-0 my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800">
             <h2 class="text-lg font-bold">Child Group</h2>
                 <ul id="sub-client-list">
                     <!-- Sub-clients will be listed here dynamically -->

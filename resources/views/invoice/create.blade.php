@@ -495,14 +495,21 @@
 
                                 <!-- Share Buttons -->
                                 <div class="flex items-center gap-2 w-full">
-                                    <form action="{{ route('whatsapp.send') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="client" id="client">
-                                        <input type="hidden" name="invoiceNumber" value="{{$invoiceNumber}}">
-                                        <button type="submit" class="w-full items-center py-3 px-5 text-xs text-white btn-success rounded-full">
-                                            Share via WhatsApp
-                                        </button>
-                                    </form>
+                                <form id="whatsappForm" action="{{ route('whatsapp.send1') }}" method="POST" onsubmit="showSpinner()">
+                                    @csrf
+                                    <input type="hidden" name="clientid" id="clientid">
+                                    <input type="hidden" name="invoiceNumber" value="{{$invoiceNumber}}">
+                                    
+                                    <button id="submitButton" type="submit" class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                        <span id="buttonText">Share via WhatsApp</span>
+                                        <span id="spinner" class="hidden ml-2">
+                                            <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </form>
 
                                     <button onclick="shareViaEmail()" class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
                                         Share via Email
@@ -1843,7 +1850,7 @@
             if (client && agent && branch) {
                 // Update hidden fields
                 document.getElementById('receiverId').value = client.id;
-
+                document.getElementById('clientid').value = client.id;
                 // Update input fields for client
                 document.getElementById('receiverName').value = client.name;
                 document.getElementById('receiverName1').textContent = client.name;
@@ -1870,7 +1877,7 @@
         function updateFormFields(client, agent) {
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
-
+            document.getElementById('clientid').value = client.id;
             // Update input fields
             document.getElementById('receiverName').value = client.name;
             document.getElementById('receiverName1').textContent = client.name;
@@ -2606,6 +2613,13 @@
                 alert('Failed to copy link: ' + err);
             });
         }
+
+        function showSpinner() {
+        document.getElementById("submitButton").disabled = true;
+        document.getElementById("buttonText").textContent = "Sending...";
+        document.getElementById("spinner").classList.remove("hidden");
+        }
+
 
         document.addEventListener("DOMContentLoaded", function() {
 

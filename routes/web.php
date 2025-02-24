@@ -212,6 +212,7 @@ Route::middleware(['auth'])->group(function () {
 
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
+    Route::post('/whatsapp/send1', [WhatsappController::class, 'sendMessage1'])->name('whatsapp.send1');
     Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
 
     // open api
@@ -281,6 +282,7 @@ Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name
 Route::get('/invoice/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoice.pdf');
 Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
 Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
+Route::delete('/invoice/delete/{id}', [InvoiceController::class, 'delete'])->name('invoice.delete');
 Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
 Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');

@@ -27,6 +27,7 @@ use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CurrencyExchangeController;
+use App\Http\Controllers\SystemExchangeRateController;
 use App\Http\Controllers\TBOController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
@@ -360,8 +361,11 @@ Route::group([
         'as' => 'exchange.',
     ]), function () {
         Route::get('index',[CurrencyExchangeController::class, 'index'])->name('index');
+        Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
         Route::put('update', [CurrencyExchangeController::class, 'update'])->name('update');
     });
+
+    Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
 
 });
 

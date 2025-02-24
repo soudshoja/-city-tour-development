@@ -466,14 +466,21 @@
 
                                 <!-- Share Buttons -->
                                 <div class="flex items-center gap-2 w-full">
-                                    <form action="{{ route('whatsapp.send') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="client" id="client">
-                                        <input type="hidden" name="invoiceNumber2" value="{{$invoiceNumber}}">
-                                        <button type="submit" class="w-full items-center py-3 px-5 text-xs text-white btn-success rounded-full">
-                                            Share via WhatsApp
-                                        </button>
-                                    </form>
+                                <form id="whatsappForm" action="{{ route('whatsapp.send1') }}" method="POST" onsubmit="showSpinner()">
+                                    @csrf
+                                    <input type="hidden" name="clientid" id="clientid">
+                                    <input type="hidden" name="invoiceNumber" value="{{$invoiceNumber}}">
+                                    
+                                    <button id="submitButton" type="submit" class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                        <span id="buttonText">Share via WhatsApp</span>
+                                        <span id="spinner" class="hidden ml-2">
+                                            <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </form>
 
                                     <button onclick="shareViaEmail()" class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
                                         Share via Email
@@ -499,7 +506,7 @@
                                     </svg>
                                     View
                                 </button>
-
+                                <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to clipboard!</p>
                             </div>
                         </section>
 
@@ -529,10 +536,22 @@
                                 <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
                                 <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                             </svg>
-                            <span id="button-text">Save</span>
+                            <span id="button-text">Update</span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
+
+                            <!-- Delete Button -->
+                        <button id="delete-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm font-semibold text-white bg-red-500 hover:bg-red-700 py-4 rounded-full shadow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                <path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V6H19Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Delete</span>
+                        </button>
+                        
                         <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
@@ -945,13 +964,14 @@
         updateClientAgent(selectedClient.id, selectedAgent.id);
 
         const generateInvoiceButton = document.getElementById('generate-invoice-btn');
+        const deleteInvoiceButton = document.getElementById('delete-invoice-btn');
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
         const buttonSaved = document.getElementById('button-saved');
 
         
         const invoiceIdInput = document.getElementById('invoiceId');
-        
+        invoiceIdInput.value = invoice.id;
 
         function checkInvoiceId() {
         const tabs = document.querySelectorAll('input[name="payment_type"]');
@@ -1090,7 +1110,7 @@
 
             const tbody = document.getElementById('split-rows1');
             tbody.innerHTML = ''; // Clear existing rows
-
+    
             for (let i = 1; i <= splitInto1; i++) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -1190,6 +1210,12 @@
                             data-tooltip="See Details">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
                             <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+
+                        <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip="Remove Item">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
 
@@ -1653,7 +1679,7 @@
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
         }
-        console.log('helloooooo2');
+
         function openTaskModal() {
             document.getElementById('taskModal').classList.remove('hidden');
         }
@@ -1735,7 +1761,7 @@
             if (client && agent && branch) {
                 // Update hidden fields
                 document.getElementById('receiverId').value = client.id;
-
+                document.getElementById('clientid').value = client.id;
                 // Update input fields for client
                 document.getElementById('receiverName').value = client.name;
                 document.getElementById('receiverName1').textContent = client.name;
@@ -1760,10 +1786,9 @@
         }
 
         function updateFormFields(client, agent) {
-          console.log('cliento', client);
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
-
+            document.getElementById('clientid').value = client.id;
             // Update input fields
             document.getElementById('receiverName').value = client.name;
             document.getElementById('receiverName1').value = client.name;
@@ -1791,6 +1816,20 @@
                 console.error("Error generating invoice:", error);
                 isSaving = false; // Reset saving state
                 updateButtonState();
+
+            }
+        });
+
+
+        deleteInvoiceButton.addEventListener('click', async function(event) {
+            event.preventDefault(); // Prevent form submission or default action
+
+            try {
+                // Simulate invoice generation (replace with your actual API call)
+                await deleteInvoice();
+
+            } catch (error) {
+                console.error("Error generating invoice:", error);
 
             }
         });
@@ -2073,6 +2112,61 @@
 
             }
 
+                    // Delete invoice
+        async function deleteInvoice() {
+             console.log('delete',invoice.id);
+
+            const invoiceUrl = `/invoice/delete/${invoice.id}`;
+            const csrfToken = "{{ csrf_token() }}";
+
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    console.log("Invoice deleted successfully.");
+                    showNotification("Invoice deleted successfully.", "success");
+                } else {
+                    console.error("Failed to delete invoice:", await response.text());
+                }
+
+            } catch (error) {
+                console.error('Error deleting invoice:', error);
+                let alert = document.createElement('div');
+                alert.innerHTML = ` 
+                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                       Error Generating Invoice: make sure all fields are filled correctly
+                     <button type="button" class="close text-white ml-2" aria-label="Close"
+                         onclick="this.parentElement.style.display='none';">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+                 `
+                document.body.appendChild(alert);
+                resetButtonState();
+            }
+        }
+
+
+        function showNotification(message, type) {
+            let notification = document.createElement('div');
+            notification.innerHTML = `
+                <div class="alert alert-${type} fixed mt-5 top-1 right-4 p-4 rounded shadow-lg ${
+                    type === 'danger' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+                }">
+                    ${message}
+                    <button type="button" class="close text-white ml-2" aria-label="Close"
+                        onclick="this.parentElement.style.display='none';">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+        }
 
         // Generate invoice
         async function updateInvoice() {
@@ -2182,6 +2276,66 @@
             }
         };
 
+        
+        function resetButtonState() {
+            isSaving = false;
+            isSaved = false;
+            updateButtonState();
+        }
+
+        function viewInvoice() {
+            openInvoiceModal(invoice.invoice_number);
+        }
+
+        function openInvoiceModal(invoiceNumber) {
+            const modal = document.getElementById("viewInvoiceModal");
+            const contentDiv = document.getElementById("invoiceContent");
+
+            // Clear previous content
+            contentDiv.innerHTML = "";
+
+            // Open the modal
+            modal.classList.remove("hidden");
+            url =
+                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
+
+            // Fetch the invoice details
+            fetch(url)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.text();
+                })
+                .then((data) => {
+                    contentDiv.innerHTML = data;
+
+                    // Close the modal when the backdrop is clicked
+                    modal.addEventListener("click", (event) => {
+                        if (event.target === modal) {
+                            closeInvoiceModal();
+                        }
+                    });
+
+
+                })
+                .catch((error) => {
+                    console.error("Error fetching invoice details:", error);
+                    contentDiv.innerHTML =
+                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
+
+                });
+        }
+
+        function closeInvoiceModal() {
+            const modal = document.getElementById("viewInvoiceModal");
+            modal.classList.add("hidden");
+        }
+
+
         function resetButtonState() {
             isSaving = false;
             isSaved = false;
@@ -2199,10 +2353,11 @@
                     ":invoiceNumber",
                     invoiceNumber
                 );
-
+     
             navigator.clipboard.writeText(invoiceLink).then(() => {
                 alert('Link copied to clipboard: ' + invoiceLink); // Use invoiceLink here
                 copyFeedback.classList.remove('hidden');
+                console.log(fetchUrl);
                 setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
 
                 fetch(fetchUrl, {
@@ -2236,6 +2391,14 @@
                 alert('Failed to copy link: ' + err);
             });
         }
+
+
+        function showSpinner() {
+        document.getElementById("submitButton").disabled = true;
+        document.getElementById("buttonText").textContent = "Sending...";
+        document.getElementById("spinner").classList.remove("hidden");
+        }
+
 
         document.addEventListener("DOMContentLoaded", function() {
 

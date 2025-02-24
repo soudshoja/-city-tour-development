@@ -60,5 +60,9 @@ return [
         'url' => env('APP_ENV') == 'production' ? env('TBO_URL') : env('TBO_SANDBOX_URL'),
         'username' => env('APP_ENV') == 'production' ? env('TBO_USERNAME') : env('TBO_SANDBOX_USERNAME'),
         'password' => env('APP_ENV') == 'production' ? env('TBO_PASSWORD') : env('TBO_SANDBOX_PASSWORD'),
-    ]
+    ],
+    'currency-api' => [
+        'url' => env('CURRENCY_API_URL'),
+        'key' => env('CURRENCY_API_KEY'),
+    ],
 ];

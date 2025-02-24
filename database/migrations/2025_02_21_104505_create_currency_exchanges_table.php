@@ -13,9 +13,8 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained();
             $table->string('base_currency');
             $table->string('exchange_currency');
-            $table->decimal('exchange_rate', 10, 2);
+            $table->decimal('exchange_rate', 10, 4);
             $table->boolean('is_manual')->default(false);
-            $table->timestamp('last_updated')->nullable();
             $table->timestamps();
         });
     }

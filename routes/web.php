@@ -360,6 +360,7 @@ Route::group([
         'as' => 'exchange.',
     ]), function () {
         Route::get('index',[CurrencyExchangeController::class, 'index'])->name('index');
+        Route::put('update', [CurrencyExchangeController::class, 'update'])->name('update');
     });
 
 });

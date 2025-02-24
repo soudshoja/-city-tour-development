@@ -174,7 +174,7 @@ class TaskController extends Controller
         if($task->flightDetails){
             $task['description'] = $task->flightDetails->countryFrom->name . ' ---> ' . $task->flightDetails->countryTo->name;
         } elseif($task->hotelDetails){
-            $task['description'] = $task->hotelDetails->hotel->name . '/' . $task->hotelDetails->hotel->country->name;
+            $task['description'] = $task->hotelDetails->hotel->name . '/' . $task->hotelDetails->hotel->country;
         } else {
             $task['description'] = 'No description';
         }

@@ -12,11 +12,6 @@ class CurrencyExchange extends Model
         'exchange_currency',
         'exchange_rate',
         'is_manual',
-        'last_updated'
-    ];
-
-    protected $casts = [
-        'last_updated' => 'datetime',
     ];
 
     public function company()

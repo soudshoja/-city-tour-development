@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\CurrencyExchange;
 use App\Models\SystemExchangeRate;
 use Exception;
@@ -11,13 +12,83 @@ class CurrencyExchangeController extends Controller
 {
     public function index()
     {
-        $currencyExchanges = CurrencyExchange::all();
+        $currencyExchanges = CurrencyExchange::orderBy('company_id', 'asc')->get();
+        $companies = Company::select('id', 'name')->get();
 
-        return view('currency-exchange.index', compact('currencyExchanges'));
+        $currenciesAvailable = cache()->remember('exchangeRates', 3600, function () {
+            $systemExchangeRateController = new SystemExchangeRateController();
+            $response = $systemExchangeRateController->currencies();
+
+            if (!isset($response['data']) || $response['data'] == null) {
+                throw new Exception('Failed to fetch currency exchange rates');
+            }
+
+            return $response['data'];
+        });
+
+        if (!$currenciesAvailable) {
+            return redirect()->back()->with('error', 'Failed to fetch currency exchange rates');
+        }
+        return view('currency-exchange.index', compact(
+            'currencyExchanges',
+            'currenciesAvailable',
+            'companies'
+        ));
     }
 
-    public function update(Request $request){
+    public function store(Request $request)
+    {
+        $request->validate([
+            'company_id' => 'required',
+            'base_currency' => 'required',
+            'exchange_currency' => 'required',
+            'exchange_rate' => 'required_if:is_manual,1',
+            'is_manual' => 'required'
+        ]);
 
+        $currencyExchange = CurrencyExchange::where([
+            'base_currency' => $request->base_currency,
+            'exchange_currency' => $request->exchange_currency
+        ])->first();
+        
+        if($currencyExchange){
+            return redirect()->back()->with('error', 'Currency exchange rate already exists');
+        }
+
+        if($request->is_manual == 0){
+            $systemExchangeRate = SystemExchangeRate::where([
+                'base_currency' => $request->base_currency,
+                'exchange_currency' => $request->exchange_currency
+            ])->first();
+            
+            if(!$systemExchangeRate){
+                $systemExchangeRateController = new SystemExchangeRateController();
+                $response = $systemExchangeRateController->updateBaseRate($request->base_currency);
+                
+                if($response->status() !== 200){
+                    return redirect()->back()->with('error', 'Failed to update currency exchange rate');
+                }
+
+                $systemExchangeRate = SystemExchangeRate::where([
+                    'base_currency' => $request->base_currency,
+                    'exchange_currency' => $request->exchange_currency
+                ])->first();
+            }
+
+            $request->merge(['exchange_rate' => $systemExchangeRate->exchange_rate]);
+        }
+
+        try {
+            CurrencyExchange::create($request->all());
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Currency exchange rate added successfully');
+    }
+
+    public function update(Request $request)
+    {
         $request->validate([
             'id.*' => 'required',
             'exchange_rate.*' => 'required_if:is_auto,0',
@@ -50,6 +121,7 @@ class CurrencyExchangeController extends Controller
 
             try {
                 $currencyExchange->exchange_rate = $systemExchangeRate->exchange_rate;
+                $currencyExchange->is_manual = false;
                 $currencyExchange->updated_at = now();
                 $currencyExchange->save();
             } catch (Exception $e) {

@@ -1664,19 +1664,19 @@
             document.getElementById('agentName').value = agentName;
             document.getElementById('agentEmail').value = agentEmail;
             document.getElementById('agentPhone').value = agentPhone;
-            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
-            url = url.replace('_agentId_', agentId);
+            // let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
+            // url = url.replace('_agentId_', agentId);
 
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    tasks = data;
-                    renderTaskList(tasks);
-                })
-                .catch(error => console.error(error));
+            // fetch(url)
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         tasks = data;
+            //         renderTaskList(tasks);
+            //     })
+            //     .catch(error => console.error(error));
 
             closeAgentModal();
-            items = [];
+            // items = [];
         }
         // Show Select Client Tab
         selectTabButton.addEventListener('click', () => {

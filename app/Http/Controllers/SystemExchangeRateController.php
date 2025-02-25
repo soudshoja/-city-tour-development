@@ -113,6 +113,12 @@ class SystemExchangeRateController extends Controller
         ];
     }
 
+    public function index()
+    {
+        $exchangeRates = SystemExchangeRate::all();
+        return view('exchange-rates.index', compact('exchangeRates'));
+    }
+
     public function updateExchangeRate()
     {
         $systemCurrencies = SystemExchangeRate::select('base_currency')->distinct()->get();

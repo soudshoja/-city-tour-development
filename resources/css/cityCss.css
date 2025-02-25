@@ -463,12 +463,12 @@ thead {
 
 .alert {
     position: absolute;
-    top: 70px; /* Adjust as needed */
-    right: 10px; /* Adjust as needed */
+    top: 2rem;
+    right: 6.4rem;
     padding: 10px; /* Adjust padding as needed */
     border-radius: 5px; /* Optional: for rounded corners */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Optional: for a subtle shadow */
-    z-index: 1050;
+    z-index: 50;
 }
 
 .text-success {

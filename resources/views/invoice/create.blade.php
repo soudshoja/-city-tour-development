@@ -1773,7 +1773,7 @@
         }
 
         function selectClient(client) {
-            document.getElementById('client').value = client;
+            document.getElementById('clientid').value = client.id;
             document.getElementById('receiverId').value = client.id;
 
             // Update input fields

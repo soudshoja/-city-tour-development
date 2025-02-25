@@ -129,7 +129,7 @@
                         @can('create' , App\Models\Account::class)
                         <div data-form="accountantForm" class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                             <button class="text-left flex rounded-lg w-full ">
-                                <span class="text-md md:text-sm font-bold dark:text-white">Accountant</span>
+                                <span class="text-md font-bold dark:text-white">Accountant</span>
                             </button>
                             <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant" class="w-10 h-10">
                         </div>

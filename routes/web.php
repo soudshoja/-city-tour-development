@@ -362,7 +362,9 @@ Route::group([
     ]), function () {
         Route::get('index',[CurrencyExchangeController::class, 'index'])->name('index');
         Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
-        Route::put('update', [CurrencyExchangeController::class, 'update'])->name('update');
+        Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
+        Route::put('update-auto', [CurrencyExchangeController::class, 'updateAuto'])->name('update.auto');
+        Route::put('update-method/{id}', [CurrencyExchangeController::class, 'updateMethod'])->name('update.method');
     });
 
     Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');

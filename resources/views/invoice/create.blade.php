@@ -1296,6 +1296,7 @@
                     <td>
                     <p>${item.agent.branch.name}</p>
                     </td>
+
                     <td>
                     <div
                         class="inline-flex items-center justify-evenly">
@@ -1319,6 +1320,13 @@
                             </div>
                             <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
                         </dialog>
+
+                        <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip="Remove Item">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+
                     </div>
                     </td>
                 `;

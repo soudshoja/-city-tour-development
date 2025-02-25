@@ -11,15 +11,15 @@
 @endif
 
 @if(session('success'))
-<div class="alert flex items-center rounded bg-success-light p-3.5 text-success dark:bg-success-dark-light" role="alert" style="z-index: 1050;">
+<div class="alert flex items-center justify-between rounded bg-success-light p-3.5 text-success " role="alert">
     {{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
 </div>
 @endif
 
 @if(session('error'))
-<div class="alert flex items-center rounded bg-danger-light p-3.5 text-danger dark:bg-danger-dark-light" role="alert" style="z-index: 1050;">
+<div class="alert flex items-center justify-between rounded bg-danger-light p-3.5 text-danger dark:bg-danger-dark-light" role="alert">
     {{ session('error') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
 </div>
 @endif

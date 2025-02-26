@@ -27,6 +27,7 @@ use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -86,12 +87,17 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
         $suppliers = Supplier::all();
 
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types'));
+        $importedTask = Cache::get('imported_task');
+        
+
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'importedTask'));
 
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
 
         // Fetch distinct task types
         // Return the view with the required data
+
+
         return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
     }
 
@@ -232,7 +238,6 @@ class TaskController extends Controller
         ]);
 
         $file = $request->file('task_file')->store('public/tasks');
-
         if ($file) {
             $response = $this->extractTaskFromFile($file);
         } else {
@@ -241,8 +246,13 @@ class TaskController extends Controller
                 'message' => 'File upload failed.'
             ];
         }
-
         // Excel::import(new TasksImport, $request->file('excel_file'));
+
+        if($response['status'] == 'success'){
+
+            logger('imported task: ', $response['data']->toArray());
+            Cache::put('imported_task', $response['data'], now()->addHour(1));
+        }
 
         return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
@@ -261,7 +271,7 @@ class TaskController extends Controller
         $response = $openai->flightOrHotel($contents);
 
         if ($response['status'] == 'error') {
-            return redirect()->back()->with('error', 'File upload failed.');
+            return $response;
         }
 
         if ($response['data'] == 'flight') {
@@ -413,7 +423,7 @@ class TaskController extends Controller
             throw $e;
         }
 
-        logger('Task created: ', $taskCreated->get()->toArray());
+        logger('Task created: ', $taskCreated->toArray());
 
         return [
             'status' => 'success',

@@ -256,7 +256,7 @@
                                             <!-- Phone -->
                                             <div class="mb-4">
                                                 <input type="tel" name="phone"
-                                                    class="custom-input" placeholder="Agent Number" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
+                                                    class="custom-input" placeholder="Agent Number">
                                             </div>
                                         </div>
 
@@ -355,7 +355,7 @@
                                         <!-- Accountant Phone -->
                                         <div class="mb-4 flex items-center">
                                             <input type="tel" name="phone" class="custom-input"
-                                                placeholder="Accountant Email" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
+                                                required placeholder="Accountant Email" >
                                         </div>
 
 
@@ -395,7 +395,7 @@
                                         <!-- Client Phone -->
                                         <div class="mb-4 flex items-center">
                                             <input type="number" name="phone" class="custom-input"
-                                                placeholder="Client Phone" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
+                                                required placeholder="Client Phone" >
                                         </div>
 
                                         <!-- Submit Button -->

@@ -23,14 +23,11 @@
             </div>
 
             <!-- add new branch -->
-            <a href="{{ route('companies.showCreateOptions') }}">
+            <a href="{{ route('users.create', ['openForm' => 'branchForm']) }}">
                 <div data-tooltip="Create new branch" class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
-
-
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
                     </svg>
-
                 </div>
             </a>
 
@@ -221,73 +218,73 @@
         </div>
 
     </div>
+</x-app-layout>
+<!-- ./Floating Actions div -->
 
-    <!-- ./Floating Actions div -->
+<!-- select all & create invoice script -->
+<script>
+    const floatingActions = document.getElementById("floatingActions");
+    const closeFloatingActions = document.getElementById("closeFloatingActions");
+    const selectAllCheckbox = document.getElementById("selectAll");
+    const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
 
-    <!-- select all & create invoice script -->
-    <script>
-        const floatingActions = document.getElementById("floatingActions");
-        const closeFloatingActions = document.getElementById("closeFloatingActions");
-        const selectAllCheckbox = document.getElementById("selectAll");
-        const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+    // Select/Deselect all checkboxes
+    selectAllCheckbox.addEventListener("change", function() {
+        rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+        toggleFloatingActions(); // Update floating actions visibility
+    });
 
-        // Select/Deselect all checkboxes
-        selectAllCheckbox.addEventListener("change", function() {
-            rowCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+    // Function to toggle the visibility of the floating actions div
+    function toggleFloatingActions() {
+        const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+        if (anyChecked) {
+            floatingActions.classList.remove("hidden");
+        } else {
+            floatingActions.classList.add("hidden");
+        }
+    }
+
+    // Add change event to each row checkbox
+    rowCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", function() {
+            // Update the "Select All" checkbox state
+            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
             toggleFloatingActions(); // Update floating actions visibility
         });
+    });
 
-        // Function to toggle the visibility of the floating actions div
-        function toggleFloatingActions() {
-            const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
-            if (anyChecked) {
-                floatingActions.classList.remove("hidden");
-            } else {
-                floatingActions.classList.add("hidden");
-            }
-        }
-
-        // Add change event to each row checkbox
-        rowCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener("change", function() {
-                // Update the "Select All" checkbox state
-                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
-                selectAllCheckbox.checked = allChecked;
-                toggleFloatingActions(); // Update floating actions visibility
-            });
-        });
-
-        // Close the floating div when the "X" button is clicked
-        closeFloatingActions.addEventListener("click", function() {
-            floatingActions.classList.add("hidden");
-        });
-    </script>
+    // Close the floating div when the "X" button is clicked
+    closeFloatingActions.addEventListener("click", function() {
+        floatingActions.classList.add("hidden");
+    });
+</script>
 
 
 
 
 
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const viewBranchLinks = document.querySelectorAll(".viewBranch");
-            const branchDetailsDiv = document.getElementById("branchDetails");
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const viewBranchLinks = document.querySelectorAll(".viewBranch");
+        const branchDetailsDiv = document.getElementById("branchDetails");
 
-            viewBranchLinks.forEach(link => {
-                link.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    const branchId = this.getAttribute("data-branch-id");
+        viewBranchLinks.forEach(link => {
+            link.addEventListener("click", function(event) {
+                event.preventDefault();
+                const branchId = this.getAttribute("data-branch-id");
 
-                    fetch(`/branches/${branchId}`)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch branch details. Status: ' + response.status);
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data && data.id) {
-                                branchDetailsDiv.innerHTML = `
+                fetch(`/branches/${branchId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch branch details. Status: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data && data.id) {
+                            branchDetailsDiv.innerHTML = `
                                     <h3 class='text-lg font-bold mb-2'>Branch Details</h3>
                                     <div class='flex flex-col rounded-md border border-[#e0e6ed] dark:border-[#1b2e4b]'>
                                         <div class='border-b px-4 py-4 hover:bg-gray-200 dark:hover:bg-[#eee]/10'>
@@ -304,24 +301,18 @@
                                         </div>
                                     </div>
                                 `;
-                                branchDetailsDiv.classList.remove('hidden');
-                            } else {
-                                branchDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid branch data received.</p>";
-                                branchDetailsDiv.classList.remove('hidden');
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Error fetching branch details:", error);
-                            branchDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load branch details.</p>";
                             branchDetailsDiv.classList.remove('hidden');
-                        });
-                });
+                        } else {
+                            branchDetailsDiv.innerHTML = "<p class='text-red-500'>Invalid branch data received.</p>";
+                            branchDetailsDiv.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching branch details:", error);
+                        branchDetailsDiv.innerHTML = "<p class='text-red-500'>Failed to load branch details.</p>";
+                        branchDetailsDiv.classList.remove('hidden');
+                    });
             });
         });
-    </script>
-
-
-
-
-
-</x-app-layout>
+    });
+</script>

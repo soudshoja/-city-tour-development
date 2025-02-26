@@ -14,33 +14,35 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($companies as $company)
-                    <tr class="leading-10 hover:bg-gray-100">
-                        <td>{{ $company['id'] }}</td>
-                        <td>{{ $company['name'] }}</td>
-                        <td>{{ $company['email'] }}</td>
-                        <td>
-                            @can('view', $company)
-                            <a href="{{ route('companiesshow.show', $company['id']) }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">View</a>
-                            @endcan
-                            @can('update', $company)
-                            <a href="{{ route('companies.edit', $company['id']) }}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Edit</a>
-                            @endcan
-                            @can('delete', $company)
+                    @foreach ($companies as $company)
+                        <tr class="leading-10 hover:bg-gray-100">
+                            <td>{{ $company['id'] }}</td>
+                            <td>{{ $company['name'] }}</td>
+                            <td>{{ $company['email'] }}</td>
+                            <td>
+                                @can('view', $company)
+                                    <a href="{{ route('companiesshow.show', $company['id']) }}"
+                                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">View</a>
+                                @endcan
+                                @can('update', $company)
+                                    <a href="{{ route('companies.edit', $company['id']) }}"
+                                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Edit</a>
+                                @endcan
+                                {{-- @can('delete', $company)
                             <form action="{{ route('companies.destroy', $company['id']) }}" method="POST" class="inline">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-900">Delete</button>
                             </form>
-                            @endcan
-                        </td>
-                    </tr>
+                            @endcan --}}
+                            </td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
     </div>
     <script>
-           let companiesTable = new DataTable('#companiesTable', {});
+        let companiesTable = new DataTable('#companiesTable', {});
     </script>
 </x-app-layout>

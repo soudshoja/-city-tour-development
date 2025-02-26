@@ -160,13 +160,27 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a></menuitem>
-            @can('viewAny', App\Models\Supplier::class) 
-            <menuitem><a href="{{route('suppliers.index')}}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Suppliers</a></menuitem>
+            <menuitem>
+            <a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a>
+            </menuitem>
+            @can('viewAny', App\Models\Supplier::class)
+            <menuitem>
+            <a href="{{route('suppliers.index')}}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Suppliers</a>
+            </menuitem>
             @endcan
-            <menuitem><a href="{{ route('role.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Roles</a></menuitem>
-            <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a></menuitem>
-            <menuitem><a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help</a></menuitem>
+            <menuitem>
+            <a href="{{ route('role.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Roles</a>
+            </menuitem>
+            <menuitem>
+            <a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a>
+            </menuitem>
+            <menuitem>
+            <a href="#" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help
+            </a>
+            </menuitem>
+            <menuitem>
+            <a href="{{ route('exchange.index') }}" class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Currency Exchange</a>
+            </menuitem>
         </menu>
         </menuitem>
 

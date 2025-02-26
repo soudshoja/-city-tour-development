@@ -40,9 +40,9 @@
                 <!-- Main Content -->
                 <div class="Main p-5">
                     {{ $slot }}
+                    @include('layouts.footer')
                 </div>
             </div>
-            @include('layouts.footer')
         </div>
 
 

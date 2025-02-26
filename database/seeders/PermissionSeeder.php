@@ -72,5 +72,9 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view client', 'group' => 'client']);
         Permission::firstOrCreate(['name' => 'update client', 'group' => 'client']);
         Permission::firstOrCreate(['name' => 'delete client', 'group' => 'client']);
+        Permission::firstOrCreate(['name' => 'create currency exchange', 'group' => 'currency exchange']);
+        Permission::firstOrCreate(['name' => 'view currency exchange', 'group' => 'currency exchange']);
+        Permission::firstOrCreate(['name' => 'update currency exchange', 'group' => 'currency exchange']);
+        Permission::firstOrCreate(['name' => 'delete currency exchange', 'group' => 'currency exchange']);
     }
 }

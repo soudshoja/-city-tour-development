@@ -177,40 +177,50 @@
 
                                     <form action="{{ route('companies.createBranch') }}" method="POST" class="w-full">
                                         @csrf
-                                        <!-- Hidden Company ID -->
                                         <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
-                                        <!-- Branch Name -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="text" name="name" id="create_branch_name"
-                                                class="custom-input"
-                                                placeholder="Branch name ">
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="name" id="create_branch_name" class="custom-input" placeholder="Branch name *">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Enter the branch name.</span>
+                                            </span>
                                         </div>
 
-                                        <!-- Email -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" id="branch_email" class="custom-input" placeholder="Branch Email">
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="email" name="email" id="branch_email" class="custom-input" placeholder="Branch Email *">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Provide a valid email for branch communication.</span>
+                                            </span>
                                         </div>
 
-                                        <!-- Password -->
-                                        <div class="mb-6">
-                                            <input type="password" name="password" class="custom-input" required placeholder="Branch Password" autocomplete="on">
+                                        <div class="mb-6 flex items-center relative">
+                                            <input type="password" name="password" class="custom-input" required placeholder="Branch Password *" autocomplete="on">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Password must be at least 8 characters long and include numbers.</span>
+                                            </span>
                                         </div>
-
 
                                         <div class="grid grid-cols-2 gap-4">
-                                            <div class="mb-6">
-                                                <input type="tel" name="phone" id="branch_phone" class="custom-input" placeholder="phone number">
+                                            <div class="mb-6 flex items-center relative">
+                                                <input type="tel" name="phone" id="branch_phone" class="custom-input" placeholder="Phone number *">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    ❓
+                                                    <span class="tooltip">Enter the branch's contact number.</span>
+                                                </span>
                                             </div>
 
-
-                                            <!-- Address -->
-                                            <div class="mb-6">
-                                                <input type="text" name="address" id="branch_address" class="custom-input" placeholder=" Address">
+                                            <div class="mb-6 flex items-center relative">
+                                                <input type="text" name="address" id="branch_address" class="custom-input" placeholder="Address *">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    ❓
+                                                    <span class="tooltip">Provide the branch's physical location.</span>
+                                                </span>
                                             </div>
                                         </div>
 
-                                        <!-- Submit Button -->
                                         <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                             Submit
                                         </button>
@@ -218,113 +228,132 @@
                                 </div>
                             </div>
 
+                            <style>
+                                .tooltip-container {
+                                    position: relative;
+                                    display: inline-block;
+                                }
+
+                                .tooltip {
+                                    position: absolute;
+                                    top: 50%;
+                                    right: 120%;
+                                    transform: translateY(-50%);
+                                    background-color: black;
+                                    color: white;
+                                    padding: 5px 10px;
+                                    border-radius: 5px;
+                                    font-size: 12px;
+                                    white-space: nowrap;
+                                    opacity: 0;
+                                    visibility: hidden;
+                                    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+                                }
+
+                                .tooltip-container:hover .tooltip {
+                                    opacity: 1;
+                                    visibility: visible;
+                                }
+
+                                /* Style for placeholder star */
+                                ::placeholder {
+                                    color: gray;
+                                }
+
+                                input::placeholder {
+                                    font-weight: 400;
+                                    font-size: 14px;
+                                }
+
+                                /* Add red star inside placeholder */
+                                input::placeholder {
+                                    content: '*';
+                                }
+                            </style>
+
                             <!-- Agent Form -->
                             <div id="agentForm" class="form hidden flex w-full h-auto">
-                                <!-- Right Section: Form -->
                                 <div class="w-full h-auto">
-
-                                    <!-- Form Header -->
                                     <div class="flex items-center mb-5">
                                         <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
-                                            <img src="{{ asset('images/AgentPic.png') }}" alt="Branch" class="w-10 h-10">
+                                            <img src="{{ asset('images/AgentPic.png') }}" alt="Agent" class="w-10 h-10">
                                         </div>
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Agent</h2>
                                     </div>
 
-                                    <form action="{{ route('companies.createAgent') }}" method="POST" class="w-full p-2">
+                                    <form action="{{ route('companies.createAgent') }}" method="POST" class="w-full">
                                         @csrf
-                                        <!-- Hidden Company ID -->
                                         <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
-
-                                        <!-- Agent Name -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="name" name="name" class="custom-input"
-                                                placeholder="Agent Name">
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="name" class="custom-input" placeholder="Agent Name *">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Enter the agent's full name.</span>
+                                            </span>
                                         </div>
 
-                                        <!-- Email & phone number -->
                                         <div class="grid grid-cols-2 gap-4">
-                                            <!-- Email -->
-                                            <div class="mb-4 flex items-center">
-                                                <input type="email" name="email"
-                                                    class="custom-input"
-                                                    placeholder="Agent Email">
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="email" name="email" class="custom-input" placeholder="Agent Email *">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    ❓
+                                                    <span class="tooltip">Provide a valid email for agent communication.</span>
+                                                </span>
                                             </div>
 
-
-                                            <!-- Phone -->
-                                            <div class="mb-4">
-                                                <input type="tel" name="phone"
-                                                    class="custom-input" placeholder="Agent Number">
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="tel" name="phone" class="custom-input" placeholder="Agent Number *">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    ❓
+                                                    <span class="tooltip">Enter the agent's contact number.</span>
+                                                </span>
                                             </div>
                                         </div>
 
-
-                                        <!-- Password -->
-                                        <div class="mb-6">
-                                            <input type="password" name="password" class="custom-input" placeholder="Agent Password" autocomplete="on">
+                                        <div class="mb-6 flex items-center relative">
+                                            <input type="password" name="password" class="custom-input" required placeholder="Agent Password *" autocomplete="on">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Password must be at least 8 characters long and include numbers.</span>
+                                            </span>
                                         </div>
-
 
                                         <div class="flex w-full my-3 gap-5">
-
-                                            <!-- Agent Type -->
-                                            <div class="custom-select w-full border rounded-lg">
-                                                <!-- Trigger -->
+                                            <div class="custom-select w-full border rounded-lg relative">
                                                 <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Agent Type</div>
-
-                                                <!-- Options Container -->
                                                 <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid grid-cols-2 gap-2 py-3">
                                                     @foreach ($agentTypes as $type)
-                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
-                                 border border-gray-300 cursor-pointer" data-value="{{ $type->id }}">
+                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer" data-value="{{ $type->id }}">
                                                         {{ $type->name }}
                                                     </div>
                                                     @endforeach
                                                 </div>
-
-                                                <!-- Hidden input to store selected value -->
                                                 <input type="hidden" name="type_id" id="selectedType">
                                             </div>
-                                            <!-- ./Agent Type -->
 
-
-                                            <!-- Branch Selection -->
-                                            <div class="custom-select w-full border rounded-lg">
-                                                <!-- Trigger -->
+                                            <div class="custom-select w-full border rounded-lg relative">
                                                 <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
-
-                                                <!-- Options Container -->
                                                 <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                                     @foreach ($branches as $branch)
-                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800
-                                 border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
+                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
                                                         {{ $branch->name }}
                                                     </div>
                                                     @endforeach
                                                 </div>
-
-                                                <!-- Hidden input to store selected value -->
                                                 <input type="hidden" name="branch_id" id="selectedBranch">
                                             </div>
-                                            <!-- ./Branch Selection -->
-
                                         </div>
 
-
-                                        <!-- Submit Button -->
                                         <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                             Submit
                                         </button>
                                     </form>
-
                                 </div>
                             </div>
 
                             <!-- Accountant Form -->
                             <div id="accountantForm" class="form hidden flex w-full h-auto">
-
                                 <div class="w-full h-auto">
                                     <div class="flex items-center mb-5">
                                         <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
@@ -332,40 +361,47 @@
                                         </div>
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Accountant</h2>
                                     </div>
-                                    <form action="{{ route('companies.createAccountant') }}" method="POST" class="w-full">
-
+                                    <form action="{{ route('companies.createAccountant') }}" method="POST" class="w-full space-y-4">
                                         @csrf
                                         <!-- Hidden Company ID -->
                                         <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
                                         <!-- Accountant Name -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="name" name="name" class="custom-input"
-                                                placeholder="Accountant Name">
+                                        <div class="flex items-center relative">
+                                            <input type="text" id="accountant_name" name="name" class="custom-input" placeholder="Accountant Name *" required>
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Enter the accountant's full name.</span>
+                                            </span>
                                         </div>
-
 
                                         <!-- Accountant Email -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" class="custom-input"
-                                                placeholder="Accountant Email">
+                                        <div class="flex items-center relative">
+                                            <input type="email" id="accountant_email" name="email" class="custom-input" placeholder="Accountant Email *" required>
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Provide a valid email for accountant communication.</span>
+                                            </span>
                                         </div>
-
 
                                         <!-- Accountant Phone -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="tel" name="phone" class="custom-input"
-                                                required placeholder="Accountant Email" >
+                                        <div class="flex items-center relative">
+                                            <input type="tel" id="accountant_phone" name="phone" class="custom-input" placeholder="Accountant Phone *" required>
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Enter the accountant's contact number.</span>
+                                            </span>
                                         </div>
 
-
                                         <!-- Submit Button -->
-                                        <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
+                                        <button type="submit" class="btn-success w-full text-white px-4 py-2 rounded-lg">
                                             Submit
                                         </button>
                                     </form>
                                 </div>
                             </div>
+
+
 
                             <!-- Client Form -->
                             <div id="clientForm" class="form hidden flex w-full h-auto">
@@ -376,29 +412,37 @@
                                         </div>
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Client</h2>
                                     </div>
+
                                     <form action="{{ route('companies.createClient') }}" method="POST" class="w-full">
                                         @csrf
-                                        <!-- Hidden Company ID -->
                                         <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
 
-                                        <!-- Client Name -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="text" name="name" class="custom-input"
-                                                placeholder="Client Name">
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="name" class="custom-input" placeholder="Client Name *">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                ❓
+                                                <span class="tooltip">Enter the full name of the client.</span>
+                                            </span>
                                         </div>
 
-                                        <!-- Client Email -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" class="custom-input" placeholder="Client Email">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="email" name="email" class="custom-input" placeholder="Client Email *">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    ❓
+                                                    <span class="tooltip">Enter a valid email address for client communication.</span>
+                                                </span>
+                                            </div>
+
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="tel" name="phone" class="custom-input" placeholder="Client Phone *" required>
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    ❓
+                                                    <span class="tooltip">Enter a valid phone number.</span>
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        <!-- Client Phone -->
-                                        <div class="mb-4 flex items-center">
-                                            <input type="number" name="phone" class="custom-input"
-                                                required placeholder="Client Phone" >
-                                        </div>
-
-                                        <!-- Submit Button -->
                                         <button type="submit" class="btn-success mt-5 w-full text-white px-4 py-2 rounded-lg">
                                             Submit
                                         </button>

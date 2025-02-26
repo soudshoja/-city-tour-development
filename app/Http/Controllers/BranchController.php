@@ -26,14 +26,15 @@ class BranchController extends Controller
 
             return view('branches.index', compact('branch'));
         } else {
+            if ($user->role_id == Role::ADMIN) {
+                $branches = Branch::all();
 
-            $branches = Branch::all();
-            foreach ($branches as $key => $branch) {
-                // dump($branch->user);
+            } elseif ($user->role_id == Role::COMPANY) {
+                // Get agents belonging to the company
+                $branches = Branch::where('company_id', $user->company->id)->get();
             }
 
-
-            $branchesCount = Branch::count();
+            $branchesCount = $branches->count();
             // dd($branches);
             return view('branches.list', compact('branches', 'branchesCount'));
         }

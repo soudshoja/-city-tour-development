@@ -26,6 +26,8 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\CurrencyExchangeController;
+use App\Http\Controllers\SystemExchangeRateController;
 use App\Http\Controllers\TBOController;
 use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
@@ -355,6 +357,20 @@ Route::group([
         Route::get('/{id}/getDetails', [ClientController::class, 'getDetails'])->name('getDetails');
 
     });
+
+    Route::group(([
+        'prefix' => 'exchange',
+        'as' => 'exchange.',
+    ]), function () {
+        Route::get('index',[CurrencyExchangeController::class, 'index'])->name('index');
+        Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
+        Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
+        Route::put('update-auto', [CurrencyExchangeController::class, 'updateAuto'])->name('update.auto');
+        Route::put('update-method/{id}', [CurrencyExchangeController::class, 'updateMethod'])->name('update.method');
+    });
+
+    Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
+
 });
 
 // REPORTS
@@ -403,5 +419,6 @@ Route::group([
 ], function () {
     Route::get('/', NotificationIndex::class)->name('index');
 });
+
 
 require __DIR__ . '/auth.php';

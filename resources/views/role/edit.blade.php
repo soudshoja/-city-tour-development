@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="permission">
-        <div class="header flex flex-col justify-start sm:flex-row sm:justify-between bg-white rounded-md p-2 shadow-md">
+        <div class="header flex flex-col justify-start sm:flex-row sm:justify-between bg-white rounded-md p-2 shadow-md dark:bg-gray-800">
             <h1 class="inline-block align-baseline mb-2 sm:mb-0">Permission For {{ ucfirst($role->name) }}</h1>
             <form action="{{ route('role.update') }}" method="POST">
                 @csrf

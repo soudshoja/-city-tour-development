@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('app:tbo-task')->everyMinute()->runInBackground();
+Schedule::command('app:update-exchange-rate')->daily()->runInBackground();

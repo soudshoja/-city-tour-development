@@ -44,7 +44,6 @@ class TaskController extends Controller
         }
 
         $user = Auth::user();
-        $id = $user->id;
         $agent = null;
         $taskCount = 0;
         $clients = collect();
@@ -57,43 +56,45 @@ class TaskController extends Controller
             $clients = Client::all();
             $agents = Agent::all();
         } elseif ($user->role_id == Role::COMPANY) {
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company_id);
-            }])->get();
-            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get();
-            $agentIds = $agents->pluck('id');
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentIds)->get();
-            $taskCount = Task::whereIn('agent_id', $agentIds)->count();
-        } elseif ($user->role_id == Role::AGENT) {
-            if ($id) {
-                $agent = Agent::with('branch')->find($id);
-                if ($agent) {
-                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
-                    $taskCount = Task::where('agent_id', $agent->id)->count();
-                } else {
-                    return redirect()->back()->with('error', 'Agent not found.');
-                }
-            } else {
-                $agent = $user->agent;
-                if ($agent) {
-                    $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
-                    $taskCount = Task::where('agent_id', $agent->id)->count();
-                } else {
-                    return redirect()->back()->with('error', 'Agent not found.');
-                }
-            }
-            $companyId = $agent->branch->company_id;
-            $agents = Agent::with(['branch', 'clients'])->where('branch_id', $agent->branch_id)->get();
+
+            $branches = Branch::where('company_id', $user->company->id)->get();
+            $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentsId)->get();
+            $taskCount = Task::whereIn('agent_id', $agentsId)->count();
+
+        } elseif ($user->role_id == Role::AGENT) {
+            // if ($id) {
+            //     $agent = Agent::with('branch')->find($id);
+            //     if ($agent) {
+            //         $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
+            //         $taskCount = Task::where('agent_id', $agent->id)->count();
+            //     } else {
+            //         return redirect()->back()->with('error', 'Agent not found.');
+            //     }
+            // } else {
+            //     $agent = $user->agent;
+            //     if ($agent) {
+            //         $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
+            //         $taskCount = Task::where('agent_id', $agent->id)->count();
+            //     } else {
+            //         return redirect()->back()->with('error', 'Agent not found.');
+            //     }
+            // }
+
+            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->where('agent_id', $user->agent->id)->get();
+            $taskCount = $tasks->count();
         }
 
+        $types = Task::distinct()->pluck('type');
         $suppliers = Supplier::all();
+
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types'));
 
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
 
         // Fetch distinct task types
-        $types = Task::distinct()->pluck('type');
         // Return the view with the required data
         return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
     }
@@ -233,7 +234,7 @@ class TaskController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'task_file' => 'required|mimes:pdf',
+            'task_file' => 'required|mimes:pdf,txt',
         ]);
 
         $file = $request->file('task_file')->store('public/tasks');
@@ -256,8 +257,11 @@ class TaskController extends Controller
     {
         $file = storage_path('app/' . $file);
 
-        $contents = $this->pdfToText($file);
-
+        if (File::extension($file) == 'pdf') {
+            $contents = $this->pdfToText($file);
+        } else {
+            $contents = File::get($file);
+        }
         // Prepare the OpenAI request
         $openai = new OpenAiController(new AIService);
         $response = $openai->flightOrHotel($contents);
@@ -362,13 +366,13 @@ class TaskController extends Controller
         if ($task['supplier_name'] === null) {
             throw new Exception('Supplier name is not found');
         }
-
+       
         $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
 
         if (!$supplier) {
             return [
                 'status' => 'error',
-                'message' => 'Supplier not found',
+                'message' => 'Supplier not found , the supplier name is ' . $task['supplier_name'] . '. Please create the supplier first',
             ];
         }
         logger('tasks: ', $task);

@@ -54,7 +54,7 @@
             @endcan
         </div>
 
-        <div class="my-5 w-full p-3">
+        <div class="my-5 w-full">
             <div class="flex flex-col lg:flex-row gap-3">
                 <div class="p-2 bg-white rounded-md shadow-md w-full">
                     <h1>

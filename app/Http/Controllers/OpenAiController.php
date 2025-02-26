@@ -358,7 +358,7 @@ class OpenAiController extends Controller
 
         ";
 
-        $response = $this->chatCompletion([
+        $response = $this->chatCompletionJsonResponse([
             [
                 'role' => 'user',
                 'content' => $prompt,
@@ -484,7 +484,7 @@ class OpenAiController extends Controller
         }
         ";
 
-        $response = $this->chatCompletion([
+        $response = $this->chatCompletionJsonResponse([
             [
                 'role' => 'user',
                 'content' => $prompt,

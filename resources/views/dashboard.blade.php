@@ -12,7 +12,7 @@
     </style>
     <div class="">
         <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mt-3">
-            @can('viewAny', App\Models\Company::class)
+            @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin'))
             <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
                 <div class="w-full">
                     <h1 class="text-2xl font-bold text-green-800 dark:text-green-300">{{ $companies->count() }}</h1>
@@ -54,7 +54,7 @@
             @endcan
         </div>
 
-        <div class="my-5 w-full p-3">
+        <div class="my-5 w-full">
             <div class="flex flex-col lg:flex-row gap-3">
                 <div class="p-2 bg-white rounded-md shadow-md w-full">
                     <h1>

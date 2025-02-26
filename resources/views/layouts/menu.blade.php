@@ -1,7 +1,7 @@
 <nav class="w-full">
     <menu class="flex flex-wrap gap-8 mx-4">
         <menuitem>
-        <a class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full BoxShadow">
+        <a class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full shadow-md">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                     d="M14 11C14 10.4477 14.4477 10 15 10C15.5523 10 16 10.4477 16 11V13C16 13.5523 15.5523 14 15 14C14.4477 14 14 13.5523 14 13V11Z"

@@ -460,8 +460,6 @@
                                 </div>
                             </div>
 
-
-
                             <!-- Client Form -->
                             <div id="clientForm" class="form hidden flex w-full h-auto">
                                 <div class="w-full h-auto">

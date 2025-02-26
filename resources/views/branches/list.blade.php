@@ -84,39 +84,43 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @if ($branches->isEmpty())
-                                <tr>
-                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No data for now.... Create new!</td>
-                                </tr>
-                                @else
-                                @foreach ($branches as $branch)
-                                <tr>
-                                    <td>
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $branch->id }}" {{ $branch-> branchDetail ? 'disabled' : '' }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
-                                            </svg>
-                                        </label>
-                                    </td>
-                                    <td class="p-3 text-sm">
-                                        <a href="javascript:void(0);" class="viewBranch text-blue-500 hover:underline" data-branch-id="{{ $branch->id }}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <g fill="none" stroke="#333333" stroke-width="1.5">
-                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
-                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                                </g>
-                                            </svg>
-                                        </a>
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->name }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->email }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500"> {{ $branch->phone }}</td>
+    @if ($branches->isEmpty())
+        <tr>
+            <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500">No data for now.... Create new!</td>
+        </tr>
+    @else
+        @foreach ($branches as $branch)
+        <tr id="branch_row_{{ $branch->id }}">
+            <td>
+                <label class="custom-checkbox">
+                    <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox" value="{{ $branch->id }}" {{ $branch->branchDetail ? 'disabled' : '' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                        <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
+                    </svg>
+                </label>
+            </td>
+            <td class="p-3 text-sm">
+                <label class="w-12 h-6 relative">
+                    <input type="checkbox" class="custom_switch absolute w-full h-full opacity-0 z-10 cursor-pointer peer"
+                        id="branch_toggle_{{ $branch->id }}"
+                        data-branch-id="{{ $branch->id }}"
+                        onchange="toggleBranchStatus(this)"
+                        checked />
+                    <span class="bg-[#ebedf2] dark:bg-dark block h-full rounded-full 
+                        before:absolute before:left-1 before:bg-white dark:before:bg-white-dark 
+                        dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full 
+                        peer-checked:before:left-7 peer-checked:bg-primary before:transition-all before:duration-300">
+                    </span>
+                </label>
+            </td>
+            <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->name }}</td>
+            <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->email }}</td>
+            <td class="p-3 text-sm font-semibold text-gray-500">{{ $branch->phone }}</td>
+        </tr>
+        @endforeach
+    @endif
+</tbody>
 
-                                </tr>
-                                @endforeach
-                                @endif
-                            </tbody>
                         </table>
 
                     </div>
@@ -266,6 +270,28 @@
 
 
 <script>
+  function toggleBranchStatus(checkbox) {
+    let branchId = checkbox.dataset.branchId;
+    let row = document.getElementById('branch_row_' + branchId);
+    let rowCheckbox = row.querySelector('.rowCheckbox');
+
+    if (!checkbox.checked) {
+        // Show confirmation popup
+        if (!confirm("Are you sure you want to disable this branch?")) {
+            checkbox.checked = true; // Keep it enabled if user cancels
+            return;
+        }
+
+        rowCheckbox.style.opacity = "0.2"; // Make checkbox transparent
+        rowCheckbox.disabled = true; // Disable checkbox selection
+    } else {
+        rowCheckbox.style.opacity = "1"; // Restore checkbox visibility
+        rowCheckbox.disabled = false; // Enable checkbox selection
+    }
+}
+
+
+
     document.addEventListener("DOMContentLoaded", function() {
         const viewBranchLinks = document.querySelectorAll(".viewBranch");
         const branchDetailsDiv = document.getElementById("branchDetails");

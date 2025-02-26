@@ -21,11 +21,11 @@
                 <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <div class="mb-6">
-                        <input type="text" name="code" placeholder="Company Code" class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400" required>
+                        <input type="text" name="code" placeholder="Company Code" class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400">
                     </div>
 
                     <div class="mb-6">
-                        <select name="nationality_id" class=" form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400" required>
+                        <select name="nationality_id" class=" form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400">
                             <option value="" disabled selected>Select a country</option>
                             @foreach($countries as $country)
                             <option value="{{ $country->id }}">{{ $country->name }}</option>
@@ -184,12 +184,12 @@
                                         <div class="mb-4 flex items-center">
                                             <input type="text" name="name" id="create_branch_name"
                                                 class="custom-input"
-                                                required placeholder="Branch name ">
+                                                placeholder="Branch name ">
                                         </div>
 
                                         <!-- Email -->
                                         <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" id="branch_email" class="custom-input" required placeholder="Branch Email">
+                                            <input type="email" name="email" id="branch_email" class="custom-input" placeholder="Branch Email">
                                         </div>
 
                                         <!-- Password -->
@@ -240,7 +240,7 @@
                                         <!-- Agent Name -->
                                         <div class="mb-4 flex items-center">
                                             <input type="name" name="name" class="custom-input"
-                                                required placeholder="Agent Name">
+                                                placeholder="Agent Name">
                                         </div>
 
                                         <!-- Email & phone number -->
@@ -249,7 +249,7 @@
                                             <div class="mb-4 flex items-center">
                                                 <input type="email" name="email"
                                                     class="custom-input"
-                                                    required placeholder="Agent Email">
+                                                    placeholder="Agent Email">
                                             </div>
 
 
@@ -341,21 +341,21 @@
                                         <!-- Accountant Name -->
                                         <div class="mb-4 flex items-center">
                                             <input type="name" name="name" class="custom-input"
-                                                required placeholder="Accountant Name">
+                                                placeholder="Accountant Name">
                                         </div>
 
 
                                         <!-- Accountant Email -->
                                         <div class="mb-4 flex items-center">
                                             <input type="email" name="email" class="custom-input"
-                                                required placeholder="Accountant Email">
+                                                placeholder="Accountant Email">
                                         </div>
 
 
                                         <!-- Accountant Phone -->
                                         <div class="mb-4 flex items-center">
                                             <input type="tel" name="phone" class="custom-input"
-                                                required placeholder="Accountant Email" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
+                                                placeholder="Accountant Email" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                         </div>
 
 
@@ -384,18 +384,18 @@
                                         <!-- Client Name -->
                                         <div class="mb-4 flex items-center">
                                             <input type="text" name="name" class="custom-input"
-                                                required placeholder="Client Name">
+                                                placeholder="Client Name">
                                         </div>
 
                                         <!-- Client Email -->
                                         <div class="mb-4 flex items-center">
-                                            <input type="email" name="email" class="custom-input" required placeholder="Client Email">
+                                            <input type="email" name="email" class="custom-input" placeholder="Client Email">
                                         </div>
 
                                         <!-- Client Phone -->
                                         <div class="mb-4 flex items-center">
                                             <input type="number" name="phone" class="custom-input"
-                                                required placeholder="Client Phone" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
+                                                placeholder="Client Phone" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}">
                                         </div>
 
                                         <!-- Submit Button -->
@@ -414,17 +414,17 @@
         </div>
     </div>
 
-    <script>
+</x-app-layout>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
         // Add event listeners for all data-form buttons
         document.querySelectorAll('[data-form]').forEach((button) => {
             button.addEventListener('click', () => {
-
                 const initialDiv = document.getElementById('initialDiv');
                 const formDiv = document.getElementById('formDiv');
 
-                initialDiv.classList.add('hidden');
-
-                formDiv.classList.remove('hidden');
+                if (initialDiv) initialDiv.classList.add('hidden');
+                if (formDiv) formDiv.classList.remove('hidden');
 
                 // Hide all forms inside the form container
                 document.querySelectorAll('.form').forEach((form) => form.classList.add('hidden'));
@@ -441,6 +441,19 @@
                 }
             });
         });
-    </script>
 
-</x-app-layout>
+        // Check if URL has the 'openForm' parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const openForm = urlParams.get("openForm");
+
+        if (openForm) {
+            // Find the button that corresponds to the form and trigger a click
+            const buttonToClick = document.querySelector(`[data-form="${openForm}"]`);
+            if (buttonToClick) {
+                buttonToClick.click();
+            } else {
+                console.error(`Button with data-form='${openForm}' not found.`);
+            }
+        }
+    });
+</script>

@@ -83,7 +83,7 @@
                 <!-- forms to display -->
                 <div class="my-5">
                     <!-- Branch Form -->
-                    <div id="branchForm" class="form hidden flex w-full h-auto">
+                    <div id="branchForm" class="form flex w-full h-auto">
                         <div class="w-full h-auto">
                             <div class="flex items-center mb-5">
                                 <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
@@ -343,31 +343,11 @@
     <!--./ page content -->
     <script>
         // Add event listeners for all data-form buttons
-        document.querySelectorAll('[data-form]').forEach((button) => {
-            button.addEventListener('click', () => {
-                const initialDiv = document.getElementById('initialDiv');
-                const formDiv = document.getElementById('formDiv');
-
-                // Hide the initial div
-                initialDiv.classList.add('hidden');
-
-                // Show the form container
-                formDiv.classList.remove('hidden');
-
-                // Hide all forms inside the form container
-                document.querySelectorAll('.form').forEach((form) => form.classList.add('hidden'));
-
-                // Show the specific form based on the data-form attribute
-                const formId = button.getAttribute('data-form');
-                const formToShow = document.getElementById(formId);
-
-                if (formToShow) {
-                    formToShow.classList.remove('hidden');
-                } else {
-                    console.error(`Form with ID '${formId}' not found.`);
-                }
-            });
-        });
+        let dataForm = document.querySelectorAll('[data-form]')
+        dataForm.forEach((item) => {
+            item.classList.remove('hidden')
+            item.classList.add('block')
+        })
     </script>
 
 </x-app-layout>

@@ -13,8 +13,8 @@
 
         <!-- Forms -->
         <!-- Branch Form -->
-        <div id="branchForm" class="form hidden">
-            <form action="{{ route('companies.createBranch') }}" method="POST" class="p-4 border border-gray-300 rounded-lg shadow">
+        <div id="branchForm" class="form">
+            <form action="{{ route('users.create') }}" method="POST" class="p-4 border border-gray-300 rounded-lg shadow">
                 @csrf
                 <!-- Hidden Company ID -->
                 <input type="hidden" name="company_id" value="{{ auth()->user()->company_id}}">

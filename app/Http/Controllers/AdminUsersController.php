@@ -62,10 +62,16 @@ class AdminUsersController extends Controller
     public function create()
     {
         $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+
+        $branches_id = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
+
+        $agents = Agent::whereIn('branch_id', $branches_id)->get();
+        
+
         $agentTypes = AgentType::all(); 
         $countries = Country::all(); 
 
-        return view('users.create', compact('branches', 'agentTypes', 'countries'));
+        return view('users.create', compact('agents', 'branches', 'agentTypes', 'countries'));
     }
 
     public function store(Request $request)

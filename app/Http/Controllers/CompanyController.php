@@ -448,6 +448,7 @@ class CompanyController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:15',
+            'agent_id' => 'required|max:100',
         ]);
 
         // Create the client user
@@ -465,7 +466,7 @@ class CompanyController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'phone' => $validatedData['phone'] ?? null,
-            'agent_id' => null, // Associate with an agent if needed
+            'agent_id' => $validatedData['agent_id'], // Associate with an agent if needed
             'status' => 'active',
             'address' => null,
             'passport_no' => null,

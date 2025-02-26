@@ -269,7 +269,6 @@ class OpenAiController extends Controller
     public function extractFlightData($content)
     {
         $supplierList = json_encode(Supplier::all()->toArray());
-        $taskController = new TaskController();
 
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
@@ -375,13 +374,24 @@ class OpenAiController extends Controller
             $decodedResponse = json_decode($message, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
-                return $taskController->saveTasks($decodedResponse);
+                return [
+                    'status' => 'success',
+                    'message' => 'Data extracted successfully',
+                    'data' => $decodedResponse,
+                ];
+                // return $taskController->saveTasks($decodedResponse);
             } else {
                 $cleanedResponse = $this->cleanJsonResponse($message);
                 $data = json_decode($cleanedResponse, true);
 
                 if (json_last_error() === JSON_ERROR_NONE) {
-                    return $taskController->saveTasks($data);
+                    return [
+                        'status' => 'success',
+                        'message' => 'Data extracted successfully',
+                        'data' => $data,
+                    ];
+
+                    // return $taskController->saveTasks($data);
                 } else {
                     return [
                         'status' => 'error',
@@ -402,7 +412,6 @@ class OpenAiController extends Controller
     public function extractHotelData($content)
     {
         $supplierList = Supplier::all()->toArray();
-        $taskController = new TaskController();
 
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
@@ -501,13 +510,24 @@ class OpenAiController extends Controller
             $decodedResponse = json_decode($message, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
-                return $taskController->saveTasks($decodedResponse);
+                return [
+                    'status' => 'success',
+                    'message' => 'Data extracted successfully',
+                    'data' => $decodedResponse,
+                ];
+                // return $taskController->saveTasks($decodedResponse);
             } else {
                 $cleanedResponse = $this->cleanJsonResponse($message);
                 $data = json_decode($cleanedResponse, true);
 
                 if (json_last_error() === JSON_ERROR_NONE) {
-                    return $taskController->saveTasks($data);
+
+                    return [
+                        'status' => 'success',
+                        'message' => 'Data extracted successfully',
+                        'data' => $data,
+                    ];
+                    // return $taskController->saveTasks($data);
                 } else {
                     return [
                         'status' => 'error',

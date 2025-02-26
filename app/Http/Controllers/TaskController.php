@@ -39,10 +39,6 @@ class TaskController extends Controller
 
     public function index()
     {
-        if (!auth()->user()) {
-            return redirect()->route('login');
-        }
-
         $user = Auth::user();
         $agent = null;
         $taskCount = 0;
@@ -101,10 +97,6 @@ class TaskController extends Controller
 
     public function voucher($id = null)
     {
-        if (!auth()->user()) {
-            return redirect()->route('login');
-        }
-
         $user = Auth::user();
         $agent = null;
         $taskCount = 0;
@@ -230,7 +222,9 @@ class TaskController extends Controller
         }
     }
 
-
+    /**
+     * @return array of imported tasks that come from savetasks method
+     */
     public function upload(Request $request)
     {
         $request->validate([
@@ -276,7 +270,11 @@ class TaskController extends Controller
             $response = $openai->extractHotelData($contents);
         }
 
-        return $response;
+        if($response['status'] == 'error') {
+            return $response;
+        }
+
+        return $this->saveTasks($response['data']);
     }
 
     public function exportCsv()
@@ -337,13 +335,14 @@ class TaskController extends Controller
     {
         logger('Data: ', $data);
         $task = $data;
+        $user = auth()->user();
 
-        if (auth()->user()->role_id == Role::COMPANY) {
-            $companyId = auth()->user()->company->id;
-        } else if (auth()->user()->role_id == Role::BRANCH) {
-            $companyId = auth()->user()->branch->company_id;
-        } else if (auth()->user()->role_id == Role::AGENT) {
-            $companyId = auth()->user()->agent->branch->company_id;
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } else if ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } else if ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
         } else {
 
             return [
@@ -364,7 +363,10 @@ class TaskController extends Controller
         $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
 
         if ($task['supplier_name'] === null) {
-            throw new Exception('Supplier name is not found');
+            return [
+                'status' => 'error',
+                'message' => 'Supplier name is required',
+            ];
         }
        
         $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
@@ -400,9 +402,6 @@ class TaskController extends Controller
         try {
             $taskCreated = Task::create($taskData);
 
-            logger('Task created: ', $taskCreated->get()->toArray());
-
-
             if (isset($data['task_flight_details'])) {
                 $this->saveFlightDetails($data, $taskCreated->id);
             }
@@ -413,6 +412,9 @@ class TaskController extends Controller
         } catch (Exception $e) {
             throw $e;
         }
+
+        logger('Task created: ', $taskCreated->get()->toArray());
+
         return [
             'status' => 'success',
             'message' => 'Task created successfully',

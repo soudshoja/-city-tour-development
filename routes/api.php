@@ -28,6 +28,8 @@ use App\Http\Controllers\KnowledgeBaseController;
         Route::get('/invoice/by/{Id}', [MobileController::class, 'getInvoiceById']);
         Route::post('/invoice/partial', [MobileController::class, 'savePartial']);
         Route::post('/invoice/remove/partial', [MobileController::class, 'removePartial']);
+        Route::put('/invoice/{id}', [MobileController::class, 'updateInvoice']);
+        Route::delete('/invoice/delete/{id}', [MobileController::class, 'deleteInvoice']);
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
 
 

@@ -10,6 +10,8 @@ use Exception;
 use Illuminate\Http\Request;
 use App\Models\Permission;
 use App\Models\Role;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class RoleController extends Controller
 {
@@ -23,6 +25,18 @@ class RoleController extends Controller
     public function index()
     {
         $roles = $this->getAllRole();
+        $user = Auth::user();
+        Log::info('Debugging User Permissions:', [
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+            'view_companies' => $user->can('viewAny', App\Models\Company::class),
+            'view_branches' => $user->can('viewAny', App\Models\Branch::class),
+            'view_agents' => $user->can('viewAny', App\Models\Agent::class),
+            'has_permission_web' => $user->can('view company', 'web'),
+            'has_permission_api' => $user->can('view company', 'api'),
+            'guard' => auth()->guard()->name,
+            'user' => auth()->user(),
+        ]);
 
         return view('role.index', compact('roles'));
     }
@@ -49,6 +63,7 @@ class RoleController extends Controller
             // 'permissionsId.array' => 'The permissions must be an array.',
             'permissionsId.required' => 'Please select at least one permission.'
         ]);
+
 
         $role = Role::create([
             'name' => $request->name,

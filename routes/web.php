@@ -27,6 +27,7 @@ use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CurrencyExchangeController;
+use App\Http\Controllers\SupplierCompanyController;
 use App\Http\Controllers\SystemExchangeRateController;
 use App\Http\Controllers\TBOController;
 use App\Livewire\Notification;
@@ -359,10 +360,10 @@ Route::group([
 
     });
 
-    Route::group(([
+    Route::group([
         'prefix' => 'exchange',
         'as' => 'exchange.',
-    ]), function () {
+    ], function () {
         Route::get('index',[CurrencyExchangeController::class, 'index'])->name('index');
         Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
         Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
@@ -371,6 +372,14 @@ Route::group([
     });
 
     Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
+
+    Route::group([
+        'prefix' => 'supplier-company',
+        'as' => 'supplier-company.',
+    ],function () {
+        Route::get('/{supplier}/{company}/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
+        Route::get('/{supplier}/{company}/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
+    });
 
 });
 

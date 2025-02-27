@@ -20,8 +20,16 @@ class SupplierController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('view supplier');
-        
-        $suppliers = Supplier::all();
+        $user = auth()->user();
+
+        if($user->role_id == Role::ADMIN) {
+            $suppliers = Supplier::all();
+        } elseif($user->role_id == Role::COMPANY) {
+            $suppliers = $user->company->suppliers()->get();
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
         foreach ($suppliers as $supplier) {
             if (!is_null($supplier->route)) {
                 $route = Route::getRoutes()->getByName('suppliers.'. $supplier->route . '.index');

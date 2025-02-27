@@ -160,7 +160,7 @@
         </div>
     </div>
     <script>
-        let supplierId = @json($supplier -> id);
+        let supplierId = @json($supplier - > id);
 
         const debitCredit = document.getElementById('debit-credit');
         debitCredit.scrollTop = debitCredit.scrollHeight;

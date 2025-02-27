@@ -34,4 +34,10 @@ class Supplier extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class, 'supplier_companies')
+            ->using(SupplierCompany::class)
+            ->withPivot('is_active');
+    }
 }

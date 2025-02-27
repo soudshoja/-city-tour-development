@@ -45,7 +45,8 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->orderBy('id', 'desc');
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks->orderBy('created_at', 'desc')->get();
@@ -96,9 +97,9 @@ class TaskController extends Controller
 
             $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
 
-            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
+            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types', 'queueTasks'));
         }
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types'));
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'queueTasks'));
     }
 
     public function voucher($id = null)
@@ -161,10 +162,9 @@ class TaskController extends Controller
         return view('tasks.tasksVoucher', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
     }
 
-
     public function show($id)
     {
-        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->find($id);
+        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
 
         if (!$task) {
             return response()->json(['error' => 'Task not found'], 404);
@@ -182,7 +182,6 @@ class TaskController extends Controller
         return response()->json($task, 200);
     }
 
-    // edit and update tasks
     public function edit($id)
     {
         // Include both 'agent' and 'client' in the query
@@ -524,5 +523,11 @@ class TaskController extends Controller
         } catch (Exception $e) {
             throw $e;
         }
+    }
+
+    public function queue()
+    {
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
+        return view('tasks.queue', compact('queueTasks'));
     }
 }

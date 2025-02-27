@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class Task extends Model
 {
@@ -26,18 +27,25 @@ class Task extends Model
         'invoice_price',
         'venue',
         'voucher_status',
+        'enabled'
     ];
 
-    // In Task.php
+    protected static function booted()
+    {
+        static::addGlobalScope('enabled', function (Builder $builder) {
+            $builder->where('enabled', true);
+        });
+    }
+
     public function flightDetails()
-   {
+    {
         return $this->hasOne(TaskFlightDetail::class, 'task_id');
     }
 
     public function hotelDetails()
     {
-         return $this->hasOne(TaskHotelDetail::class, 'task_id');
-     }
+        return $this->hasOne(TaskHotelDetail::class, 'task_id');
+    }
 
     public function invoiceDetail()
     {
@@ -58,7 +66,4 @@ class Task extends Model
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
     }
-
-    public $timestamps = false;
-
 }

@@ -1,4 +1,26 @@
 <x-app-layout>
+    @if($queueTasks->isNotEmpty())
+    <div class="flex flex-col gap-5 w-full">
+        <h2 class="text-3xl font-bold">Queue</h2>
+        <div class="flex flex-col gap-2">
+            @foreach($queueTasks->take(3) as $task)
+            <div class="p-2 bg-white dark:bg-gray-700 rounded-md shadow-md mb-2">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name }}</p>
+                    </div>
+                    <div>
+                        <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="importTaskModal = true">View</a>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        <a class="text-end hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
+    </div>
+    @endif
+
     <div
         x-data="{ importTaskModal: true }"
         class="flex justify-between items-center gap-5 my-3 ">
@@ -78,7 +100,7 @@
                             <path d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z" stroke-width="1.5" />
                         </svg>
                     </button>
-                    <input class="bg-white dark:bg-dark p-2 shadow-md rounded-md dark:shadow-gray-600 " type="file" name="task_file" id="upload-task">
+                    <input class="bg-white dark:bg-dark p-2 shadow-md rounded-md" type="file" name="task_file" id="upload-task">
                 </form>
             </div>
         </div>
@@ -88,8 +110,7 @@
 
     <div class="tableCon">
         <div class="content-70">
-            <div class="panel BoxShadow rounded-lg">
-
+            <div class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow-md">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
                     <div class="relative w-full">
                         <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">

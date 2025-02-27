@@ -26,7 +26,9 @@ class ReportController extends Controller
         return view('reports.index', compact('agents', 'clients'));
     }
     public function agentReport()
-    {
+    {   
+        return view('reports.maintenance'); // Show the maintenance page
+        
         $agents = DB::table('transactions')
             ->join('companies', 'transactions.company_id', '=', 'companies.id')
             ->join('agents', 'companies.id', '=', 'agents.company_id')
@@ -60,7 +62,9 @@ class ReportController extends Controller
 
     // Fetch client report data
     public function clientReport()
-    {
+    {   
+        return view('reports.maintenance'); // Show the maintenance page
+
         $clients = DB::table('transactions')
             ->join('clients', 'clients.id', '=', 'transactions.client_id')
             ->select(
@@ -95,6 +99,8 @@ class ReportController extends Controller
 
     public function performance()
     {
+        return view('reports.maintenance'); // Show the maintenance page
+
         // Agent Performance Data
         $agents = DB::table('agents')
             ->join('clients', 'agents.id', '=', 'clients.agent_id')
@@ -145,6 +151,9 @@ class ReportController extends Controller
 
     public function summary()
     {
+
+        return view('reports.maintenance'); // Show the maintenance page
+
         // Fetch and process agent metrics
         $agents = DB::table('agents')
             ->join('clients', 'clients.agent_id', '=', 'agents.id')
@@ -193,6 +202,9 @@ class ReportController extends Controller
 
     public function accsummary()
     {
+
+        return view('reports.maintenance'); // Show the maintenance page
+
         // Fetch summary of accounts based on company_id
         $accounts = DB::table('accounts')
             ->join('companies', 'companies.id', '=', 'accounts.company_id')
@@ -213,5 +225,7 @@ class ReportController extends Controller
 
         return view('reports.accsummary', compact('accounts', 'clients', 'suppliers'));
     }
+
+    
 
 }

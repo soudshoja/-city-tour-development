@@ -45,7 +45,7 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->orderBy('id', 'desc');
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
 
         if ($user->role_id == Role::ADMIN) {

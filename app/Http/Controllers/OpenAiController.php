@@ -75,27 +75,6 @@ class OpenAiController extends Controller
         return response()->json($response);
     }
 
-    public function chatCompletionJsonResponse(array $message)
-    {
-        $url = config('services.open-ai.url') . '/chat/completions';
-        $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
-            'Content-Type: application/json',
-        ];
-        $data = [
-            'model' => config('services.open-ai.model'),
-            'messages' => $message,
-            'response_format' => [
-                'type' => 'json_object',
-            ]
-        ];
-
-        $response =  $this->postRequest($url, $header, json_encode($data));
-
-        logger('chat completion response: ', $response);
-        return $response;
-    }
-
     public function chatCompletion(array $message)
     {
         $url = config('services.open-ai.url') . '/chat/completions';
@@ -227,10 +206,13 @@ class OpenAiController extends Controller
         $prompt = " Check if this document is for a flight or hotel booking. 
                     The document might contain information like booking reference, passenger name, flight details, hotel details, etc. 
                     Suggest if it's a flight or hotel booking. 
-                    sample answer: 'flight' or 'hotel'
+                    example answer : 
+                    {
+                        'type': 'flight'
+                    }
                     ";
 
-        $response = $this->chatCompletion([
+        $response = $this->aiService->chatCompletionJsonResponse([
             [
                 'role' => 'user',
                 'content' => $prompt,
@@ -240,10 +222,11 @@ class OpenAiController extends Controller
                 'content' => $content,
             ],
         ]);
-
+        
         if (isset($response['choices'][0]['message']['content'])) {
-            $type = $response['choices'][0]['message']['content'];
-
+            $content = $response['choices'][0]['message']['content'];
+            
+            $type = json_decode($content, true)['type'];
             if ($type !== 'flight' && $type !== 'hotel') {
                 return [
                     'status' => 'error',
@@ -357,7 +340,7 @@ class OpenAiController extends Controller
 
         ";
 
-        $response = $this->chatCompletionJsonResponse([
+        $response = $this->aiService->chatCompletionJsonResponse([
             [
                 'role' => 'user',
                 'content' => $prompt,
@@ -493,7 +476,7 @@ class OpenAiController extends Controller
         }
         ";
 
-        $response = $this->chatCompletionJsonResponse([
+        $response = $this->aiService->chatCompletionJsonResponse([
             [
                 'role' => 'user',
                 'content' => $prompt,
@@ -764,7 +747,7 @@ class OpenAiController extends Controller
             ]
         ];
 
-        $response = $this->chatCompletionJsonResponse($content);
+        $response = $this->aiService->chatCompletionJsonResponse($content);
 
         if (isset($response['error'])) {
             return [

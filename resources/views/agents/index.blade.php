@@ -17,12 +17,12 @@
             </div>
 
             <a href="{{ route('users.create') }}?openForm=agentForm">
-    <div data-tooltip="Create new Agent" class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-            <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7"/>
-        </svg>
-    </div>
-</a>
+                <div data-tooltip="Create new Agent" class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff" d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
+                    </svg>
+                </div>
+            </a>
 
 
         </div>
@@ -67,6 +67,7 @@
                                     </th> -->
                                     <!-- <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th> -->
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent Name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amadeus (ID)</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent Email</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent Contact</th>
@@ -77,50 +78,46 @@
                             <tbody>
                                 @if ($agents->isEmpty())
                                 <tr>
-                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No data for now.... Create new!</td>
+                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500">
+                                        No data for now.... Create new!
+                                    </td>
                                 </tr>
                                 @else
                                 @foreach ($agents as $agent)
-                                <tr>
-                                    <!-- <td>
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
-                                            </svg>
-                                        </label>
-                                    </td> -->
-                                    <!-- <td class="p-3 text-sm">
-                                        <a href="javascript:void(0);" class="viewAgent text-blue-500 hover:underline">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                                <g fill="none" stroke="#333333" stroke-width="1.5">
-                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
-                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                                </g>
-                                            </svg>
-                                        </a>
-                                    </td> -->
+                                <tr id="agent_row_{{ $agent->id }}"> <!-- Ensure each row has a unique ID -->
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        <a href="{{ route('agents.show' , [ 'id' => $agent->id ]) }}" class="block">
+                                        <a href="{{ route('agents.show', ['id' => $agent->id]) }}" class="block">
                                             {{ $agent->name }}
                                         </a>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->amadeus_id ? $agent->amadeus_id : 'N/A' }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->email ? $agent->email : 'N/A' }}</td>
 
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->phone_number ? $agent->phone_number : 'N/A' }}</td>
+                                    <!-- Toggle Switch Column -->
+                                    <td class="p-3 text-sm">
+                                        <label class="w-12 h-6 relative">
+                                            <input type="checkbox" class="custom_switch absolute w-full h-full opacity-0 z-10 cursor-pointer peer"
+                                                id="agent_toggle_{{ $agent->id }}"
+                                                data-agent-id="{{ $agent->id }}"
+                                                onchange="toggleAgentStatus(this)"
+                                                checked />
+                                            <span class="bg-[#ebedf2] dark:bg-dark block h-full rounded-full 
+                            before:absolute before:left-1 before:bg-white dark:before:bg-white-dark 
+                            dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full 
+                            peer-checked:before:left-7 peer-checked:bg-primary before:transition-all before:duration-300">
+                                            </span>
+                                        </label>
+                                    </td>
+
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->amadeus_id ?? 'N/A' }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->email ?? 'N/A' }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $agent->phone_number ?? 'N/A' }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ optional($agent->agentType)->name }}
                                     </td>
-
-
-
-
-
                                 </tr>
                                 @endforeach
                                 @endif
                             </tbody>
+
                         </table>
 
                     </div>
@@ -198,3 +195,29 @@
         </div>
     </div>
 </x-app-layout>
+<script>
+    function toggleAgentStatus(checkbox) {
+        let agentId = checkbox.dataset.agentId; // Fetch the agent's ID from dataset
+        let row = document.getElementById('agent_row_' + agentId); // Locate the row
+
+        if (!row) {
+            console.error("Row not found for agent ID:", agentId);
+            return;
+        }
+
+        let rowCheckbox = row.querySelector('.rowCheckbox');
+
+        if (!checkbox.checked) {
+            if (!confirm("Are you sure you want to disable this agent?")) {
+                checkbox.checked = true; // Restore checked state if user cancels
+                return;
+            }
+
+            row.style.opacity = "0.5"; // Dim entire row to indicate disabled state
+            rowCheckbox?.setAttribute("disabled", "true"); // Disable row selection (if applicable)
+        } else {
+            row.style.opacity = "1"; // Restore row visibility
+            rowCheckbox?.removeAttribute("disabled"); // Enable row selection (if applicable)
+        }
+    }
+</script>

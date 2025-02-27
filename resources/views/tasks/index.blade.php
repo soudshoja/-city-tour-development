@@ -67,17 +67,17 @@
                 </svg>
             </div> -->
 
-            <button class="rounded-md shadow-md p-2 bg-blue-600 hover:bg-blue-400 text-white font-semibold" type="submit" form="uploadTaskForm">submit</button>
-            <div class="" data-tooltip-left="upload task">
+            <!-- <button class="rounded-md shadow-md p-2 bg-blue-600 hover:bg-blue-400 text-white font-semibold" type="submit" form="uploadTaskForm">submit</button> -->
+            <div class="">
                 <form id="uploadTaskForm" action="{{ route('tasks.upload') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
                     @csrf
-                    <label for="upload-task" class="cursor-po winter">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300">
+                    <button id="upload-task-submit" class="group cursor-pointer" type="submit" data-tooltip-left="Click the icon to submit">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300 group-hover:stroke-blue-500 group-focus:stroke-blue-500">
                             <path d="M18 10L13 10" stroke-width="1.5" stroke-linecap="round" />
                             <path d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5" stroke-width="1.5" />
                             <path d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z" stroke-width="1.5" />
                         </svg>
-                    </label>
+                    </button>
                     <input class="bg-white dark:bg-dark p-2 shadow-md rounded-md dark:shadow-gray-600 " type="file" name="task_file" id="upload-task">
                 </form>
             </div>
@@ -497,6 +497,11 @@
             if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
                 modalInvoice.classList.add('hidden');
             }
+        });
+        document.getElementById('upload-task').addEventListener('change', function() {
+            submitBtn = document.querySelector('#upload-task-submit');
+            console.log(submitBtn);
+            submitBtn.focus();
         });
     </script>
 </x-app-layout>

@@ -79,7 +79,9 @@ body.dark {
     z-index: 9999; /* Ensure the tooltip is on top */
 }
 
-[data-tooltip-left]:hover::before {
+[data-tooltip-left]:hover::before,
+[data-tooltip-left]:focus::before 
+{
     opacity: 1;
 }
 

@@ -1,55 +1,86 @@
 <x-app-layout>
-
-    @if($importedTask = session('importedTask'))
-    <div
-        x-show="importModal"
-        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-        <form id="imported-task-form" action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2">
-            <div
-                @click.away="importModal = false"
-                class="bg-white rounded-md border-2 justify-center align-middles p-4 w-80">
-                <div>
-                    You have imported a task, please upload the following information if needed
+    @if($queueTasks->isNotEmpty())
+    <div class="flex flex-col gap-5 w-full">
+        <h2 class="text-3xl font-bold">Queue</h2>
+        <div class="flex flex-col gap-2">
+            @foreach($queueTasks->take(3) as $task)
+            <div class="p-2 bg-white dark:bg-gray-700 rounded-md shadow-md mb-2">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name }}</p>
+                    </div>
+                    <div>
+                        <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="importTaskModal = true">View</a>
+                    </div>
                 </div>
-                @csrf
-                @method('PUT')
-                <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
-                <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
-                <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
-                <input type="text" name="" id="" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
-                <select name="client_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                    @foreach($clients as $client)
-                    <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
-                    @endforeach
-                </select>
-                <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                    @foreach($agents as $agent)
-                    <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                    @endforeach
-                </select>
-                <select name="supplier_id" id="supplier_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                    @foreach($suppliers as $supplier)
-                    <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                    @endforeach
-                </select>
             </div>
-            @if($importedTask->client_id == null)
-            <div class="bg-white rounded-md shadow-md p-2 w-90 h-90">
-                <p>This is form for creating new client</p>
+            @endforeach
+            @if($queueTasks->count() > 3)
+            <div class="p-2 rounded-md mb-2 bg-gradient-to-b from-white min-h-10">
+                <div class="flex justify-between items-center">
+                </div>
             </div>
             @endif
-            @if($importedTask->agent_id == null)
-            <div class="bg-white rounded-md shadow-md p-2 w-90 h-90">
-                <p>This is form for creating new agent</p>
-            </div>
-            @endif
-        </form>
+        </div>
+        <a class="font-semibold hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
     </div>
-    <x-primary-button type="submit" class="w-full mt-4" form="imported-task-form"> Update </x-primary-button>
     @endif
 
-    <div class="flex justify-between items-center gap-5 my-3 ">
+    <div
+        x-data="{ importTaskModal: true }"
+        class="flex justify-between items-center gap-5 my-3 ">
+
+        @if($importedTask = session('importedTask'))
+        <div
+            x-show="importTaskModal"
+            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+            <form id="imported-task-form" action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                <div
+                    @click.away="importTaskModal = false"
+                    class="bg-white rounded-md border-2w-80">
+                    <div class="flex justify-between p-4">
+                        <p class="font-semibold">
+                            Update the following information if needed
+                        </p>
+                        <button
+                            type="button"
+                            @click="importTaskModal = false"
+                            class="text-red-500 font-bold">
+                            &times;
+                        </button>
+                    </div>
+                    <hr>
+                    @csrf
+                    @method('PUT')
+                    <div class="p-4 inline-flex flex-col gap-2">
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
+                        <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($clients as $client)
+                            <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
+            </form>
+        </div>
+        @endif
+
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Tasks List</h2>
             <div data-tooltip="number of tasks" class="relative w-12 h-12 flex items-center justify-center DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 rounded-full shadow-sm">
@@ -64,18 +95,18 @@
                 </svg>
             </div> -->
 
-            <button class="rounded-md shadow-md p-2 bg-blue-600 hover:bg-blue-400 text-white font-semibold" type="submit" form="uploadTaskForm">submit</button>
-            <div class="" data-tooltip-left="upload task">
+            <!-- <button class="rounded-md shadow-md p-2 bg-blue-600 hover:bg-blue-400 text-white font-semibold" type="submit" form="uploadTaskForm">submit</button> -->
+            <div class="">
                 <form id="uploadTaskForm" action="{{ route('tasks.upload') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
                     @csrf
-                    <label for="upload-task" class="cursor-po winter">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300">
+                    <button id="upload-task-submit" class="group cursor-pointer" type="submit" data-tooltip-left="Click the icon to submit">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300 group-hover:stroke-blue-500 group-focus:stroke-blue-500">
                             <path d="M18 10L13 10" stroke-width="1.5" stroke-linecap="round" />
                             <path d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5" stroke-width="1.5" />
                             <path d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z" stroke-width="1.5" />
                         </svg>
-                    </label>
-                    <input class="bg-white dark:bg-dark p-2 shadow-md rounded-md dark:shadow-gray-600 " type="file" name="task_file" id="upload-task">
+                    </button>
+                    <input class="bg-white dark:bg-dark p-2 shadow-md rounded-md" type="file" name="task_file" id="upload-task">
                 </form>
             </div>
         </div>
@@ -85,8 +116,7 @@
 
     <div class="tableCon">
         <div class="content-70">
-            <div class="panel BoxShadow rounded-lg">
-
+            <div class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow-md">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
                     <div class="relative w-full">
                         <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
@@ -236,7 +266,7 @@
 
                     </div>
 
-                    <div class="dataTable-bottom justify-center">
+                    <!-- <div class="dataTable-bottom justify-center">
                         <nav class="dataTable-pagination">
                             <ul class="dataTable-pagination-list flex gap-2 mt-4">
                                 <li class="pager" id="prevPage">
@@ -256,10 +286,8 @@
                                     </a>
                                 </li>
                             </ul>
-
-
                         </nav>
-                    </div>
+                    </div> -->
                 </div>
 
             </div>
@@ -400,6 +428,7 @@
                                 </div>
                             </div>
 
+                            @role('Company')
                             <div class="flex gap-4 items-center">
                                 <div data-tooltip="Branch" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
                                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -407,7 +436,6 @@
                                     </svg>
                                 </div>
 
-                                @role('Company')
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
                                     <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Branch</option>
@@ -416,8 +444,8 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                @endrole
                             </div>
+                            @endrole
 
                         </div>
 
@@ -496,6 +524,11 @@
             if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
                 modalInvoice.classList.add('hidden');
             }
+        });
+        document.getElementById('upload-task').addEventListener('change', function() {
+            submitBtn = document.querySelector('#upload-task-submit');
+            console.log(submitBtn);
+            submitBtn.focus();
         });
     </script>
 </x-app-layout>

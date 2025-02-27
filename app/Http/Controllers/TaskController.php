@@ -27,6 +27,7 @@ use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -44,10 +45,11 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
-        $tasks = collect();
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get();
+            $tasks = $tasks->orderBy('created_at', 'desc')->get();
             $taskCount = Task::count();
             $clients = Client::all();
             $agents = Agent::all();
@@ -57,7 +59,7 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentsId)->get();
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
             $taskCount = Task::whereIn('agent_id', $agentsId)->count();
 
         } elseif ($user->role_id == Role::AGENT) {
@@ -79,20 +81,25 @@ class TaskController extends Controller
             //     }
             // }
 
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->where('agent_id', $user->agent->id)->get();
+            $tasks = $tasks->where('agent_id', $user->agent->id)->get();
             $taskCount = $tasks->count();
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
         $types = Task::distinct()->pluck('type');
         $suppliers = Supplier::all();
 
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types'));
+        $importedTask = Cache::get('imported_task');
+        
 
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
+        if($user->hasAnyRole('Admin', 'Company')){
 
-        // Fetch distinct task types
-        // Return the view with the required data
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
+            $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
+
+            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types', 'queueTasks'));
+        }
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'queueTasks'));
     }
 
     public function voucher($id = null)
@@ -155,10 +162,9 @@ class TaskController extends Controller
         return view('tasks.tasksVoucher', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
     }
 
-
     public function show($id)
     {
-        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->find($id);
+        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
 
         if (!$task) {
             return response()->json(['error' => 'Task not found'], 404);
@@ -176,7 +182,6 @@ class TaskController extends Controller
         return response()->json($task, 200);
     }
 
-    // edit and update tasks
     public function edit($id)
     {
         // Include both 'agent' and 'client' in the query
@@ -232,7 +237,6 @@ class TaskController extends Controller
         ]);
 
         $file = $request->file('task_file')->store('public/tasks');
-
         if ($file) {
             $response = $this->extractTaskFromFile($file);
         } else {
@@ -241,8 +245,13 @@ class TaskController extends Controller
                 'message' => 'File upload failed.'
             ];
         }
-
         // Excel::import(new TasksImport, $request->file('excel_file'));
+
+        if($response['status'] == 'success'){
+
+            logger('imported task: ', $response['data']->toArray());
+            Cache::put('imported_task', $response['data'], now()->addHour(1));
+        }
 
         return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
@@ -261,7 +270,7 @@ class TaskController extends Controller
         $response = $openai->flightOrHotel($contents);
 
         if ($response['status'] == 'error') {
-            return redirect()->back()->with('error', 'File upload failed.');
+            return $response;
         }
 
         if ($response['data'] == 'flight') {
@@ -413,7 +422,7 @@ class TaskController extends Controller
             throw $e;
         }
 
-        logger('Task created: ', $taskCreated->get()->toArray());
+        logger('Task created: ', $taskCreated->toArray());
 
         return [
             'status' => 'success',
@@ -514,5 +523,11 @@ class TaskController extends Controller
         } catch (Exception $e) {
             throw $e;
         }
+    }
+
+    public function queue()
+    {
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
+        return view('tasks.queue', compact('queueTasks'));
     }
 }

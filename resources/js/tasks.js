@@ -188,10 +188,6 @@ const filters = {
         element: document.getElementById("supplier_id"),
         selected: new Set(),
     },
-    branch: {
-        element: document.getElementById("branch_id"),
-        selected: new Set(),
-    },
     agent: {
         element: document.getElementById("agent_id"),
         selected: new Set(),
@@ -205,6 +201,13 @@ const filters = {
         selected: new Set(),
     },
 };
+
+if(document.getElementById("branch_id")){
+    filters.branch = {
+        element: document.getElementById("branch_id"),
+        selected: new Set(),
+    };
+}
 
 const filterContainers = {
     supplier: document.getElementById("selected-suppliers"),
@@ -237,7 +240,6 @@ function filterTable() {
         //display the row if it met all the conditions; prices, suppliers, branches, agents, statuses, and types
         const rowPrice = parseFloat(row.getAttribute("data-price"));
         const rowSupplier = row.getAttribute("data-supplier-id");
-        const rowBranch = row.getAttribute("data-branch-id");
         const rowAgent = row.getAttribute("data-agent-id");
         const rowStatus = row.getAttribute("data-status");
         const rowType = row.getAttribute("data-type");
@@ -247,9 +249,6 @@ function filterTable() {
         const matchesSupplier =
             filters.supplier.selected.size === 0 ||
             filters.supplier.selected.has(rowSupplier);
-        const matchesBranch =
-            filters.branch.selected.size === 0 ||
-            filters.branch.selected.has(rowBranch);
         const matchesAgent =
             filters.agent.selected.size === 0 ||
             filters.agent.selected.has(rowAgent);
@@ -260,10 +259,15 @@ function filterTable() {
             filters.type.selected.size === 0 ||
             filters.type.selected.has(rowType);
 
+        if (document.getElementById("branch_id")) {
+            const rowBranch = row.getAttribute("data-branch-id");
+            const matchesBranch =
+                filters.branch.selected.size === 0 ||
+                filters.branch.selected.has(rowBranch);
+        }
         if (
             matchesPrice &&
             matchesSupplier &&
-            matchesBranch &&
             matchesAgent &&
             matchesStatus &&
             matchesType
@@ -412,29 +416,18 @@ function filterRows() {
     return rows.filter((row) => row.style.display !== "none");
 }
 
-function showPageParam(page, visibleRows) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-
-    rows.forEach((row) => (row.style.display = "none"));
-
-    visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
-
-    currentPage = page;
-    updatePagination(visibleRows);
-}
 
 document.addEventListener("filterUpdated", function () {
     const visibleRows = filterRows();
-    updatePagination(visibleRows);
-    if (visibleRows.length > 0) {
-        showPageParam(1, visibleRows);
-    }
+    // updatePagination(visibleRows);
+    // if (visibleRows.length > 0) {
+    //     showPageParam(1, visibleRows);
+    // }
 });
 
 const visibleRows = filterRows();
-updatePagination(visibleRows);
-showPageParam(1, visibleRows);
+// updatePagination(visibleRows);
+// showPageParam(1, visibleRows);
 
 // Function to create pagination
 function createPagination() {
@@ -460,61 +453,48 @@ function createPagination() {
     }
 }
 
-// Function to show rows for the current page
-function showPage(page) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-
-    // Show rows for the current page, hide others
-    rows.forEach((row, index) => {
-        row.style.display = index >= start && index < end ? "" : "none";
-    });
-
-    currentPage = page; // Update current page
-    createPagination(); // Recreate pagination numbers
-}
 
 // Function to handle page number click
-function handlePageChange(e) {
-    e.preventDefault();
-    const page = parseInt(e.target.dataset.page, 10);
-    if (page && page !== currentPage) {
-        showPage(page);
-    }
-}
+// function handlePageChange(e) {
+//     e.preventDefault();
+//     const page = parseInt(e.target.dataset.page, 10);
+//     if (page && page !== currentPage) {
+//         showPage(page);
+//     }
+// }
 
 // Event listener for previous button
-if (prevPageButton) {
-    prevPageButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (currentPage > 1) {
-            showPage(currentPage - 1);
-        }
-    });
-}
+// if (prevPageButton) {
+//     prevPageButton.addEventListener("click", (e) => {
+//         e.preventDefault();
+//         if (currentPage > 1) {
+//             showPage(currentPage - 1);
+//         }
+//     });
+// }
 
 // Event listener for next button
-if (nextPageButton) {
-    nextPageButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (currentPage < totalPages) {
-            showPage(currentPage + 1);
-        }
-    });
-}
+// if (nextPageButton) {
+//     nextPageButton.addEventListener("click", (e) => {
+//         e.preventDefault();
+//         if (currentPage < totalPages) {
+//             showPage(currentPage + 1);
+//         }
+//     });
+// }
 
 // Event listener for page numbers
-paginationList.addEventListener("click", (e) => {
-    if (e.target.tagName === "A" && e.target.dataset.page) {
-        handlePageChange(e);
-    }
-});
+// paginationList.addEventListener("click", (e) => {
+//     if (e.target.tagName === "A" && e.target.dataset.page) {
+//         handlePageChange(e);
+//     }
+// });
 
 // Initialize pagination
-if (totalPages > 1) {
-    createPagination();
-    showPage(1); // Show the first page initially
-}
+// if (totalPages > 1) {
+//     // createPagination();
+//     showPage(1); // Show the first page initially
+// }
 
 const floatingActions = document.getElementById("floatingActions");
 const closeTaskFloatingActions = document.getElementById(
@@ -581,7 +561,7 @@ createInvoiceBtn.addEventListener("click", function () {
     window.location.href = url;
 });
 
-function updatePagination(visibleRows) {
+function updatePagination(visibleRows) { //close
     const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
 
     dataTableBottom.style.display =
@@ -600,23 +580,9 @@ function updatePagination(visibleRows) {
         }
     }
 }
+
 // Close the floating div when the "X" button is clicked
 closeTaskFloatingActions.addEventListener("click", function () {
     floatingActions.classList.add("hidden");
 });
 
-document.getElementById("pdfInput").addEventListener("change", function () {
-    // submit the form
-    this.form.submit();
-});
-document.addEventListener("DOMContentLoaded", function (e) {
-    // seachable
-    var options = {
-        searchable: true,
-    };
-    NiceSelect.bind(document.getElementById("status_id"), options);
-    NiceSelect.bind(document.getElementById("type_id"), options);
-    NiceSelect.bind(document.getElementById("supplier_id"), options);
-    NiceSelect.bind(document.getElementById("agent_id"), options);
-    NiceSelect.bind(document.getElementById("branch_id"), options);
-});

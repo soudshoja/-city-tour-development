@@ -454,7 +454,7 @@
                                             d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
                                             fill="currentColor" />
                                     </svg>
-                                    Update Invoice
+                                    Save Full Payment
                                 </button>
                             </div>
                         </section>

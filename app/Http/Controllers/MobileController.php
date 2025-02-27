@@ -622,6 +622,175 @@ class MobileController extends Controller
         }
     }
 
+    public function updateInvoice(Request $request)
+    {
+        $request->validate([
+            'tasks' => 'required|array',
+            'tasks.*.id' => 'required|integer',
+            'tasks.*.description' => 'required|string',
+            'tasks.*.invprice' => 'required|numeric',
+            'tasks.*.supplier_id' => 'required|integer',
+            'tasks.*.client_id' => 'required|integer',
+            'tasks.*.agent_id' => 'required|integer',
+            'invdate' => 'required|date',
+            'duedate' => 'required|date',
+            'subTotal' => 'required|numeric',
+            'clientId' => 'required|integer',
+            'agentId' => 'required|integer',
+            'invoiceNumber' => 'required|string',
+            'currency' => 'required|string',
+        ]);
+    
+        $tasks = $request->input('tasks');
+        $duedate = $request->input('duedate');
+        $invdate = $request->input('invdate');
+        $amount = $request->input('subTotal');
+        $clientId = $request->input('clientId');
+        $agentId = $request->input('agentId');
+        $invoiceNumber = $request->input('invoiceNumber');
+        $currency = $request->input('currency');
+    
+        $agent = Agent::where('id', $agentId)->first();
+        $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
+        $branchId = $agent ? $agent->branch_id : null;
+    
+        try {
+            // 🔹 Find the existing invoice
+            $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+    
+            if (!$invoice) {
+                return response()->json(['error' => 'Invoice not found.'], 404);
+            }
+    
+            // 🔹 Delete related records before updating
+            InvoiceDetail::where('invoice_id', $invoice->id)->delete();
+            Transaction::where('invoice_id', $invoice->id)->delete();
+            GeneralLedger::where('invoice_id', $invoice->id)->delete();
+    
+            // 🔹 Update invoice
+            $invoice->update([
+                'agent_id' => $agentId,
+                'client_id' => $clientId,
+                'sub_amount' => $amount,
+                'amount' => $amount,
+                'currency' => $currency,
+                'status' => 'unpaid',
+                'invoice_date' => $invdate,
+                'due_date' => $duedate,
+            ]);
+    
+            // 🔹 Re-insert related records
+            foreach ($tasks as $task) {
+                try {
+                    $selectedtask = Task::where('id', $task['id'])->first();
+                    $supplier = Supplier::where('id', $task['supplier_id'])->first();
+                    $client = Client::where('id', $task['client_id'])->first();
+                    $agent = Agent::where('id', $task['agent_id'])->first();
+    
+                    // Create new InvoiceDetail
+                    $invoiceDetail = InvoiceDetail::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoiceNumber,
+                        'task_id' => $task['id'],
+                        'task_description' => $task['description'],
+                        'task_remark' => $task['remark'] ?? null,
+                        'client_notes' => $task['note'] ?? null,
+                        'task_price' =>  $task['invprice'],
+                        'supplier_price' => $selectedtask->total,
+                        'markup_price' => $task['invprice'] - $selectedtask->total,
+                        'paid' => false,
+                    ]);
+    
+                    // Create a new Transaction
+                    $transaction = Transaction::create([
+                        'entity_id' => $companyId,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'credit',
+                        'amount' =>  $task['invprice'],
+                        'date' => Carbon::now(),
+                        'description' => 'Invoice:' . $invoiceNumber . ' Updated',
+                        'invoice_id' => $invoice->id,
+                        'reference_type' => 'Invoice',
+                    ]);
+    
+                    // Update General Ledger Entries
+                    GeneralLedger::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $branchId,
+                        'company_id' => $companyId,
+                        'invoice_id' =>  $invoice->id,
+                        'account_id' =>  $supplier->id, // Example: assign supplier account
+                        'invoiceDetail_id' =>  $invoiceDetail->id,
+                        'transaction_date' => Carbon::now(),
+                        'description' => 'Updated Payment: ' . $supplier->name,
+                        'debit' => $selectedtask->total,
+                        'credit' => 0,
+                        'balance' => $selectedtask->total,
+                        'name' => $supplier->name,
+                        'type' => 'payable',
+                    ]);
+    
+                    GeneralLedger::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $branchId,
+                        'company_id' => $companyId,
+                        'invoice_id' =>  $invoice->id,
+                        'account_id' =>  $client->id, // Example: assign client account
+                        'invoiceDetail_id' =>  $invoiceDetail->id,
+                        'transaction_date' => Carbon::now(),
+                        'description' => 'Updated Payment received from: ' . $client->name,
+                        'debit' => 0,
+                        'credit' => $task['invprice'],
+                        'balance' => $task['invprice'],
+                        'name' =>  $client->name,
+                        'type' => 'receivable',
+                    ]);
+    
+                    // Update Task Status
+                    $selectedtask->status = 'Assigned';
+                    $selectedtask->save();
+                } catch (Exception $e) {
+                    Log::error('Failed to update InvoiceDetails: ' . $e->getMessage());
+                    return response()->json('Failed to update InvoiceDetails for task: ' . $task['description'], 500);
+                }
+            }
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice updated successfully!',
+                'invoiceId' => $invoice->id,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to update invoice: ' . $e->getMessage());
+            return response()->json('Invoice update failed!', 500);
+        }
+    }
+    
+
+    public function deleteInvoice(Request $request, string $id)
+    {
+        $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        try {
+            InvoiceDetail::where('invoice_id', $invoice->id)->delete();
+            InvoicePartial::where('invoice_id', $invoice->id)->delete();
+            GeneralLedger::where('invoice_id', $invoice->id)->delete();
+            Transaction::where('invoice_id', $invoice->id)->delete();
+
+             $invoice->delete();
+
+             return redirect()->route('invoices.company.agents')->with('status', 'Invoice deleted successfully!');
+
+        } catch (Exception $error) {
+            logger('Failed to delete invoice: ' . $error->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete invoice!');
+        }            
+    }
+
+    
 
     private function generateInvoiceNumber($sequence)
     {

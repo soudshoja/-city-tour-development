@@ -16,8 +16,12 @@
                 </div>
             </div>
             @endforeach
+            <div class="p-2 rounded-md mb-2 bg-gradient-to-b from-white min-h-10">
+                <div class="flex justify-between items-center">
+                </div>
+            </div>
         </div>
-        <a class="text-end hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
+        <a class="font-semibold hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
     </div>
     @endif
 

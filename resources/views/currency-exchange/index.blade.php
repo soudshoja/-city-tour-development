@@ -153,7 +153,7 @@
     @endif
     </table>
     </div>
-    <div id="update-exchange-rate" class="opacity-0 bg-gradient-to-t from-gray-500 to-transparent pt-4 pb-6 absolute bottom-0 left-0 w-full m-auto flex justify-center transition-opacity duration-150 ease-in-out">
+    <div id="update-exchange-rate" class="opacity-0 bg-gradient-to-t from-gray-500 pt-4 pb-6 absolute bottom-0 left-0 w-full m-auto flex justify-center transition-opacity duration-150 ease-in-out">
         <div class="bg-white p-3 px-8 shadow-lg rounded-md">
             <button class="btn btn-primary" onclick="updateRateManual()">Update Exchange Rate</button>
         </div>

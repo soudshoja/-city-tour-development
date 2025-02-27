@@ -16,10 +16,12 @@
                 </div>
             </div>
             @endforeach
+            @if($queueTasks->count() > 3)
             <div class="p-2 rounded-md mb-2 bg-gradient-to-b from-white min-h-10">
                 <div class="flex justify-between items-center">
                 </div>
             </div>
+            @endif
         </div>
         <a class="font-semibold hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
     </div>

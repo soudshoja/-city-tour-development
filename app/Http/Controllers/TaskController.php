@@ -45,10 +45,10 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
-        $tasks = collect();
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->get();
+            $tasks = $tasks->orderBy('created_at', 'desc')->get();
             $taskCount = Task::count();
             $clients = Client::all();
             $agents = Agent::all();
@@ -58,7 +58,7 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereIn('agent_id', $agentsId)->get();
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
             $taskCount = Task::whereIn('agent_id', $agentsId)->count();
 
         } elseif ($user->role_id == Role::AGENT) {
@@ -80,8 +80,10 @@ class TaskController extends Controller
             //     }
             // }
 
-            $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->where('agent_id', $user->agent->id)->get();
+            $tasks = $tasks->where('agent_id', $user->agent->id)->get();
             $taskCount = $tasks->count();
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
         $types = Task::distinct()->pluck('type');
@@ -90,15 +92,13 @@ class TaskController extends Controller
         $importedTask = Cache::get('imported_task');
         
 
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'importedTask'));
+        if($user->hasAnyRole('Admin', 'Company')){
 
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
+            $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
 
-        // Fetch distinct task types
-        // Return the view with the required data
-
-
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
+            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types'));
+        }
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types'));
     }
 
     public function voucher($id = null)

@@ -1,72 +1,49 @@
 <x-app-layout>
 
-    @if($importedTask)
+    @if($importedTask = session('importedTask'))
     <div
         x-show="importModal"
         class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
         <form id="imported-task-form" action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
-            <div class="flex gap-2">
-                <div
-                    @click.away="importModal = false"
-                    class="bg-white rounded-md border-2w-80">
-                    <div class="font-semibold p-4">
+            <div
+                @click.away="importModal = false"
+                class="bg-white rounded-md border-2w-80">
+                <div class="flex justify-between p-4">
+                    <p class="font-semibold">
                         Update the following information if needed
-                    </div>
-                    <hr>
-                    @csrf
-                    @method('PUT')
-                    <div class="p-4 inline-flex flex-col gap-2">
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
-                        <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($clients as $client)
-                            <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($agents as $agent)
-                            <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    </p>
+                    <button
+                        type="button"
+                        @click="importModal = false"
+                        class="text-red-500 font-bold">
+                        &times;
+                    </button> 
                 </div>
-                @if($importedTask->client_id == null)
-                <div class="bg-white rounded-md shadow-md w-90 h-90">
-                    <div class="p-4 font-semibold">Create New Client</div>
-                    <hr>
-                    <div class="p-4 flex flex-col gap-2">
-                        <input type="text" name="name" id="name" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Client Name">
-                        <input type="email" name="email" id="email" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Client Email">
-                        <input type="text" name="passport" id="passport" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Passport">
-                        <textarea name="address" id="address" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Address">
-
-                        </textarea>
-                    </div>
+                <hr>
+                @csrf
+                @method('PUT')
+                <div class="p-4 inline-flex flex-col gap-2">
+                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
+                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
+                    <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                        @foreach($clients as $client)
+                        <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                        @foreach($agents as $agent)
+                        <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                        @foreach($suppliers as $supplier)
+                        <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
-                @endif
-                @if($importedTask->agent_id !== null)
-                <div class="bg-white rounded-md shadow-md w-90 h-90">
-                    <div class="p-4">Create New Agent</div>
-                    <hr>
-                    <div class="p-4 flex flex-col gap-2">
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Agent Name">
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Agent Email">
-                        <input type="text" name="passport" id="passport" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Passport">
-                        <textarea name="address" id="address" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" placeholder="Address">
-
-                        </textarea>
-
-                    </div>
-                </div>
-                @endif
             </div>
             <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
         </form>
@@ -280,8 +257,6 @@
                                     </a>
                                 </li>
                             </ul>
-
-
                         </nav>
                     </div> -->
                 </div>

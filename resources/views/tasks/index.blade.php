@@ -1,56 +1,58 @@
 <x-app-layout>
-
-    @if($importedTask = session('importedTask'))
     <div
-        x-show="importModal"
-        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-        <form id="imported-task-form" action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
-            <div
-                @click.away="importModal = false"
-                class="bg-white rounded-md border-2w-80">
-                <div class="flex justify-between p-4">
-                    <p class="font-semibold">
-                        Update the following information if needed
-                    </p>
-                    <button
-                        type="button"
-                        @click="importModal = false"
-                        class="text-red-500 font-bold">
-                        &times;
-                    </button> 
-                </div>
-                <hr>
-                @csrf
-                @method('PUT')
-                <div class="p-4 inline-flex flex-col gap-2">
-                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
-                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
-                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
-                    <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
-                    <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                        @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
-                        @endforeach
-                    </select>
-                    <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                        @foreach($agents as $agent)
-                        <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                        @endforeach
-                    </select>
-                    <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                        @foreach($suppliers as $supplier)
-                        <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-            <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
-        </form>
-    </div>
-    @endif
+        x-data="{ importTaskModal: true }"
+        class="flex justify-between items-center gap-5 my-3 ">
 
-    <div class="flex justify-between items-center gap-5 my-3 ">
+        @if($importedTask = session('importedTask'))
+        <div
+            x-show="importTaskModal"
+            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+            <form id="imported-task-form" action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                <div
+                    @click.away="importTaskModal = false"
+                    class="bg-white rounded-md border-2w-80">
+                    <div class="flex justify-between p-4">
+                        <p class="font-semibold">
+                            Update the following information if needed
+                        </p>
+                        <button
+                            type="button"
+                            @click="importTaskModal = false"
+                            class="text-red-500 font-bold">
+                            &times;
+                        </button>
+                    </div>
+                    <hr>
+                    @csrf
+                    @method('PUT')
+                    <div class="p-4 inline-flex flex-col gap-2">
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
+                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
+                        <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($clients as $client)
+                            <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                            @foreach($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
+            </form>
+        </div>
+        @endif
+
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Tasks List</h2>
             <div data-tooltip="number of tasks" class="relative w-12 h-12 flex items-center justify-center DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 rounded-full shadow-sm">
@@ -399,6 +401,7 @@
                                 </div>
                             </div>
 
+                            @role('Company')
                             <div class="flex gap-4 items-center">
                                 <div data-tooltip="Branch" class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
                                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -406,7 +409,6 @@
                                     </svg>
                                 </div>
 
-                                @role('Company')
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
                                     <select name="branch_id" id="branch_id" class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Branch</option>
@@ -415,8 +417,8 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                @endrole
                             </div>
+                            @endrole
 
                         </div>
 

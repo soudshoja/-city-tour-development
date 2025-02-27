@@ -416,29 +416,18 @@ function filterRows() {
     return rows.filter((row) => row.style.display !== "none");
 }
 
-function showPageParam(page, visibleRows) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-
-    rows.forEach((row) => (row.style.display = "none"));
-
-    visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
-
-    currentPage = page;
-    // updatePagination(visibleRows);
-}
 
 document.addEventListener("filterUpdated", function () {
     const visibleRows = filterRows();
     // updatePagination(visibleRows);
-    if (visibleRows.length > 0) {
-        showPageParam(1, visibleRows);
-    }
+    // if (visibleRows.length > 0) {
+    //     showPageParam(1, visibleRows);
+    // }
 });
 
 const visibleRows = filterRows();
 // updatePagination(visibleRows);
-showPageParam(1, visibleRows);
+// showPageParam(1, visibleRows);
 
 // Function to create pagination
 function createPagination() {
@@ -464,48 +453,35 @@ function createPagination() {
     }
 }
 
-// Function to show rows for the current page
-function showPage(page) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-
-    // Show rows for the current page, hide others
-    rows.forEach((row, index) => {
-        row.style.display = index >= start && index < end ? "" : "none";
-    });
-
-    currentPage = page; // Update current page
-    // createPagination(); // Recreate pagination numbers
-}
 
 // Function to handle page number click
-function handlePageChange(e) {
-    e.preventDefault();
-    const page = parseInt(e.target.dataset.page, 10);
-    if (page && page !== currentPage) {
-        showPage(page);
-    }
-}
+// function handlePageChange(e) {
+//     e.preventDefault();
+//     const page = parseInt(e.target.dataset.page, 10);
+//     if (page && page !== currentPage) {
+//         showPage(page);
+//     }
+// }
 
 // Event listener for previous button
-if (prevPageButton) {
-    prevPageButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (currentPage > 1) {
-            showPage(currentPage - 1);
-        }
-    });
-}
+// if (prevPageButton) {
+//     prevPageButton.addEventListener("click", (e) => {
+//         e.preventDefault();
+//         if (currentPage > 1) {
+//             showPage(currentPage - 1);
+//         }
+//     });
+// }
 
 // Event listener for next button
-if (nextPageButton) {
-    nextPageButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (currentPage < totalPages) {
-            showPage(currentPage + 1);
-        }
-    });
-}
+// if (nextPageButton) {
+//     nextPageButton.addEventListener("click", (e) => {
+//         e.preventDefault();
+//         if (currentPage < totalPages) {
+//             showPage(currentPage + 1);
+//         }
+//     });
+// }
 
 // Event listener for page numbers
 // paginationList.addEventListener("click", (e) => {
@@ -515,10 +491,10 @@ if (nextPageButton) {
 // });
 
 // Initialize pagination
-if (totalPages > 1) {
-    // createPagination();
-    showPage(1); // Show the first page initially
-}
+// if (totalPages > 1) {
+//     // createPagination();
+//     showPage(1); // Show the first page initially
+// }
 
 const floatingActions = document.getElementById("floatingActions");
 const closeTaskFloatingActions = document.getElementById(

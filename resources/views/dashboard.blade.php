@@ -56,12 +56,12 @@
 
         <div class="my-5 w-full">
             <div class="flex flex-col lg:flex-row gap-3">
-                <div class="p-2 bg-white rounded-md shadow-md w-full">
+                <div class="p-2 bg-white dark:bg-gray-700 rounded-md shadow-md w-full">
                     <h1>
                         Revenue
                     </h1>
                 </div>
-                <div class="p-10 pt-2 bg-white rounded-md shadow-md flex flex-col w-full lg:w-1/2">
+                <div class="p-10 pt-2 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">
                     <h1>
                         {{ $pieChartTitle }}
                     </h1>
@@ -85,7 +85,7 @@
                 </div>
             </div> -->
             @if(isset($paidAmounts) && isset($unpaidAmounts))
-            <div class="my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800">
+            <div class="my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800 rounded-md shadow-md">
                 <h2 class="text-3xl font-bold">Earnings</h2>
                 <div id="earnings" class="relative w-full min-h-96" data-paid="{{ json_encode($paidAmounts) }}" data-unpaid="{{ json_encode($unpaidAmounts) }}">
                     <canvas id="earningsChart"></canvas>

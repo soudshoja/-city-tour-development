@@ -188,10 +188,6 @@ const filters = {
         element: document.getElementById("supplier_id"),
         selected: new Set(),
     },
-    branch: {
-        element: document.getElementById("branch_id"),
-        selected: new Set(),
-    },
     agent: {
         element: document.getElementById("agent_id"),
         selected: new Set(),
@@ -205,6 +201,13 @@ const filters = {
         selected: new Set(),
     },
 };
+
+if(document.getElementById("branch_id")){
+    filters.branch = {
+        element: document.getElementById("branch_id"),
+        selected: new Set(),
+    };
+}
 
 const filterContainers = {
     supplier: document.getElementById("selected-suppliers"),
@@ -237,7 +240,6 @@ function filterTable() {
         //display the row if it met all the conditions; prices, suppliers, branches, agents, statuses, and types
         const rowPrice = parseFloat(row.getAttribute("data-price"));
         const rowSupplier = row.getAttribute("data-supplier-id");
-        const rowBranch = row.getAttribute("data-branch-id");
         const rowAgent = row.getAttribute("data-agent-id");
         const rowStatus = row.getAttribute("data-status");
         const rowType = row.getAttribute("data-type");
@@ -247,9 +249,6 @@ function filterTable() {
         const matchesSupplier =
             filters.supplier.selected.size === 0 ||
             filters.supplier.selected.has(rowSupplier);
-        const matchesBranch =
-            filters.branch.selected.size === 0 ||
-            filters.branch.selected.has(rowBranch);
         const matchesAgent =
             filters.agent.selected.size === 0 ||
             filters.agent.selected.has(rowAgent);
@@ -260,10 +259,15 @@ function filterTable() {
             filters.type.selected.size === 0 ||
             filters.type.selected.has(rowType);
 
+        if (document.getElementById("branch_id")) {
+            const rowBranch = row.getAttribute("data-branch-id");
+            const matchesBranch =
+                filters.branch.selected.size === 0 ||
+                filters.branch.selected.has(rowBranch);
+        }
         if (
             matchesPrice &&
             matchesSupplier &&
-            matchesBranch &&
             matchesAgent &&
             matchesStatus &&
             matchesType
@@ -421,19 +425,19 @@ function showPageParam(page, visibleRows) {
     visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
 
     currentPage = page;
-    updatePagination(visibleRows);
+    // updatePagination(visibleRows);
 }
 
 document.addEventListener("filterUpdated", function () {
     const visibleRows = filterRows();
-    updatePagination(visibleRows);
+    // updatePagination(visibleRows);
     if (visibleRows.length > 0) {
         showPageParam(1, visibleRows);
     }
 });
 
 const visibleRows = filterRows();
-updatePagination(visibleRows);
+// updatePagination(visibleRows);
 showPageParam(1, visibleRows);
 
 // Function to create pagination
@@ -471,7 +475,7 @@ function showPage(page) {
     });
 
     currentPage = page; // Update current page
-    createPagination(); // Recreate pagination numbers
+    // createPagination(); // Recreate pagination numbers
 }
 
 // Function to handle page number click
@@ -504,15 +508,15 @@ if (nextPageButton) {
 }
 
 // Event listener for page numbers
-paginationList.addEventListener("click", (e) => {
-    if (e.target.tagName === "A" && e.target.dataset.page) {
-        handlePageChange(e);
-    }
-});
+// paginationList.addEventListener("click", (e) => {
+//     if (e.target.tagName === "A" && e.target.dataset.page) {
+//         handlePageChange(e);
+//     }
+// });
 
 // Initialize pagination
 if (totalPages > 1) {
-    createPagination();
+    // createPagination();
     showPage(1); // Show the first page initially
 }
 
@@ -581,7 +585,7 @@ createInvoiceBtn.addEventListener("click", function () {
     window.location.href = url;
 });
 
-function updatePagination(visibleRows) {
+function updatePagination(visibleRows) { //close
     const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
 
     dataTableBottom.style.display =
@@ -600,23 +604,9 @@ function updatePagination(visibleRows) {
         }
     }
 }
+
 // Close the floating div when the "X" button is clicked
 closeTaskFloatingActions.addEventListener("click", function () {
     floatingActions.classList.add("hidden");
 });
 
-document.getElementById("pdfInput").addEventListener("change", function () {
-    // submit the form
-    this.form.submit();
-});
-document.addEventListener("DOMContentLoaded", function (e) {
-    // seachable
-    var options = {
-        searchable: true,
-    };
-    NiceSelect.bind(document.getElementById("status_id"), options);
-    NiceSelect.bind(document.getElementById("type_id"), options);
-    NiceSelect.bind(document.getElementById("supplier_id"), options);
-    NiceSelect.bind(document.getElementById("agent_id"), options);
-    NiceSelect.bind(document.getElementById("branch_id"), options);
-});

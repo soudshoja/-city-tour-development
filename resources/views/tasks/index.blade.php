@@ -260,7 +260,7 @@
 
                     </div>
 
-                    <div class="dataTable-bottom justify-center">
+                    <!-- <div class="dataTable-bottom justify-center">
                         <nav class="dataTable-pagination">
                             <ul class="dataTable-pagination-list flex gap-2 mt-4">
                                 <li class="pager" id="prevPage">
@@ -283,7 +283,7 @@
 
 
                         </nav>
-                    </div>
+                    </div> -->
                 </div>
 
             </div>

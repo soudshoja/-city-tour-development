@@ -43,7 +43,7 @@ class ReadAndProcessEmails extends Command
             \Log::info("label. $label");
             try {
                 $folder = $client->getFolder($label);
-                $messages = $folder->query()->all()->limit(5)->get();
+                $messages = $folder->query()->all()->get();
 
                 foreach ($messages as $message) {
                     $emailId = $message->getMessageId(); // Unique email identifier
@@ -70,9 +70,13 @@ class ReadAndProcessEmails extends Command
                             'email_id' => $emailId,
                             'client_id' => $taskData['client_id'] ?? null,
                             'agent_id' => $taskData['agent_id'] ?? null,
+                            'agent_name ' => $taskData['agent_id'] ?? null,
                             'type' => $label,
                             'status' => 'pending',
                             'client_name' => $taskData['client_name'] ?? null,
+                            'vendor_name' => $taskData['vendor_name'] ?? null,
+                            'company_name' => $taskData['company_name'] ?? null,
+                            'destination' => $taskData['destination'] ?? null,
                             'reference' => $taskData['reference'] ?? null,
                             'duration' => $taskData['duration'] ?? null,
                             'payment_type' => $taskData['payment_type'] ?? null,

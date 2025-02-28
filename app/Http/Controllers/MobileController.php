@@ -694,7 +694,7 @@ class MobileController extends Controller
                         'task_id' => $task['id'],
                         'task_description' => $task['description'],
                         'task_remark' => $task['remark'] ?? null,
-                        'client_notes' => $task['note'] ?? null,
+                        'client_notes' => $task['client_notes'] ?? null,
                         'task_price' =>  $task['invprice'],
                         'supplier_price' => $selectedtask->total,
                         'markup_price' => $task['invprice'] - $selectedtask->total,

@@ -11,7 +11,7 @@ class TaskEmail extends Model
     use HasFactory;
 
     protected $table = 'task_emails';
-    
+
     protected $fillable = [
         'additional_info',
         'status',
@@ -30,7 +30,13 @@ class TaskEmail extends Model
         'invoice_price',
         'venue',
         'voucher_status',
-        'enabled'
+        'enabled',
+        'supplier_name', 
+        'agent_name', 
+        'company_name', 
+        'destination', 
+        'vendor_name', 
+        'name',
     ];
 
     public function client()

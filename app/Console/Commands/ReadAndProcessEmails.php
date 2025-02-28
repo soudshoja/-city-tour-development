@@ -7,6 +7,7 @@ use Webklex\IMAP\Facades\Client as ImapClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\TaskEmail;
+use App\Models\TaskHotelDetailEmail;
 use App\Models\Supplier;
 use App\Models\Company;
 use App\Models\Agent;
@@ -47,7 +48,7 @@ class ReadAndProcessEmails extends Command
                 foreach ($messages as $message) {
                     $emailId = $message->getMessageId(); // Unique email identifier
                     $emailText = $message->getTextBody();
-                    \Log::info("emailId. $emailId");
+
                     // ✅ Check if this email has already been processed
                     if (DB::table('task_emails')->where('email_id', $emailId)->exists()) {
                         $this->warn("⚠️ Email already processed (ID: $emailId), skipping...");
@@ -56,13 +57,16 @@ class ReadAndProcessEmails extends Command
 
                     // 🔹 Use OpenAI to extract structured data
                     $extractedData = $this->extractHotelData($emailText);
-                    \Log::info("Data . $extractedData");
+
+                    if (is_object($extractedData)) {
+                        $extractedData = json_decode(json_encode($extractedData), true);
+                    }
+
                     if ($extractedData && isset($extractedData['data'])) {
                         $taskData = $extractedData['data'];
-                        \Log::info("Got Data");
     
                         // 🔹 Insert extracted data into `task_emails`
-                        TaskEmail::create([
+                        $taskEmail = TaskEmail::create([
                             'email_id' => $emailId,
                             'client_id' => $taskData['client_id'] ?? null,
                             'agent_id' => $taskData['agent_id'] ?? null,
@@ -78,12 +82,33 @@ class ReadAndProcessEmails extends Command
                             'total' => $taskData['total'] ?? null,
                             'cancellation_policy' => $taskData['cancellation_policy'] ?? null,
                             'additional_info' => $taskData['additional_info'] ?? null,
+                            'supplier_name' => $taskData['supplier_name'] ?? null,
                             'supplier_id' => $taskData['supplier_id'] ?? null,
                             'venue' => $taskData['venue'] ?? null,
                             'invoice_price' => $taskData['invoice_price'] ?? null,
                             'voucher_status' => $taskData['voucher_status'] ?? null,
                         ]);
                     
+                        $taskId = $taskEmail->id;
+
+                            // Insert into `task_hotel_details`
+                        if (!empty($taskData['task_hotel_details'])) {
+                            $hotelDetails = $taskData['task_hotel_details'];
+
+                            TaskHotelDetailEmail::create([
+                                'hotel_id' => null, // Set a valid `hotel_id` if available
+                                'booking_time' => $hotelDetails['booking_time'] ?? null,
+                                'check_in' => $hotelDetails['check_in'] ?? null,
+                                'check_out' => $hotelDetails['check_out'] ?? null,
+                                'room_number' => $hotelDetails['room_number'] ?? null,
+                                'room_type' => $hotelDetails['room_type'] ?? null,
+                                'room_amount' => $hotelDetails['room_amount'] ?? null,
+                                'room_details' => $hotelDetails['room_details'] ?? null,
+                                'rate' => $hotelDetails['rate'] ?? null,
+                                'task_id' => $taskId, // Associate with the task
+                            ]);
+                        }
+                        
                         $this->info("✅ Email ($emailId) processed and inserted.");
                     } else {
                         $this->warn("⚠️ Could not extract valid data from email (ID: $emailId).");
@@ -196,11 +221,14 @@ class ReadAndProcessEmails extends Command
 
     public function extractHotelData($content)
     {
-
-        \Log::info("Call Data");
         $supplierList = Supplier::all()->toArray();
         $supplierListJson = json_encode($supplierList);
-        \Log::info("before prompt");
+
+        $userData = $this->fetchUserBasedData();
+        // Convert them to JSON format for AI processing
+        $clientsJson = json_encode($userData['clients'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $agentsJson = json_encode($userData['agents'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
 
@@ -212,14 +240,20 @@ class ReadAndProcessEmails extends Command
             - `total`: Total amount for the task in float type.
             - `tax`: Total tax amount in float type.
             - `reference`: Reference code for the task.
-            - `type`: Type of task (e.g., flight).
+            - `type`: Type of task (hotel or flight).
+            - `vendor_name`: name of the vendor email from.
+            - `destination`: destination for this travel.
+            - `company_name`: name of the company for the task.
             - `agent_name`: name of the agent handling the task.
+            - `agent_id`:  You can refer the agent id from this list: $agentsJson
             - `client_name`: name of the client associated with the task, some text have the client name as holder name.
             - `supplier_name`: name of the supplier for the task.
                 You can refer the supplier from this list: $supplierListJson
                 if the supplier is not in the list, just set it to null.
+            - `supplier_id`: You can refer the supplier id from this list: $supplierListJson
             - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
             - `client_name`: Name of the client.
+            - `client_id`: You can refer the client id from this list: $clientsJson
             - `cancellation_policy`: Cancellation policy details.
             - `venue`: Venue or location associated with the task.
         
@@ -258,7 +292,13 @@ class ReadAndProcessEmails extends Command
             'type': 'hotel',
             'agent_name': 'agent name',
             'client_name': 'Khaled Alajmi',
+            'client_id': 2,
+            'agent_id': 2,
+            'supplier_id': 2,
+            'destination': 'Dubai',
+            'company_name': 'City Travellers',
             'supplier_name': 'Magic Holidays',
+            'vendor_name': 'Magic Holidays',
             'supplier_country': 'Kuwait',
             'cancellation_policy': 'cancellation policy',
             'venue': 'venue',
@@ -280,7 +320,6 @@ class ReadAndProcessEmails extends Command
             }
         }
         ";
-        \Log::info("before response");
 
         $messages = [
             ['role' => 'system', 'content' => 'You are an AI assistant that extracts structured data.'],
@@ -294,9 +333,9 @@ class ReadAndProcessEmails extends Command
             $message = $response['choices'][0]['message']['content'];
 
             $decodedResponse = json_decode($message, true);
-            \Log::info("decodedResponse: " . json_encode($decodedResponse));
-            \Log::info("Decode");
+
             if (json_last_error() === JSON_ERROR_NONE) {
+
                 return [
                     'status' => 'success',
                     'message' => 'Data extracted successfully',

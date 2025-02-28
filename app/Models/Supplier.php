@@ -40,4 +40,9 @@ class Supplier extends Model
             ->using(SupplierCompany::class)
             ->withPivot('is_active');
     }
+
+    public function credentials()
+    {
+        return $this->hasMany(SupplierCredential::class);
+    }
 }

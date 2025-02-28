@@ -24,7 +24,6 @@ class SupplierCredentialRequest extends FormRequest
         return [
             'supplier_id' => 'required|exists:suppliers,id',
             'company_id' => 'required|exists:companies,id',
-            'environment' => 'required|in:production,sandbox',
             'type' => 'required|in:basic,oauth',
             'username' => 'required_if:type,basic',
             'password' => 'required_if:type,basic',

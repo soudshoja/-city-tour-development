@@ -7,6 +7,7 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
+use App\Models\SupplierCredential;
 use DateTime;
 use Generator;
 use Illuminate\Support\Facades\Gate;
@@ -22,10 +23,21 @@ class SupplierController extends Controller
         Gate::authorize('view supplier');
         $user = auth()->user();
 
+        $suppliers = Supplier::all();
+
+        // if($user->role_id == Role::ADMIN) {
+        //     $suppliers = Supplier::with('companies')->get();
+        // } elseif($user->role_id == Role::COMPANY) {
+        //     $suppliers = $user->company->suppliers()->get();
+        // } else {
+        //     return redirect()->back()->with('error', 'Unauthorized action.');
+        // }
         if($user->role_id == Role::ADMIN) {
-            $suppliers = Supplier::all();
-        } elseif($user->role_id == Role::COMPANY) {
-            $suppliers = $user->company->suppliers()->get();
+            $supplierCredential = SupplierCredential::groupBy('company_id')->get();
+        }elseif($user->role_id == Role::COMPANY) {
+            $suppliers = Supplier::with(['credentials'], function($query) use ($user){
+                $query->where('company_id', $user->company_id);
+            })->get();
         } else {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
@@ -39,7 +51,6 @@ class SupplierController extends Controller
             }
         }
         $suppliersCount = Supplier::count();
-       
         return view('suppliers.index', compact('suppliers', 'suppliersCount'));
     }
 

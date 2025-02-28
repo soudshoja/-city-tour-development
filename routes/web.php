@@ -28,6 +28,7 @@ use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CurrencyExchangeController;
 use App\Http\Controllers\SupplierCompanyController;
+use App\Http\Controllers\SupplierCredentialController;
 use App\Http\Controllers\SystemExchangeRateController;
 use App\Http\Controllers\TBOController;
 use App\Livewire\Notification;
@@ -380,6 +381,8 @@ Route::group([
         Route::get('/{supplier}/{company}/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
         Route::get('/{supplier}/{company}/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
     });
+
+    Route::post('credentials', [SupplierCredentialController::class, 'store'])->name('credentials.store');
 
 });
 

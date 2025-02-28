@@ -3,29 +3,43 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Webklex\IMAP\Facades\Client;
+use Webklex\IMAP\Facades\Client as ImapClient;
 use Illuminate\Support\Facades\DB;
-use OpenAI;
 use Illuminate\Support\Facades\Log;
+use App\Models\TaskEmail;
+use App\Models\Supplier;
+use App\Models\Company;
+use App\Models\Agent;
+use App\Models\Client;
+use App\Services\OpenAIServiceEmail;
 
 class ReadAndProcessEmails extends Command
 {
+
     protected $signature = 'emails:process';
-    protected $description = 'Read emails, process using OpenAI, and insert into the tasks table';
+    protected $description = 'Read emails, process using OpenAI, and insert into the task_emails table';
+
+    protected $openAIService;
+
+    public function __construct(OpenAIServiceEmail $openAIService)
+    {
+        parent::__construct();
+        $this->openAIService = $openAIService;
+    }
+
+
 
     public function handle()
     {
-        $client = Client::account('default'); 
+        $client = ImapClient::account('default'); 
         $client->connect();
 
         // Gmail labels to read emails from
         $labels = ['magic', 'tbo', 'webbeds'];
 
-        $openai = OpenAI::client(env('OPENAI_API_KEY'));
-
         foreach ($labels as $label) {
             $this->info("\n📂 Processing emails from: " . strtoupper($label));
-
+            \Log::info("label. $label");
             try {
                 $folder = $client->getFolder($label);
                 $messages = $folder->query()->all()->limit(5)->get();
@@ -33,23 +47,44 @@ class ReadAndProcessEmails extends Command
                 foreach ($messages as $message) {
                     $emailId = $message->getMessageId(); // Unique email identifier
                     $emailText = $message->getTextBody();
-
+                    \Log::info("emailId. $emailId");
                     // ✅ Check if this email has already been processed
-                    if (DB::table('tasks')->where('email_id', $emailId)->exists()) {
+                    if (DB::table('task_emails')->where('email_id', $emailId)->exists()) {
                         $this->warn("⚠️ Email already processed (ID: $emailId), skipping...");
                         continue;
                     }
 
                     // 🔹 Use OpenAI to extract structured data
-                    $extractedData = $this->processWithAI($openai, $emailText);
-
-                    if ($extractedData) {
-                        // 🔹 Add the email ID before inserting into DB
-                        $extractedData['email_id'] = $emailId;
-
-                        // 🔹 Insert data into `tasks` table
-                        DB::table('tasks')->insert($extractedData);
-                        $this->info("✅ Email processed and inserted into database (ID: $emailId).");
+                    $extractedData = $this->extractHotelData($emailText);
+                    \Log::info("Data . $extractedData");
+                    if ($extractedData && isset($extractedData['data'])) {
+                        $taskData = $extractedData['data'];
+                        \Log::info("Got Data");
+    
+                        // 🔹 Insert extracted data into `task_emails`
+                        TaskEmail::create([
+                            'email_id' => $emailId,
+                            'client_id' => $taskData['client_id'] ?? null,
+                            'agent_id' => $taskData['agent_id'] ?? null,
+                            'type' => $label,
+                            'status' => 'pending',
+                            'client_name' => $taskData['client_name'] ?? null,
+                            'reference' => $taskData['reference'] ?? null,
+                            'duration' => $taskData['duration'] ?? null,
+                            'payment_type' => $taskData['payment_type'] ?? null,
+                            'price' => $taskData['price'] ?? null,
+                            'tax' => $taskData['tax'] ?? null,
+                            'surcharge' => $taskData['surcharge'] ?? null,
+                            'total' => $taskData['total'] ?? null,
+                            'cancellation_policy' => $taskData['cancellation_policy'] ?? null,
+                            'additional_info' => $taskData['additional_info'] ?? null,
+                            'supplier_id' => $taskData['supplier_id'] ?? null,
+                            'venue' => $taskData['venue'] ?? null,
+                            'invoice_price' => $taskData['invoice_price'] ?? null,
+                            'voucher_status' => $taskData['voucher_status'] ?? null,
+                        ]);
+                    
+                        $this->info("✅ Email ($emailId) processed and inserted.");
                     } else {
                         $this->warn("⚠️ Could not extract valid data from email (ID: $emailId).");
                     }
@@ -62,83 +97,263 @@ class ReadAndProcessEmails extends Command
         $this->info("\n✅ Email processing completed!");
     }
 
-    private function processWithAI($openai, $emailText)
+    private function processWithAI($emailText)
     {
+        \Log::info("Starting AI Processing for Email");
+
         // Fetch clients and agents from DB
         $userData = $this->fetchUserBasedData();
-        
+
         // Convert them to JSON format for AI processing
-        $agentsJson = json_encode($userData['agents']);
-        $clientsJson = json_encode($userData['clients']);
+        $clientsJson = json_encode($userData['clients'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $agentsJson = json_encode($userData['agents'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-        $prompt = "Extract structured data from the following email and return JSON format. 
-        - Match `client_name` with the `clients` list to get `client_id`.
-        - Match `agent_name` with the `agents` list to get `agent_id`.
+        $messages = [
+            ['role' => 'system', 'content' => 'You are an AI assistant that extracts structured data from emails.'],
+            ['role' => 'user', 'content' => "Extract structured data from the following email and return JSON format. Fields:
+            - email (client or agent email)
+            - client_name
+            - reference
+            - duration
+            - payment_type
+            - price
+            - tax
+            - surcharge
+            - total
+            - cancellation_policy
+            - additional_info
+            - supplier_id
+            - venue
+            - invoice_price
+            - voucher_status
+    
+            - Match `client_name` or 'email' with the `clients` list to get `client_id`.
+            - Match `agent_name` or 'email' with the `agents` list to get `agent_id`.
+    
+            Available Clients:
+            $clientsJson
+    
+            Available Agents:
+            $agentsJson
+    
+            Email Content:
+            ---
+            $emailText
+            ---
+            Return JSON format with `client_id`, `agent_id`, and relevant details."]
+        ];
 
-        Available Clients:
-        $clientsJson
+        try {
+            $response = $this->openAIService->getChatResponse($messages);
 
-        Available Agents:
-        $agentsJson
+            if (!isset($response['choices'][0]['message']['content'])) {
+                \Log::error("Unexpected OpenAI response structure", ['response' => $response]);
+                return null;
+            }
+            
+            $content = $response['choices'][0]['message']['content'];
 
-        Email Content:
-        ---
-        $emailText
-        ---
-        Return JSON format with `client_id`, `agent_id`, and relevant details.";
+            // **Extract JSON correctly**
+            $jsonString = preg_replace('/```json(.*?)```/s', '$1', $content);
+            $jsonString = trim($jsonString); // Trim extra spaces
 
-        $response = $openai->completions()->create([
-            'model' => 'gpt-4',
-            'prompt' => $prompt,
-            'max_tokens' => 500,
-            'temperature' => 0.3,
-        ]);
+            if (empty($jsonString)) {
+                \Log::error("Extracted JSON string is empty. Possible regex failure.", ['content' => $content]);
+            }
+            
+            $jsonData = json_decode($jsonString, true);
+    
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                \Log::error("JSON decoding failed", ['json_error' => json_last_error_msg(), 'response' => $content]);
+                return null;
+            }
 
-        $jsonText = trim($response->choices[0]->text);
-        $jsonData = json_decode($jsonText, true);
+            return [
+                'client_id' => $jsonData['client_id'] ?? null,
+                'agent_id' => $jsonData['agent_id'] ?? null,
+                'client_name' => $jsonData['client_name'] ?? null,
+                'reference' => $jsonData['reference'] ?? null,
+                'duration' => $jsonData['duration'] ?? null,
+                'payment_type' => $jsonData['payment_type'] ?? null,
+                'price' => $jsonData['price'] ?? null,
+                'tax' => $jsonData['tax'] ?? null,
+                'surcharge' => $jsonData['surcharge'] ?? null,
+                'total' => $jsonData['total'] ?? null,
+                'cancellation_policy' => $jsonData['cancellation_policy'] ?? null,
+                'additional_info' => $jsonData['additional_info'] ?? null,
+                'supplier_id' => $jsonData['supplier_id'] ?? null,
+                'venue' => $jsonData['venue'] ?? null,
+                'invoice_price' => $jsonData['invoice_price'] ?? null,
+                'voucher_status' => $jsonData['voucher_status'] ?? null,
+            ];
 
-        if (json_last_error() === JSON_ERROR_NONE) {
-            return $jsonData;
+        } catch (\Exception $e) {
+            \Log::error("OpenAI API Error: " . $e->getMessage());
+        }
+        return null;
+    }
+
+
+    public function extractHotelData($content)
+    {
+
+        \Log::info("Call Data");
+        $supplierList = Supplier::all()->toArray();
+        $supplierListJson = json_encode($supplierList);
+        \Log::info("before prompt");
+        $prompt = "
+        You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
+
+        1. `tasks` model with the following fields:
+            - `additional_info`: Additional information.
+            - `status`: Current status of the task.
+            - `price`: Price of the task in float type.
+            - `surcharge`: Any surcharge applied in float type.
+            - `total`: Total amount for the task in float type.
+            - `tax`: Total tax amount in float type.
+            - `reference`: Reference code for the task.
+            - `type`: Type of task (e.g., flight).
+            - `agent_name`: name of the agent handling the task.
+            - `client_name`: name of the client associated with the task, some text have the client name as holder name.
+            - `supplier_name`: name of the supplier for the task.
+                You can refer the supplier from this list: $supplierListJson
+                if the supplier is not in the list, just set it to null.
+            - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
+            - `client_name`: Name of the client.
+            - `cancellation_policy`: Cancellation policy details.
+            - `venue`: Venue or location associated with the task.
+        
+        2. `task_hotel_details` model, which applies only if the task is a hotel booking, with the following fields:
+            - `hotel_name`: Name of the hotel.
+            - `hotel_address`: Address of the hotel.
+            - `hotel_city`: City of the hotel.
+            - `hotel_state`: State of the hotel.
+            - `hotel_country`: Country of the hotel.
+            - `hotel_zip`: Zip code of the hotel.
+            - `booking_time`: Time of booking.
+            - `check_in`: Check-in date.
+            - `check_out`: Check-out date.
+            - `room_number`: Room number.
+            - `room_type`: Type of room.
+            - `room_amount`: Amount of the room in float type.
+            - `room_details`: Details of the room.
+            - `rate`: Rate of the room in float type.
+
+        Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
+        if some of the fields are not available, you can set them to null.
+        this is the content: $content
+
+        only pass me the data extracted in JSON format.
+
+        example answer = 
+
+        {
+            'additional_info': 'King Bed Deluxe High Floor - 2408 Oaks Liwa Heights, Jumeirah Lake Towers',
+            'status': 'completed',
+            'price': 100.00,
+            'surcharge': 10.00,
+            'total': 110.00,
+            'tax': 5.00,
+            'reference': 'relevant reference',
+            'type': 'hotel',
+            'agent_name': 'agent name',
+            'client_name': 'Khaled Alajmi',
+            'supplier_name': 'Magic Holidays',
+            'supplier_country': 'Kuwait',
+            'cancellation_policy': 'cancellation policy',
+            'venue': 'venue',
+            'task_hotel_details': {
+                'hotel_name': 'Oaks Liwa Heights',
+                'hotel_address': 'Jumeirah Lake Towers',
+                'hotel_city': null,
+                'hotel_state': 'Dubai',
+                'hotel_country': 'United Arab Emirates',
+                'hotel_zip': '12345',
+                'booking_time': '2024-10-16 14:00:00',
+                'check_in': '2024-10-17',
+                'check_out': '2024-10-20',
+                'room_number': '101',
+                'room_type': 'Deluxe Room',
+                'room_amount': '100.00',
+                'room_details': 'Sea View',
+                'rate': '40.00', 
+            }
+        }
+        ";
+        \Log::info("before response");
+
+        $messages = [
+            ['role' => 'system', 'content' => 'You are an AI assistant that extracts structured data.'],
+            ['role' => 'user', 'content' => $prompt]
+        ];
+
+        try {
+        $response = $this->openAIService->getChatResponse($messages);
+
+        if (isset($response['choices'][0]['message']['content'])) {
+            $message = $response['choices'][0]['message']['content'];
+
+            $decodedResponse = json_decode($message, true);
+            \Log::info("decodedResponse: " . json_encode($decodedResponse));
+            \Log::info("Decode");
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return [
+                    'status' => 'success',
+                    'message' => 'Data extracted successfully',
+                    'data' => $decodedResponse,
+                ];
+                // return $taskController->saveTasks($decodedResponse);
+            } else {
+                $cleanedResponse = $this->cleanJsonResponse($message);
+                $data = json_decode($cleanedResponse, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+
+                    return [
+                        'status' => 'success',
+                        'message' => 'Data extracted successfully',
+                        'data' => $data,
+                    ];
+                    // return $taskController->saveTasks($data);
+                } else {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to parse JSON or missing required fields.',
+                    ];
+                }
+            }
         }
 
-        Log::error("JSON decoding failed for OpenAI response: " . $jsonText);
-        return null;
+        } catch (\Exception $e) {
+            \Log::error("Error after OpenAI response: " . $e->getMessage());
+        }
     }
 
     private function fetchUserBasedData()
     {
         $suppliers = Supplier::all();
-        $company = auth()->user()->company; // Assuming user is authenticated and has a company.
-
+        $companies = Company::all(); 
+        $agents = Agent::all(); 
+        $clients = Client::all(); 
         return [
             'suppliers' => $suppliers,
-            'company' => [
-                'name' => $company->name,
-                'id' => $company->id,
-            ],
-            'branches' => $company->branches->map(function ($branch) {
-                return [
-                    'name' => $branch->name,
-                    'id' => $branch->id,
-                ];
-            }),
-            'agents' => $company->branches->flatMap->agents->map(function ($agent) {
+            'companies' => $companies,
+            'agents' => $agents->map(function ($agent) {
                 return [
                     'name' => $agent->name,
                     'id' => $agent->id,
                     'email' => $agent->email,
                     'contact' => $agent->phone_number,
                     'branchId' => $agent->branch_id,
-                    'branchName' => $agent->branch->name,
                     'type' => $agent->type,
                 ];
             }),
-            'clients' => $company->branches->flatMap->agents->flatMap->clients->map(function ($client) {
+            'clients' => $clients->map(function ($client) {
                 return [
                     'name' => $client->name,
                     'id' => $client->id,
                     'agentId' => $client->agent_id,
-                    'agentName' => $client->agent->name,
+                    'agentName' => optional($client->agent)->name ?? 'N/A',
                     'contact' => $client->phone,
                     'email' => $client->email,
                     'address' => $client->address,

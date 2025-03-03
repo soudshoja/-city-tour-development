@@ -139,6 +139,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
+        Route::get('/magic-request',[SupplierController::class, 'makeApiRequest'])->name('magic-request');
 
         Route::group([
             'prefix' => 'tbo',

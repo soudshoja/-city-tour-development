@@ -10,9 +10,12 @@ use App\Models\Supplier;
 use App\Models\SupplierCredential;
 use DateTime;
 use Generator;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Session;
+use League\OAuth2\Client\Provider\GenericProvider;
 
 class SupplierController extends Controller
 {
@@ -33,7 +36,7 @@ class SupplierController extends Controller
         //     return redirect()->back()->with('error', 'Unauthorized action.');
         // }
         if($user->role_id == Role::ADMIN) {
-            $supplierCredential = SupplierCredential::groupBy('company_id')->get();
+            $suppliers = Supplier::with('companies')->get();
         }elseif($user->role_id == Role::COMPANY) {
             $suppliers = Supplier::with(['credentials'], function($query) use ($user){
                 $query->where('company_id', $user->company_id);
@@ -117,5 +120,86 @@ class SupplierController extends Controller
             'totalDebit' => $totalDebit,
             'totalCredit' => $totalCredit,
         ]);
+    }
+
+    public function getMagicHoliday()
+    {
+        
+    }
+
+    public function redirectToProvider()
+    {
+        $provider = new GenericProvider([
+            'clientId' => config('services.magic-holiday.client-id'),
+            'clientSecret' => config('services.magic-holiday.client-secret'),
+            'redirectUri' => route('suppliers.magic-callback'),
+            'urlAuthorize' => config('services.magic-holiday.authorization_url'),
+            'urlAccessToken' => config('services.magic-holiday.token_url'),
+            'urlResourceOwnerDetails' => '', // Optional
+        ]);
+
+        $authorizationUrl = $provider->getAuthorizationUrl([
+            'scope' => ['read:reservations'],
+        ]);
+
+        session(['oauth2state' => $provider->getState()]);
+
+        return redirect($authorizationUrl);
+    }
+
+    public function handleProviderCallback(Request $request)
+    {
+        $provider = new GenericProvider([
+            'clientId' => config('services.magic-holiday.client-id'),
+            'clientSecret' => config('services.magic-holiday.client-secret'),
+            'redirectUri' => route('suppliers.magic-callback'),
+            'urlAuthorize' => config('services.magic-holiday.authorization_url'),
+            'urlAccessToken' => config('services.magic-holiday.token_url'),
+            'urlResourceOwnerDetails' => '', // Optional
+        ]);
+
+        $state = $request->input('state');
+        $sessionState = Session::get('oauth2state');
+
+        if (empty($state) || ($state !== $sessionState)) {
+            Session::forget('oauth2state');
+            abort(401, 'Invalid state');
+        }
+
+        try {
+            $accessToken = $provider->getAccessToken('authorization_code', [
+                'code' => $request->input('code'),
+            ]);
+
+            // Store the access token and refresh token (if available)
+            // Example:
+            session(['access_token' => $accessToken->getToken()]);
+            session(['refresh_token' => $accessToken->getRefreshToken()]);
+            session(['expires_at' => $accessToken->getExpires()]);
+
+            return redirect()->route('suppliers.magic-request');
+        } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+            abort(500, 'Failed to get access token: ' . $e->getMessage());
+        }
+    }
+
+
+    public function makeApiRequest()
+    {
+        $accessToken = session('access_token');
+
+        $client = new Client([
+            'headers' => [
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Accept' => 'application/json',
+            ],
+        ]);
+
+        $response = $client->get('https://api.provider.com/resource');
+
+        $data = json_decode($response->getBody(), true);
+
+        // Process the API response
+        return response()->json($data);
     }
 }

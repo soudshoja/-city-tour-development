@@ -1,6 +1,6 @@
 <x-app-layout>
     <style>
- button[disabled] {
+        button[disabled] {
             opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
@@ -148,7 +148,7 @@
     </style>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-    
+
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
@@ -159,11 +159,11 @@
                         <x-application-logo class="custom-logo-size" />
 
                         <div class="pl-2">
-                            @if($company)
-                            <h3>{{ $company->name }}</h3>
-                            <p>{{ $company->address }}</p>
+                            @if ($company)
+                                <h3>{{ $company->name }}</h3>
+                                <p>{{ $company->address }}</p>
                             @else
-                            <p>No company assigned</p>
+                                <p>No company assigned</p>
                             @endif
                         </div>
 
@@ -176,35 +176,39 @@
 
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
-                            <div class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                            <div
+                                class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer" data-value="{{ $branch->id }}">
-                                    {{ $branch->name }}
-                                </div>
+                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                        data-value="{{ $branch->id }}">
+                                        {{ $branch->name }}
+                                    </div>
                                 @endforeach
                             </div>
 
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
-                          
+
                     </div>
                     <!-- invoice details -->
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
 
                         <div class="flex items-center">
-                        <label class="w-full text-sm font-semibold">Invoice Number:</label>
-                            <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{$invoiceNumber}}" class="w-full form-input"
-                                placeholder="Invoice Number" />
+                            <label class="w-full text-sm font-semibold">Invoice Number:</label>
+                            <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
+                                class="w-full form-input" placeholder="Invoice Number" />
                         </div>
-                        
+
                         <div class="mt-4 flex items-center">
-                        <label class="w-full text-sm font-semibold">Invoice Date:</label>
-                            <input id="invdate" type="date" name="invdate" class="w-full form-input" value={{$invoiceDate}} disabled />
+                            <label class="w-full text-sm font-semibold">Invoice Date:</label>
+                            <input id="invdate" type="date" name="invdate" class="w-full form-input"
+                                value={{ $invoiceDate }} disabled />
                         </div>
-                  
+
                         <div class="mt-4 flex items-center">
-                        <label class="w-full text-sm font-semibold">Due Date:</label>
-                            <input id="duedate" type="date" name="duedate" value={{$dueDate}} class="w-full form-input" />
+                            <label class="w-full text-sm font-semibold">Due Date:</label>
+                            <input id="duedate" type="date" name="duedate" value={{ $dueDate }}
+                                class="w-full form-input" />
                         </div>
 
 
@@ -233,15 +237,17 @@
                                     <path
                                         d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
                                         fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
-                                        stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
                                 </svg><span class="pl-5">Choose Client</span>
                             </button>
                             <input id="receiverId" type="hidden" name="receiverId" />
-                            <input id="agentId" type="hidden" name="agentId" value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
+                            <input id="agentId" type="hidden" name="agentId"
+                                value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
                         </div>
 
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a client</p>
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a
+                            client</p>
                         <!-- client name -->
                         <div class="mt-4 flex items-center">
                             <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
@@ -250,8 +256,7 @@
 
                         <!-- client email -->
                         <div class="mt-4 flex items-center">
-                            <input id="receiverEmail" type="email" name="receiverEmail"
-                                class="form-input flex-1"
+                            <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1"
                                 placeholder="Client Email" disabled />
                         </div>
 
@@ -270,43 +275,46 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                            <button
-                                id="select-agent"
-                                type="button"
-                                onclick="openAgentModal()"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button id="select-agent" type="button" onclick="openAgentModal()"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12"
-                                        stroke="#004c9e" stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                            stroke-width="1.5" stroke-linecap="round" />
+                                    </svg><span class="pl-5">Choose Agent</span>
+                                </button>
                             @endcan
                         </div>
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
+                            an Agent</p>
 
                         <!-- agent name -->
                         <div class="mt-4 flex items-center">
                             <input id="agentName" type="text" name="agentName" class="form-input flex-1"
-                                placeholder="Agent Name" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name  : ''}}" disabled />
+                                placeholder="Agent Name"
+                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name : '' }}"
+                                disabled />
                         </div>
 
                         <!-- agent email -->
                         <div class="mt-4 flex items-center">
-                            <input id="agentEmail" type="email" name="agentEmail"
-                                class="form-input flex-1"
-                                placeholder="Agent Email" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email  : ''}}" disabled />
+                            <input id="agentEmail" type="email" name="agentEmail" class="form-input flex-1"
+                                placeholder="Agent Email"
+                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email : '' }}"
+                                disabled />
                         </div>
 
                         <!-- agent phone -->
                         <div class="mt-4 flex items-center">
                             <input id="agentPhone" type="text" name="agentPhone" class="form-input flex-1"
-                                placeholder="Agent Phone" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone  : ''}}" disabled />
+                                placeholder="Agent Phone"
+                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone : '' }}"
+                                disabled />
                         </div>
 
 
@@ -324,7 +332,7 @@
                         <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
                             <thead>
                                 <tr>
-                                <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
                                     <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th>
@@ -346,10 +354,12 @@
 
                     <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
                         <div class="mb-6 sm:mb-0">
-                            <button id="openTaskModalButton" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button id="openTaskModalButton"
+                                class="inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
                                 <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path fill="currentColor" d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
+                                    <path fill="currentColor"
+                                        d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
                                 </svg> Add Task
                             </button>
 
@@ -376,37 +386,27 @@
                         <option value="USD">USD</option>
                     </select>
 
-                 <!-- Payment Type Section -->
-                 <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span class="font-large text-success"> {{$invoice->payment_type}}</span></h2> 
+                    <!-- Payment Type Section -->
+                    <div id="paymentMethod" class="mt-4">
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span
+                                class="font-large text-success"> {{ $invoice->payment_type }}</span></h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
-                                <input
-                                    type="radio"
-                                    id="payment_type_full"
-                                    name="payment_type"
-                                    value="full"
-                                    onclick="hideModal()"
-                                    hidden
-                                    class="peer"
-                                    checked />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <input type="radio" id="payment_type_full" name="payment_type" value="full"
+                                    onclick="hideModal()" hidden class="peer" checked />
+                                <div
+                                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
                                     <span class="font-medium">Fully Payment</span>
                                 </div>
                             </label>
 
                             <!-- Partial Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
-                                <input
-                                    type="radio"
-                                    id="payment_type_partial"
-                                    name="payment_type"
-                                    value="partial"
-                                    onclick="showModal('partial')"
-                                    hidden
-                                    class="peer" />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <input type="radio" id="payment_type_partial" name="payment_type" value="partial"
+                                    onclick="showModal('partial')" hidden class="peer" />
+                                <div
+                                    class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
                                     <span class="font-medium">Partially Payment</span>
                                 </div>
                             </label>
@@ -415,15 +415,10 @@
 
                             <!-- Split Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
-                                <input
-                                    type="radio"
-                                    id="payment_type_split"
-                                    name="payment_type"
-                                    value="split"
-                                    onclick="showModal('split')"
-                                    hidden
-                                    class="peer" />
-                                <div class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                <input type="radio" id="payment_type_split" name="payment_type" value="split"
+                                    onclick="showModal('split')" hidden class="peer" />
+                                <div
+                                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
                                     <span class="font-medium">Split Payment</span>
                                 </div>
                             </label>
@@ -436,14 +431,16 @@
                         <section id="payment_gateway_section" class="mb-6">
                             <div class="mt-4">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
-                                    @foreach($paymentGateways as $gateway)
-                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                <select id="payment_gateway" name="payment_gateway"
+                                    class="border border-gray-300 p-2 rounded w-full">
+                                    @foreach ($paymentGateways as $gateway)
+                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="mt-4">
-                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
@@ -466,32 +463,43 @@
 
                                 <!-- Share Buttons -->
                                 <div class="flex items-center gap-2 w-full">
-                                <form id="whatsappForm" action="{{ route('whatsapp.send1') }}" method="POST" onsubmit="showSpinner()">
-                                    @csrf
-                                    <input type="hidden" name="clientid" id="clientid">
-                                    <input type="hidden" name="invoiceNumber" value="{{$invoiceNumber}}">
-                                    
-                                    <button id="submitButton" type="submit" class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
-                                        <span id="buttonText">Share via WhatsApp</span>
-                                        <span id="spinner" class="hidden ml-2">
-                                            <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                                            </svg>
-                                        </span>
-                                    </button>
-                                </form>
+                                    <form id="whatsappForm" action="{{ route('whatsapp.send1') }}" method="POST"
+                                        onsubmit="showSpinner()">
+                                        @csrf
+                                        <input type="hidden" name="clientid" id="clientid">
+                                        <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
 
-                                    <button onclick="shareViaEmail()" class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
+                                        <button id="submitButton" type="submit"
+                                            class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                            <span id="buttonText">Share via WhatsApp</span>
+                                            <span id="spinner" class="hidden ml-2">
+                                                <svg class="w-4 h-4 animate-spin text-white"
+                                                    xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                    viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                        stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                                </svg>
+                                            </span>
+                                        </button>
+                                    </form>
+
+                                    <button onclick="shareViaEmail()"
+                                        class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
                                         Share via Email
                                     </button>
 
                                 </div>
 
-                                <button onclick="copyLink()" class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                                        <g fill="none" stroke="#ffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
-                                            <path d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
+                                <button onclick="copyLink()"
+                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                        viewBox="0 0 24 24">
+                                        <g fill="none" stroke="#ffff" stroke-linecap="round"
+                                            stroke-linejoin="round" stroke-width="1.5">
+                                            <path
+                                                d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
                                             <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
                                         </g>
                                     </svg>
@@ -499,14 +507,21 @@
                                 </button>
 
                                 <!-- View Button -->
-                                <button onclick="viewInvoice()" class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                        <path opacity="0.5" d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z" stroke="currentColor" stroke-width="1.5"></path>
-                                        <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" stroke-width="1.5"></path>
+                                <button onclick="viewInvoice()"
+                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
+                                        <path opacity="0.5"
+                                            d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
+                                            stroke="currentColor" stroke-width="1.5"></path>
+                                        <path
+                                            d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
+                                            stroke="currentColor" stroke-width="1.5"></path>
                                     </svg>
                                     View
                                 </button>
-                                <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to clipboard!</p>
+                                <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
+                                    clipboard!</p>
                             </div>
                         </section>
 
@@ -529,29 +544,44 @@
                 <div class="panel">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
 
-                        <button id="generate-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                        <button id="generate-invoice-btn" type="button"
+                            class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                <path d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z" stroke="currentColor" stroke-width="1.5" />
-                                <path d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22" stroke="currentColor" stroke-width="1.5" />
-                                <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                <path
+                                    d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z"
+                                    stroke="currentColor" stroke-width="1.5" />
+                                <path
+                                    d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22"
+                                    stroke="currentColor" stroke-width="1.5" />
+                                <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
                             </svg>
                             <span id="button-text">Update</span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
 
-                            <!-- Delete Button -->
-                        <button id="delete-invoice-btn" type="button" class="w-full inline-flex items-center justify-center text-sm font-semibold text-white bg-red-500 hover:bg-red-700 py-4 rounded-full shadow">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                <path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V6H19Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <!-- Delete Button -->
+                        <button id="delete-invoice-btn" type="button"
+                            class="w-full inline-flex items-center justify-center text-sm font-semibold text-white bg-red-500 hover:bg-red-700 py-4 rounded-full shadow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                <path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path
+                                    d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V6H19Z"
+                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
                             </svg>
                             <span>Delete</span>
                         </button>
-                        
+
                         <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
 
@@ -561,7 +591,8 @@
                         </div>
 
                         <!-- Modal -->
-                        <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                        <div id="paymentModal"
+                            class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
                             <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
                                 <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
                                 <!-- Include your previous page content here -->
@@ -575,12 +606,18 @@
                                                 <div class="grid grid-cols-3 gap-4 mb-5">
                                                     <div>
                                                         <label class="block text-sm font-medium mb-1">Amount *</label>
-                                                        <input type="number" id="total-amount" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+                                                        <input type="number" id="total-amount"
+                                                            class="w-full border-gray-300 rounded-md shadow-sm opacity-50"
+                                                            placeholder="0" disabled />
                                                     </div>
                                                     <div>
-                                                        <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
-                                                        <select id="split-into" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
-                                                            <option value="" disabled selected>Select a value</option>
+                                                        <label class="block text-sm font-medium mb-1"
+                                                            for="split-into">Split into *</label>
+                                                        <select id="split-into"
+                                                            class="w-full border-gray-300 rounded-md shadow-sm"
+                                                            onchange="updateRows()">
+                                                            <option value="" disabled selected>Select a value
+                                                            </option>
                                                             <option value="1">1</option>
                                                             <option value="2">2</option>
                                                             <option value="3">3</option>
@@ -598,14 +635,16 @@
                                                 <!-- Expiry and Description -->
                                                 <div class="grid grid-cols-2 gap-4 mb-5">
                                                     <div>
-                                                        <label class="block text-sm font-medium mb-1">Description *</label>
+                                                        <label class="block text-sm font-medium mb-1">Description
+                                                            *</label>
                                                         <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
                                                     </div>
                                                 </div>
 
                                                 <!-- Table -->
                                                 <div class="overflow-x-auto">
-                                                    <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                    <table
+                                                        class="min-w-full bg-white border border-gray-300 text-center">
                                                         <thead>
                                                             <tr>
                                                                 <th class="border-b px-4 py-2">S.No</th>
@@ -624,7 +663,8 @@
                                                 <!-- Buttons -->
 
                                                 <div>
-                                                    <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                    <button type="button" onclick="savePartial('split')"
+                                                        class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                                                 </div>
                                             </form>
@@ -632,12 +672,14 @@
                                     </div>
                                 </div>
                                 <div class="mt-4 flex justify-end">
-                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                    <button onclick="hideModal()"
+                                        class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                 </div>
                             </div>
                         </div>
 
-                        <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+                        <div id="paymentModal1"
+                            class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
                             <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
                                 <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
                                 <div class="bg-gray-100 p-5">
@@ -650,16 +692,21 @@
                                                     <span id="receiverName1">AHMED</span>
                                                 </div>
                                                 <div>
-                                                    <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                    <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice
+                                                        Total</label>
                                                     <span id="subT1">0.00</span>
                                                 </div>
                                             </div>
 
                                             <div class="grid grid-cols-3 gap-4 mb-5">
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
-                                                    <select id="split-into1" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
-                                                        <option value="" disabled selected>Select a value</option>
+                                                    <label class="block text-sm font-medium mb-1"
+                                                        for="split-into1">Split into *</label>
+                                                    <select id="split-into1"
+                                                        class="w-full border-gray-300 rounded-md shadow-sm"
+                                                        onchange="updateRows1()">
+                                                        <option value="" disabled selected>Select a value
+                                                        </option>
                                                         <option value="1">1</option>
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
@@ -670,15 +717,19 @@
                                                 </div>
 
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1">Payment Gateway</label>
-                                                    <select id="payment_gateway1" name="payment_gateway1" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                                        @foreach($paymentGateways as $gateway)
-                                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                    <label class="block text-sm font-medium mb-1">Payment
+                                                        Gateway</label>
+                                                    <select id="payment_gateway1" name="payment_gateway1"
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                        @foreach ($paymentGateways as $gateway)
+                                                            <option value="{{ $gateway }}">{{ $gateway }}
+                                                            </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
                                             </div>
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment
+                                                Breakdown</h2>
                                             <table class="min-w-full bg-white border border-gray-300 text-center">
                                                 <thead>
                                                     <tr>
@@ -692,35 +743,41 @@
                                                 </tbody>
                                             </table>
 
-                                            <p id="error-message" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+                                            <p id="error-message" class="text-red-500 mt-3 hidden">The total of
+                                                partial payments must match the invoice total.</p>
 
                                             <div class="flex space-x-4 mt-5">
-                                                <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                <button onclick="savePartial('partial')" type="button"
+                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="mt-4 flex justify-end">
-                                    <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                    <button onclick="hideModal()"
+                                        class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                 </div>
                             </div>
                         </div>
                         <!-- Agents Modal -->
-                        <div id="agentModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
+                        <div id="agentModal"
+                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
                             <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
                                 <!-- Modal Header -->
-                                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                <div
+                                    class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
                                     <h5 class="text-lg font-bold">Agent Management</h5>
-                                    <button
-                                        type="button"
-                                        onclick="closeAgentModal()"
+                                    <button type="button" onclick="closeAgentModal()"
                                         class="text-white-dark hover:text-dark" id="closeAgentModalButton">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
                                             class="h-6 w-6">
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            <line x1="18" y1="6" x2="6" y2="18">
+                                            </line>
+                                            <line x1="6" y1="6" x2="18" y2="18">
+                                            </line>
                                         </svg>
                                     </button>
                                 </div>
@@ -739,203 +796,228 @@
                                     class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                                     <!-- Dynamic list items go here -->
                                     @foreach ($agents as $agent)
-                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100" onclick="chooseTasksAgent('{{$agent}}')">
-                                        {{$agent->name}}
-                                    </li>
+                                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
+                                            onclick="chooseTasksAgent('{{ $agent }}')">
+                                            {{ $agent->name }}
+                                        </li>
                                     @endforeach
                                 </ul>
                                 <!-- ./List of Agents -->
                             </div>
                         </div>
 
-    
-        <!-- End Agents Modal -->
-        <!-- Clients Modal -->
-        <div id="clientModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
-            <div class="bg-white border rounded-lg shadow-lg  w-3/4 md:w-1/2 mb-10">
-                <!-- Modal Header -->
-                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
-                    <h5 class="text-lg font-bold">Client Management</h5>
-                    <button type="button" class="text-white-dark hover:text-dark" id="closeClientModalButton">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                            class="h-6 w-6">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                <!-- ./Modal Header -->
 
-                <!-- Tabs -->
-                <div class="border-b flex justify-center">
-                    <button class="tab-button px-4 py-2 text-blue-500 border-b-2 border-blue-500" id="selectTabButton">Select Client</button>
-                    <button class="tab-button px-4 py-2 text-gray-500 hover:text-blue-500" id="addTabButton">Add New Client</button>
-                </div>
-                <!-- ./Tabs -->
+                        <!-- End Agents Modal -->
+                        <!-- Clients Modal -->
+                        <div id="clientModal"
+                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
+                            <div class="bg-white border rounded-lg shadow-lg  w-3/4 md:w-1/2 mb-10">
+                                <!-- Modal Header -->
+                                <div
+                                    class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                    <h5 class="text-lg font-bold">Client Management</h5>
+                                    <button type="button" class="text-white-dark hover:text-dark"
+                                        id="closeClientModalButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                            class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18">
+                                            </line>
+                                            <line x1="6" y1="6" x2="18" y2="18">
+                                            </line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- ./Modal Header -->
 
-                <!-- Tab Content -->
-                <div id="selectTab" class="p-6">
-                    <!-- Search Box -->
-                    <div class="relative mb-4">
-                        <input type="text" placeholder="Search Client..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="clientSearchInput">
-                    </div>
-                    <!-- ./Search Box -->
+                                <!-- Tabs -->
+                                <div class="border-b flex justify-center">
+                                    <button class="tab-button px-4 py-2 text-blue-500 border-b-2 border-blue-500"
+                                        id="selectTabButton">Select Client</button>
+                                    <button class="tab-button px-4 py-2 text-gray-500 hover:text-blue-500"
+                                        id="addTabButton">Add New Client</button>
+                                </div>
+                                <!-- ./Tabs -->
 
-                    <!-- List of Clients -->
-                    <ul id="clientList"
-                        class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
-                        <!-- Dynamic list items go here -->
-                    </ul>
-                    <!-- ./List of Clients -->
-                </div>
+                                <!-- Tab Content -->
+                                <div id="selectTab" class="p-6">
+                                    <!-- Search Box -->
+                                    <div class="relative mb-4">
+                                        <input type="text" placeholder="Search Client..."
+                                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                            id="clientSearchInput">
+                                    </div>
+                                    <!-- ./Search Box -->
 
-                <div id="addTab" class="p-6 hidden">
-                    <!-- Add New Client Form -->
-                    <h6 class="text-lg font-bold mb-3">Add New Client</h6>
-                    <form method="POST" action="{{ route('invoices.clientAdd') }}">
-                        @csrf
+                                    <!-- List of Clients -->
+                                    <ul id="clientList"
+                                        class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                                        <!-- Dynamic list items go here -->
+                                    </ul>
+                                    <!-- ./List of Clients -->
+                                </div>
 
-                        <div class="mb-4 flex gap-4">
-                            <!-- Name Field -->
-                            <div class="w-1/2">
-                                <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                <input id="name" name="name" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Name" />
-                            </div>
+                                <div id="addTab" class="p-6 hidden">
+                                    <!-- Add New Client Form -->
+                                    <h6 class="text-lg font-bold mb-3">Add New Client</h6>
+                                    <form method="POST" action="{{ route('invoices.clientAdd') }}">
+                                        @csrf
 
-                            <!-- Email Field -->
-                            <div class="w-1/2">
-                                <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                <input id="email" name="email" type="email" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Email" />
+                                        <div class="mb-4 flex gap-4">
+                                            <!-- Name Field -->
+                                            <div class="w-1/2">
+                                                <label for="name"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                                                <input id="name" name="name" type="text" required
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Name" />
+                                            </div>
+
+                                            <!-- Email Field -->
+                                            <div class="w-1/2">
+                                                <label for="email"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                                                <input id="email" name="email" type="email" required
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Email" />
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-4 flex gap-4">
+                                            <!-- Phone Field -->
+                                            <div class="w-1/2">
+                                                <label for="phone"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                                <input id="phone" name="phone" type="text" required
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Phone" />
+                                            </div>
+
+                                            <!-- Address Field -->
+                                            <div class="w-1/2">
+                                                <label for="address"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                                                <input id="address" name="address" type="text"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Client Address" />
+                                            </div>
+                                        </div>
+
+                                        <!-- Address Field -->
+                                        <div class="mb-4">
+                                            <label for="passport_no"
+                                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport
+                                                Number</label>
+                                            <input id="passport_no" name="passport_no" type="text" required
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                placeholder="Passport Number" />
+                                        </div>
+
+                                        <!-- Email Field -->
+                                        <div class="mb-4">
+                                            <label for="agent_email"
+                                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent
+                                                Email</label>
+                                            <input id="agent_email" name="agent_email" type="email" required
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                placeholder="Agent Email" />
+                                        </div>
+
+                                        <!-- Status Field -->
+                                        <div class="mb-4">
+
+                                            <div class="flex flex-col">
+                                                <div class="flex items-center space-x-4">
+                                                    <label class="text-lg font-semibold mb-2">status:</label>
+
+                                                    <!-- Active Radio Button -->
+                                                    <label class="flex items-center cursor-pointer">
+                                                        <input type="radio" name="status" value="1"
+                                                            class="status-radio peer hidden" id="active" />
+                                                        <span
+                                                            class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
+                                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                                        </span>
+                                                        <span
+                                                            class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
+                                                    </label>
+
+                                                    <!-- Inactive Radio Button -->
+                                                    <label class="flex items-center cursor-pointer">
+                                                        <input type="radio" name="status" value="2"
+                                                            class="status-radio peer hidden" id="inactive" />
+                                                        <span
+                                                            class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
+                                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                                        </span>
+                                                        <span
+                                                            class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+
+                                        </div>
+
+                                        <!-- Submit Button -->
+                                        <div class="flex items-center justify-center">
+                                            <button type="submit"
+                                                class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                                                Register Client
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <!-- ./Tab Content -->
                             </div>
                         </div>
 
-                        <div class="mb-4 flex gap-4">
-                            <!-- Phone Field -->
-                            <div class="w-1/2">
-                                <label for="phone"
-                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                                <input id="phone" name="phone" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Phone" />
-                            </div>
-
-                            <!-- Address Field -->
-                            <div class="w-1/2">
-                                <label for="address"
-                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                <input id="address" name="address" type="text"
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Client Address" />
-                            </div>
-                        </div>
-
-                        <!-- Address Field -->
-                        <div class="mb-4">
-                            <label for="passport_no"
-                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                            <input id="passport_no" name="passport_no" type="text" required
-                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                placeholder="Passport Number" />
-                        </div>
-
-                        <!-- Email Field -->
-                        <div class="mb-4">
-                            <label for="agent_email"
-                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent Email</label>
-                            <input id="agent_email" name="agent_email" type="email" required
-                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                placeholder="Agent Email" />
-                        </div>
-
-                        <!-- Status Field -->
-                        <div class="mb-4">
-
-                            <div class="flex flex-col">
-                                <div class="flex items-center space-x-4">
-                                    <label class="text-lg font-semibold mb-2">status:</label>
-
-                                    <!-- Active Radio Button -->
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="radio" name="status" value="1" class="status-radio peer hidden" id="active" />
-                                        <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
-                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                        </span>
-                                        <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
-                                    </label>
-
-                                    <!-- Inactive Radio Button -->
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="radio" name="status" value="2" class="status-radio peer hidden" id="inactive" />
-                                        <span class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
-                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                        </span>
-                                        <span class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
-                                    </label>
+                        <!-- Tasks Modal -->
+                        <div id="taskModal"
+                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
+                            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
+                                <div
+                                    class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                                    <h5 class="text-lg font-bold">Choose Task</h5>
+                                    <!-- Close Modal Button -->
+                                    <button type="button" class="text-white-dark hover:text-dark"
+                                        id="closeTaskModalButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                            class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18">
+                                            </line>
+                                            <line x1="6" y1="6" x2="18" y2="18">
+                                            </line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="m-6">
+                                    <!-- Search Box -->
+                                    <div class="relative mb-10">
+                                        <input type="text" placeholder="Search Task..."
+                                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                            id="taskSearchInput" oninput="filterTasks()">
+                                    </div>
+                                    <!-- ./Search Box -->
+                                    <!-- List of Tasks -->
+                                    <ul id="taskList"
+                                        class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
+                                        <!-- Dynamic list items go here -->
+                                    </ul>
                                 </div>
                             </div>
-
-
                         </div>
-
-                        <!-- Submit Button -->
-                        <div class="flex items-center justify-center">
-                            <button type="submit"
-                                class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                                Register Client
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <!-- ./Tab Content -->
-            </div>
-        </div>
-
-        <!-- Tasks Modal -->
-        <div id="taskModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
-                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
-                    <h5 class="text-lg font-bold">Choose Task</h5>
-                    <!-- Close Modal Button -->
-                    <button type="button" class="text-white-dark hover:text-dark" id="closeTaskModalButton">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                            class="h-6 w-6">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                <div class="m-6">
-                    <!-- Search Box -->
-                    <div class="relative mb-10">
-                        <input type="text" placeholder="Search Task..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="taskSearchInput" oninput="filterTasks()">
+                        <!-- end main content section -->
                     </div>
-                    <!-- ./Search Box -->
-                    <!-- List of Tasks -->
-                    <ul id="taskList" class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
-                        <!-- Dynamic list items go here -->
-                    </ul>
                 </div>
             </div>
         </div>
-        <!-- end main content section -->
     </div>
-    </div>
- </div>
-</div>
-</div>
 
     <script>
-
         let invoice = @json($invoice);
         let items = [];
         let tasks = [];
@@ -969,27 +1051,27 @@
         const buttonLoading = document.getElementById('button-loading');
         const buttonSaved = document.getElementById('button-saved');
 
-        
+
         const invoiceIdInput = document.getElementById('invoiceId');
         invoiceIdInput.value = invoice.id;
 
         function checkInvoiceId() {
-        const tabs = document.querySelectorAll('input[name="payment_type"]');
-        const paymentType = invoice.payment_type;
-          console.log('paymenttype', paymentType);
-        const paymentGatewaySection = document.getElementById('payment_gateway_section');
+            const tabs = document.querySelectorAll('input[name="payment_type"]');
+            const paymentType = invoice.payment_type;
+            console.log('paymenttype', paymentType);
+            const paymentGatewaySection = document.getElementById('payment_gateway_section');
 
-        if (paymentType === 'full') {
-            paymentGatewaySection.style.display = 'block'; // Show the section
-        } else {
-            paymentGatewaySection.style.display = 'none'; // Hide the section
+            if (paymentType === 'full') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+            } else {
+                paymentGatewaySection.style.display = 'none'; // Hide the section
+            }
+
         }
 
-    }
-
-    // Run the check on page load and whenever the input value changes
-    document.addEventListener('DOMContentLoaded', checkInvoiceId);
-    invoiceIdInput.addEventListener('input', checkInvoiceId);
+        // Run the check on page load and whenever the input value changes
+        document.addEventListener('DOMContentLoaded', checkInvoiceId);
+        invoiceIdInput.addEventListener('input', checkInvoiceId);
 
 
         // Set initial states
@@ -997,22 +1079,22 @@
         let isSaved = false;
 
         function showModal(type) {
-              if (type == 'split') {
-                  document.getElementById('paymentModal').classList.remove('hidden');
-              } else if (type == 'partial') {
-                  document.getElementById('paymentModal1').classList.remove('hidden');
-              }
-
-              checkInvoiceId();
-          }
-
-          function hideModal() {
-                document.getElementById('paymentModal').classList.add('hidden');
-                document.getElementById('paymentModal1').classList.add('hidden');
-                checkInvoiceId();
+            if (type == 'split') {
+                document.getElementById('paymentModal').classList.remove('hidden');
+            } else if (type == 'partial') {
+                document.getElementById('paymentModal1').classList.remove('hidden');
             }
 
-        
+            checkInvoiceId();
+        }
+
+        function hideModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('paymentModal1').classList.add('hidden');
+            checkInvoiceId();
+        }
+
+
         function showClientModal() {
             // Create the modal container
             const modalContainer = document.createElement('div');
@@ -1055,13 +1137,13 @@
                 modal.remove();
             }
         }
-        
+
 
         function updateRows() {
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-      
+
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
 
@@ -1082,7 +1164,7 @@
                     </td>
                     <td class="border-b px-4 py-2">
                         <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
-                              @foreach($paymentGateways as $gateway)
+                              @foreach ($paymentGateways as $gateway)
                                <option value="{{ $gateway }}">{{ $gateway }}</option>
                               @endforeach
                          </select>
@@ -1110,7 +1192,7 @@
 
             const tbody = document.getElementById('split-rows1');
             tbody.innerHTML = ''; // Clear existing rows
-    
+
             for (let i = 1; i <= splitInto1; i++) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -1158,7 +1240,8 @@
             if (items.length === 0) {
                 // If no items, display the "No Item Available" row
                 const noItemsRow = document.createElement('tr');
-                noItemsRow.innerHTML = '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                noItemsRow.innerHTML =
+                    '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                 itemsBody.appendChild(noItemsRow);
             } else {
                 // Iterate over items and create rows
@@ -1547,7 +1630,7 @@
             renderTaskList(tasks);
         }
 
-        function chooseTasksAgent(agent) {        
+        function chooseTasksAgent(agent) {
 
             agent = JSON.parse(agent);
             const agentId = agent.id;
@@ -1611,7 +1694,7 @@
 
             // Set the selected task name
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
-           
+
             // Call a function to update the total, passing the current items array
             //  updateTotal(items);
             renderTaskList(t);
@@ -1710,11 +1793,11 @@
 
 
         function renderTaskList(taskData) {
-          console.log('items', items);
+            console.log('items', items);
 
-            taskData = taskData.filter(task => 
-             !items.some(selectedTask => selectedTask.id === task.id)
-             );
+            taskData = taskData.filter(task =>
+                !items.some(selectedTask => selectedTask.id === task.id)
+            );
 
 
             console.log('items2', taskData);
@@ -1755,7 +1838,7 @@
             // Find the branch associated with the agent
             // Find the branch associated with the agent
             let branch = branches.find(b => b.id === agent.branch_id);
-        
+
 
             // Check if client and agent exist
             if (client && agent && branch) {
@@ -1856,242 +1939,242 @@
 
         function savePartial(mode) {
 
-                      if (mode === 'full') {
-                          const gateway = document.getElementById('payment_gateway').value;
-                          const date = document.getElementById('duedate').value;
-                          const amount = document.getElementById('subTotal').value;
-                          const fullData = [];
+            if (mode === 'full') {
+                const gateway = document.getElementById('payment_gateway').value;
+                const date = document.getElementById('duedate').value;
+                const amount = document.getElementById('subTotal').value;
+                const fullData = [];
 
-                          fullData.push({
-                              date,
-                              amount,
-                              gateway
-                          });
-                          save('full', fullData);
-                      } else
-                      if (mode === 'split') {
-                          // Collect Split Payment Data
-                          const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                          const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                          const description = document.getElementById('split-desc').value;
-                          const rows = document.querySelectorAll('#split-rows tr');
+                fullData.push({
+                    date,
+                    amount,
+                    gateway
+                });
+                save('full', fullData);
+            } else
+            if (mode === 'split') {
+                // Collect Split Payment Data
+                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+                const description = document.getElementById('split-desc').value;
+                const rows = document.querySelectorAll('#split-rows tr');
 
-                          const splitData = [];
-                          rows.forEach(row => {
-                              const selectElement = row.querySelector('select');
-                              const clientId = selectElement.value;
-                              const date = row.querySelector('input[type="date"]').value;
-                              const gateway = row.querySelector('#payment_gateway2').value || null;
-                              const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-                              const clientName = selectElement.options[selectElement.selectedIndex].text;
+                const splitData = [];
+                rows.forEach(row => {
+                    const selectElement = row.querySelector('select');
+                    const clientId = selectElement.value;
+                    const date = row.querySelector('input[type="date"]').value;
+                    const gateway = row.querySelector('#payment_gateway2').value || null;
+                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                    const clientName = selectElement.options[selectElement.selectedIndex].text;
 
-                              splitData.push({
-                                  clientId,
-                                  clientName,
-                                  date,
-                                  amount,
-                                  gateway
-                              });
-                          });
+                    splitData.push({
+                        clientId,
+                        clientName,
+                        date,
+                        amount,
+                        gateway
+                    });
+                });
 
-                          console.log('Split Payment Data:', {
-                              totalAmount,
-                              splitInto,
-                              description,
-                              splitData
-                          });
-                          save('split', splitData);
+                console.log('Split Payment Data:', {
+                    totalAmount,
+                    splitInto,
+                    description,
+                    splitData
+                });
+                save('split', splitData);
 
-                      } else if (mode === 'partial') {
-                          // Collect Partial Payment Data
-                          const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                          const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-                          const partialRows = document.querySelectorAll('#split-rows1 tr');
-                          const gateway = document.getElementById('payment_gateway1').value;
+            } else if (mode === 'partial') {
+                // Collect Partial Payment Data
+                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+                const partialRows = document.querySelectorAll('#split-rows1 tr');
+                const gateway = document.getElementById('payment_gateway1').value;
 
-                          const partialData = [];
+                const partialData = [];
 
-                          partialRows.forEach(row => {
-                              const date = row.querySelector('input[type="date"]').value;
-                              const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                partialRows.forEach(row => {
+                    const date = row.querySelector('input[type="date"]').value;
+                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
 
-                              partialData.push({
-                                  date,
-                                  amount,
-                                  gateway
-                              });
-                          });
+                    partialData.push({
+                        date,
+                        amount,
+                        gateway
+                    });
+                });
 
-                          console.log('Partial Payment Data:', partialData);
-                          save('partial', partialData);
+                console.log('Partial Payment Data:', partialData);
+                save('partial', partialData);
 
-                      }
-                  }
+            }
+        }
 
-            async function save(type, data) {
-                const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
+        async function save(type, data) {
+            const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
 
-                const invoiceUrl = "{{ route('invoice.partial') }}";
-                const csrfToken = "{{ csrf_token() }}";
-                const invoiceId = document.getElementById('invoiceId').value;
-                const invoiceNumber = document.getElementById('invoiceNumber').value;
-
-
-                const response1 = await fetch(invoiceUrl1, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrfToken,
-                                },
-                                body: JSON.stringify({
-                                    invoiceId,
-                                    invoiceNumber,
-                                }),
-                            });
+            const invoiceUrl = "{{ route('invoice.partial') }}";
+            const csrfToken = "{{ csrf_token() }}";
+            const invoiceId = document.getElementById('invoiceId').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
 
 
-                if (type === 'full') {
-                    const clientId = document.getElementById('receiverId').value;
+            const response1 = await fetch(invoiceUrl1, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    invoiceId,
+                    invoiceNumber,
+                }),
+            });
 
-                    try {
-                        for (const item of data) {
-                            const {
-                                date,
-                                amount,
-                                gateway
-                            } = item;
 
-                            // Send POST request for each client
-                            const response = await fetch(invoiceUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrfToken,
-                                },
-                                body: JSON.stringify({
-                                    invoiceId,
-                                    invoiceNumber,
-                                    clientId,
-                                    type,
-                                    date,
-                                    amount,
-                                    gateway
-                                }),
-                            });
+            if (type === 'full') {
+                const clientId = document.getElementById('receiverId').value;
 
-                            if (!response.ok) {
-                                throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                            }
+                try {
+                    for (const item of data) {
+                        const {
+                            date,
+                            amount,
+                            gateway
+                        } = item;
 
-                            const result = await response.json();
-                        }
-
-                        // Display links
-
-                    } catch (error) {
-                        console.error('Error generating invoices:', error);
-                        displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                    } finally {
-                        afterPaymentType();
-                        hideModal();
-                    }
-                } else
-                if (type === 'split') {
-                    // Handle split payment, generate links for each row
-                    try {
-                        const invoiceLinks = []; // Store links for each client
-                        for (const item of data) {
-                            const {
+                        // Send POST request for each client
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
                                 clientId,
-                                clientName,
+                                type,
                                 date,
                                 amount,
                                 gateway
-                            } = item;
+                            }),
+                        });
 
-                            console.log(invoiceId, clientId, type, date, amount);
-                            console.log(csrfToken);
-                            console.log(clientName)
-                            // Send POST request for each client
-                            const response = await fetch(invoiceUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrfToken,
-                                },
-                                body: JSON.stringify({
-                                    invoiceId,
-                                    invoiceNumber,
-                                    clientId,
-                                    type,
-                                    date,
-                                    amount,
-                                    gateway
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                            }
-
-                            const result = await response.json();
+                        if (!response.ok) {
+                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
                         }
 
-                    } catch (error) {
-                        console.error('Error generating invoices:', error);
-                        displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                    } finally {
-                        afterPaymentType();
-                        hideModal();
+                        const result = await response.json();
                     }
 
-                } else if (type === 'partial') {
-                    // Handle partial payment as before
-                    const clientId = document.getElementById('receiverId').value;
+                    // Display links
 
-                    try {
+                } catch (error) {
+                    console.error('Error generating invoices:', error);
+                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
+                }
+            } else
+            if (type === 'split') {
+                // Handle split payment, generate links for each row
+                try {
+                    const invoiceLinks = []; // Store links for each client
+                    for (const item of data) {
+                        const {
+                            clientId,
+                            clientName,
+                            date,
+                            amount,
+                            gateway
+                        } = item;
 
-                        for (const item of data) {
-                            const {
+                        console.log(invoiceId, clientId, type, date, amount);
+                        console.log(csrfToken);
+                        console.log(clientName)
+                        // Send POST request for each client
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId,
+                                type,
                                 date,
                                 amount,
                                 gateway
-                            } = item;
+                            }),
+                        });
 
-                            const response = await fetch(invoiceUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrfToken,
-                                },
-                                body: JSON.stringify({
-                                    invoiceId,
-                                    invoiceNumber,
-                                    clientId,
-                                    type,
-                                    date,
-                                    amount,
-                                    gateway
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                throw new Error("Failed to generate partial invoice.");
-                            }
+                        if (!response.ok) {
+                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
                         }
-                    } catch (error) {
-                        console.error('Error generating invoice:', error);
-                        displayErrorMessage("Error generating invoice. Please try again.");
-                    } finally {
-                        afterPaymentType();
-                        hideModal();
+
+                        const result = await response.json();
                     }
+
+                } catch (error) {
+                    console.error('Error generating invoices:', error);
+                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
+                }
+
+            } else if (type === 'partial') {
+                // Handle partial payment as before
+                const clientId = document.getElementById('receiverId').value;
+
+                try {
+
+                    for (const item of data) {
+                        const {
+                            date,
+                            amount,
+                            gateway
+                        } = item;
+
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId,
+                                type,
+                                date,
+                                amount,
+                                gateway
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error("Failed to generate partial invoice.");
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error generating invoice:', error);
+                    displayErrorMessage("Error generating invoice. Please try again.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
                 }
             }
+        }
 
-            function displayErrorMessage(message) {
-                const alert = document.createElement('div');
-                alert.innerHTML = `
+        function displayErrorMessage(message) {
+            const alert = document.createElement('div');
+            alert.innerHTML = `
                   <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                       ${message}
                       <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
@@ -2099,22 +2182,22 @@
                       </button>
                   </div>
               `;
-                document.body.appendChild(alert);
-            }
+            document.body.appendChild(alert);
+        }
 
-            function afterPaymentType() {
-                const tabs = document.querySelectorAll('input[name="payment_type"]');
-                const partial = document.getElementById('payment_type_partial');
-                const split = document.getElementById('payment_type_split');
-                const full = document.getElementById('payment_type_full');
-                const update = document.getElementById('update-invoice-btn');
+        function afterPaymentType() {
+            const tabs = document.querySelectorAll('input[name="payment_type"]');
+            const partial = document.getElementById('payment_type_partial');
+            const split = document.getElementById('payment_type_split');
+            const full = document.getElementById('payment_type_full');
+            const update = document.getElementById('update-invoice-btn');
 
 
-            }
+        }
 
-                    // Delete invoice
+        // Delete invoice
         async function deleteInvoice() {
-             console.log('delete',invoice.id);
+            console.log('delete', invoice.id);
 
             const invoiceUrl = `/invoice/delete/${invoice.id}`;
             const csrfToken = "{{ csrf_token() }}";
@@ -2233,7 +2316,9 @@
                 }
 
                 const result = await response.json();
-                const { invoiceId } = result;
+                const {
+                    invoiceId
+                } = result;
                 console.log(invoiceId);
 
                 document.getElementById('invoiceId').value = invoiceId;
@@ -2269,14 +2354,14 @@
             } finally {
                 // Reset button states
                 buttonLoading.style.display = "none";
-                setTimeout(() => {  
+                setTimeout(() => {
                     checkInvoiceId();
                     resetButtonState();
                 }, 1000);
             }
         };
 
-        
+
         function resetButtonState() {
             isSaving = false;
             isSaved = false;
@@ -2353,7 +2438,7 @@
                     ":invoiceNumber",
                     invoiceNumber
                 );
-     
+
             navigator.clipboard.writeText(invoiceLink).then(() => {
                 alert('Link copied to clipboard: ' + invoiceLink); // Use invoiceLink here
                 copyFeedback.classList.remove('hidden');
@@ -2394,9 +2479,9 @@
 
 
         function showSpinner() {
-        document.getElementById("submitButton").disabled = true;
-        document.getElementById("buttonText").textContent = "Sending...";
-        document.getElementById("spinner").classList.remove("hidden");
+            document.getElementById("submitButton").disabled = true;
+            document.getElementById("buttonText").textContent = "Sending...";
+            document.getElementById("spinner").classList.remove("hidden");
         }
 
 

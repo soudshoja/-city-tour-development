@@ -45,7 +45,6 @@ class Company extends Model
     public function suppliers()
     {
         return $this->belongsToMany(Supplier::class, 'supplier_companies')
-            ->using(SupplierCompany::class)
-            ->withPivot('is_active');
+            ->using(SupplierCompany::class);
     }
 }

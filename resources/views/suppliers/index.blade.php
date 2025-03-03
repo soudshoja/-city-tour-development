@@ -55,6 +55,70 @@
         </div>
         <span class="">Activate supplier to allow the system users to request API from the supplier</span>
     </div>
+
+    @role('admin')
+    <div class="max-h-160 overflow-y-auto custom-scrollbar bg-white dark:bg-dark rounded-md p-2">
+        <table>
+            <thead>
+                <tr>
+                    <th class="px-4 py-2">Supplier Name</th>
+                    <th class="px-4 py-2">Company</th>
+                    <th class="px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if($suppliers->isEmpty())
+                <tr>
+                    <td colspan="2" class="text-center">No suppliers found</td>
+                </tr>
+                @else
+                @foreach($suppliers as $supplier)
+                <tr class="hover:bg-gray-200 dark:hover:bg-gray-600">
+                    <td>
+                        {{ $supplier->name }}
+                    </td>
+                    <td>
+                        <div class="flex gap-2">
+                            @if($supplier->companies->isEmpty())
+                            <p class="text-center font-semibold">
+                                No companies registered
+                            </p>
+                            @else
+                            @foreach($supplier->companies as $company)
+                            <div class="p-2 bg-gray-100"></div>
+                            @endforeach
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <a href="{{ route('supplier-company.edit', $supplier->id) }}" class="group">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-blue-500">
+                            <path d="M22 22L2 22" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M17 22V6C17 4.11438 17 3.17157 16.4142 2.58579C15.8284 2 14.8856 2 13 2H11C9.11438 2 8.17157 2 7.58579 2.58579C7 3.17157 7 4.11438 7 6V22" stroke="" stroke-width="1.5" />
+                            <path d="M21 22V8.5C21 7.09554 21 6.39331 20.6629 5.88886C20.517 5.67048 20.3295 5.48298 20.1111 5.33706C19.6067 5 18.9045 5 17.5 5" stroke="" stroke-width="1.5" />
+                            <path d="M3 22V8.5C3 7.09554 3 6.39331 3.33706 5.88886C3.48298 5.67048 3.67048 5.48298 3.88886 5.33706C4.39331 5 5.09554 5 6.5 5" stroke="" stroke-width="1.5" />
+                            <path d="M12 22V19" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M10 12H14" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M5.5 11H7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M5.5 14H7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M17 11H18.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M17 14H18.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M5.5 8H7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M17 8H18.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M10 15H14" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M12 9V5" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M14 7L10 7" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        </a>
+                    </td>
+                </tr>
+                @endforeach
+                @endif
+            </tbody>
+        </table>
+
+    </div>
+    @else
     <div class="max-h-160 overflow-y-auto custom-scrollbar">
         <table class="">
             <thead class="sticky top-0">
@@ -81,47 +145,7 @@
                             <x-primary-button @click="credentialModal_{{ $supplier->id }} = true">
                                 Credentials
                             </x-primary-button>
-                            <div
-                                x-cloak
-                                x-show="credentialModal_{{ $supplier->id }}"
-                                class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-                                <div
-                                    @click.away="credentialModal_{{ $supplier->id }} = false"
-                                    class="bg-white dark:bg-gray-800 rounded-md shadow-md">
-                                    <div class="p-2">
-                                        <h1 class="font-bold">
-                                            Credentials for {{$supplier->name}} supplier
-                                        </h1>
-                                        @if($supplier->credentials->isEmpty())
-                                        <p class="text-red-500">You don't have any credentials for supplier yet</p>
-                                        @endif
-                                    </div>
-                                    <hr>
-                                    <form id="store-credential_{{ $supplier->id }}" class="p-2 flex flex-col gap-2" action="{{ route('credentials.store') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="supplier_id" value="{{ $supplier->id }}">
-                                        <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
-
-                                        <select name="type" id="type_{{ $supplier->id }}" class="type-credential border border-gray-300 rounded-lg p-2 mb-2 w-full">
-                                            <option value="basic">Basic</option>
-                                            <option value="oauth">OAuth</option>
-                                        </select>
-                                        <div class="basic">
-                                            <input type="text" name="username" id="username_{{ $supplier->id }}" placeholder="Username" class="border border-gray-300 rounded-lg p-2 mb-2 w-full" value="{{ old('username') ?? $supplier->credentials->first()?->username }}">
-                                            <input type="password" name="password" id="password_{{ $supplier->id }}" placeholder="Password" class="border border-gray-300 rounded-lg p-2 mb-2 w-full" value="{{ old('password') }}">
-                                        </div>
-                                        <div class="hidden oauth">
-                                            <input type="text" name="client_id" id="client_id_{{ $supplier->id }}" placeholder="Client ID" class="border border-gray-300 rounded-lg p-2 mb-2 w-full">
-                                            <input type="password" name="client_secret" id="client_secret_{{ $supplier->id }}" placeholder="Client Secret" class="border border-gray-300 rounded-lg p-2 mb-2 w-full">
-                                        </div>
-                                    </form>
-                                    <div class="p-2 flex justify-center gap-2">
-                                        <button class="bg-green-700 text-white px-2 py-1 rounded" type="submit" form="store-credential_{{ $supplier->id }}">Save</button>
-                                        <button @click="credentialModal_{{ $supplier->id }}=false" class="bg-red-700 text-white px-2 py-1 rounded">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-
+                            @include('suppliers.partials.supplier_credential')
                         </div>
                         @if($supplier->named_route)
                         <x-primary-a-button href="">Configure</x-primary-a-button>
@@ -133,6 +157,7 @@
             </tbody>
         </table>
     </div>
+    @endrole
     <script>
         const searchInput = document.getElementById('searchInput');
         const suppliersData = document.getElementById('suppliersData');

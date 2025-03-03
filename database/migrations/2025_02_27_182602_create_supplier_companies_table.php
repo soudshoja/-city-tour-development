@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('supplier_id')->constrained()->onDelete('cascade');
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
-            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }

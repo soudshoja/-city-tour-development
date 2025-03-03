@@ -3,13 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class SupplierCompany extends Model
+class SupplierCompany extends Pivot
 {
+    protected $table = 'supplier_companies';
+
     protected $fillable = [
         'supplier_id',
         'company_id',
-        'is_active',
     ];
 
     public function supplier()

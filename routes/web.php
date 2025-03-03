@@ -20,7 +20,6 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\SupplierController;
-use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
@@ -31,12 +30,7 @@ use App\Http\Controllers\SupplierCompanyController;
 use App\Http\Controllers\SupplierCredentialController;
 use App\Http\Controllers\SystemExchangeRateController;
 use App\Http\Controllers\TBOController;
-use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
-use App\Models\Role;
-use App\Models\Task;
-use App\Models\Charge;
-use Google\ApiCore\Testing\ProtobufMessageComparator;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -374,16 +368,19 @@ Route::group([
 
     Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
 
-    Route::group([
-        'prefix' => 'supplier-company',
-        'as' => 'supplier-company.',
-    ],function () {
-        Route::get('/{supplier}/{company}/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
-        Route::get('/{supplier}/{company}/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
-    });
+
 
     Route::post('credentials', [SupplierCredentialController::class, 'store'])->name('credentials.store');
 
+});
+
+Route::group([
+    'prefix' => 'supplier-company',
+    'as' => 'supplier-company.',
+], function () {
+    Route::get('/edit/{id}', [SupplierCompanyController::class, 'edit'])->name('edit');
+    Route::get('/{supplier}/{company}/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
+    Route::get('/{supplier}/{company}/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
 });
 
 // REPORTS

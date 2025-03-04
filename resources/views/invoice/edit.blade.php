@@ -546,7 +546,7 @@
                 <div class="panel">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
 
-                        <button id="generate-invoice-btn" type="button"
+                        {{-- <button id="generate-invoice-btn" type="button"
                             class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -563,10 +563,10 @@
                             <span id="button-text">Update</span>
                             <span id="button-loading" style="display: none;">Saving...</span>
                             <span id="button-saved" style="display: none;">Saved</span>
-                        </button>
+                        </button> --}}
 
                         <!-- Delete Button -->
-                        <button id="delete-invoice-btn" type="button"
+                        {{-- <button id="delete-invoice-btn" type="button"
                             class="w-full inline-flex items-center justify-center text-sm font-semibold text-white bg-red-500 hover:bg-red-700 py-4 rounded-full shadow">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
@@ -582,7 +582,7 @@
                                     stroke-linejoin="round" />
                             </svg>
                             <span>Delete</span>
-                        </button>
+                        </button> --}}
 
                         <input id="invoiceId" type="hidden" name="invoiceId" />
                         <!-- add form here-->
@@ -1241,6 +1241,7 @@
                     }
 
                     const nettValue = (item.invprice - item.price);
+                    console.log('Registered Inv Price: ' + item.task_price);
                     console.log('Item Price: ' + item.price);
                     console.log('Invoice Price: ' + item.invprice);
                     console.log('Nett of markup: ' + nettValue);
@@ -1298,7 +1299,7 @@
             // Update the corresponding item in the `items` array
             const item = items.find(item => item.id === itemId);
             if (item) {
-                item.invprice = newPrice; // Add or update the `invprice` property
+                item.task_price = newPrice; // Add or update the `invprice` property
             }
             calculateSubtotal();
         }
@@ -1306,7 +1307,7 @@
 
 
         function calculateSubtotal() {
-            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.invprice) || 0), 0);
+            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
             //console.log(typeof subtotal, subtotal); // Debugging
             //console.log(subtotal.toFixed(2)); // Ensure it works
             //console.log(subtotal);
@@ -1355,7 +1356,7 @@
                                 id="invprice-table-${item.id}"
                                 type="number"
                                 class="border border-gray-300 p-2 rounded-md w-full"
-                                value="${item.invprice}"
+                                value="${item.task_price}" 
                                 onInput="updateField(${item.id}, 'invprice-table')"
                             />
                     </td>

@@ -384,6 +384,8 @@
                         <option value="KWD">KWD</option>
                         <option value="MYR">MYR</option>
                         <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
                     </select>
 
                     <!-- Payment Type Section -->
@@ -1223,6 +1225,7 @@
                     fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
                     item[fieldId1] = newValue;
 
+
                     if (fieldId === 'invprice-modal') {
                         // Update the corresponding table input
                         const tableInput = document.getElementById(`invprice-table-${itemId}`);
@@ -1237,7 +1240,48 @@
                         }
                     }
 
+                    const nettValue = (item.invprice - item.price);
+                    console.log('Item Price: ' + item.price);
+                    console.log('Invoice Price: ' + item.invprice);
+                    console.log('Nett of markup: ' + nettValue);
                     calculateSubtotal(); // Recalculate the subtotal
+
+                    let existingAlert = document.getElementById("errorNotification");
+
+                    if (nettValue <= 0) {
+                        console.log("The Invoice Price must be higher than the Task Price.");
+
+                        if (!existingAlert) {
+                            let errorNotification = document.createElement('div');
+                            errorNotification.id = "errorNotification"; // Prevent duplicate alerts
+                            errorNotification.innerHTML = ` 
+                            <div class="alert alert-danger fixed top-5 right-5 bg-red-500 text-white p-4 rounded shadow-lg">
+                                The Invoice Price must be higher than the Task Price.
+                                <button type="button" class="close text-white ml-2" aria-label="Close"
+                                    onclick="document.getElementById('errorNotification').remove();">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>`;
+
+                            document.body.appendChild(errorNotification);
+
+                            // Auto-close after 5 seconds
+                            setTimeout(() => {
+                                let alertBox = document.getElementById("errorNotification");
+                                if (alertBox) {
+                                    alertBox.remove();
+                                }
+                            }, 10000);
+                        }
+                    } else {
+                        // Remove error notification if nettValue is fixed (>= 0)
+                        if (existingAlert) {
+                            existingAlert.remove();
+                        }
+                    }
+
+
+
 
                 } else {
                     item[fieldId] = newValue; // Update other fields

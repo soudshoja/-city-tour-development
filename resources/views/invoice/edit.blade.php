@@ -1209,6 +1209,42 @@
             }
         }
 
+        function updateField(itemId, fieldId) {
+            console.log('updated', itemId + '-' + fieldId);
+            const inputField = document.getElementById(`${fieldId}-${itemId}`);
+            const newValue = inputField.value || NULL;
+
+            const item = items.find(item => item.id === itemId);
+
+            if (item) {
+                // if (fieldId === 'invprice') {
+                if (fieldId.includes('invprice')) {
+                    // Set fieldId to 'invprice' if it includes 'invprice'
+                    fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
+                    item[fieldId1] = newValue;
+
+                    if (fieldId === 'invprice-modal') {
+                        // Update the corresponding table input
+                        const tableInput = document.getElementById(`invprice-table-${itemId}`);
+                        if (tableInput) {
+                            tableInput.value = newValue;
+                        }
+                    } else if (fieldId === 'invprice-table') {
+                        // Update the corresponding modal input
+                        const modalInput = document.getElementById(`invprice-modal-${itemId}`);
+                        if (modalInput) {
+                            modalInput.value = newValue;
+                        }
+                    }
+
+                    calculateSubtotal(); // Recalculate the subtotal
+
+                } else {
+                    item[fieldId] = newValue; // Update other fields
+                }
+            }
+
+        }
 
         function updateItemPrice(itemId) {
             // Find the input field by ID
@@ -1224,9 +1260,12 @@
         }
 
 
+
         function calculateSubtotal() {
-            const subtotal = items.reduce((sum, item) => sum + (item.invprice || 0), 0);
-            console.log(subtotal);
+            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.invprice) || 0), 0);
+            //console.log(typeof subtotal, subtotal); // Debugging
+            //console.log(subtotal.toFixed(2)); // Ensure it works
+            //console.log(subtotal);
             document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
             document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
             document.getElementById('subTotal').value = subtotal;

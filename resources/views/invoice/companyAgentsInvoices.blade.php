@@ -196,7 +196,7 @@
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $invoice->client->name }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $invoice->payment_type }}</td>
+                                                {{ ucwords($invoice->payment_type) }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $invoice->currency }} {{ $invoice->amount }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">

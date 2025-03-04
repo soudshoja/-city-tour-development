@@ -154,7 +154,7 @@
 
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $invoice->payment_type }}</td>
+                                                {{ ucwords($invoice->payment_type) }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $invoice->currency }}
                                                 {{ $invoice->amount }}
@@ -214,9 +214,9 @@
                                                         </a>
                                                     </td>
                                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        {{ $partial->type }}</td>
+                                                        {{ ucwords($partial->type) }}</td>
                                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        {{ $partial->amount }}</td>
+                                                        {{ $invoice->currency }} {{ $partial->amount }}</td>
                                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                                         {{ $partial->expiry_date }}</td>
                                                     <td class="p-3 text-sm font-semibold text-gray-500">

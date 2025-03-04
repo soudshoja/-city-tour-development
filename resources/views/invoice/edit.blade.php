@@ -1352,7 +1352,7 @@
                     <p>${item.price} KWD</p>
                     </td>
                     <td>
-                          <input
+                          <input readonly
                                 id="invprice-table-${item.id}"
                                 type="number"
                                 class="border border-gray-300 p-2 rounded-md w-full"

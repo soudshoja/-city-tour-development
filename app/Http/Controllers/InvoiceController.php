@@ -95,7 +95,10 @@ class InvoiceController extends Controller
 
 
     public function create(Request $request)
-    {
+    {   
+        if (auth()->user()->role_id == Role::ADMIN) {
+            return view('invoice.maintenance'); // Show the maintenance page
+        }
 
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
 
@@ -286,11 +289,12 @@ class InvoiceController extends Controller
 
     public function edit(string $invoiceNumber)
     {
-
         $user = Auth::user();
         $agents = collect();
         $branches = collect();
-        if ($user->role_id == Role::COMPANY) {
+        if ($user->role_id == Role::ADMIN) {
+            return view('invoice.maintenance'); // Show the maintenance page
+        } elseif ($user->role_id == Role::COMPANY) {
             $company = $user->company;
             $company = Company::with('branches.agents')->find($company->id);
             $agents = $company->branches->flatMap->agents;
@@ -327,14 +331,17 @@ class InvoiceController extends Controller
             $task->branch_name = $task->agent->branch->name ?? null; // Add branch_name dynamically
             return $task;
         });
-        $selectedTasks = $invoice->invoiceDetails->map(function ($invoiceDetail) use ($invoice) {
+        $selectedTasks = $invoice->invoiceDetails
+        ->filter(fn($invoiceDetail) => $invoiceDetail->task) // Remove null tasks
+        ->map(function ($invoiceDetail) use ($invoice) {
             $task = $invoiceDetail->task;
-            $task->agent_name = $task->agent->name ?? null; // Add agent_name dynamically
-            $task->branch_name = $task->agent->branch->name ?? null;
+            $task->agent_name = optional($task->agent)->name;
+            $task->branch_name = optional(optional($task->agent)->branch)->name;
             $task->task_price = $invoiceDetail->task_price;
             $task->invprice = (float) $invoice->amount;
             return $task;
         });
+    
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
 
@@ -584,8 +591,8 @@ class InvoiceController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment: ' . $supplier->name,
-                            'debit' => $selectedtask->total,
-                            'credit' => 0,
+                            'debit' => 0,
+                            'credit' => $selectedtask->total,
                             'balance' => $selectedtask->total,
                             'name' => $supplier->name,
                             'type' => 'payable',
@@ -600,11 +607,10 @@ class InvoiceController extends Controller
                             'invoice_id' =>  $invoice->id,
                             'account_id' =>  $receivableAccount->id,
                             'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment received from: ' . $client->name,
-                            'debit' => 0,
-                            'credit' => $task['invprice'],
+                            'debit' => $task['invprice'],
+                            'credit' => 0,
                             'balance' => $task['invprice'],
                             'name' =>  $client->name,
                             'type' => 'receivable',
@@ -731,7 +737,14 @@ class InvoiceController extends Controller
 
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch','invoiceDetails.task','invoicePartials', 'client')->whereIn('agent_id', $agentIds)->paginate(500);
+        $invoices = Invoice::with([
+            'agent.branch', 
+            'invoiceDetails.task.supplier', 
+            'invoicePartials', 
+            'client'
+        ])->whereIn('agent_id', $agentIds)
+          ->whereHas('invoiceDetails.task.supplier') // Ensures only invoices with suppliers are retrieved
+          ->paginate(500);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();

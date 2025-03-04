@@ -80,7 +80,8 @@
                                         d="M17 19h2v-8h-6v8h2v-6h2zM3 19V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v5h2v10h1v2H2v-2zm4-8v2h2v-2zm0 4v2h2v-2zm0-8v2h2V7z" />
                                 </svg>`;
 
-                    const taskDescription = data.type === 'flight' ? 'Kuala Lumpur ------->> Landon' : 'Hotel Name/ London';
+                    const taskDescription = data.type === 'flight' ? 'Kuala Lumpur ------->> Landon' :
+                        'Hotel Name/ London';
                     // Populate task details
                     taskDetailsDiv.innerHTML = `
                                 <div class="justify-center flex items-center mb-5">
@@ -184,7 +185,7 @@
             return filters[key].selected.size > 0;
         });
 
-        
+
 
         const filterBadge = document.querySelector(".filter-badge span");
         if (filterBadge) filterBadge.textContent = `${activeFilters.length} applied`;
@@ -196,9 +197,9 @@
 
         let visibleRows = 0;
         let count = 1;
-       
+
         tableRows.forEach((row) => {
-           
+
             //display the row if it met all the conditions; prices, suppliers, branches, agents, statuses, and types
             const rowPrice = parseFloat(row.getAttribute("data-price"));
             const rowSupplier = row.getAttribute("data-supplier-id");
@@ -206,22 +207,24 @@
             const rowAgent = row.getAttribute("data-agent-id");
             const rowStatus = row.getAttribute("data-status");
             const rowType = row.getAttribute("data-type");
-            
+
             const matchesPrice = isNaN(filters.price.value) || rowPrice <= filters.price.value;
-            const matchesSupplier = filters.supplier.selected.size === 0 || filters.supplier.selected.has(rowSupplier);
+            const matchesSupplier = filters.supplier.selected.size === 0 || filters.supplier.selected.has(
+                rowSupplier);
             const matchesBranch = filters.branch.selected.size === 0 || filters.branch.selected.has(rowBranch);
             const matchesAgent = filters.agent.selected.size === 0 || filters.agent.selected.has(rowAgent);
             const matchesStatus = filters.status.selected.size === 0 || filters.status.selected.has(rowStatus);
             const matchesType = filters.type.selected.size === 0 || filters.type.selected.has(rowType);
-            
-            if (matchesPrice && matchesSupplier && matchesBranch && matchesAgent && matchesStatus && matchesType) {
-                if(row.classList.contains("hidden")) {
+
+            if (matchesPrice && matchesSupplier && matchesBranch && matchesAgent && matchesStatus &&
+                matchesType) {
+                if (row.classList.contains("hidden")) {
                     row.classList.remove("hidden");
                 }
-                
+
                 visibleRows++;
             } else {
-                row.classList.add("hidden"); 
+                row.classList.add("hidden");
             }
 
             count++;
@@ -232,7 +235,8 @@
             if (!noDataMessage) {
                 const messageRow = document.createElement("tr");
                 messageRow.id = "no-data-message";
-                messageRow.innerHTML = `<td colspan="8" class="text-center text-gray-500 py-4">No data for the selected criteria</td>`;
+                messageRow.innerHTML =
+                    `<td colspan="8" class="text-center text-gray-500 py-4">No data for the selected criteria</td>`;
                 tableBody.appendChild(messageRow);
             }
         } else if (noDataMessage) {
@@ -246,9 +250,9 @@
         const selectedOption = filter.element.options[filter.element.selectedIndex];
         const id = selectedOption.value;
         const name = selectedOption.text;
-        
+
         if (id && !document.getElementById(`${idAttr}-${id}`)) {
-            
+
             const tag = createFilterTag(id, name, idAttr);
             container.appendChild(tag);
             filter.selected.add(id);
@@ -280,7 +284,8 @@
         const tag = document.createElement("div");
         tag.id = `${type}-${id}`;
         tag.className = "bg-[#5f77c6] text-white text-sm px-3 py-1 rounded-lg flex items-center justify-between";
-        tag.innerHTML = `<span>${name}</span> <button class="ml-2 text-white" onclick="removeFilter('${id}', '${type}')">&times;</button>`;
+        tag.innerHTML =
+            `<span>${name}</span> <button class="ml-2 text-white" onclick="removeFilter('${id}', '${type}')">&times;</button>`;
         return tag;
     }
 
@@ -315,7 +320,7 @@
 
 
     function showSidebar(contentId) {
-        
+
 
         taskListContainer.classList.add("shrink");
 
@@ -343,7 +348,7 @@
         // Hide both filters and task details
         filterBox.style.display = "none";
         taskDetailsDiv.style.display = "none";
-        
+
     }
 
     function filterRows() {
@@ -379,24 +384,24 @@
     function createPagination() {
         // Remove existing page numbers
         if (paginationList) {
-        Array.from(paginationList.querySelectorAll('li.page-number')).forEach((el) => el.remove());
-    
-        // Create and add page numbers dynamically
-        for (let i = 1; i <= totalPages; i++) {
-            const li = document.createElement('li');
-            li.className = `page-number ${i === currentPage ? 'active' : ''}`;
-            li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+            Array.from(paginationList.querySelectorAll('li.page-number')).forEach((el) => el.remove());
 
-            const nextPageElement = paginationList.querySelector('#nextPage');
+            // Create and add page numbers dynamically
+            for (let i = 1; i <= totalPages; i++) {
+                const li = document.createElement('li');
+                li.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
 
-            // Insert before #nextPage if it exists, otherwise append
-            if (nextPageElement) {
-                paginationList.insertBefore(li, nextPageElement);
-            } else {
-                paginationList.appendChild(li);
+                const nextPageElement = paginationList.querySelector('#nextPage');
+
+                // Insert before #nextPage if it exists, otherwise append
+                if (nextPageElement) {
+                    paginationList.insertBefore(li, nextPageElement);
+                } else {
+                    paginationList.appendChild(li);
+                }
             }
         }
-      }
     }
 
     // Function to show rows for the current page
@@ -443,12 +448,12 @@
     }
 
     // Event listener for page numbers
-    if(paginationList){
-    paginationList.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A' && e.target.dataset.page) {
-            handlePageChange(e);
-        }
-    });
+    if (paginationList) {
+        paginationList.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A' && e.target.dataset.page) {
+                handlePageChange(e);
+            }
+        });
     }
 
     // Initialize pagination
@@ -502,30 +507,30 @@
     // Initialize button state on page load
     // toggleCreateInvoiceButton();
 
-    if(createInvoiceBtn){
-    // Gather selected task IDs and submit them
-    createInvoiceBtn.addEventListener("click", function() {
-        const selectedTaskIds = Array.from(rowCheckboxes)
-            .filter(checkbox => checkbox.checked)
-            .map(checkbox => checkbox.value);
+    if (createInvoiceBtn) {
+        // Gather selected task IDs and submit them
+        createInvoiceBtn.addEventListener("click", function() {
+            const selectedTaskIds = Array.from(rowCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.value);
 
-        if (selectedTaskIds.length === 0) {
-            alert("No tasks selected!");
-            return;
-        }
+            if (selectedTaskIds.length === 0) {
+                alert("No tasks selected!");
+                return;
+            }
 
-        // Example: Redirect to the batch invoice creation route
-        const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
-        window.location.href = url;
-    });
-   }
+            // Example: Redirect to the batch invoice creation route
+            const url = "{{ route('invoice.create') }}?task_ids=" + selectedTaskIds.join(",");
+            window.location.href = url;
+        });
+    }
 
     function updatePagination(visibleRows) {
         const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
-       if (dataTableBottom) { 
-        dataTableBottom.style.display = visibleRows.length > rowsPerPage ? "flex" : "none";
-        paginationList.querySelectorAll("li.page-number").forEach((el) => el.remove());
-       }
+        if (dataTableBottom) {
+            dataTableBottom.style.display = visibleRows.length > rowsPerPage ? "flex" : "none";
+            paginationList.querySelectorAll("li.page-number").forEach((el) => el.remove());
+        }
         if (totalPages > 1) {
             for (let i = 1; i <= totalPages; i++) {
                 const li = document.createElement("li");
@@ -536,53 +541,53 @@
         }
     }
 
-    if(closeFloatingActions){
-    // Close the floating div when the "X" button is clicked
-    closeFloatingActions.addEventListener("click", function() {
-        floatingActions.classList.add("hidden");
+    if (closeFloatingActions) {
+        // Close the floating div when the "X" button is clicked
+        closeFloatingActions.addEventListener("click", function() {
+            floatingActions.classList.add("hidden");
 
-        // table pagination script 
-        const table = document.getElementById("myTable");
-        const prevPageButton = document.getElementById("prevPage");
-        const nextPageButton = document.getElementById("nextPage");
+            // table pagination script 
+            const table = document.getElementById("myTable");
+            const prevPageButton = document.getElementById("prevPage");
+            const nextPageButton = document.getElementById("nextPage");
 
-        function filterRows() {
-            return rows.filter((row) => row.style.display !== "none");
-        }
+            function filterRows() {
+                return rows.filter((row) => row.style.display !== "none");
+            }
 
 
-        function showPage(page, visibleRows) {
-            const start = (page - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
+            function showPage(page, visibleRows) {
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
 
-            rows.forEach((row) => (row.style.display = "none"));
+                rows.forEach((row) => (row.style.display = "none"));
 
-            visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
+                visibleRows.slice(start, end).forEach((row) => (row.style.display = ""));
 
-            currentPage = page;
-            updatePagination(visibleRows);
-        }
+                currentPage = page;
+                updatePagination(visibleRows);
+            }
 
-        document.addEventListener("filterUpdated", function() {
+            document.addEventListener("filterUpdated", function() {
+                const visibleRows = filterRows();
+                updatePagination(visibleRows);
+                if (visibleRows.length > 0) {
+                    showPage(1, visibleRows);
+                }
+            });
+
             const visibleRows = filterRows();
             updatePagination(visibleRows);
-            if (visibleRows.length > 0) {
-                showPage(1, visibleRows);
-            }
+            showPage(1, visibleRows);
         });
+    }
 
-        const visibleRows = filterRows();
-        updatePagination(visibleRows);
-        showPage(1, visibleRows);
-    });
-  }
-
-  if(document.getElementById("pdfInput")){
-    document.getElementById("pdfInput").addEventListener("change", function() {
-        // submit the form
-        this.form.submit();
-    });
-}
+    if (document.getElementById("pdfInput")) {
+        document.getElementById("pdfInput").addEventListener("change", function() {
+            // submit the form
+            this.form.submit();
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', function(e) {
 
@@ -591,11 +596,11 @@
         var options = {
             searchable: true,
         };
-        NiceSelect.bind(document.getElementById('status_id'), options);
-        NiceSelect.bind(document.getElementById('type_id'), options);
-        NiceSelect.bind(document.getElementById('supplier_id'), options);
-        NiceSelect.bind(document.getElementById('agent_id'), options);
-        NiceSelect.bind(document.getElementById('branch_id'), options);
+        // NiceSelect.bind(document.getElementById('status_id'), options);
+        // NiceSelect.bind(document.getElementById('type_id'), options);
+        // NiceSelect.bind(document.getElementById('supplier_id'), options);
+        // NiceSelect.bind(document.getElementById('agent_id'), options);
+        // NiceSelect.bind(document.getElementById('branch_id'), options);
 
 
     });

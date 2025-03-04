@@ -127,7 +127,7 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'tasks.',
     ], function () {
         Route::get('/', [TaskController::class, 'index'])->name('index');
-        Route::get('/{id}', [TaskController::class, 'show'])->name('show');
+        Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');

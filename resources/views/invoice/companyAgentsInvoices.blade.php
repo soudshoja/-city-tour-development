@@ -471,55 +471,57 @@
 
                 <!-- ./right -->
             </div>
-            <!--./page content-->
-            @include('invoice.tasksjs')
-            <script>
-                function openInvoiceModal(invoiceNumber) {
-                    const modal = document.getElementById("viewInvoiceModal");
-                    const contentDiv = document.getElementById("invoiceInvoiceContent");
+        </div>
+    </div>
+    <!--./page content-->
+    @include('invoice.tasksjs')
+    <script>
+        function openInvoiceModal(invoiceNumber) {
+            const modal = document.getElementById("viewInvoiceModal");
+            const contentDiv = document.getElementById("invoiceInvoiceContent");
 
-                    // Clear previous content
-                    contentDiv.innerHTML = "";
+            // Clear previous content
+            contentDiv.innerHTML = "";
 
-                    // Open the modal
-                    modal.classList.remove("hidden");
-                    url =
-                        "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                            ":invoiceNumber",
-                            invoiceNumber
-                        );
+            // Open the modal
+            modal.classList.remove("hidden");
+            url =
+                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
 
-                    // Fetch the invoice details
-                    fetch(url)
-                        .then((response) => {
-                            if (!response.ok) {
-                                throw new Error("Network response was not ok");
-                            }
-                            return response.text();
-                        })
-                        .then((data) => {
-                            contentDiv.innerHTML = data;
+            // Fetch the invoice details
+            fetch(url)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.text();
+                })
+                .then((data) => {
+                    contentDiv.innerHTML = data;
 
-                            // Close the modal when the backdrop is clicked
-                            modal.addEventListener("click", (event) => {
-                                if (event.target === modal) {
-                                    closeInvoiceModal();
-                                }
-                            });
+                    // Close the modal when the backdrop is clicked
+                    modal.addEventListener("click", (event) => {
+                        if (event.target === modal) {
+                            closeInvoiceModal();
+                        }
+                    });
 
 
-                        })
-                        .catch((error) => {
-                            console.error("Error fetching invoice details:", error);
-                            contentDiv.innerHTML =
-                                '<p class="text-center text-red-500">Failed to load invoice details.</p>';
+                })
+                .catch((error) => {
+                    console.error("Error fetching invoice details:", error);
+                    contentDiv.innerHTML =
+                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
 
-                        });
-                }
+                });
+        }
 
-                function closeInvoiceModal() {
-                    const modal = document.getElementById("viewInvoiceModal");
-                    modal.classList.add("hidden");
-                }
-            </script>
+        function closeInvoiceModal() {
+            const modal = document.getElementById("viewInvoiceModal");
+            modal.classList.add("hidden");
+        }
+    </script>
 </x-app-layout>

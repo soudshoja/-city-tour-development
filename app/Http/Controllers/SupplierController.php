@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\HttpRequestTrait;
 use App\Models\GeneralLedger;
 use App\Models\Role;
 use Illuminate\Http\Request;
@@ -15,11 +16,12 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 use League\OAuth2\Client\Provider\GenericProvider;
 
 class SupplierController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, HttpRequestTrait;
 
     public function index(Request $request)
     {
@@ -122,84 +124,126 @@ class SupplierController extends Controller
         ]);
     }
 
-    public function getMagicHoliday()
+    public function redirectToAuthorization()
     {
-        
+        $clientId = config('services.magic-holiday.client-id');
+        $authorizationUrl = config('services.magic-holiday.authorization_url');
+        $redirectUri = route('suppliers.magic-callback');
+        $scopes = 'read:reservations';
+
+        $state = Str::random(40);
+        Session::put('oauth_state', $state);
+
+        $url = $authorizationUrl . '?' . http_build_query([
+            'client_id' => $clientId,
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'scope' => $scopes,
+            'state' => $state,
+        ]);
+
+        logger($url);
+
+        return redirect($url);
     }
 
-    public function redirectToProvider()
+    public function handleAuthorizationCallback(Request $request)
     {
-        $provider = new GenericProvider([
-            'clientId' => config('services.magic-holiday.client-id'),
-            'clientSecret' => config('services.magic-holiday.client-secret'),
-            'redirectUri' => route('suppliers.magic-callback'),
-            'urlAuthorize' => config('services.magic-holiday.authorization_url'),
-            'urlAccessToken' => config('services.magic-holiday.token_url'),
-            'urlResourceOwnerDetails' => '', // Optional
-        ]);
+        $clientId = config('services.magic-holiday.client-id');
+        $clientSecret = config('services.magic-holiday.client-secret');
+        $tokenUrl = config('services.magic-holiday.token_url');
+        $redirectUri = route('suppliers.magic-callback');
 
-        $authorizationUrl = $provider->getAuthorizationUrl([
-            'scope' => ['read:reservations'],
-        ]);
-
-        session(['oauth2state' => $provider->getState()]);
-
-        return redirect($authorizationUrl);
-    }
-
-    public function handleProviderCallback(Request $request)
-    {
-        $provider = new GenericProvider([
-            'clientId' => config('services.magic-holiday.client-id'),
-            'clientSecret' => config('services.magic-holiday.client-secret'),
-            'redirectUri' => route('suppliers.magic-callback'),
-            'urlAuthorize' => config('services.magic-holiday.authorization_url'),
-            'urlAccessToken' => config('services.magic-holiday.token_url'),
-            'urlResourceOwnerDetails' => '', // Optional
-        ]);
-
+        $code = $request->input('code');
         $state = $request->input('state');
-        $sessionState = Session::get('oauth2state');
+        $sessionState = Session::get('oauth_state');
 
-        if (empty($state) || ($state !== $sessionState)) {
-            Session::forget('oauth2state');
-            abort(401, 'Invalid state');
+        if ($state !== $sessionState) {
+            return response('Invalid state', 401);
         }
 
+        Session::forget('oauth_state');
+
+        $client = new Client();
         try {
-            $accessToken = $provider->getAccessToken('authorization_code', [
-                'code' => $request->input('code'),
+            $response = $client->post($tokenUrl, [
+                'form_params' => [
+                    'grant_type' => 'authorization_code',
+                    'code' => $code,
+                    'redirect_uri' => $redirectUri,
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                ],
             ]);
 
-            // Store the access token and refresh token (if available)
-            // Example:
-            session(['access_token' => $accessToken->getToken()]);
-            session(['refresh_token' => $accessToken->getRefreshToken()]);
-            session(['expires_at' => $accessToken->getExpires()]);
+            $tokenData = json_decode($response->getBody(), true);
 
-            return redirect()->route('suppliers.magic-request');
-        } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
-            abort(500, 'Failed to get access token: ' . $e->getMessage());
+            Session::put('access_token', $tokenData['access_token']);
+            Session::put('refresh_token', $tokenData['refresh_token'] ?? null);
+            Session::put('expires_at', time() + ($tokenData['expires_in'] ?? 0));
+
+            return redirect()->route('your-protected-route'); // Redirect to a protected route
+
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            return response('Failed to get access token: ' . $e->getResponse()->getBody(), 500);
         }
     }
 
-
-    public function makeApiRequest()
+    public function getMagicHoliday($ref = null)
     {
-        $accessToken = session('access_token');
+        $data = $this->getClientCredential();
 
+        $data = json_decode($data->content(), true);
+
+        $accessToken = $data['token_type'] . ' ' . $data['access_token'];
+
+        // Use the access token to make API requests
+        $response = $this->makeApiRequest($accessToken, $ref);
+
+        return response()->json($response);
+    }
+
+    public function makeApiRequest($accessToken, $ref = null)
+    {
+        if($ref) {
+            $apiUrl = 'https://www.magicholidays.net/reseller/api/reservationsApi/v1/reservations/' . $ref;
+        } else {
+            $apiUrl = 'https://www.magicholidays.net/reseller/api/reservationsApi/v1/reservations?page=1';
+        }
         $client = new Client([
             'headers' => [
-                'Authorization' => 'Bearer ' . $accessToken,
-                'Accept' => 'application/json',
+            'Authorization' => $accessToken,
+            'Accept' => 'application/json',
             ],
         ]);
 
-        $response = $client->get('https://api.provider.com/resource');
+        try {
+            $response = $client->get($apiUrl);
+
+            logger($response->getBody());
+
+            $data = json_decode($response->getBody(), true);
+            return $data;
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            return ['error' => 'API request failed: ' . $e->getResponse()->getBody()];
+        }
+    }
+
+    public function getClientCredential()
+    {
+        $tokenUrl = config('services.magic-holiday.token_url');
+        $client = new Client();
+        $response = $client->post($tokenUrl, [
+            'form_params' => [
+                'client_id' => config('services.magic-holiday.client-id'),
+                'client_secret' => config('services.magic-holiday.client-secret'),
+                'grant_type' => 'client_credentials',
+                'scope' => 'read:reservations',
+            ],
+        ]);
 
         $data = json_decode($response->getBody(), true);
-
-        // Process the API response
+        logger($data);
         return response()->json($data);
     }
 }

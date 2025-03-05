@@ -27,6 +27,7 @@ use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Models\Suppliers;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -46,7 +47,11 @@ class TaskController extends Controller
         $clients = collect();
         $agents = collect();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
-        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+                        ->withoutGlobalScope('enabled')
+                        ->where('enabled', false)
+                        ->orderBy('id', 'desc')
+                        ->get();
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks->orderBy('created_at', 'desc')->get();
@@ -527,7 +532,214 @@ class TaskController extends Controller
 
     public function queue()
     {
-        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->withoutGlobalScope('enabled')->where('enabled', false)->get();
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+            ->withoutGlobalScope('enabled')
+            ->where('enabled', false)
+            ->orderBy('id', 'desc')
+            ->get();
         return view('tasks.queue', compact('queueTasks'));
+    }
+
+    public function supplierTask($id)
+    {
+        $user = Auth::user();
+    
+        if(!$user->role_id == Role::COMPANY){
+            return redirect()->back()->with('error', 'User is not a company');
+        }
+
+        $supplier = Supplier::findOrFail($id);
+        $supplierController = new SupplierController();
+        $companyId = $user->company->id;
+
+
+        if(!$supplier){
+            return redirect()->back()->with('error', 'Does not have task from supplier');
+        }
+
+        if($supplier->name == 'Magic Holiday'){
+
+            $response = $supplierController->getMagicHoliday();
+            $data = json_decode($response->getContent(), true);
+
+            Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
+
+            if(isset($data['error'])){
+                return redirect()->back()->with('error', $data['error']);
+            }
+
+            if(isset($data['status']) && $data['status'] == 'error'){
+                return redirect()->back()->with('error', $data['detail']);
+            }
+
+            if (isset($data['_embedded'])) { // Check if it's a list
+                foreach ($data['_embedded']['reservation'] as $reservation) {
+                   $response = $this->processSingleReservation($reservation, $companyId);
+
+                     if($response['status'] == 'error'){
+                          return redirect()->back()->with('error', $response['message']);
+                     }
+                }
+            } else {
+                $response = $this->processSingleReservation($data, $companyId);
+
+                if($response['status'] == 'error'){
+                    return redirect()->back()->with('error', $response['message']);
+                }
+            }
+
+            return redirect()->back()->with('success', 'Magic Holiday task received successfully');
+        }
+
+        return redirect()->back()->with('error', 'Does not have task from supplier');
+    }
+
+    private function processSingleReservation($reservation, $agentId = null, $companyId)
+    {
+        $clientName = $reservation['passengers'][0]['firstName'] ?? null;
+        $hotel = $reservation['service']['hotel'] ?? null;
+        $serviceDates = $reservation['service']['serviceDates'] ?? null;
+        $prices = $reservation['service']['prices'] ?? null;
+        $cancellationPolicy = $reservation['service']['cancellationPolicy'] ?? null;
+
+        if (!$reservation['service']['rooms']) {
+            Log::channel('magic_holidays')->warning('No rooms data found for reservation: ' . ($reservation['id'] ?? 'Unknown'));
+            return; // Skip this reservation if no rooms are found
+        }
+
+        foreach ($reservation['service']['rooms'] as $room) {
+            $enabled = true; // Assume enabled by default
+
+            $taskData = [
+                'client_id' => null,
+                'agent_id' => $agentId,
+                'company_id' => $companyId,
+                'type' => 'hotel',
+                'status' => $reservation['service']['status'] ?? null,
+                'client_name' => $clientName,
+                'reference' => $reservation['reference']['external'] ?? null,
+                'duration' => $serviceDates['duration'] ?? null,
+                'payment_type' => $reservation['service']['payment']['type'] ?? null,
+                'price' => $prices['issue']['selling']['value'] ?? null,
+                'tax' => null,
+                'surcharge' => null,
+                'total' => $prices['total']['selling']['value'] ?? null,
+                'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
+                'additional_info' => json_encode($reservation) ?? null,
+                'venue' => $hotel['name'] ?? null,
+                'invoice_price' => null,
+                'voucher_status' => null,
+            ];
+
+            // Check if any required field is null
+            foreach ($taskData as $key => $value) {
+                if ($value === null) {
+                    $enabled = false;
+                    Log::channel('magic_holidays')->warning("Missing required field: $key for reservation: " . ($reservation['id'] ?? 'Unknown'));
+                    break; // No need to check other fields
+                }
+            }
+            $taskData['enabled'] = $enabled;
+            Log::channel('magic_holidays')->info('Creating Task Initiate');
+            try {
+                $task = Task::create($taskData);
+
+                TaskHotelDetail::create([
+                    'task_id' => $task->id,
+                    'hotel_id' => $hotel['id'] ?? null,
+                    'booking_time' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
+                    'check_in' => Carbon::parse($serviceDates['startDate'])->toDateTimeString() ?? null,
+                    'check_out' => Carbon::parse($serviceDates['endDate'])->toDateTimeString() ?? null,
+                    'room_number' => 1,
+                    'room_type' => $room['name'] ?? null,
+                    'room_amount' => count($room['passengers']) ?? null,
+                    'room_details' => json_encode($room) ?? null,
+                    'room_promotion' => null,
+                    'rate' => $prices['issue']['selling']['value'] ?? null,
+                    'meal_type' => $room['board'] ?? null,
+                    'is_refundable' => strpos(strtolower($room['info'] ?? ''), 'non-refundable') === false,
+                    'supplements' => null,
+                ]);
+
+
+                Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'), [
+                    'reservation' => $reservation,
+                    'room' => $room,
+                ]);
+
+                return [
+                    'status' => 'success',
+                    'message' => 'Task ' . $task->id . ' created successfully',
+                    'data' => $task,
+                ];
+            } catch (\Exception $e) {
+                Log::channel('magic_holidays_error')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
+                    'reservation' => $reservation,
+                    'room' => $room,
+                ]);
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'),
+                ];
+            }
+        }
+    }
+
+    public function supplierTaskForAgent(Request $request)
+    {
+        $request->validate([
+            'agent_id' => 'required',
+            'supplier_ref' => 'required',
+            'supplier_id' => 'required|exists:suppliers,id',
+        ]);
+
+        $user = Auth::user();
+        $agent = Agent::findOrFail($request->agent_id);
+        $companyId = $user->branch->company->id;
+
+        if(!$agent){
+            return redirect()->back()->with('error', 'Agent not found');
+        }
+
+        $supplier = Supplier::findOrFail($request->supplier_id);
+        $supplierController = new SupplierController();
+
+       switch ($supplier->name) {
+           case 'Magic Holiday':
+                $response = $supplierController->getMagicHoliday($request->supplier_ref);
+                $data = json_decode($response->getContent(), true);
+
+                Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
+
+                if (isset($data['error'])) {
+                    return redirect()->back()->with('error', $data['error']);
+                }
+
+                if (isset($data['status']) && $data['status'] == 'error') {
+                    return redirect()->back()->with('error', $data['detail']);
+                }
+
+                if (isset($data['_embedded'])) { // Check if it's a list
+                    foreach ($data['_embedded']['reservation'] as $reservation) {
+                        $response = $this->processSingleReservation($reservation, $agent->id,$companyId);
+
+                        if ($response['status'] == 'error') {
+                            return redirect()->back()->with('error', $response['message']);
+                        }
+                    }
+                } else {
+                    $response = $this->processSingleReservation($data, $agent->id, $companyId);
+
+                    if ($response['status'] == 'error') {
+                        return redirect()->back()->with('error', $response['message']);
+                    }
+                }
+
+                return redirect()->back()->with('success', 'Magic Holiday task received successfully');
+           default:
+               return redirect()->back()->with('error', 'Cannot Get Task From Supplier');
+       }
+
     }
 }

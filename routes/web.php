@@ -129,6 +129,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
         Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
         Route::get('/all/queue',[TaskController::class, 'queue'])->name('queue');
+        Route::get('/supplier-task/{id}',[TaskController::class, 'supplierTask'])->name('supplier');
+        Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
     });
 
     // SUPPLIERS
@@ -139,8 +141,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
-        Route::get('/magic-request',[SupplierController::class, 'makeApiRequest'])->name('magic-request');
-
+        Route::get('/magic/get',[SupplierController::class, 'getMagicHoliday'])->name('magic.get');
+        Route::get('/magic/credential',[SupplierController::class, 'getClientCredential'])->name('magic-credential');
+        Route::get('/magic/request',[SupplierController::class, 'makeApiRequest'])->name('magic-request');
+        Route::get('/magic/callback',[SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
+        Route::get('/magic/provider',[SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
         Route::group([
             'prefix' => 'tbo',
             'as' => 'tbo.',

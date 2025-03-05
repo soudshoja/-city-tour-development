@@ -161,17 +161,12 @@
                         <div class="pl-2">
                             @if ($company)
                                 <h3>{{ $company->name }}</h3>
-                                <p>{{ $company->address }}</p>
+                                <p>{!! nl2br(e($company->address)) !!}</p>
+                                <p>{{ $company->email }}</p>
+                                <p>{{ $company->phone }}</p>
                             @else
                                 <p>No company assigned</p>
                             @endif
-                        </div>
-
-                        <div class="flex">
-                            <p class="pl-1">{{ $company->email }}</p>
-                        </div>
-                        <div class="flex">
-                            <p class="pl-1">{{ $company->phone }}</p>
                         </div>
 
                         <div class="custom-select w-full border rounded-lg mt-4">
@@ -334,8 +329,8 @@
                                 <tr>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
                                     <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th>
+                                    {{-- <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th> --}}
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
@@ -1241,9 +1236,9 @@
                     }
 
                     const nettValue = (item.invprice - item.price);
-                    console.log('Registered Inv Price: ' + item.task_price);
-                    console.log('Item Price: ' + item.price);
-                    console.log('Invoice Price: ' + item.invprice);
+                    //console.log(item);
+                    console.log('Supplier price: ' + item.total);
+                    console.log('Invoice price: ' + item.invprice);
                     console.log('Nett of markup: ' + nettValue);
                     calculateSubtotal(); // Recalculate the subtotal
 
@@ -1340,16 +1335,10 @@
                     <p>${++count}</p>
                     </td>
                     <td class="flex-grow">
-                    <p>${item.description}</p>
+                    <p><b>${item.description}</b><br>Info: ${item.additional_info}<br>Type: ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}<br>Venue: ${item.venue}</p>
                     </td>
                     <td>
-                    <p>${item.type}</p>
-                    </td>
-                    <td class="flex-grow">
-                    <p>${item.venue}</p>
-                    </td>
-                    <td>
-                    <p>${item.price} KWD</p>
+                    <p>${item.total} KWD</p>
                     </td>
                     <td>
                           <input readonly
@@ -1772,7 +1761,8 @@
                 ...task, // Spread the properties of the task object
                 remark: '', // Add default empty remark
                 quantity: 1, // Default quantity is 1
-                description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
+                //description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
+                description: `${task.reference}`,
                 client_name: task.client_name
             });
 

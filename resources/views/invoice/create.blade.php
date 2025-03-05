@@ -163,13 +163,9 @@
                         @if ($selectedCompany)
                             <div class="pl-2">
                                 <h3>{{ $selectedCompany->name }}</h3>
-                                <p>{{ $selectedCompany->address }}</p>
-                            </div>
-                            <div class="flex">
-                                <p class="pl-1">{{ $selectedCompany->email }}</p>
-                            </div>
-                            <div class="flex">
-                                <p class="pl-1">{{ $selectedCompany->phone }}</p>
+                                <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                                <p>{{ $selectedCompany->email }}</p>
+                                <p>{{ $selectedCompany->phone }}</p>
                             </div>
                         @else
                             <div class="custom-select w-full border rounded-lg mt-4">
@@ -353,14 +349,16 @@
                 <!-- choose items -->
                 <div class="mt-8">
                     <!-- choose items -->
-                    <div class="overflow-x-auto max-w-[1100px] border border-gray-200">
+                    <div class="overflow-x-auto border border-gray-200">
+                        {{-- <div class="border border-gray-200"> --}}
                         <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
                             <thead>
                                 <tr>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
-                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th>
+                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task Detail
+                                    </th>
+                                    {{-- <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th> --}}
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
@@ -1313,9 +1311,10 @@
 
                     calculateSubtotal(); // Recalculate the subtotal
 
-                    const nettValue = (item.invprice - item.price);
-                    console.log('Item Price: ' + item.price);
-                    console.log('Invoice Price: ' + item.invprice);
+                    const nettValue = (item.invprice - item.total);
+                    //console.log(item);
+                    console.log('Supplier price: ' + item.total);
+                    console.log('Invoice price: ' + item.invprice);
                     console.log('Nett of markup: ' + nettValue);
 
                     let existingAlert = document.getElementById("errorNotification");
@@ -1392,16 +1391,10 @@
                     <p>${++count}</p>
                     </td>
                     <td class="flex-grow">
-                    <p>${item.description}</p>
+                    <p><b>${item.description}</b><br>Info: ${item.additional_info}<br>Type: ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}<br>Venue: ${item.venue}</p>
                     </td>
                     <td>
-                    <p>${item.type}</p>
-                    </td>
-                    <td class="flex-grow">
-                    <p>${item.venue}</p>
-                    </td>
-                    <td>
-                    <p>${item.price} KWD</p>
+                    <p>${item.total} KWD</p>
                     </td>
                     <td>
                           <input
@@ -1841,7 +1834,8 @@
                 ...task, // Spread the properties of the task object
                 remark: '', // Add default empty remark
                 quantity: 1, // Default quantity is 1
-                description: `${task.reference} - ${task.additional_info}`, // Custom description format
+                //description: `${task.reference} - ${task.additional_info}`, // Custom description format
+                description: `${task.reference}`, // Custom description format
                 client_name: task.client_name
             });
             console.log('item selected', items);
@@ -2609,8 +2603,9 @@
                 const taskId = item.reference || "Unknown Task ID"; // Task ID
                 const supplierName = item.supplier_name || "Unknown Supplier";
                 const agentName = item.agent_name || "Unknown Agent";
-                const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
-                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.price ||
+                // const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
+                const totalAmount = parseFloat(item.total || 0); // Payable amount to the supplier
+                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.total ||
                     0); // Markup = invprice - price
 
                 // Update cumulative totals per supplier
@@ -2629,14 +2624,21 @@
             }).flat(); // Flatten the array since map creates a nested array for each item
 
             activities.push(
-                `Payments to receive from: ${clientNameFromInput} amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`);
+                `Receive payment from Client: ${clientNameFromInput} with amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`
+            );
             // Add cumulative totals for each supplier
+            let number = 1; // Start sequence from 1
+
             supplierTotals.forEach((total, supplierName) => {
-                activities.push(`Payment ${supplierName}: KWD${total.toFixed(2)}`);
+                activities.push(
+                    `Payment to Supplier #${number} - ${supplierName}: KWD${total.toFixed(2)}`
+                );
+                number++; // Increment sequence number
             });
 
+
             // Add overall cumulative totals
-            activities.push(`Total markup income: KWD${cumulativeMarkup.toFixed(2)}`);
+            activities.push(`Total Marked-Up Revenue: KWD${cumulativeMarkup.toFixed(2)}`);
 
             // Get the container where activities will be displayed
             const activitiesList = document.getElementById("coa-activities-list");

@@ -19,5 +19,7 @@ class SupplierSeeder extends Seeder
         Supplier::updateOrCreate(['name' => 'Amadeus', 'country_id' => $kuwaitId]);
         Supplier::updateOrCreate(['name' => 'Magic Holiday', 'country_id' => $kuwaitId]);
         Supplier::updateOrCreate(['name' => 'TBO Holiday', 'country_id' => $kuwaitId]);
+        Supplier::updateOrCreate(['name' => 'DOTW', 'country_id' => $kuwaitId]);
+        Supplier::updateOrCreate(['name' => 'Rate Hawk', 'country_id' => $kuwaitId]);
     }
 }

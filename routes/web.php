@@ -33,6 +33,10 @@ use App\Models\Role;
 use App\Models\Task;
 use App\Models\Charge;
 use Google\ApiCore\Testing\ProtobufMessageComparator;
+use App\Http\Controllers\DownloadMediaController;
+use App\Http\Controllers\WhatsAppWebhookController;
+
+
 
 Route::middleware(['auth'])->group(function () {
 
@@ -218,6 +222,8 @@ Route::middleware(['auth'])->group(function () {
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
     Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
+    Route::get('/download_media', [DownloadMediaController::class, 'download'])->name('downloadwhatsapp.media');
+    Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handleWebhook'])->name('webhook.whatsapp');
 
     // open api
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');

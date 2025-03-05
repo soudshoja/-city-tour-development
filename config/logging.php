@@ -127,6 +127,19 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'magic_holidays' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/magic_holidays/magic_holidays.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
+        'magic_holidays_error' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/magic_holidays/magic_holidays_error.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

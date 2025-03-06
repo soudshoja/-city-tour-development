@@ -97,11 +97,11 @@ class TaskController extends Controller
 
         $importedTask = Cache::get('imported_task');
         
-
-        if($user->hasAnyRole('Admin', 'Company')){
+        if($user->hasAnyRole('admin', 'company')){
 
             $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
 
+            // dd($agents);
             return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types', 'queueTasks'));
         }
         return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'queueTasks'));
@@ -565,23 +565,25 @@ class TaskController extends Controller
             Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
 
             if(isset($data['error'])){
-                return redirect()->back()->with('error', $data['error']);
+                Log::channel('magic_holidays_error')->error('Error getting task from supplier: ' . $data['error']);
+                return redirect()->back()->with('error', 'Something went wrong');
             }
 
             if(isset($data['status']) && $data['status'] == 'error'){
-                return redirect()->back()->with('error', $data['detail']);
+                Log::channel('magic_holidays_error')->error('Error getting task from supplier: ' . $data['detail']);
+                return redirect()->back()->with('error', 'Something went wrong');
             }
 
             if (isset($data['_embedded'])) { // Check if it's a list
                 foreach ($data['_embedded']['reservation'] as $reservation) {
-                   $response = $this->processSingleReservation($reservation, $companyId);
+                   $response = $this->processSingleReservation($reservation, null,$companyId);
 
                      if($response['status'] == 'error'){
                           return redirect()->back()->with('error', $response['message']);
                      }
                 }
             } else {
-                $response = $this->processSingleReservation($data, $companyId);
+                $response = $this->processSingleReservation($data, null ,$companyId);
 
                 if($response['status'] == 'error'){
                     return redirect()->back()->with('error', $response['message']);
@@ -696,7 +698,16 @@ class TaskController extends Controller
 
         $user = Auth::user();
         $agent = Agent::findOrFail($request->agent_id);
-        $companyId = $user->branch->company->id;
+
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company->id;
+        } elseif ($user->role_id == Role::AGENT){
+            $companyId = $user->agent->branch->company->id;
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to create task');
+        }
 
         if(!$agent){
             return redirect()->back()->with('error', 'Agent not found');

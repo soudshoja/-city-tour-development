@@ -14,6 +14,7 @@ use Generator;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
@@ -197,19 +198,19 @@ class SupplierController extends Controller
 
         $accessToken = $data['token_type'] . ' ' . $data['access_token'];
 
-        // Use the access token to make API requests
-        $response = $this->makeApiRequest($accessToken, $ref);
+        if($ref) {
+            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
+        } else {
+            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations?page=1';
+        }
+
+        $response = $this->makeApiRequest($accessToken, $url);
 
         return response()->json($response);
     }
 
-    public function makeApiRequest($accessToken, $ref = null)
+    public function makeApiRequest($accessToken, $url)
     {
-        if($ref) {
-            $apiUrl = 'https://www.magicholidays.net/reseller/api/reservationsApi/v1/reservations/' . $ref;
-        } else {
-            $apiUrl = 'https://www.magicholidays.net/reseller/api/reservationsApi/v1/reservations?page=1';
-        }
         $client = new Client([
             'headers' => [
             'Authorization' => $accessToken,
@@ -218,7 +219,7 @@ class SupplierController extends Controller
         ]);
 
         try {
-            $response = $client->get($apiUrl);
+            $response = $client->get($url);
 
             logger($response->getBody());
 
@@ -245,5 +246,23 @@ class SupplierController extends Controller
         $data = json_decode($response->getBody(), true);
         logger($data);
         return response()->json($data);
+    }
+
+    public function magicReserveWebhook($id)
+    {
+
+        $data = $this->getClientCredential();
+
+        $data = json_decode($data->content(), true);
+
+        $accessToken = $data['token_type'] . ' ' . $data['access_token'];
+
+        $url = config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $id . '/webhook';
+        // Use the access token to make API requests
+        $response = $this->makeApiRequest($accessToken, $url);
+
+        Log::channel('magic-holiday')->info('Magic Holiday Webhook', $response);
+
+        return response()->json($response);
     }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\AIService; 
+use App\AIService;
 use App\Http\Requests\OpenAiRequest;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Client;

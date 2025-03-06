@@ -90,7 +90,6 @@
         <div 
             x-data="{ addTaskModal: false }"
             class="flex items-center gap-5">
-            @role('agent')
             <div 
                 @click="addTaskModal = true" 
                 class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer" data-tooltip="Add Task By Supplier">
@@ -111,10 +110,20 @@
                         Add Task For Specific Supplier
                     </div>
                     <hr>
-                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}" class="p-4" method="POST">
+                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}" class="p-4 flex flex-col gap-2" method="POST">
                         @csrf
+                        @unlessrole('agent')
+                        <select name="agent_id" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                            <option value="" class="">Select Agent</option>
+                            @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" data-client="{{ $agent }}">{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        @else
                         <input type="hidden" name="agent_id" id="agent_id" value="{{ Auth()->user()->agent->id }}">
-                        <select name="supplier_id" id="select-supplier-task" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-gray-500">
+                        @endunlessrole
+                        <select name="supplier_id" id="select-supplier-task" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                            <option value="">Select Supplier</option>
                             @foreach($suppliers as $supplier)
                             <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">{{ $supplier->name }}</option>
                             @endforeach
@@ -130,7 +139,6 @@
                     </div>
                 </div>
             </div>
-            @endrole
             <!-- <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />

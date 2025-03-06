@@ -560,6 +560,7 @@ class TaskController extends Controller
         if($supplier->name == 'Magic Holiday'){
 
             $response = $supplierController->getMagicHoliday();
+            
             $data = json_decode($response->getContent(), true);
 
             Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
@@ -719,32 +720,34 @@ class TaskController extends Controller
        switch ($supplier->name) {
            case 'Magic Holiday':
                 $response = $supplierController->getMagicHoliday($request->supplier_ref);
-                $data = json_decode($response->getContent(), true);
+                $response = json_decode($response->getContent(), true);
 
-                Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
-
-                if (isset($data['error'])) {
-                    return redirect()->back()->with('error', $data['error']);
+                Log::channel('magic_holidays')->info('Magic Holiday response: ', $response);
+                
+                if (isset($response['status']) && $response['status'] == 'error') {
+                    return redirect()->back()->with('error', $response['message']);
                 }
-
-                if (isset($data['status']) && $data['status'] == 'error') {
-                    return redirect()->back()->with('error', $data['detail']);
-                }
+                $data = $response['data'];
 
                 if (isset($data['_embedded'])) { // Check if it's a list
                     foreach ($data['_embedded']['reservation'] as $reservation) {
                         $response = $this->processSingleReservation($reservation, $agent->id,$companyId);
-
+                       
                         if ($response['status'] == 'error') {
                             return redirect()->back()->with('error', $response['message']);
                         }
+
+                        $supplierController->magicReserveWebhook($reservation['id']);
                     }
                 } else {
+                    
                     $response = $this->processSingleReservation($data, $agent->id, $companyId);
-
+                    
                     if ($response['status'] == 'error') {
                         return redirect()->back()->with('error', $response['message']);
                     }
+
+                   $supplierController->magicReserveWebhook($data['id']);
                 }
 
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');

@@ -192,77 +192,156 @@ class SupplierController extends Controller
 
     public function getMagicHoliday($ref = null)
     {
-        $data = $this->getClientCredential();
-
-        $data = json_decode($data->content(), true);
-
-        $accessToken = $data['token_type'] . ' ' . $data['access_token'];
-
         if($ref) {
             $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
         } else {
             $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations?page=1';
         }
 
-        $response = $this->makeApiRequest($accessToken, $url);
+        $scopes = ['read:reservations'];
 
-        return response()->json($response);
+        $response = $this->magicApiRequest('GET', $url, [], [], $scopes);
+
+        if(isset($response['status']) && $response['status'] !== 200){
+            $data =  [
+                'status' => 'error',
+                'data' => $response,
+                'message' => $response['detail']
+            ];
+        }
+
+        $data = [
+            'status' => 'success',
+            'data' => $response
+        ];
+
+        return response()->json($data);
     }
 
-    public function makeApiRequest($accessToken, $url)
+    public function magicApiRequest(
+        string $method = 'GET',
+        string $url,
+        array $header = [],
+        array $data = [],
+        array $scopes = ['read:reservations']
+    )
     {
-        $client = new Client([
-            'headers' => [
-            'Authorization' => $accessToken,
-            'Accept' => 'application/json',
-            ],
+        
+        $data = $this->getClientCredential($scopes);
+
+        if(isset($data['error'])){
+            return [
+                'status' => 'error',
+                'data' => $data,
+                'message' => $data['error']
+            ];
+        }
+
+        $accessToken = $data['token_type'] . ' ' . $data['access_token'];
+
+        $header = [
+            'Authorization: ' . $accessToken,
+            'Accept: application/json',
+        ];
+
+        Log::channel('magic_holidays')->info('Request', [
+            'method' => $method,
+            'url' => $url,
+            'header' => $header,
+            'data' => $data
         ]);
 
-        try {
-            $response = $client->get($url);
-
-            logger($response->getBody());
-
-            $data = json_decode($response->getBody(), true);
-            return $data;
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            return ['error' => 'API request failed: ' . $e->getResponse()->getBody()];
+        switch ($method) {
+            case 'GET':
+            $response = $this->getRequest($url, $header);
+            break;
+            case 'POST':
+            $response = $this->postRequest($url, $header, $data);
+            break;
+            case 'PUT':
+            $response = $this->putRequest($url, $header, $data);
+            break;
+            case 'DELETE':
+            $response = $this->deleteRequest($url, $header);
+            break;
+            default:
+            throw new \InvalidArgumentException("Unsupported HTTP method: $method");
         }
+
+        Log::channel('magic_holidays')->info('Response', $response);
+
+        if(isset($response['status']) && $response['status'] !== 200){
+            return [
+                'status' => 'error',
+                'data' => $response,
+                'message' => $response['detail']
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'data' => $response
+        ];
     }
 
-    public function getClientCredential()
+    public function getClientCredential(array $scopes)
     {
         $tokenUrl = config('services.magic-holiday.token_url');
-        $client = new Client();
-        $response = $client->post($tokenUrl, [
-            'form_params' => [
-                'client_id' => config('services.magic-holiday.client-id'),
-                'client_secret' => config('services.magic-holiday.client-secret'),
-                'grant_type' => 'client_credentials',
-                'scope' => 'read:reservations',
-            ],
+
+        $data = [
+            'client_id' => config('services.magic-holiday.client-id'),
+            'client_secret' => config('services.magic-holiday.client-secret'),
+            'grant_type' => 'client_credentials',
+            'scope' => $scopes,
+        ];
+
+        Log::channel('magic_holidays')->info('Credential Request', [
+            'token_url' => $tokenUrl,
+            'data' => $data
         ]);
 
-        $data = json_decode($response->getBody(), true);
-        logger($data);
-        return response()->json($data);
+        $response = $this->postRequest($tokenUrl, [], $data);
+
+        Log::channel('magic_holidays')->info('Credential Response', $response);
+
+        return $response;
     }
 
     public function magicReserveWebhook($id)
     {
 
-        $data = $this->getClientCredential();
+        $data = $this->getClientCredential(['write:reservations-webhooks']);
 
-        $data = json_decode($data->content(), true);
+        Log::channel('magic_holidays')->info('Magic Holiday Webhook Credential', $data);
+
+        if(isset($data['error'])){
+            return;
+        } 
 
         $accessToken = $data['token_type'] . ' ' . $data['access_token'];
 
-        $url = config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $id . '/webhook';
-        // Use the access token to make API requests
-        $response = $this->makeApiRequest($accessToken, $url);
+        $url = config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $id . '/webhooks';
 
-        Log::channel('magic-holiday')->info('Magic Holiday Webhook', $response);
+        $header = [
+            'Authorization: ' . $accessToken,
+            'Accept: application/json',
+        ];
 
-        return response()->json($response);
+        $data = [
+            'url' => route('suppliers.magic-webhook-callback'),
+        ];
+
+        $response = $this->putRequest($url, $header, $data);
+        
+        Log::channel('magic_holidays')->info('Magic Holiday Webhook', $response);
+
+        return;
+    }
+
+    public function magicReserveWebhookCallback(Request $request)
+    {
+        Log::channel('magic_holidays')->info('Magic Holiday Webhook Callback', $request->all());
+
+        return response()->json(['status' => 'success']);
     }
 }

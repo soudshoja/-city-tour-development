@@ -66,6 +66,7 @@ return [
         'key' => env('CURRENCY_API_KEY'),
     ],
     'magic-holiday' => [
+        'url' => env('MAGIC_HOLIDAY_URL'),
         'client-id' => env('MAGIC_HOLIDAY_CLIENT_ID'),
         'client-secret' => env('MAGIC_HOLIDAY_CLIENT_SECRET'),
         'authorization_url' => env('MAGIC_HOLIDAY_AUTHORIZATION_URL'),

@@ -202,20 +202,7 @@ class SupplierController extends Controller
 
         $response = $this->magicApiRequest('GET', $url, [], [], $scopes);
 
-        if(isset($response['status']) && $response['status'] !== 200){
-            $data =  [
-                'status' => 'error',
-                'data' => $response,
-                'message' => $response['detail']
-            ];
-        }
-
-        $data = [
-            'status' => 'success',
-            'data' => $response
-        ];
-
-        return response()->json($data);
+        return response()->json($response);
     }
 
     public function magicApiRequest(
@@ -312,7 +299,6 @@ class SupplierController extends Controller
 
         $data = $this->getClientCredential(['write:reservations-webhooks']);
 
-        Log::channel('magic_holidays')->info('Magic Holiday Webhook Credential', $data);
 
         if(isset($data['error'])){
             return;
@@ -326,14 +312,19 @@ class SupplierController extends Controller
             'Authorization: ' . $accessToken,
             'Accept: application/json',
         ];
-
         $data = [
             'url' => route('suppliers.magic-webhook-callback'),
         ];
+        
+        Log::channel('magic_holidays')->info('Magic Holiday Webhook Request', [
+            'url' => $url,
+            'header' => $header,
+            'data' => $data
+        ]);
 
         $response = $this->putRequest($url, $header, $data);
         
-        Log::channel('magic_holidays')->info('Magic Holiday Webhook', $response);
+        Log::channel('magic_holidays')->info('Magic Holiday Webhook Response', $response);
 
         return;
     }

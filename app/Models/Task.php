@@ -14,6 +14,7 @@ class Task extends Model
         'client_id',
         'agent_id',
         'company_id',
+        'supplier_id',
         'type',
         'status',
         'client_name',

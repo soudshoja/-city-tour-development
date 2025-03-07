@@ -50,14 +50,14 @@ class TaskController extends Controller
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
                         ->withoutGlobalScope('enabled')
                         ->where('enabled', false)
-                        ->orderBy('id', 'desc')
-                        ->get();
+                        ->orderBy('id', 'desc');
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks->orderBy('created_at', 'desc')->get();
             $taskCount = Task::count();
             $clients = Client::all();
             $agents = Agent::all();
+            $queueTasks = $queueTasks->get();
         } elseif ($user->role_id == Role::COMPANY) {
 
             $branches = Branch::where('company_id', $user->company->id)->get();
@@ -66,28 +66,22 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
             $taskCount = Task::whereIn('agent_id', $agentsId)->count();
+            $queueTasks = $queueTasks->whereIn('agent_id', $agentsId)->get();
 
+        } elseif($user->role_id == Role::BRANCH){
+            $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
+            $taskCount = Task::whereIn('agent_id', $agentsId)->count();
+            $queueTasks = $queueTasks->whereIn('agent_id', $agentsId)->get();
         } elseif ($user->role_id == Role::AGENT) {
-            // if ($id) {
-            //     $agent = Agent::with('branch')->find($id);
-            //     if ($agent) {
-            //         $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
-            //         $taskCount = Task::where('agent_id', $agent->id)->count();
-            //     } else {
-            //         return redirect()->back()->with('error', 'Agent not found.');
-            //     }
-            // } else {
-            //     $agent = $user->agent;
-            //     if ($agent) {
-            //         $tasks = Task::with('agent.branch', 'client')->where('agent_id', $agent->id)->get();
-            //         $taskCount = Task::where('agent_id', $agent->id)->count();
-            //     } else {
-            //         return redirect()->back()->with('error', 'Agent not found.');
-            //     }
-            // }
-
+        
+            $clients = Client::where('agent_id', $user->agent->id)->get();
             $tasks = $tasks->where('agent_id', $user->agent->id)->get();
             $taskCount = $tasks->count();
+            $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
+
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
@@ -532,11 +526,24 @@ class TaskController extends Controller
 
     public function queue()
     {
+
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
             ->withoutGlobalScope('enabled')
             ->where('enabled', false)
-            ->orderBy('id', 'desc')
-            ->get();
+            ->orderBy('id', 'desc');
+        
+        $user = Auth::user();
+
+        if ($user->role_id == Role::COMPANY) {
+            $queueTasks = $queueTasks->get();
+        } else if ($user->role_id == Role::BRANCH) {
+            $queueTasks = $queueTasks->where('agent_id' , $user->branch->agents->pluck('id'))->get();
+        }  else if($user->role_id == Role::AGENT){
+            $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to view tasks.');
+        }
+
         return view('tasks.queue', compact('queueTasks'));
     }
 
@@ -566,12 +573,12 @@ class TaskController extends Controller
             Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
 
             if(isset($data['error'])){
-                Log::channel('magic_holidays_error')->error('Error getting task from supplier: ' . $data['error']);
+                Log::channel('magic_holidays')->error('Error getting task from supplier: ' . $data['error']);
                 return redirect()->back()->with('error', 'Something went wrong');
             }
 
             if(isset($data['status']) && $data['status'] == 'error'){
-                Log::channel('magic_holidays_error')->error('Error getting task from supplier: ' . $data['detail']);
+                Log::channel('magic_holidays')->error('Error getting task from supplier: ' . $data['detail']);
                 return redirect()->back()->with('error', 'Something went wrong');
             }
 
@@ -604,11 +611,33 @@ class TaskController extends Controller
         $serviceDates = $reservation['service']['serviceDates'] ?? null;
         $prices = $reservation['service']['prices'] ?? null;
         $cancellationPolicy = $reservation['service']['cancellationPolicy'] ?? null;
+        $supplierId = Supplier::where('name', 'Magic Holiday')->first()->id;
+
+        if(!$supplierId){
+            Log::channel('magic_holidays')->error('Supplier not found: Magic Holiday');
+            return [
+                'status' => 'error',
+                'message' => 'Something Went Wrong',
+            ];
+        }
 
         if (!$reservation['service']['rooms']) {
             Log::channel('magic_holidays')->warning('No rooms data found for reservation: ' . ($reservation['id'] ?? 'Unknown'));
             return; // Skip this reservation if no rooms are found
         }
+
+        if(isset($reservation['reference']['external'])){
+            $existingTask = Task::where('reference', $reservation['reference']['external'])->withoutGlobalScope('enabled')->first();
+
+            if ($existingTask) {
+                
+                Log::channel('magic_holidays')->warning('Task already exists: ' . ($reservation['id']));
+                return [
+                    'status' => 'error',
+                    'message' => 'Task already exists for reservation Id ' . $existingTask->id . ', reference: ' . $reservation['reference']['external'] . ", by " . $existingTask->agent->name,
+                ];
+            }  
+        } 
 
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
@@ -629,6 +658,7 @@ class TaskController extends Controller
                 'total' => $prices['total']['selling']['value'] ?? null,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
                 'additional_info' => json_encode($reservation) ?? null,
+                'supplier_id' => $supplierId,
                 'venue' => $hotel['name'] ?? null,
                 'invoice_price' => null,
                 'voucher_status' => null,
@@ -676,7 +706,7 @@ class TaskController extends Controller
                     'data' => $task,
                 ];
             } catch (\Exception $e) {
-                Log::channel('magic_holidays_error')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
+                Log::channel('magic_holidays')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
                     'reservation' => $reservation,
                     'room' => $room,
                 ]);

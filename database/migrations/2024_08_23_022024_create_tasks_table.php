@@ -33,6 +33,8 @@ return new class extends Migration
             $table->string('voucher_status');
             $table->boolean('enabled')->default(true);
             $table->timestamps();
+
+            $table->unique(['supplier_id', 'reference']);
         });
     }
 

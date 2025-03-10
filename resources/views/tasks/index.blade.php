@@ -8,11 +8,11 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name ?? 'No Agent Set'}}</p>
                     </div>
-                    <div>
+                    <!-- <div>
                         <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="importTaskModal = true">View</a>
-                    </div>
+                    </div> -->
                 </div>
             </div>
             @endforeach
@@ -28,58 +28,9 @@
     @endif
 
     <div
-        x-data="{ importTaskModal: true }"
         class="flex justify-between items-center gap-5 my-3 ">
 
-        @if($importedTask = session('importedTask'))
-        <div
-            x-show="importTaskModal"
-            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-            <form id="imported-task-form" action="{{ route('tasks.update', $importedTask->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
-                <div
-                    @click.away="importTaskModal = false"
-                    class="bg-white rounded-md border-2w-80">
-                    <div class="flex justify-between p-4">
-                        <p class="font-semibold">
-                            Update the following information if needed
-                        </p>
-                        <button
-                            type="button"
-                            @click="importTaskModal = false"
-                            class="text-red-500 font-bold">
-                            &times;
-                        </button>
-                    </div>
-                    <hr>
-                    @csrf
-                    @method('PUT')
-                    <div class="p-4 inline-flex flex-col gap-2">
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->reference }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->additional_info }} - {{ $importedTask->venue }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->supplier->name }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->price }}" readonly>
-                        <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $importedTask->type }}" readonly>
-                        <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($clients as $client)
-                            <option value="{{ $client->id }}" {{!$importedTask->client ?? $client->id == $importedTask->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($agents as $agent)
-                            <option value="{{ $agent->id }}" {{@$importedTask->agent ?? $agent->id == $importedTask->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                            @foreach($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" {{!$supplier->id == $importedTask->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
-            </form>
-        </div>
-        @endif
+
 
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Tasks List</h2>
@@ -87,7 +38,58 @@
                 <span class="text-xl font-bold text-white">{{ $taskCount }}</span>
             </div>
         </div>
-        <div class="flex items-center gap-5">
+        <div
+            x-data="{ addTaskModal: false }"
+            class="flex items-center gap-5">
+            <div
+                @click="addTaskModal = true"
+                class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer" data-tooltip="Add Task By Supplier">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300 group-hover:stroke-white group-focus:stroke-white">
+                    <path d="M15 12L12 12M12 12L9 12M12 12L12 9M12 12L12 15" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                    <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+
+            </div>
+            <div
+                x-cloak
+                x-show="addTaskModal"
+                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                <div
+                    @click.away="addTaskModal = false"
+                    class="bg-white rounded shadow">
+                    <div class="p-4 flex justify-between items-center">
+                        Add Task For Specific Supplier
+                    </div>
+                    <hr>
+                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}" class="p-4 flex flex-col gap-2" method="POST">
+                        @csrf
+                        @unlessrole('agent')
+                        <select name="agent_id" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                            <option value="" class="">Select Agent</option>
+                            @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" data-client="{{ $agent }}">{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        @else
+                        <input type="hidden" name="agent_id" id="agent_id" value="{{ Auth()->user()->agent->id }}">
+                        @endunlessrole
+                        <select name="supplier_id" id="select-supplier-task" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                            <option value="">Select Supplier</option>
+                            @foreach($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">{{ $supplier->name }}</option>
+                            @endforeach
+                        </select>
+                        <div id="form-task-container" class="mt-2" data-company-id="{{ auth()->user()->company->id }}">
+
+                        </div>
+                    </form>
+                    <hr>
+                    <div class="p-4 flex justify-between items-center">
+                        <button @click="addTaskModal = false" class="text-red-500">Cancel</button>
+                        <x-primary-button type="submit" form="agent-supplier-task">Submit</x-primary-button>
+                    </div>
+                </div>
+            </div>
             <!-- <div data-tooltip="Reload" class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
@@ -217,6 +219,61 @@
                                                 </g>
                                             </svg>
                                         </a>
+                                        <div x-data="{ importTaskModal_{{ $task->id }}: false }">
+                                            <a data-tooltip="edit task" href="javascript:void(0);" @click="importTaskModal_{{ $task->id }} = true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
+                                                </svg>
+                                            </a>
+                                            <div
+                                                x-show="importTaskModal_{{ $task->id }}"
+                                                x-cloak
+                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                <form id="imported-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                                                    <div
+                                                        @click.away="importTaskModal_{{ $task->id }}  = false"
+                                                        class="bg-white rounded-md border-2w-80">
+                                                        <div class="flex justify-between p-4">
+                                                            <p class="font-semibold">
+                                                                Update the following information if needed
+                                                            </p>
+                                                            <button
+                                                                type="button"
+                                                                @click="importTaskModal_{{ $task->id }} = false"
+                                                                class="text-red-500 font-bold">
+                                                                &times;
+                                                            </button>
+                                                        </div>
+                                                        <hr>
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <div class="p-4 inline-flex flex-col gap-2">
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
+                                                            <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                @foreach($clients as $client)
+                                                                <option value="{{ $client->id }}" {{!$task->client ?? $client->id == $task->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                @foreach($agents as $agent)
+                                                                <option value="{{ $agent->id }}" {{@$task->agent ?? $agent->id == $task->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                @foreach($suppliers as $supplier)
+                                                                <option value="{{ $supplier->id }}" {{!$supplier->id == $task->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->reference }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client ? $task->client->name : 'Not Set' }}</td>
@@ -493,7 +550,6 @@
     <script>
         let invoicesModal = document.querySelectorAll('.invoiceModal');
 
-
         invoicesModal.forEach(invoice => {
             invoice.addEventListener('click', function() {
 
@@ -525,10 +581,45 @@
                 modalInvoice.classList.add('hidden');
             }
         });
+
         document.getElementById('upload-task').addEventListener('change', function() {
             submitBtn = document.querySelector('#upload-task-submit');
             console.log(submitBtn);
             submitBtn.focus();
+        });
+
+        document.getElementById('select-supplier-task').addEventListener('change', function() {
+            let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
+            let supplier = JSON.parse(selectedSupplier);
+            let formTaskContainer = document.getElementById('form-task-container');
+            let companyIdData = formTaskContainer.getAttribute('data-company-id');
+            let tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
+            
+            formTaskContainer.innerHTML = '';
+            console.log(supplier.name);
+            console.log(supplier.name == 'Magic Holiday');
+            if (supplier.name === 'Magic Holiday') {
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'supplier_ref';
+                input.placeholder = 'Reference';
+                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border', 'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-300', 'p-3');
+                formTaskContainer.appendChild(input);
+            } else if(supplier.name === 'TBO Holiday') {
+                let a = document.createElement('a');
+                a.href = tboTaskUrl;
+                a.innerHTML = 'Import Task';
+                a.classList.add('bg-blue-500', 'text-white', 'rounded-lg', 'p-2', 'text-center', 'w-full', 'font-semibold');
+                a.innerHTML = 'Import Task';
+
+                formTaskContainer.appendChild(a);
+            } else {
+                let div = document.createElement('div');
+                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
+                div.innerHTML = 'API not available for this supplier';
+                formTaskContainer.appendChild(div);
+            }
+
         });
     </script>
 </x-app-layout>

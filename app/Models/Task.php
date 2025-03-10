@@ -11,24 +11,47 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = [
-        'additional_info',
+        'client_id',
+        'agent_id',
+        'company_id',
+        'supplier_id',
+        'type',
         'status',
+        'client_name',
+        'reference',
+        'duration',
+        'payment_type',
         'price',
+        'tax',
         'surcharge',
         'total',
-        'tax',
-        'reference',
-        'type',
-        'agent_id',
-        'client_id',
-        'supplier_id',
-        'client_name',
         'cancellation_policy',
-        'invoice_price',
+        'additional_info',
         'venue',
+        'invoice_price',
         'voucher_status',
         'enabled'
     ];
+
+    // protected $fillable = [
+    //     'additional_info',
+    //     'status',
+    //     'price',
+    //     'surcharge',
+    //     'total',
+    //     'tax',
+    //     'reference',
+    //     'type',
+    //     'agent_id',
+    //     'client_id',
+    //     'supplier_id',
+    //     'client_name',
+    //     'cancellation_policy',
+    //     'invoice_price',
+    //     'venue',
+    //     'voucher_status',
+    //     'enabled'
+    // ];
 
     protected static function booted()
     {

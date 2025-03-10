@@ -31,13 +31,17 @@
                             d="M21 21l-4.35-4.35M9.5 17A7.5 7.5 0 109.5 2a7.5 7.5 0 000 15z" />
                     </svg>
                 </div>
-                <a class="h-full flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
-                    <svg class="w-5 h-5 mr-2 text-white dark:text-gray-300" xmlns="http://www.w3.org/2000/svg"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span class="text-white dark:text-[#f3f4f6] dark:group-hover:text-white-dark">Add Supplier</span>
-                </a>
+
+                <!-- <div 
+                    x-show="addSupplierModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                    <div 
+                        @click.away="addSupplierModal = false" 
+                        class="bg-white w-1/2 h-1/2 rounded-md shadow-md">
+                        Add Supplier
+                    </div>
+                </div> -->
+
             </div>
         </div>
     </div>
@@ -51,6 +55,70 @@
         </div>
         <span class="">Activate supplier to allow the system users to request API from the supplier</span>
     </div>
+
+    @role('admin')
+    <div class="max-h-160 overflow-y-auto custom-scrollbar bg-white dark:bg-dark rounded-md p-2">
+        <table>
+            <thead>
+                <tr>
+                    <th class="px-4 py-2">Supplier Name</th>
+                    <th class="px-4 py-2">Company</th>
+                    <th class="px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if($suppliers->isEmpty())
+                <tr>
+                    <td colspan="2" class="text-center">No suppliers found</td>
+                </tr>
+                @else
+                @foreach($suppliers as $supplier)
+                <tr class="hover:bg-gray-200 dark:hover:bg-gray-600">
+                    <td>
+                        {{ $supplier->name }}
+                    </td>
+                    <td>
+                        <div class="flex gap-2">
+                            @if($supplier->companies->isEmpty())
+                            <p class="text-center font-semibold">
+                                No companies registered
+                            </p>
+                            @else
+                            @foreach($supplier->companies as $company)
+                            <div class="p-2 bg-gray-100"></div>
+                            @endforeach
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <a href="{{ route('supplier-company.edit', $supplier->id) }}" class="group">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-blue-500">
+                                <path d="M22 22L2 22" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M17 22V6C17 4.11438 17 3.17157 16.4142 2.58579C15.8284 2 14.8856 2 13 2H11C9.11438 2 8.17157 2 7.58579 2.58579C7 3.17157 7 4.11438 7 6V22" stroke="" stroke-width="1.5" />
+                                <path d="M21 22V8.5C21 7.09554 21 6.39331 20.6629 5.88886C20.517 5.67048 20.3295 5.48298 20.1111 5.33706C19.6067 5 18.9045 5 17.5 5" stroke="" stroke-width="1.5" />
+                                <path d="M3 22V8.5C3 7.09554 3 6.39331 3.33706 5.88886C3.48298 5.67048 3.67048 5.48298 3.88886 5.33706C4.39331 5 5.09554 5 6.5 5" stroke="" stroke-width="1.5" />
+                                <path d="M12 22V19" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M10 12H14" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M5.5 11H7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M5.5 14H7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M17 11H18.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M17 14H18.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M5.5 8H7" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M17 8H18.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M10 15H14" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M12 9V5" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M14 7L10 7" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </a>
+                    </td>
+                </tr>
+                @endforeach
+                @endif
+            </tbody>
+        </table>
+
+    </div>
+    @else
     <div class="max-h-160 overflow-y-auto custom-scrollbar">
         <table class="">
             <thead class="sticky top-0">
@@ -60,6 +128,11 @@
                 </tr>
             </thead>
             <tbody class="bg-white dark:bg-dark rounded-md p-2" id="suppliersTable">
+                @if($suppliers->isEmpty())
+                <tr>
+                    <td colspan="2" class="text-center">No suppliers found</td>
+                </tr>
+                @else
                 @foreach ($suppliers as $supplier)
                 <tr class=" hover:bg-gray-200 dark:hover:bg-gray-600">
                     <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
@@ -67,18 +140,24 @@
                             <span class="font-bold">» {{ $supplier->name }}</span><br>
                         </a>
                     </td>
-                    <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2">
-                        <button class="bg-green-500 text-white px-2 py-1 rounded">Activate</button>
-                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Deactivate</button>
-                        @if($supplier->named_route != null)
-                        <a href="{{ route($supplier->named_route) }}" class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</a>
+                    <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2 flex">
+                        <div x-data="{credentialModal_{{ $supplier->id }}: false}">
+                            <x-primary-button @click="credentialModal_{{ $supplier->id }} = true">
+                                Credentials
+                            </x-primary-button>
+                            @include('suppliers.partials.supplier_credential')
+                        </div>
+                        @if($supplier->named_route)
+                        <x-primary-a-button href="">Configure</x-primary-a-button>
                         @endif
                     </td>
                 </tr>
                 @endforeach
+                @endif
             </tbody>
         </table>
     </div>
+    @endrole
     <script>
         const searchInput = document.getElementById('searchInput');
         const suppliersData = document.getElementById('suppliersData');
@@ -95,13 +174,14 @@
             suppliersTable.innerHTML = '';
             filteredSuppliers.forEach(supplier => {
 
+                let showUrl = basedUrl + '/suppliers/' + supplier.id;
                 let url = basedUrl + '/suppliers/' + supplier.route + '/index';
 
                 const tr = document.createElement('tr');
                 tr.classList.add('hover:bg-gray-200', 'dark:hover:bg-gray-600');
                 tr.innerHTML = `
                     <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
-                        <a href="{{ route('suppliers.show', $supplier->id) }}">
+                        <a href="${showUrl}">
                             <span class="font-bold">» ${supplier.name}</span><br>
                         </a>
                     </td>
@@ -113,9 +193,26 @@
                 `;
                 suppliersTable.appendChild(tr);
             });
+        });
 
+        const typeCredential = document.querySelectorAll('.type-credential');
 
+        typeCredential.forEach(type => {
+            type.addEventListener('change', (e) => {
+                let div = type.parentElement;
+                const value = e.target.value;
+                const basic = div.querySelector('.basic');
+                const oauth = div.querySelector('.oauth');
 
+                if (value === 'basic') {
+                    basic.classList.remove('hidden');
+                    oauth.classList.add('hidden');
+                } else {
+                    basic.classList.add('hidden');
+                    oauth.classList.remove('hidden');
+                }
+
+            });
         });
     </script>
 </x-app-layout>

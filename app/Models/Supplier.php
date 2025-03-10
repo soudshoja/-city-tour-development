@@ -12,6 +12,7 @@ class Supplier extends Model
 
     protected $fillable = [
         'name', 
+        'auth_method',
         'contact_person',
         'email',
         'phone',
@@ -34,4 +35,14 @@ class Supplier extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class, 'supplier_companies')
+            ->using(SupplierCompany::class);
+    }
+
+    public function credentials()
+    {
+        return $this->hasMany(SupplierCredential::class);
+    }
 }

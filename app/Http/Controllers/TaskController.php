@@ -66,7 +66,7 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
             $taskCount = Task::whereIn('agent_id', $agentsId)->count();
-            $queueTasks = $queueTasks->whereIn('agent_id', $agentsId)->get();
+            $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
 
         } elseif($user->role_id == Role::BRANCH){
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
@@ -85,7 +85,6 @@ class TaskController extends Controller
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
-
         $types = Task::distinct()->pluck('type');
         $suppliers = Supplier::all();
 

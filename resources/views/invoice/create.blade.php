@@ -1773,6 +1773,7 @@
 
         function removeItem(itemId) {
             items = items.filter(item => item.id !== itemId);
+            calculateSubtotal(); //re-calculate the total after remove item
             renderItems(); // Re-render the table after removal
             renderTaskList(tasks);
         }

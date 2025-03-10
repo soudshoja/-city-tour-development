@@ -250,6 +250,10 @@ class TaskController extends Controller
         if($response['status'] == 'success'){
 
             logger('imported task: ', $response['data']->toArray());
+            $existingTask = Cache::get('imported_task');
+            if ($existingTask) {
+                Cache::forget('imported_task');
+            }
             Cache::put('imported_task', $response['data'], now()->addHour(1));
         }
 
@@ -359,7 +363,10 @@ class TaskController extends Controller
                 'message' => 'User not authorized to create task',
             ];
         }
-
+        $supplier = Supplier::where('name','like',$task['supplier_name'])->first();
+        
+        if(!$supplier) return redirect()->back()->with('errors', 'Supplier not found');
+        
         $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
             Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first() ??
             Agent::with(['branch' => function ($query) use ($companyId) {
@@ -371,21 +378,21 @@ class TaskController extends Controller
 
         $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
 
-        if ($task['supplier_name'] === null) {
-            return [
-                'status' => 'error',
-                'message' => 'Supplier name is required',
-            ];
-        }
+        // if ($task['supplier_name'] === null) {
+        //     return [
+        //         'status' => 'error',
+        //         'message' => 'Supplier name is required',
+        //     ];
+        // }
        
-        $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
+        // $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
 
-        if (!$supplier) {
-            return [
-                'status' => 'error',
-                'message' => 'Supplier not found , the supplier name is ' . $task['supplier_name'] . '. Please create the supplier first',
-            ];
-        }
+        // if (!$supplier) {
+        //     return [
+        //         'status' => 'error',
+        //         'message' => 'Supplier not found , the supplier name is ' . $task['supplier_name'] . '. Please create the supplier first',
+        //     ];
+        // }
         logger('tasks: ', $task);
         logger('agent: ', $agent->toArray());
 
@@ -393,7 +400,7 @@ class TaskController extends Controller
 
         $taskData = [
             'additional_info' => $task['additional_info'] ?? null,
-            'status' => $task['status'] ? strtolower($task['status']) : null,
+            'status' => $task['status'] ?? null,
             'client_name' => $client->name ?? null,
             'price' => isset($task['price']) ? $task['price'] : null,
             'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,

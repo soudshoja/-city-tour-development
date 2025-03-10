@@ -85,7 +85,7 @@
                 <h1 class="text-3xl font-bold text-gray-800">INVOICE</h1>
                 <p class="text-sm text-gray-600">Invoice #{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
-            </div>
+            </div> 
             <div class="text-right">
                 <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>

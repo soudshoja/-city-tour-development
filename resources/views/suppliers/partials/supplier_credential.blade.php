@@ -18,16 +18,15 @@
             @csrf
             <input type="hidden" name="supplier_id" value="{{ $supplier->id }}">
             <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
-
-            <select name="type" id="type_{{ $supplier->id }}" class="type-credential border border-gray-300 rounded-lg p-2 mb-2 w-full">
-                <option value="basic">Basic</option>
-                <option value="oauth">OAuth</option>
-            </select>
-            <div class="basic">
+            <input type="hidden" name="type" value="{{ $supplier->auth_method }}">
+            <div class="p-2 bg-gray-300 text-gray-600 font-semibold rounded border border-gray-500 text-start">
+                {{ $supplier->auth_method }}
+            </div>
+            <div class="basic {{ $supplier->auth_method == 'oauth' ? 'hidden' : '' }}">
                 <input type="text" name="username" id="username_{{ $supplier->id }}" placeholder="Username" class="border border-gray-300 rounded-lg p-2 mb-2 w-full" value="{{ old('username') ?? $supplier->credentials->first()?->username }}">
                 <input type="password" name="password" id="password_{{ $supplier->id }}" placeholder="Password" class="border border-gray-300 rounded-lg p-2 mb-2 w-full" value="{{ old('password') ?? $supplier->credentials->first()?->password }}">
             </div>
-            <div class="hidden oauth">
+            <div class="oauth {{ $supplier->auth_method == 'basic' ? 'hidden' : '' }}">
                 <input type="text" name="client_id" id="client_id_{{ $supplier->id }}" placeholder="Client ID" class="border border-gray-300 rounded-lg p-2 mb-2 w-full">
                 <input type="password" name="client_secret" id="client_secret_{{ $supplier->id }}" placeholder="Client Secret" class="border border-gray-300 rounded-lg p-2 mb-2 w-full">
             </div>

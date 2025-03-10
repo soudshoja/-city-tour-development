@@ -131,6 +131,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/all/queue',[TaskController::class, 'queue'])->name('queue');
         Route::get('/supplier-task/{id}',[TaskController::class, 'supplierTask'])->name('supplier');
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
+        Route::get('/get-tbo/{companyId}',[TaskController::class, 'getTboTask'])->name('get-tbo');
     });
 
     // SUPPLIERS

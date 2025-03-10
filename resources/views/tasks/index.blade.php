@@ -64,7 +64,7 @@
                     <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}" class="p-4 flex flex-col gap-2" method="POST">
                         @csrf
                         @unlessrole('agent')
-                        <select name="agent_id" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                        <select name="agent_id" id="task-agent-id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
                             <option value="" class="">Select Agent</option>
                             @foreach($agents as $agent)
                             <option value="{{ $agent->id }}" data-client="{{ $agent }}">{{ $agent->name }}</option>
@@ -606,6 +606,7 @@
                 input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border', 'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-300', 'p-3');
                 formTaskContainer.appendChild(input);
             } else if(supplier.name === 'TBO Holiday') {
+                document.getElementById('task-agent-id').classList.add('hidden');
                 let a = document.createElement('a');
                 a.href = tboTaskUrl;
                 a.innerHTML = 'Import Task';

@@ -22,10 +22,15 @@
                 <input type="hidden" name="user_id" value="{{ $user->id }}">
                 <div class="flex gap-2 my-2">
                     @foreach ($roles as $role)
-                    <div class="form-check form-check-inline flex justify-center items-center gap-2 border p-2 rounded-md">
-                        <input class="form-check-input" type="radio" name="role_id" value="{{ $role->id }}" @if($user->roles->contains($role)) checked @endif>
-                        <label class="form-check-label" for="inlineRadio{{ $role->id }}">{{ $role->name }}</label>
-                    </div>
+                        @if ($role->id != 1)
+                            <div
+                                class="form-check form-check-inline flex justify-center items-center gap-2 border p-2 rounded-md">
+                                <input class="form-check-input" type="radio" name="role_id"
+                                    value="{{ $role->id }}" @if ($user->roles->contains($role)) checked @endif>
+                                <label class="form-check-label"
+                                    for="inlineRadio{{ $role->id }}">{{ $role->name }}</label>
+                            </div>
+                        @endif
                     @endforeach
                 </div>
                 <button type="submit" class="btn btn-primary">Update</button>

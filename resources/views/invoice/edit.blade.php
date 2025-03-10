@@ -1383,12 +1383,6 @@
                             </svg>
                         </div>
 
-                        <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip="Remove Item">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-
                         <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-full min-h-80 overflow-y-scroll">
                             <div class="flex justify-between items-center p-4 border-b border-black">
                                 <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>

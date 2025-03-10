@@ -147,9 +147,6 @@
                             </x-primary-button>
                             @include('suppliers.partials.supplier_credential')
                         </div>
-                        <a class="p-2 bg-blue-500 text-white font-semibold rounded" href="{{ route('tasks.supplier', $supplier->id) }}">
-                            Populate Pending Task
-                        </a>
                         @if($supplier->named_route)
                         <x-primary-a-button href="">Configure</x-primary-a-button>
                         @endif

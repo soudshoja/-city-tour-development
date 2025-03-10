@@ -74,7 +74,7 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
             $taskCount = Task::whereIn('agent_id', $agentsId)->count();
-            $queueTasks = $queueTasks->whereIn('agent_id', $agentsId)->get();
+            $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
         
             $clients = Client::where('agent_id', $user->agent->id)->get();

@@ -30,12 +30,12 @@ class Task extends Model
         'enabled'
     ];
 
-    protected static function booted()
-    {
-        static::addGlobalScope('enabled', function (Builder $builder) {
-            $builder->where('enabled', true);
-        });
-    }
+    // protected static function booted()
+    // {
+    //     static::addGlobalScope('enabled', function (Builder $builder) {
+    //         $builder->where('enabled', true);
+    //     });
+    // }
 
     public function flightDetails()
     {

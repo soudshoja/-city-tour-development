@@ -27,6 +27,9 @@ class TaskHotelDetailEmail extends Model
         'supplements',
     ];
 
+    public $incrementing = true;
+    protected $primaryKey = 'id';
+
     public function task()
     {
         return $this->belongsTo(TaskEmail::class, 'task_id');

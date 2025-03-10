@@ -39,6 +39,9 @@ class TaskEmail extends Model
         'name',
     ];
 
+    public $incrementing = true;
+    protected $primaryKey = 'id';
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');

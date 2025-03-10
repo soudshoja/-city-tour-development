@@ -20,16 +20,16 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\SupplierController;
-use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\ToDoListController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\OpenAiController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CurrencyExchangeController;
+use App\Http\Controllers\SupplierCompanyController;
+use App\Http\Controllers\SupplierCredentialController;
 use App\Http\Controllers\SystemExchangeRateController;
 use App\Http\Controllers\TBOController;
-use App\Livewire\Notification;
 use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
@@ -137,6 +137,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
         Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
         Route::get('/all/queue',[TaskController::class, 'queue'])->name('queue');
+        Route::get('/supplier-task/{id}',[TaskController::class, 'supplierTask'])->name('supplier');
+        Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
+        Route::get('/get-tbo/{companyId}',[TaskController::class, 'getTboTask'])->name('get-tbo');
     });
 
     // SUPPLIERS
@@ -147,7 +150,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
-
+        Route::get('/magic/get',[SupplierController::class, 'getMagicHoliday'])->name('magic.get');
+        Route::get('/magic/credential',[SupplierController::class, 'getClientCredential'])->name('magic-credential');
+        Route::get('/magic/request',[SupplierController::class, 'makeApiRequest'])->name('magic-request');
+        Route::get('/magic/callback',[SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
+        Route::get('/magic/provider',[SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
+        Route::post('/magic/webhook/callback', [SupplierController::class, 'method'])->name('magic-webhook-callback');
         Route::group([
             'prefix' => 'tbo',
             'as' => 'tbo.',
@@ -365,10 +373,10 @@ Route::group([
 
     });
 
-    Route::group(([
+    Route::group([
         'prefix' => 'exchange',
         'as' => 'exchange.',
-    ]), function () {
+    ], function () {
         Route::get('index',[CurrencyExchangeController::class, 'index'])->name('index');
         Route::post('store', [CurrencyExchangeController::class, 'store'])->name('store');
         Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
@@ -378,6 +386,19 @@ Route::group([
 
     Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
 
+
+
+    Route::post('credentials', [SupplierCredentialController::class, 'store'])->name('credentials.store');
+
+});
+
+Route::group([
+    'prefix' => 'supplier-company',
+    'as' => 'supplier-company.',
+], function () {
+    Route::get('/edit/{id}', [SupplierCompanyController::class, 'edit'])->name('edit');
+    Route::get('/{supplier}/{company}/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
+    Route::get('/{supplier}/{company}/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
 });
 
 // REPORTS

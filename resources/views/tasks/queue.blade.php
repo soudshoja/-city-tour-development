@@ -18,7 +18,7 @@
         <div class="flex justify-between items-center">
             <div>
                 <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name ?? 'Not Agent Set' }}</p>
             </div>
             <div>
                 <a href="{{ route('tasks.show', $task->id) }}" class="text-blue-600 dark:text-blue-500">View</a>

@@ -41,4 +41,10 @@ class Company extends Model
     {
         return $this->belongsTo(Country::class, 'nationality_id');
     }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(Supplier::class, 'supplier_companies')
+            ->using(SupplierCompany::class);
+    }
 }

@@ -806,7 +806,7 @@ class TaskController extends Controller
 
 
         logger('TBO Task: ', $bookingDetailsToday);
-
+        
         foreach ($bookingDetailsToday as $booking) {
             // $agent = Agent::where('tbo_reference', $booking['ClientReferenceNumber'])->first();
 
@@ -814,6 +814,16 @@ class TaskController extends Controller
             //     logger('TBO Task Error: Client Reference Number does not register with any agent. Client Reference Number: ' . $booking['ClientReferenceNumber']);
             //     return;
             // }
+
+            $supplier = Supplier::where('name', 'TBO Holiday')->first();
+
+            $existingTask = Task::where(['reference' => $booking['ConfirmationNo'], 'supplier_id' => $supplier->id])
+                     ->withoutGlobalScope('enabled')->first();
+
+            if($existingTask){
+                logger('TBO Task Error: Task already exists');
+                return redirect()->back()->with('error', 'Task ' . $existingTask->reference . ' already exists');
+            }
 
             $checkInDate = new \DateTime($booking['CheckInDate']);
             $checkOutDate = new \DateTime($booking['CheckOutDate']);
@@ -876,7 +886,7 @@ class TaskController extends Controller
                         'type' => 'hotel',
                         'status' => strtolower($booking['BookingStatus']),
                         'client_name' => $leaderCustomer->name,
-                        'reference' => null,
+                        'reference' => $booking['ConfirmationNo'],
                         'duration' => $hours,
                         'payment_type ' => null,
                         'price' => $room['TotalFare'],
@@ -885,16 +895,16 @@ class TaskController extends Controller
                         'total' => $room['TotalFare'],
                         'cancellation_policy' => json_encode($room['CancelPolicies']),
                         'additional_info' => null,
-                        'supplier_id' => 1,
+                        'supplier_id' => $supplier->id,
                         'venue' =>  $details['HotelDetails']['City'],
                         'invoice_price' => null,
                         'voucher_status' => (string)$details['VoucherStatus'],
                     ]);
                 } catch (Exception $e) {
                     logger('TBO Task Error: ' . $e->getMessage());
-                    return;
+                    return redirect()->back()->with('error', 'Task failed to create');
                 }
-
+                
                 try {
                     $hotelRating = 0.0;
 
@@ -928,21 +938,24 @@ class TaskController extends Controller
                         'room_amount' => 1,
                         'room_type' => json_encode($room['Name']),
                         'room_details' => $room['Inclusion'],
-                        'room_promotion' => $room['RoomPromotion'],
+                        'room_promotion' => $room['RoomPromotion'] ?? null,
                         'rate' => $hotelRating,
                         'meal_type' => $room['MealType'],
                         'is_refundable' => $room['IsRefundable'],
-                        'supplements' => json_encode($room['Supplements']) ?? null,
+                        'supplements' => isset($room['Supplements']) ? json_encode($room['Supplements']) : null,
                     ]);
 
                     logger('task with id: ' . $task->id . ' and task hotel details with id: ' . $taskHotelDetails->id . ' has been created');
                 } catch (Exception $e) {
                     logger('TBO Task Error: ' . $e->getMessage());
-                    Task::find($task->id)->delete();
+                    $task->delete();
+                    return redirect()->back()->with('error', 'Task Details failed to create');
                 }
             }
         }
 
         logger('TBO task is done');
+        
+        return redirect()->back()->with('success', 'TBO task received successfully');
     }
 }

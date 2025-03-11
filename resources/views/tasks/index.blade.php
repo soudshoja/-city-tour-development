@@ -173,12 +173,11 @@
                                     </th>
                                     @endcan
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Enable/Disable</th> <!-- New column header -->
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Task Id</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
-
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</th>
-
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</th>
                                     @endif
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</th>
@@ -193,7 +192,7 @@
                             <tbody>
                                 @if($tasks->isEmpty())
                                 <tr>
-                                    <td colspan="9" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
+                                    <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
                                 </tr>
                                 @else
                                 @foreach($tasks as $task)
@@ -211,70 +210,80 @@
                                     </td>
                                     @endcan
                                     <td class="p-3 text-sm flex gap-3 justify-center">
-                                        <a data-tooltip="see task" href="javascript:void(0);" class="viewTask text-blue-600 dark:text-blue-300" data-task-id="{{ $task->id }}" data-task-url="{{ route('tasks.show', $task->id) }}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                                                <g fill="none" stroke="currentColor" stroke-width="1">
-                                                    <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z" opacity=".5" />
-                                                    <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                                </g>
-                                            </svg>
-                                        </a>
-                                        <div x-data="{ importTaskModal_{{ $task->id }}: false }">
-                                            <a data-tooltip="edit task" href="javascript:void(0);" @click="importTaskModal_{{ $task->id }} = true">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                                                    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
-                                                </svg>
-                                            </a>
-                                            <div
-                                                x-show="importTaskModal_{{ $task->id }}"
-                                                x-cloak
-                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                                                <form id="imported-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
-                                                    <div
-                                                        @click.away="importTaskModal_{{ $task->id }}  = false"
-                                                        class="bg-white rounded-md border-2w-80">
-                                                        <div class="flex justify-between p-4">
-                                                            <p class="font-semibold">
-                                                                Update the following information if needed
-                                                            </p>
-                                                            <button
-                                                                type="button"
-                                                                @click="importTaskModal_{{ $task->id }} = false"
-                                                                class="text-red-500 font-bold">
-                                                                &times;
-                                                            </button>
+                                    <a data-tooltip="see task"
+                                        href="javascript:void(0);"
+                                        class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
+                                        data-task-id="{{ $task->id }}"
+                                        data-task-url="{{ route('tasks.show', $task->id) }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                                        </svg>
+                                    </a>
+                                    
+                                            <div x-data="{ importTaskModal_{{ $task->id }}: false }">
+                                                <a data-tooltip="edit task" href="javascript:void(0);" @click="importTaskModal_{{ $task->id }} = true">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                        <path fill="none" stroke="currentColor" stroke-width="1.5" d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
+                                                    </svg>
+                                                </a>
+                                                <div
+                                                    x-show="importTaskModal_{{ $task->id }}"
+                                                    x-cloak
+                                                    class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                    <form id="imported-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                                                        <div
+                                                            @click.away="importTaskModal_{{ $task->id }}  = false"
+                                                            class="bg-white rounded-md border-2w-80">
+                                                            <div class="flex justify-between p-4">
+                                                                <p class="font-semibold">
+                                                                    Update the following information if needed
+                                                                </p>
+                                                                <button
+                                                                    type="button"
+                                                                    @click="importTaskModal_{{ $task->id }} = false"
+                                                                    class="text-red-500 font-bold">
+                                                                    &times;
+                                                                </button>
+                                                            </div>
+                                                            <hr>
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <div class="p-4 inline-flex flex-col gap-2">
+                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
+                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
+                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
+                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
+                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
+                                                                <select name="client_id" id="tasks_client_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                    @foreach($clients as $client)
+                                                                    <option value="{{ $client->id }}" {{!$task->client ?? $client->id == $task->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                                <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                    @foreach($agents as $agent)
+                                                                    <option value="{{ $agent->id }}" {{@$task->agent ?? $agent->id == $task->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                                <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                    @foreach($suppliers as $supplier)
+                                                                    <option value="{{ $supplier->id }}" {{!$supplier->id == $task->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
                                                         </div>
-                                                        <hr>
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <div class="p-4 inline-flex flex-col gap-2">
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
-                                                            <select name="client_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                @foreach($clients as $client)
-                                                                <option value="{{ $client->id }}">{{ $client->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                @foreach($agents as $agent)
-                                                                <option value="{{ $agent->id }}" {{$task->agent ?? $agent->id == $task->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                @foreach($suppliers as $supplier)
-                                                                <option value="{{ $supplier->id }}" {{$supplier->id == $task->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
-                                                </form>
+                                                        <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
+                                                    </form>
+                                                </div>
                                             </div>
-                                        </div>
                                     </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                        <label class="switch">
+                                            <input type="checkbox" class="toggle-task-status" data-task-id="{{ $task->id }}" {{ $task->enabled ? 'checked' : '' }}>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </td>
+
+                                    <!-- New column with switch button -->
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->reference }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client ? $task->client->name : 'Not Set' }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
@@ -300,21 +309,17 @@
                                     @endcan
                                     <td>
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
-                                        {{ $task->status === 'Completed' ? 'badge-outline-success' : '' }}
-                                        {{ $task->status === 'Assigned' ? 'badge-outline-assigned' : '' }}
-                                        {{ $task->status === 'Booked' ? 'badge-outline-booked' : '' }}
-
-                                            {{ $task->status === 'Pending' ? 'badge-outline-danger' : '' }}
-
-                                            {{ $task->status === 'Confirmed' ? 'badge-outline-primary' : '' }}
-                                            {{ $task->status === 'Cancelled' ? 'badge-outline-danger' : '' }}
-                                            {{ $task->status === 'Hold' ? 'badge-outline-danger' : '' }}">
+            {{ $task->status === 'Completed' ? 'badge-outline-success' : '' }}
+            {{ $task->status === 'Assigned' ? 'badge-outline-assigned' : '' }}
+            {{ $task->status === 'Booked' ? 'badge-outline-booked' : '' }}
+            {{ $task->status === 'Pending' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === 'Confirmed' ? 'badge-outline-primary' : '' }}
+            {{ $task->status === 'Cancelled' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === 'Hold' ? 'badge-outline-danger' : '' }}">
                                             {{ $task->status }}
                                         </span>
                                     </td>
-
-                                    <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->supplier->name }}
-                                    </td>
+                                    <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->supplier->name }}</td>
                                 </tr>
                                 @endforeach
                                 @endif
@@ -545,41 +550,99 @@
             </div>
         </div>
     </div>
+    <style>
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
-    @vite('resources/js/tasks.js')
-    <script>
-        let invoicesModal = document.querySelectorAll('.invoiceModal');
+        /* Custom slider */
+        .slider {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+            background-color: #ccc;
+            /* Default background */
+            border-radius: 20px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
 
-        invoicesModal.forEach(invoice => {
-            invoice.addEventListener('click', function() {
+        .slider::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
 
-                let invoiceNumber = invoice.getAttribute('data-invoice-number');
-                let url = `{{ route('invoice.show', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
+        /* When the checkbox is checked */
+        input:checked+.slider {
+            background-color: #ffb958 ;
+            /* Custom enabled color */
+        }
 
-                let modalInvoice = document.getElementById('taskInvoicePlaceholder');
-                let invoiceBody = document.getElementById('invoiceModalBody');
 
-                fetch(url)
-                    .then(response => response.text())
-                    .then(data => {
-                        invoiceBody.innerHTML = data;
-                        modalInvoice.classList.remove('hidden');
+        input:checked+.slider::before {
+            transform: translateX(20px);
+            background-color: #fff;
+            /* Ensure contrast */
+        }
 
-                        let invoiceFooter = document.getElementById('invoiceFooter');
-                        invoiceFooter.querySelector('button').addEventListener('click', function() {
-                            window.location.href = `{{ route('invoice.edit', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
-                        });
-                    })
+        /* Rounded slider style */
+        .slider.round {
+            border-radius: 20px;
+        }
+
+        .slider.round::before {
+            border-radius: 50%;
+        }
+    </style>
+</x-app-layout>
+@vite('resources/js/tasks.js')
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const viewTaskLinks = document.querySelectorAll(".viewTask");
+
+        viewTaskLinks.forEach(link => {
+            link.addEventListener("click", function() {
+                viewTaskLinks.forEach(l => l.classList.remove("text-[#ebc186]", "font-bold")); // Reset others
+                this.classList.add("text-[#ebc186]", "font-bold"); // Apply color and boldness to clicked one
             });
         });
+    });
+</script>
+<script>
+    let invoicesModal = document.querySelectorAll('.invoiceModal');
 
-        document.addEventListener('click', function(event) {
+
+    invoicesModal.forEach(invoice => {
+        invoice.addEventListener('click', function() {
+
+            let invoiceNumber = invoice.getAttribute('data-invoice-number');
+            let url = `{{ route('invoice.show', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
+
             let modalInvoice = document.getElementById('taskInvoicePlaceholder');
             let invoiceBody = document.getElementById('invoiceModalBody');
 
-            if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
-                modalInvoice.classList.add('hidden');
-            }
+            fetch(url)
+                .then(response => response.text())
+                .then(data => {
+                    invoiceBody.innerHTML = data;
+                    modalInvoice.classList.remove('hidden');
+
+                    let invoiceFooter = document.getElementById('invoiceFooter');
+                    invoiceFooter.querySelector('button').addEventListener('click', function() {
+                        window.location.href = `{{ route('invoice.edit', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
+                    });
+                })
         });
 
         document.getElementById('upload-task').addEventListener('change', function() {
@@ -594,7 +657,7 @@
             let formTaskContainer = document.getElementById('form-task-container');
             let companyIdData = formTaskContainer.getAttribute('data-company-id');
             let tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
-            
+
             formTaskContainer.innerHTML = '';
             console.log(supplier.name);
             console.log(supplier.name == 'Magic Holiday');
@@ -605,7 +668,7 @@
                 input.placeholder = 'Reference';
                 input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border', 'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-300', 'p-3');
                 formTaskContainer.appendChild(input);
-            } else if(supplier.name === 'TBO Holiday') {
+            } else if (supplier.name === 'TBO Holiday') {
                 document.getElementById('task-agent-id').classList.add('hidden');
                 let a = document.createElement('a');
                 a.href = tboTaskUrl;
@@ -622,5 +685,52 @@
             }
 
         });
-    </script>
-</x-app-layout>
+
+    });
+</script>
+<script>
+    document.addEventListener('click', function(event) {
+        let modalInvoice = document.getElementById('taskInvoicePlaceholder');
+        let invoiceBody = document.getElementById('invoiceModalBody');
+
+        if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
+            modalInvoice.classList.add('hidden');
+        }
+    });
+    document.getElementById('upload-task').addEventListener('change', function() {
+        submitBtn = document.querySelector('#upload-task-submit');
+        console.log(submitBtn);
+        submitBtn.focus();
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toggle-task-status').forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const taskId = this.getAttribute('data-task-id');
+                const isEnabled = this.checked;
+
+                fetch(`/tasks/${taskId}/toggle-status`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            is_enabled: isEnabled
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Task status updated successfully');
+                        } else {
+                            alert('Failed to update task status');
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+        });
+    });
+</script>
+@endvite

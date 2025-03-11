@@ -130,7 +130,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'tasks',
         'as' => 'tasks.',
     ], function () {
-        Route::get('/', [TaskController::class, 'index'])->name('index');
+        Route::post('/{task}/toggle-status', [TaskController::class, 'toggleStatus'])->name('tasks.toggleStatus');        Route::get('/', [TaskController::class, 'index'])->name('index');
         Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
@@ -346,6 +346,11 @@ Route::group([
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
+        
+        Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');
+        Route::post('/initiate-myfatoorah-payment', [PaymentController::class, 'initiateMyFatoorahPayment'])->name('payment.initiateMyFatoorah');
+        Route::get('/myfatoorah-callback', [PaymentController::class, 'myFatoorahCallback'])->name('payment.success');
+        Route::get('/myfatoorah-error', [PaymentController::class, 'myFatoorahCallback'])->name('payment.failed');
     });
 
     Route::group([

@@ -159,7 +159,13 @@ class TaskController extends Controller
         // dd($tasks, $agent, $agents, $taskCount);
         return view('tasks.tasksVoucher', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
     }
-
+    public function toggleStatus(Request $request, Task $task)
+    {
+        $task->enabled = $request->is_enabled;
+        $task->save();
+    
+        return response()->json(['success' => true]);
+    }
     public function show($id)
     {
         $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
@@ -168,17 +174,23 @@ class TaskController extends Controller
             return response()->json(['error' => 'Task not found'], 404);
         }
 
-        if($task->flightDetails){
-            $task['description'] = $task->flightDetails->countryFrom->name . ' ---> ' . $task->flightDetails->countryTo->name;
-        } elseif($task->hotelDetails){
-            $task['description'] = $task->hotelDetails->hotel->name . '/' . $task->hotelDetails->hotel->country;
+        if ($task->flightDetails) {
+            $task['country_from'] = $task->flightDetails->countryFrom->name;
+            $task['country_to'] = $task->flightDetails->countryTo->name;
+            $task['description'] = $task['country_from'] . ' ---> ' . $task['country_to'];
+        } elseif ($task->hotelDetails) {
+            $task['hotel_name'] = $task->hotelDetails->hotel->name;
+            $task['hotel_country'] = $task->hotelDetails->hotel->country;
+            $task['description'] = $task['hotel_name'] . '/' . $task['hotel_country'];
         } else {
             $task['description'] = 'No description';
         }
         
+        
         // Return the task data as JSON for the modal to load dynamically
         return response()->json($task, 200);
     }
+    
 
     public function edit($id)
     {

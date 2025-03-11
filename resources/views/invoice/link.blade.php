@@ -117,25 +117,25 @@
                             </thead>
                             <tbody>
                                 @if ($invoices->isEmpty())
-                                    <tr>
-                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
-                                            No data for now.... Create new!</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        No data for now.... Create new!</td>
+                                </tr>
                                 @else
-                                    @foreach ($invoices as $invoice)
-                                        @php
-                                            // Retrieve the first invoice detail; adjust as needed if you want a different one.
-                                            $invoiceDetail = $invoice->invoiceDetails->first();
-                                        @endphp
-                                        <tr data-price="{{ $invoice->total }}"
-                                            data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
-                                            data-branch-id="{{ $invoice->agent->branch->id }}"
-                                            data-agent-id="{{ $invoice->agent_id }}"
-                                            data-status="{{ $invoice->status }}"
-                                            data-type="{{ $invoiceDetail->task->type }}"
-                                            data-client-id="{{ $invoice->client ? $invoice->client->id : null }}"
-                                            data-task-id="{{ $invoice->id }}" class="taskRow">
-                                            <!-- <td>
+                                @foreach ($invoices as $invoice)
+                                @php
+                                // Retrieve the first invoice detail; adjust as needed if you want a different one.
+                                $invoiceDetail = $invoice->invoiceDetails->first();
+                                @endphp
+                                <tr data-price="{{ $invoice->total }}"
+                                    data-supplier-id="{{ $invoiceDetail && $invoiceDetail->task && $invoiceDetail->task->supplier ? $invoiceDetail->task->supplier->id : '' }}"
+                                    data-branch-id="{{ $invoice->agent->branch->id }}"
+                                    data-agent-id="{{ $invoice->agent_id }}"
+                                    data-status="{{ $invoice->status }}"
+                                    data-type="{{ $invoiceDetail && $invoiceDetail->task ? $invoiceDetail->task->type : '' }}"
+                                    data-client-id="{{ $invoice->client ? $invoice->client->id : null }}"
+                                    data-task-id="{{ $invoice->id }}" class="taskRow">
+                                    <!-- <td>
                                         <label class="custom-checkbox">
                                             <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
@@ -143,61 +143,64 @@
                                             </svg>
                                         </label>
                                     </td> -->
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $invoice->invoice_number }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                <!-- Main Invoice Link -->
-                                                <a href="{{ url('/invoice/' . $invoice->invoice_number) }}"
-                                                    class="text-blue-500 hover:underline" target="_blank">
-                                                    {{ url('/invoice/' . $invoice->invoice_number) }}
-                                                </a>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->invoice_number }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        <!-- Main Invoice Link -->
+                                        <a href="{{ url('/invoice/' . $invoice->invoice_number) }}"
+                                            class="text-blue-500 hover:underline" target="_blank">
+                                            {{ url('/invoice/' . $invoice->invoice_number) }}
+                                        </a>
 
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ ucwords($invoice->payment_type) }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $invoice->currency }}
-                                                {{ $invoice->amount }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $invoice->due_date }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                @if ($invoice->status === 'paid')
-                                                    <span
-                                                        class="badge badge-outline-success">{{ $invoice->status }}</span>
-                                                @else
-                                                    <span
-                                                        class="badge badge-outline-danger">{{ $invoice->status }}</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <form action="{{ route('whatsapp.send') }}" method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="client" id="client"
-                                                        value="{{ $invoice->client }}">
-                                                    <input type="hidden" name="invoiceNumber"
-                                                        value="{{ $invoice->invoice_number }}">
-                                                    <button type="submit" class="badge badge-outline-success">
-                                                        Share via WhatsApp
-                                                    </button>
-                                                </form>
-                                            </td>
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ ucwords($invoice->payment_type) }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->currency }}
+                                        {{ $invoice->amount }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->due_date }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        @if ($invoice->status === 'paid')
+                                        <span
+                                            class="badge badge-outline-success">{{ $invoice->status }}</span>
+                                        @else
+                                        <span
+                                            class="badge badge-outline-danger">{{ $invoice->status }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <form action="{{ route('whatsapp.send') }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="client" id="client"
+                                                value="{{ $invoice->client }}">
+                                            <input type="hidden" name="invoiceNumber"
+                                                value="{{ $invoice->invoice_number }}">
+                                            <button type="submit" class="badge badge-outline-success">
+                                                Share via WhatsApp
+                                            </button>
+                                        </form>
+                                    </td>
 
 
-                                        </tr>
+                                </tr>
 
-                                        <!-- Separate row for each partial invoice -->
-                                        @foreach ($invoice->invoicePartials as $partial)
-                                            @if ($partial->type === 'split')
-                                                <tr data-price="{{ $partial->total }}"
-                                                    data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
-                                                    data-branch-id="{{ $invoice->agent->branch->id }}"
-                                                    data-agent-id="{{ $invoice->agent_id }}"
-                                                    data-status="{{ $partial->status }}"
-                                                    data-type="{{ $partial->type }}"
-                                                    data-client-id="{{ $invoice->client ? $invoice->client->id : null }}"
-                                                    data-task-id="{{ $invoice->id }}" class="taskRow">
-                                                    <!-- <td>
+                                <!-- Separate row for each partial invoice -->
+                                @foreach ($invoice->invoicePartials as $partial)
+                                @if ($partial->type === 'split')
+                                <tr data-price="{{ $partial->total }}"
+                                    data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
+                                    data-branch-id="{{ $invoice->agent->branch->id }}"
+                                    data-agent-id="{{ $invoice->agent_id }}"
+                                    data-status="{{ $partial->status }}"
+                                    data-type="{{ $partial->type }}"
+                                    data-client-id="{{ $invoice->client ? $invoice->client->id : null }}"
+                                    data-task-id="{{ $invoice->id }}" class="taskRow">
+                                    <!-- <td>
                                                 <label class="custom-checkbox">
                                                     <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
@@ -205,46 +208,50 @@
                                                     </svg>
                                                 </label>
                                             </td> -->
-                                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        {{ $invoice->invoice_number }}</td>
-                                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}"
-                                                            class="text-green-500 hover:underline" target="_blank">
-                                                            {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}
-                                                        </a>
-                                                    </td>
-                                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        {{ ucwords($partial->type) }}</td>
-                                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        {{ $invoice->currency }} {{ $partial->amount }}</td>
-                                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        {{ $partial->expiry_date }}</td>
-                                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                                        @if ($partial->status === 'paid')
-                                                            <span
-                                                                class="badge badge-outline-success">{{ $partial->status }}</span>
-                                                        @else
-                                                            <span
-                                                                class="badge badge-outline-danger">{{ $partial->status }}</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <form action="{{ route('whatsapp.send') }}" method="POST">
-                                                            @csrf
-                                                            <input type="hidden" name="client" id="client"
-                                                                value="{{ $invoice->client }}">
-                                                            <input type="hidden" name="invoiceNumber"
-                                                                value="{{ $invoice->invoice_number }}">
-                                                            <button type="submit"
-                                                                class="badge badge-outline-success">
-                                                                Share via WhatsApp
-                                                            </button>
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                            @endif
-                                        @endforeach
-                                    @endforeach
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->invoice_number }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}"
+                                            class="text-green-500 hover:underline" target="_blank">
+                                            {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}
+                                        </a>
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ ucwords($partial->type) }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->currency }} {{ $partial->amount }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $partial->expiry_date }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        @if ($partial->status === 'paid')
+                                        <span
+                                            class="badge badge-outline-success">{{ $partial->status }}</span>
+                                        @else
+                                        <span
+                                            class="badge badge-outline-danger">{{ $partial->status }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <form action="{{ route('whatsapp.send') }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="client" id="client"
+                                                value="{{ $invoice->client }}">
+                                            <input type="hidden" name="invoiceNumber"
+                                                value="{{ $invoice->invoice_number }}">
+                                            <button type="submit"
+                                                class="badge badge-outline-success">
+                                                Share via WhatsApp
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                @endif
+                                @endforeach
+                                @endforeach
                                 @endif
                             </tbody>
                         </table>
@@ -410,7 +417,7 @@
                                          outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Type</option>
                                         @foreach ($types as $type)
-                                            <option value="{{ $type }}">{{ $type }}</option>
+                                        <option value="{{ $type }}">{{ $type }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -437,7 +444,7 @@
                                          outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Supplier</option>
                                         @foreach ($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -463,7 +470,7 @@
                                          outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Agent</option>
                                         @foreach ($agents as $agent)
-                                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -489,7 +496,7 @@
                                         class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Branch</option>
                                         @foreach ($branches as $branch)
-                                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>

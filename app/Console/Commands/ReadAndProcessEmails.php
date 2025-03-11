@@ -35,7 +35,7 @@ class ReadAndProcessEmails extends Command
 
     public function handle()
     {
-        $client = ImapClient::account('default'); 
+        $client = ImapClient::account('default');
         $client->connect();
 
         // Gmail labels to read emails from
@@ -43,7 +43,7 @@ class ReadAndProcessEmails extends Command
 
         foreach ($labels as $label) {
             $this->info("\n📂 Processing emails from: " . strtoupper($label));
-            logger('file label: '. $label);
+            logger('file label: ' . $label);
 
             $supplier = Supplier::where('name', 'like', '%' . $label . '%')->first();
 
@@ -64,10 +64,14 @@ class ReadAndProcessEmails extends Command
                     $emailText = $message->getTextBody();
 
                     // ✅ Check if this email has already been processed
-                    if (DB::table('task_emails')->where('email_id', $emailId)->exists()) {
+                    if (TaskEmail::where('email_id', $emailId)->exists()) {
                         $this->warn("⚠️ Email already processed (ID: $emailId), skipping...");
                         continue;
                     }
+                    // if (DB::table('task_emails')->where('email_id', $emailId)->exists()) {
+                    //     $this->warn("⚠️ Email already processed (ID: $emailId), skipping...");
+                    //     continue;
+                    // }
 
                     // logger('email text: '. $emailText);
                     // 🔹 Use OpenAI to extract structured data
@@ -78,16 +82,16 @@ class ReadAndProcessEmails extends Command
                     }
 
                     if ($extractedData && isset($extractedData['data'])) {
-                        logger('extracted data: '. json_encode($extractedData['data']));
+                        logger('extracted data: ' . json_encode($extractedData['data']));
                         $taskData = $extractedData['data'];
-    
+
                         // 🔹 Insert extracted data into `task_emails`
                         $taskEmail = TaskEmail::create([
                             'email_id' => $emailId,
                             'client_id' => $taskData['client_id'] ?? null,
                             'agent_id' => $taskData['agent_id'] ?? null,
                             'agent_name ' => $taskData['agent_id'] ?? null,
-                            'type' => $label,
+                            'type' => $taskData['type'],
                             'status' => 'pending',
                             'client_name' => $taskData['client_name'] ?? null,
                             'vendor_name' => $taskData['vendor_name'] ?? null,
@@ -108,19 +112,19 @@ class ReadAndProcessEmails extends Command
                             'invoice_price' => $taskData['invoice_price'] ?? null,
                             'voucher_status' => $taskData['voucher_status'] ?? null,
                         ]);
-                    
+
                         $taskId = $taskEmail->id;
 
 
-                            // Insert into `task_hotel_details`
+                        // Insert into `task_hotel_details`
                         if (!empty($taskData['task_hotel_details'])) {
                             $hotelDetails = $taskData['task_hotel_details'];
 
-                            $hotel = Hotel::where('name' , 'like', '%' . $hotelDetails['hotel_name'] . '%')->first();
+                            $hotel = Hotel::where('name', 'like', '%' . $hotelDetails['hotel_name'] . '%')->first();
 
-                            if($hotel){
+                            if ($hotel) {
                                 $hotelId = $hotel->id;
-                            }else{
+                            } else {
                                 $hotelId = null;
                             }
 
@@ -138,72 +142,26 @@ class ReadAndProcessEmails extends Command
                             ]);
                         }
 
-                        logger('task email: '. json_encode($taskEmail));
-                        logger('task hotel detail email: '. json_encode($taskHotelDetailEmail));
-                        
-                        if($taskEmail && $taskHotelDetailEmail){
-                            logger('finding existing task');
+                        logger('task email: ' . json_encode($taskEmail));
+                        logger('task hotel detail email: ' . json_encode($taskHotelDetailEmail));
+
+                        if ($taskEmail && $taskHotelDetailEmail) {
                             $existingTask = Task::where('reference', $taskEmail->reference)->first();
+                            $existingTaskHotelDetail = $existingTask ? TaskHotelDetail::where('task_id', $existingTask->id)->first() : null;
 
-                            if ($existingTask){
-                                logger('existing task found: ' . $existingTask->id);
-                                // $existingTask->update([
-                                //     'client_id' => $taskEmail->client_id ?? $existingTask->client_id,
-                                //     'agent_id' => $taskEmail->agent_id ?? $existingTask->agent_id,
-                                //     'client_name' => $taskEmail->client_name ?? $existingTask->client_name,
-                                //     'vendor_name' => $taskEmail->vendor_name ?? $existingTask->vendor_name,
-                                //     'company_name' => $taskEmail->company_name ?? $existingTask->company_name,
-                                //     'destination' => $taskEmail->destination ?? $existingTask->destination,
-                                //     'reference' => $taskEmail->reference ?? $existingTask->reference,
-                                //     'duration' => $taskEmail->duration ?? $existingTask->duration,
-                                //     'payment_type' => $taskEmail->payment_type ?? $existingTask->payment_type,
-                                //     'price' => $taskEmail->price ?? $existingTask->price,
-                                //     'tax' => $taskEmail->tax ?? $existingTask->tax,
-                                //     'surcharge' => $taskEmail->surcharge ?? $existingTask->surcharge,
-                                //     'total' => $taskEmail->total ?? $existingTask->total,
-                                //     'cancellation_policy' => $taskEmail->cancellation_policy ?? $existingTask->cancellation_policy,
-                                //     'additional_info' => $taskEmail->additional_info ?? $existingTask->additional_info,
-                                //     'supplier_name' => $taskEmail->supplier_name ?? $existingTask->supplier_name,
-                                //     'supplier_id' => $taskEmail->supplier_id ?? $existingTask->supplier_id,
-                                //     'venue' => $taskEmail->venue ?? $existingTask->venue,
-                                //     'invoice_price' => $taskEmail->invoice_price ?? $existingTask->invoice_price,
-                                //     'voucher_status' => $taskEmail->voucher_status ?? $existingTask->voucher_status,
-                                // ]);
-                            }else{
-                                logger('existing task not found');
+                            if ($existingTask) {
+                                $this->updateExistingTask($existingTask, $taskEmail);
+                                $this->logUpdatedColumns($existingTask, $taskEmail);
+
+                                if ($existingTaskHotelDetail) {
+                                    $this->updateExistingTaskHotelDetail($existingTaskHotelDetail, $taskHotelDetailEmail, $hotel);
+                                    $this->logUpdatedColumns($existingTaskHotelDetail, $taskHotelDetailEmail);
+                                }
+                            } else {
+                                $this->createNewTaskAndDetails($taskEmail, $taskHotelDetailEmail, $hotel);
                             }
-
-                            // foreach ($taskEmail->getAttributes() as $key => $value) {
-                            //     if ($existingTask->$key != $value) {
-                            //         logger("Updated Task Column: $key from {$existingTask->$key} to $value");
-                            //     }
-                            // }
-
-                            $existingTaskHotelDetail = TaskHotelDetail::where('task_id', $existingTask->id)->first();
-
-                            if ($existingTaskHotelDetail){
-                                logger('existing task hotel detail found: ' . $existingTaskHotelDetail->id);
-                                // $existingTaskHotelDetail->update([
-                                //     'hotel_id' => $taskHotelDetailEmail->hotel_id ?? $existingTaskHotelDetail->hotel_id,
-                                //     'booking_time' => $taskHotelDetailEmail->booking_time ?? $existingTaskHotelDetail->booking_time,
-                                //     'check_in' => $taskHotelDetailEmail->check_in ?? $existingTaskHotelDetail->check_in,
-                                //     'check_out' => $taskHotelDetailEmail->check_out ?? $existingTaskHotelDetail->check_out,
-                                //     'room_number' => $taskHotelDetailEmail->room_number ?? $existingTaskHotelDetail->room_number,
-                                //     'room_type' => $taskHotelDetailEmail->room_type ?? $existingTaskHotelDetail->room_type,
-                                //     'room_amount' => $taskHotelDetailEmail->room_amount ?? $existingTaskHotelDetail->room_amount,
-                                //     'room_details' => $taskHotelDetailEmail->room_details ?? $existingTaskHotelDetail->room_details,
-                                //     'rate' => $taskHotelDetailEmail->rate ?? $existingTaskHotelDetail->rate,
-                                // ]);
-                            }else{
-                                logger('existing task hotel detail not found');
-                            }
-
-                            // foreach ($taskHotelDetailEmail->getAttributes() as $key => $value) {
-                            //     if ($existingTaskHotelDetail->$key != $value) {
-                            //         logger("Updated Task Hotel Detail Column: $key from {$existingTaskHotelDetail->$key} to $value");
-                            //     }
-                            // }
                         }
+
                         $this->info("✅ Email ($emailId) processed and inserted.");
                     } else {
                         $this->warn("⚠️ Could not extract valid data from email (ID: $emailId).");
@@ -215,6 +173,100 @@ class ReadAndProcessEmails extends Command
         }
 
         $this->info("\n✅ Email processing completed!");
+    }
+
+    private function updateExistingTask($existingTask, $newTask)
+    {
+        $existingTask->update([
+            'client_id' => $newTask->client_id,
+            'agent_id' => $newTask->agent_id,
+            'agent_name' => $newTask->agent_name,
+            'type' => $newTask->type,
+            'status' => $newTask->status,
+            'client_name' => $newTask->client_name,
+            'vendor_name' => $newTask->vendor_name,
+            'company_name' => $newTask->company_name,
+            'destination' => $newTask->destination,
+            'reference' => $newTask->reference,
+            'duration' => $newTask->duration,
+            'payment_type' => $newTask->payment_type,
+            'price' => $newTask->price,
+            'tax' => $newTask->tax,
+            'surcharge' => $newTask->surcharge,
+            'total' => $newTask->total,
+            'cancellation_policy' => $newTask->cancellation_policy,
+            'additional_info' => $newTask->additional_info,
+            'supplier_name' => $newTask->supplier_name,
+            'supplier_id' => $newTask->supplier_id,
+            'venue' => $newTask->venue,
+            'invoice_price' => $newTask->invoice_price,
+            'voucher_status' => $newTask->voucher_status,
+        ]);
+    }
+
+    private function updateExistingTaskHotelDetail($existingTaskHotelDetail, $newTaskHotelDetail, $hotel)
+    {
+        $existingTaskHotelDetail->update([
+            'hotel_id' => $hotel ? $hotel->id : null,
+            'booking_time' => $newTaskHotelDetail->booking_time,
+            'check_in' => $newTaskHotelDetail->check_in,
+            'check_out' => $newTaskHotelDetail->check_out,
+            'room_number' => $newTaskHotelDetail->room_number,
+            'room_type' => $newTaskHotelDetail->room_type,
+            'room_amount' => $newTaskHotelDetail->room_amount,
+            'room_details' => $newTaskHotelDetail->room_details,
+            'rate' => $newTaskHotelDetail->rate,
+        ]);
+    }
+
+    private function createNewTaskAndDetails($taskEmail, $taskHotelDetailEmail, $hotel)
+    {
+        $task = Task::create([
+            'client_id' => $taskEmail->client_id,
+            'agent_id' => $taskEmail->agent_id,
+            'agent_name' => $taskEmail->agent_name,
+            'type' => $taskEmail->type,
+            'status' => $taskEmail->status,
+            'client_name' => $taskEmail->client_name,
+            'vendor_name' => $taskEmail->vendor_name,
+            'company_name' => $taskEmail->company_name,
+            'destination' => $taskEmail->destination,
+            'reference' => $taskEmail->reference,
+            'duration' => $taskEmail->duration,
+            'payment_type' => $taskEmail->payment_type,
+            'price' => $taskEmail->price,
+            'tax' => $taskEmail->tax,
+            'surcharge' => $taskEmail->surcharge,
+            'total' => $taskEmail->total,
+            'cancellation_policy' => $taskEmail->cancellation_policy,
+            'additional_info' => $taskEmail->additional_info,
+            'supplier_name' => $taskEmail->supplier_name,
+            'supplier_id' => $taskEmail->supplier_id,
+            'venue' => $taskEmail->venue,
+            'invoice_price' => $taskEmail->invoice_price,
+            'voucher_status' => $taskEmail->voucher_status,
+        ]);
+
+        TaskHotelDetail::create([
+            'hotel_id' => $hotel ? $hotel->id : null,
+            'booking_time' => $taskHotelDetailEmail->booking_time,
+            'check_in' => $taskHotelDetailEmail->check_in,
+            'check_out' => $taskHotelDetailEmail->check_out,
+            'room_number' => $taskHotelDetailEmail->room_number,
+            'room_type' => $taskHotelDetailEmail->room_type,
+            'room_amount' => $taskHotelDetailEmail->room_amount,
+            'room_details' => $taskHotelDetailEmail->room_details,
+            'rate' => $taskHotelDetailEmail->rate,
+            'task_id' => $task->id,
+        ]);
+    }
+
+    private function logUpdatedColumns($existingModel, $newModel)
+    {
+        $updatedColumns = array_diff_assoc($newModel->getAttributes(), $existingModel->getAttributes());
+        if (!empty($updatedColumns)) {
+            logger('Updated columns: ' . json_encode($updatedColumns));
+        }
     }
 
     private function processWithAI($emailText)
@@ -270,7 +322,7 @@ class ReadAndProcessEmails extends Command
                 \Log::error("Unexpected OpenAI response structure", ['response' => $response]);
                 return null;
             }
-            
+
             $content = $response['choices'][0]['message']['content'];
 
             // **Extract JSON correctly**
@@ -280,9 +332,9 @@ class ReadAndProcessEmails extends Command
             if (empty($jsonString)) {
                 \Log::error("Extracted JSON string is empty. Possible regex failure.", ['content' => $content]);
             }
-            
+
             $jsonData = json_decode($jsonString, true);
-    
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 \Log::error("JSON decoding failed", ['json_error' => json_last_error_msg(), 'response' => $content]);
                 return null;
@@ -306,7 +358,6 @@ class ReadAndProcessEmails extends Command
                 'invoice_price' => $jsonData['invoice_price'] ?? null,
                 'voucher_status' => $jsonData['voucher_status'] ?? null,
             ];
-
         } catch (\Exception $e) {
             \Log::error("OpenAI API Error: " . $e->getMessage());
         }
@@ -341,6 +392,7 @@ class ReadAndProcessEmails extends Command
             - `company_name`: name of the company for the task.
             - `agent_name`: name of the agent handling the task.
             - `agent_id`:  You can refer the agent id from this list: $agentsJson
+                make sure you only get existing agent id.
             - `client_name`: name of the client associated with the task, some text have the client name as holder name.
             - `supplier_name`: name of the supplier for the task.
                 You can refer the supplier from this list: $supplierListJson
@@ -422,42 +474,41 @@ class ReadAndProcessEmails extends Command
         ];
 
         try {
-        $response = $this->openAIService->getChatResponse($messages);
+            $response = $this->openAIService->getChatResponse($messages);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $message = $response['choices'][0]['message']['content'];
+            if (isset($response['choices'][0]['message']['content'])) {
+                $message = $response['choices'][0]['message']['content'];
 
-            $decodedResponse = json_decode($message, true);
-
-            if (json_last_error() === JSON_ERROR_NONE) {
-
-                return [
-                    'status' => 'success',
-                    'message' => 'Data extracted successfully',
-                    'data' => $decodedResponse,
-                ];
-                // return $taskController->saveTasks($decodedResponse);
-            } else {
-                $cleanedResponse = $this->cleanJsonResponse($message);
-                $data = json_decode($cleanedResponse, true);
+                $decodedResponse = json_decode($message, true);
 
                 if (json_last_error() === JSON_ERROR_NONE) {
 
                     return [
                         'status' => 'success',
                         'message' => 'Data extracted successfully',
-                        'data' => $data,
+                        'data' => $decodedResponse,
                     ];
-                    // return $taskController->saveTasks($data);
+                    // return $taskController->saveTasks($decodedResponse);
                 } else {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Failed to parse JSON or missing required fields.',
-                    ];
+                    $cleanedResponse = $this->cleanJsonResponse($message);
+                    $data = json_decode($cleanedResponse, true);
+
+                    if (json_last_error() === JSON_ERROR_NONE) {
+
+                        return [
+                            'status' => 'success',
+                            'message' => 'Data extracted successfully',
+                            'data' => $data,
+                        ];
+                        // return $taskController->saveTasks($data);
+                    } else {
+                        return [
+                            'status' => 'error',
+                            'message' => 'Failed to parse JSON or missing required fields.',
+                        ];
+                    }
                 }
             }
-        }
-
         } catch (\Exception $e) {
             \Log::error("Error after OpenAI response: " . $e->getMessage());
         }
@@ -466,9 +517,9 @@ class ReadAndProcessEmails extends Command
     private function fetchUserBasedData()
     {
         $suppliers = Supplier::all();
-        $companies = Company::all(); 
-        $agents = Agent::all(); 
-        $clients = Client::all(); 
+        $companies = Company::all();
+        $agents = Agent::all();
+        $clients = Client::all();
         return [
             'suppliers' => $suppliers,
             'companies' => $companies,

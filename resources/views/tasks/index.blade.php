@@ -8,7 +8,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name ?? 'Not Assigned Yet' }}</p>
                     </div>
                     <div>
                         <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="importTaskModal = true">View</a>

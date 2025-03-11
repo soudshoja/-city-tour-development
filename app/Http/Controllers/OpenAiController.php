@@ -580,7 +580,7 @@ class OpenAiController extends Controller
      */
     public function extractHotelData($content)
     {
-        $supplierList = Supplier::all()->toArray();
+        $supplierList = json_encode(Supplier::all()->toArray());
 
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:

@@ -33,26 +33,6 @@ class Task extends Model
         'enabled'
     ];
 
-    // protected $fillable = [
-    //     'additional_info',
-    //     'status',
-    //     'price',
-    //     'surcharge',
-    //     'total',
-    //     'tax',
-    //     'reference',
-    //     'type',
-    //     'agent_id',
-    //     'client_id',
-    //     'supplier_id',
-    //     'client_name',
-    //     'cancellation_policy',
-    //     'invoice_price',
-    //     'venue',
-    //     'voucher_status',
-    //     'enabled'
-    // ];
-
     protected static function booted()
     {
         static::addGlobalScope('enabled', function (Builder $builder) {

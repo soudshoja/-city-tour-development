@@ -79,92 +79,187 @@ function toggleTasksDetails(taskId, url) {
 
                 const taskDescription =
                     data.type === "flight"
-                        ? "Kuala Lumpur ------->> Landon"
-                        : "Hotel Name/ London";
+                        ? `${data.country_from} ------->> ${data.country_to}`
+                        : data.hotel_name || "Hotel Name/ City";
+
                 // Populate task details
+                console.log("data : ", data);
+
                 taskDetailsDiv.innerHTML = `
-                                <div class="justify-center flex items-center mb-5">
-                                    <span class="text-center px-5 py-3 w-full text-lg badge bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-md dark:group-hover:bg-transparent rounded-lg text-black dark:text-gray-300">
-                                        ${data.supplier.name}
-                                    </span>
-                                </div>
-                                <div class="p-4 justify-between flex items-center gap-5">
-                                    <div class='flex gap-2'>
-                                        <h3 class='text-lg font-bold mb-2'>Task Details</h3>
-                                    </div>
-                                    <p><span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
-                                        ${
-                                            data.status === "Completed"
-                                                ? "badge-outline-success"
-                                                : ""
-                                        }
-                                        ${
-                                            data.status === "Assigned"
-                                                ? "badge-outline-assigned"
-                                                : ""
-                                        }
-                                        ${
-                                            data.status === "Booked"
-                                                ? "badge-outline-booked"
-                                                : ""
-                                        }
-                                        ${
-                                            data.status === "Pending"
-                                                ? "badge-outline-danger"
-                                                : ""
-                                        }
-                                        ${
-                                            data.status === "Confirmed"
-                                                ? "badge-outline-primary"
-                                                : ""
-                                        }
-                                        ${
-                                            data.status === "Cancelled"
-                                                ? "badge-outline-danger"
-                                                : ""
-                                        }
-                                        ${
-                                            data.status === "Hold"
-                                                ? "badge-outline-danger"
-                                                : ""
-                                        }">
-                                        <strong>${data.status}</strong>
-                                    </span></p>
-                                </div>
-                                <div class='flex flex-col'>
-                                    <div class="p-4 justify-between flex items-center gap-5">
-                                        <h3 class='text-md font-bold mb-2'>${
-                                            data.client_name
-                                        }</h3>
-                                        <p>${
-                                            data.price
-                                        } - <span class='text-[#1e40af]'>KWD</span></p>
-                                    </div>
-                                    <!-- flight details -->
-                                    <div class="p-4 justify-between flex items-center gap-5">
-                                        <div class="flex gap-2 items-center">
-                                            ${taskIcon}
-                                            <p>${data.type}</p>
-                                        </div>
-                                        <div>${data.description}</div>
-                                    </div>
-                                    <!-- ./flight details -->
-                                    <span class='border-b-2 border-[#b1c0db] mb-5'></span>
-                                    <div class='border border-gray-200 rounded-md hover:bg-gray-200 flex items-center'>
-                                        <p class='p-3 rounded-l-md bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 w-24'>Agent:</p>
-                                        <p class="ml-2 flex-1">${
-                                            data.agent.name || "Agent name"
-                                        }</p>
-                                    </div>
-                                    <div class='mt-3 border border-gray-200 rounded-md hover:bg-gray-200 flex items-center'>
-                                        <p class='p-3 rounded-l-md bg-[#b1c0db] dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 w-24'>Branch:</p>
-                                        <p class="ml-2 flex-1">${
-                                            data.agent.branch.name ||
-                                            "Branch name"
-                                        }</p>
-                                    </div>
-                                </div>
-                            `;
+                               <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+                                                <style>
+                       .task-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    font-family: "Arial", sans-serif;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Supplier Name - Unique Design */
+.supplier-name {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #0047ab;
+    background: rgba(0, 71, 171, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+/* Section Styling */
+.section {
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border-left: 5px solid #0047ab;
+}
+
+/* Unique Backgrounds for Each Section */
+
+.pricing.hotel-details.flight-details.general-info.status {
+    background: #fff3cd;
+}
+
+
+/* Icons in Blue */
+.blue-icon {
+    color: #0047ab;
+}
+
+/* Flexbox for Better Alignment */
+.info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.info-row p {
+    flex: 1;
+    min-width: 45%;
+    margin: 5px 0;
+}
+
+/* Status Label Styling */
+.status-label {
+    font-weight: bold;
+    padding: 5px 12px;
+    border-radius: 5px;
+    background: #0047ab;
+    color: white;
+}
+
+</style>
+   <div class="task-container">
+    <div class="header">
+        <h3 class="supplier-name">
+            <i class="fas fa-warehouse"></i> ${
+                data.supplier?.name || "Unknown Supplier"
+            }
+        </h3>
+    </div>
+
+    <div class="section status">
+        <h4><i class="fas fa-info-circle blue-icon"></i> Status: <span class="status-label">${
+            data.status
+        }</span></h4>
+        <div class="info-row">
+            <p><i class="fas fa-map-marker-alt blue-icon"></i> <strong>Branch:</strong> ${
+                data.agent?.branch?.name || "Branch name"
+            }</p>
+            <p><i class="fas fa-user-tie blue-icon"></i> <strong>Agent:</strong> ${
+                data.agent?.name || "Agent name"
+            }</p>
+            <p><i class="fas fa-user blue-icon"></i> <strong>Client:</strong> ${
+                data.client_name || "N/A"
+            }</p>
+        </div>
+    </div>
+
+    <div class="section general-info">
+        <h4><i class="fas fa-info-circle blue-icon"></i> General Information</h4>
+        <div class="info-row">
+            <p><i class="fas fa-hashtag blue-icon"></i> <strong>Reference:</strong> ${
+                data.reference || "N/A"
+            }</p>
+            <p><i class="fas fa-tag blue-icon"></i> <strong>Type:</strong> ${
+                data.type
+            }</p>
+        </div>
+    </div>
+
+    ${
+        data.type === "flight"
+            ? `
+    <div class="section flight-details">
+        <h4><i class="fas fa-plane blue-icon"></i> Flight Details</h4>
+        <div class="info-row">
+            <p><i class="fas fa-plane-departure blue-icon"></i> ${
+                data.country_from
+            } <i class="fas fa-plane blue-icon"></i> ${data.country_to}</p>
+            <p><i class="fas fa-plane-departure blue-icon"></i> <strong>Departure:</strong> ${
+                data.flight_details?.airport_from || "N/A"
+            } - ${data.flight_details?.departure_time || "N/A"}</p>
+            <p><i class="fas fa-plane-arrival blue-icon"></i> <strong>Arrival:</strong> ${
+                data.flight_details?.airport_to || "N/A"
+            } - ${data.flight_details?.arrival_time || "N/A"}</p>
+            <p><i class="fas fa-ticket-alt blue-icon"></i> <strong>Flight:</strong> ${
+                data.flight_details?.flight_number || "N/A"
+            } - ${data.flight_details?.class_type || "N/A"}</p>
+            <p><i class="fas fa-suitcase blue-icon"></i> <strong>Baggage:</strong> ${
+                data.flight_details?.baggage_allowed || "N/A"
+            }</p>
+        </div>
+    </div>`
+            : `
+    <div class="section hotel-details">
+        <h4><i class="fas fa-hotel blue-icon"></i> Hotel Details</h4>
+        <div class="info-row">
+            <p><i class="fas fa-building blue-icon"></i> <strong>Hotel:</strong> ${
+                data.hotel_name || "N/A"
+            }</p>
+            <p><i class="fas fa-map-marker-alt blue-icon"></i> <strong>Location:</strong> ${
+                data.hotel_details?.hotel?.address || "N/A"
+            }, ${data.hotel_details?.hotel?.city || "N/A"}</p>
+            <p><i class="fas fa-globe blue-icon"></i> <strong>Country:</strong> ${
+                data.hotel_country || "N/A"
+            }</p>
+            <p><i class="fas fa-calendar-check blue-icon"></i> <strong>Check-in:</strong> ${
+                data.hotel_details?.check_in || "N/A"
+            }</p>
+            <p><i class="fas fa-calendar-times blue-icon"></i> <strong>Check-out:</strong> ${
+                data.hotel_details?.check_out || "N/A"
+            }</p>
+            <p><i class="fas fa-star blue-icon"></i> <strong>Rating:</strong> ${
+                data.hotel_details?.hotel?.rating || "N/A"
+            }</p>
+            <p><i class="fas fa-bed blue-icon"></i> <strong>Room:</strong> ${
+                data.hotel_details?.room_type || "N/A"
+            } - ${data.hotel_details?.room_number || "N/A"}</p>
+        </div>
+    </div>`
+    }
+
+    <div class="section pricing">
+        <h4><i class="fas fa-coins blue-icon"></i> Pricing Details</h4>
+        <div class="info-row">
+            <p><i class="fas fa-money-bill blue-icon"></i> <strong>Price:</strong> ${
+                data.price || "N/A"
+            }</p>
+            <p><i class="fas fa-percentage blue-icon"></i> <strong>Tax:</strong> ${
+                data.tax || "N/A"
+            }</p>
+            <p><i class="fas fa-calculator blue-icon"></i> <strong>Total:</strong> ${
+                data.total || "N/A"
+            }</p>
+        </div>
+    </div>
+</div>
+
+`;
 
                 taskDetailsDiv.style.display = "block";
                 filterBox.style.display = "none";
@@ -202,7 +297,7 @@ const filters = {
     },
 };
 
-if(document.getElementById("branch_id")){
+if (document.getElementById("branch_id")) {
     filters.branch = {
         element: document.getElementById("branch_id"),
         selected: new Set(),
@@ -315,12 +410,12 @@ function handleDropdownChange(filter, container, idAttr) {
     }
 
     filter.element.value = "";
-    
+
     let filterTags = document.querySelectorAll(".filter");
-    
+
     filterTags.forEach((tag) => {
         tag.addEventListener("click", function () {
-            console.log('clicked');
+            console.log("clicked");
             const id = this.getAttribute("data-id");
             const type = this.getAttribute("data-type");
             removeFilter(id, type);
@@ -351,8 +446,6 @@ function createFilterTag(id, name, type) {
     tag.innerHTML = `<span class="ml-2 text-white filter cursor-pointer" data-type="${type}" data-id="${id}">${name} &times;</span>`;
     return tag;
 }
-
-
 
 function removeFilter(id, type) {
     const tag = document.getElementById(`${type}-${id}`);
@@ -416,7 +509,6 @@ function filterRows() {
     return rows.filter((row) => row.style.display !== "none");
 }
 
-
 document.addEventListener("filterUpdated", function () {
     const visibleRows = filterRows();
     // updatePagination(visibleRows);
@@ -452,7 +544,6 @@ function createPagination() {
         }
     }
 }
-
 
 // Function to handle page number click
 // function handlePageChange(e) {
@@ -552,7 +643,7 @@ createInvoiceBtn.addEventListener("click", function () {
         alert("No tasks selected!");
         return;
     }
-     
+
     console.log(selectedTaskIds);
     const route = this.getAttribute("data-route");
     const url = route + "?task_ids=" + selectedTaskIds.join(",");
@@ -561,7 +652,8 @@ createInvoiceBtn.addEventListener("click", function () {
     window.location.href = url;
 });
 
-function updatePagination(visibleRows) { //close
+function updatePagination(visibleRows) {
+    //close
     const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
 
     dataTableBottom.style.display =
@@ -585,4 +677,3 @@ function updatePagination(visibleRows) { //close
 closeTaskFloatingActions.addEventListener("click", function () {
     floatingActions.classList.add("hidden");
 });
-

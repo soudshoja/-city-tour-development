@@ -1,39 +1,43 @@
-  <div class="body bg-white mt-2 rounded-md shadow-md flex flex-col dark:bg-gray-800">
-      @foreach ($permissions as $key => $groupPermission)
-      <div class="flex justify-start">
-          <div class="w-56 border-r p-2 border-b dark:border-gray-500 flex flex-col sm:flex-row sm:justify-between">
-              <span class="mb-4 sm:mb-0">{{ ucfirst($key) }}</span>
-              <div class="flex flex-col sm::flex-row">
-                  <button onclick="enableSubFeatures('{{ $key }}')" class="border-black border max-w-20 rounded-md p-2 bg-gray-100 text-xs mb-2 dark:bg-dark" type="button">
-                      Enable All
-                  </button>
-                  <button onclick="disableSubFeatures('{{ $key }}')" class="border-black border max-w-20 rounded-md p-2 bg-gray-100 text-xs dark:bg-dark" type="button">
-                      Disable All
-                  </button>
-              </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-2 w-full border-b dark:border-gray-500" id="{{ $key }}-sub">
-              @foreach($groupPermission as $permission)
-              <div class="grid grid-cols-4 border dark:border-gray-500 rounded-md py-2">
-                  <div class="inline-block align-middle m-auto">
-                    @if(Route::is('role.edit'))
-                      <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId[]" value="{{ $permission['id'] }}" {{ $permission['checked'] ? 'checked' : '' }}>
-                    @else
-                        <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId[]" value="{{ $permission['id'] }}">
-                    @endif
-                  </div>
-                  <div class="m-auto col-span-3 flex items-center">
-                      <label for="{{$permission['id']}}">{{$permission['name']}}</label>
-                  </div>
-              </div>
-              @endforeach
+<div class="body bg-gradient-to-br from-gray-50 to-gray-200 dark:from-gray-900 dark:to-gray-800 mt-2 
+rounded-lg shadow-md p-4 flex flex-col space-y-6 items-center mx-auto w-full">
+    <div class="flex flex-col w-full">
+        @foreach ($permissions as $key => $groupPermission)
+        <div class="flex items-center gap-x-6 border-b border-gray-300 dark:border-gray-700 pb-4 w-full">
+            <!-- Group Title & Buttons in Two Rows -->
+            <div class="flex flex-col gap-3">
+                <!-- First Row: Group Title -->
+                <div class="text-lg font-bold text-gray-900 dark:text-gray-100 text-center uppercase tracking-wide">
+                    {{ ucfirst($key) }}
+                </div>
 
-          </div>
-      </div>
+                <!-- Second Row: Buttons -->
+                <div class="flex gap-4 flex-wrap">
+                    <button onclick="enableSubFeatures('{{ $key }}')"
+                        class="border border-gray-500 dark:border-gray-400 rounded-lg px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-300 text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out shadow hover:shadow-md">
+                        Enable All
+                    </button>
+                    <button onclick="disableSubFeatures('{{ $key }}')"
+                        class="border border-gray-500 dark:border-gray-400 rounded-lg px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-300 text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out shadow hover:shadow-md">
+                        Disable All
+                    </button>
+                </div>
+            </div>
 
-      @endforeach
 
-      <script>
+            <!-- Permissions List -->
+            <div class="flex flex-wrap items-center justify-center gap-4 p-3" id="{{ $key }}-sub">
+                @foreach($groupPermission as $permission)
+                <div class="flex items-center  justify-center gap-3 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-300 dark:border-gray-700 hover:shadow-md transform transition duration-150 ease-in-out hover:scale-105">
+                    <input type="checkbox" id="{{ $permission['id'] }}" name="permissionsId[]" value="{{ $permission['id'] }}" class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-400 rounded cursor-pointer transition-all ease-in-out duration-150" {{ $permission['checked'] ? 'checked' : '' }}>
+                    <label for="{{$permission['id']}}" class="text-gray-900 dark:text-gray-200 text-base 
+                    font-medium tracking-wide">{{$permission['name']}}</label>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endforeach
+
+        <script>
           function enableSubFeatures(id) {
               var subFeatures = document.getElementById(id + '-sub');
               var checkboxes = subFeatures.getElementsByTagName('input');
@@ -52,4 +56,5 @@
               }
           }
       </script>
-  </div>
+    </div>
+</div>

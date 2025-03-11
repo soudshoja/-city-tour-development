@@ -129,7 +129,6 @@
                                             // Retrieve the first invoice detail; adjust as needed if you want a different one.
                                             $invoiceDetail = $invoice->invoiceDetails->first();
                                         @endphp
-
                                         <tr data-price="{{ $invoice->total }}"
                                             data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
                                             data-branch-id="{{ $invoice->agent->branch->id }}"

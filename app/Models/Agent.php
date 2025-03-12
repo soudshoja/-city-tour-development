@@ -27,6 +27,7 @@ class Agent extends Model
         'type',
         'type_id',
         'branch_id',
+        'account_id'
     ];
 
     public function company()
@@ -57,5 +58,10 @@ class Agent extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+    
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
     }
 }

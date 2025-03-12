@@ -52,11 +52,11 @@
     <!-- ./add accounts top bar -->
 
     <!-- accounts view -->
-    <div class="rounded-lg w-full ">
-        <div class="mb-5 search-item bg-white rounded-lg">@include('coa.partials.assets')</div>
-        <div class="mb-5 search-item bg-white rounded-lg">@include('coa.partials.liabilities')</div>
-        <div class="mb-5 search-item bg-white rounded-lg">@include('coa.partials.income')</div>
-        <div class="mb-5 search-item bg-white rounded-lg">@include('coa.partials.expenses')</div>
+    <div class="rounded-lg w-full">
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.assets')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.liabilities')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.income')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.expenses')</div>
 
     </div>
     <!-- ./accounts view -->

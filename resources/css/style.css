@@ -2597,6 +2597,7 @@ body.dark {
 .vertical .sidebar:where([dir="ltr"], [dir="ltr"] *) {
     left: -260px;
 }
+
 @media (min-width: 1024px) {
     .vertical .sidebar:where([dir="ltr"], [dir="ltr"] *) {
         left: 0;

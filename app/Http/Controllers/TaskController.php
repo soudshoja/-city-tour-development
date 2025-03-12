@@ -54,7 +54,6 @@ class TaskController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks->orderBy('created_at', 'desc')->get();
-            $taskCount = Task::count();
             $clients = Client::all();
             $agents = Agent::all();
             $queueTasks = $queueTasks->get();
@@ -64,30 +63,50 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
-            $taskCount = Task::whereIn('agent_id', $agentsId)->count();
+            $tasks = $tasks->where('company_id', $user->company->id)->get();
             $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
 
         } elseif($user->role_id == Role::BRANCH){
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->whereIn('agent_id', $agentsId)->get();
-            $taskCount = Task::whereIn('agent_id', $agentsId)->count();
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->get();
             $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
         
             $clients = Client::where('agent_id', $user->agent->id)->get();
             $tasks = $tasks->where('agent_id', $user->agent->id)->get();
-            $taskCount = $tasks->count();
             $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
 
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
+        $processTask = $tasks->toArray();
+        $processTask = array_map(function($row){
+
+            $row = (array) $row;
+            $hasNull = false;
+
+            foreach($row as $key => $value){
+                if($value === null){
+                    $hasNull = true;
+                    break;
+                }
+            }
+
+            if($hasNull){
+                $row['is_complete'] = false;
+            } else {
+                $row['is_complete'] = true;
+            }
+
+            return $row;
+
+        }, $processTask);
+
+        $taskCount = $tasks->count();
         $types = Task::distinct()->pluck('type');
         $suppliers = Supplier::all();
-
         $importedTask = Cache::get('imported_task');
         
         if($user->hasAnyRole('admin', 'company')){
@@ -95,9 +114,9 @@ class TaskController extends Controller
             $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
 
             // dd($agents);
-            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types', 'queueTasks'));
+            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types', 'queueTasks', 'processTask'));
         }
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'queueTasks'));
+        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'queueTasks', 'processTask'));
     }
 
     public function voucher($id = null)
@@ -667,7 +686,7 @@ class TaskController extends Controller
                 'type' => 'hotel',
                 'status' => $reservation['service']['status'] ?? null,
                 'client_name' => $clientName,
-                'reference' => $reservation['reference']['external'] ?? null,
+                'reference' => $reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,
                 'payment_type' => $reservation['service']['payment']['type'] ?? null,
                 'price' => $prices['issue']['selling']['value'] ?? null,

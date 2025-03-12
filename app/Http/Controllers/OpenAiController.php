@@ -303,7 +303,6 @@ class OpenAiController extends Controller
         all related time should be in the format of 'Y-m-d H:i:s'
 
         Analyze the uploaded file to locate and extract relevant fields.
-        If the uploaded file is not a Air file (.air) file, stop processing.
         If the file type is (.air) but the structure doesn't match the reference example, reject the file.
         If the uploaded file type is (.air), set it to amedeus as per supplier's list that i gave you,
         then bind the data to the `tasks` and `task_flight_details` models in JSON format, following the provided mapping examples. 

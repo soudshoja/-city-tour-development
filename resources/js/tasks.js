@@ -173,9 +173,9 @@ function toggleTasksDetails(taskId, url) {
             <p><i class="fas fa-user-tie blue-icon"></i> <strong>Agent:</strong> ${
                 data.agent?.name || "Agent name"
             }</p>
-            <p><i class="fas fa-user blue-icon"></i> <strong>Client:</strong> ${
-                data.client_name || "N/A"
-            }</p>
+            <p><i class="fas fa-user blue-icon"></i> <strong>Client:</strong> 
+            ${data.client_name !== undefined && data.client_name !== null ? data.client_name : "N/A"}</p>
+
         </div>
     </div>
 

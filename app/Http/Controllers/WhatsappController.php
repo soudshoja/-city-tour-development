@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 
+
 class WhatsappController extends Controller
 {
     use HttpRequestTrait;
@@ -149,7 +150,7 @@ class WhatsappController extends Controller
     }
 
 
-    
+
     // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
     private $VERIFY_TOKEN = 'd41d8cd98f00b204e9800998ecf8427e';

@@ -10,9 +10,12 @@
         <div class="px-4 py-2 justify-start font-semibold flex items-center dark:text-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 14">
                 <g fill="none" stroke="#ffc107" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6.022 4.347a18.5 18.5 0 0 0-1.93 1.686C1.248 8.877-.192 12.046.874 13.113c1.066 1.066 4.236-.375 7.079-3.218a18.5 18.5 0 0 0 1.686-1.931" />
-                    <path d="M9.639 7.964c1.677 2.226 2.36 4.32 1.532 5.148c-1.067 1.067-4.236-.374-7.08-3.217C1.249 7.05-.191 3.882.875 2.815c.828-.827 2.922-.144 5.148 1.532" />
-                    <path d="M5.522 7.964a.5.5 0 1 0 1 0a.5.5 0 0 0-1 0m2.51-4.354c-.315-.055-.315-.506 0-.56a2.84 2.84 0 0 0 2.29-2.193L10.34.77c.068-.31.51-.312.58-.003l.024.101a2.86 2.86 0 0 0 2.296 2.18c.316.055.316.509 0 .563a2.86 2.86 0 0 0-2.296 2.18l-.024.101c-.07.31-.512.308-.58-.002l-.02-.087A2.84 2.84 0 0 0 8.03 3.61Z" />
+                    <path
+                        d="M6.022 4.347a18.5 18.5 0 0 0-1.93 1.686C1.248 8.877-.192 12.046.874 13.113c1.066 1.066 4.236-.375 7.079-3.218a18.5 18.5 0 0 0 1.686-1.931" />
+                    <path
+                        d="M9.639 7.964c1.677 2.226 2.36 4.32 1.532 5.148c-1.067 1.067-4.236-.374-7.08-3.217C1.249 7.05-.191 3.882.875 2.815c.828-.827 2.922-.144 5.148 1.532" />
+                    <path
+                        d="M5.522 7.964a.5.5 0 1 0 1 0a.5.5 0 0 0-1 0m2.51-4.354c-.315-.055-.315-.506 0-.56a2.84 2.84 0 0 0 2.29-2.193L10.34.77c.068-.31.51-.312.58-.003l.024.101a2.86 2.86 0 0 0 2.296 2.18c.316.055.316.509 0 .563a2.86 2.86 0 0 0-2.296 2.18l-.024.101c-.07.31-.512.308-.58-.002l-.02-.087A2.84 2.84 0 0 0 8.03 3.61Z" />
                 </g>
             </svg>
             <p class="pl-2">AI Assistant</p>
@@ -35,8 +38,10 @@
                     class="bg-[#1e40af] relative w-12 h-12 flex items-center justify-center m-2 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <g fill="none">
-                            <path d="m12.594 23.258l-.012.002l-.071.035l-.02.004l-.014-.004l-.071-.036q-.016-.004-.024.006l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.016-.018m.264-.113l-.014.002l-.184.093l-.01.01l-.003.011l.018.43l.005.012l.008.008l.201.092q.019.005.029-.008l.004-.014l-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.003-.011l.018-.43l-.003-.012l-.01-.01z" />
-                            <path fill="#fff" d="M20.235 5.686c.432-1.195-.726-2.353-1.921-1.92L3.709 9.048c-1.199.434-1.344 2.07-.241 2.709l4.662 2.699l4.163-4.163a1 1 0 0 1 1.414 1.414L9.544 15.87l2.7 4.662c.638 1.103 2.274.957 2.708-.241z" />
+                            <path
+                                d="m12.594 23.258l-.012.002l-.071.035l-.02.004l-.014-.004l-.071-.036q-.016-.004-.024.006l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.016-.018m.264-.113l-.014.002l-.184.093l-.01.01l-.003.011l.018.43l.005.012l.008.008l.201.092q.019.005.029-.008l.004-.014l-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.003-.011l.018-.43l-.003-.012l-.01-.01z" />
+                            <path fill="#fff"
+                                d="M20.235 5.686c.432-1.195-.726-2.353-1.921-1.92L3.709 9.048c-1.199.434-1.344 2.07-.241 2.709l4.662 2.699l4.163-4.163a1 1 0 0 1 1.414 1.414L9.544 15.87l2.7 4.662c.638 1.103 2.274.957 2.708-.241z" />
                         </g>
                     </svg>
                 </button>
@@ -57,7 +62,8 @@
             <ul id="task-list" class="space-y-2">
                 <!-- Tasks will be dynamically loaded here -->
             </ul>
-            <button id="confirm-tasks" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Confirm Tasks</button>
+            <button id="confirm-tasks"
+                class="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Confirm Tasks</button>
         </div>
     </div>
 
@@ -112,7 +118,8 @@
         </div>
     </div>
 
-    <div id="payment_gateway_section" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+    <div id="payment_gateway_section"
+        class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
             <div class="bg-gray-100 p-5">
@@ -121,13 +128,15 @@
                     <!-- Split Payment Tab Content -->
                     <div id="split-payment-container" class="tab-content">
 
-                        <select id="payment_gatewayChat" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
+                        <select id="payment_gatewayChat" name="payment_gateway"
+                            class="border border-gray-300 p-2 rounded w-full">
                             <option value="Tap">Tap</option>
                             <option value="Hesabe">Hesabe</option>
                             <option value="MyFatoorah">MyFatoorah</option>
                         </select>
                         <div>
-                            <button type="button" onclick="savePartial('full')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button type="button" onclick="savePartial('full')"
+                                class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                     city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                         </div>
                     </div>
@@ -139,7 +148,8 @@
         </div>
     </div>
     <!-- Modal -->
-    <div id="paymentModalChat" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+    <div id="paymentModalChat"
+        class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
             <!-- Include your previous page content here -->
@@ -153,11 +163,15 @@
                             <div class="grid grid-cols-3 gap-4 mb-5">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">Amount *</label>
-                                    <input type="number" id="total-amountChat" class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+                                    <input type="number" id="total-amountChat"
+                                        class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0"
+                                        disabled />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
-                                    <select id="split-intoChat" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows()">
+                                    <label class="block text-sm font-medium mb-1" for="split-into">Split into
+                                        *</label>
+                                    <select id="split-intoChat" class="w-full border-gray-300 rounded-md shadow-sm"
+                                        onchange="updateRows()">
                                         <option value="" disabled selected>Select a value</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
@@ -202,7 +216,8 @@
                             <!-- Buttons -->
 
                             <div>
-                                <button type="button" onclick="savePartial('split')" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button type="button" onclick="savePartial('split')"
+                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                             </div>
                         </form>
@@ -215,7 +230,8 @@
         </div>
     </div>
 
-    <div id="paymentModal1Chat" class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
+    <div id="paymentModal1Chat"
+        class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
             <div class="bg-gray-100 p-5">
@@ -236,7 +252,8 @@
                         <div class="grid grid-cols-3 gap-4 mb-5">
                             <div>
                                 <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
-                                <select id="split-into1Chat" class="w-full border-gray-300 rounded-md shadow-sm" onchange="updateRows1()">
+                                <select id="split-into1Chat" class="w-full border-gray-300 rounded-md shadow-sm"
+                                    onchange="updateRows1()">
                                     <option value="" disabled selected>Select a value</option>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
@@ -249,7 +266,8 @@
 
                             <div>
                                 <label class="block text-sm font-medium mb-1">Payment Gateway</label>
-                                <select id="payment_gateway1Chat" name="payment_gateway1Chat" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                <select id="payment_gateway1Chat" name="payment_gateway1Chat"
+                                    class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                     <option value="Tap">Tap</option>
                                     <option value="Hesabe">Hesabe</option>
                                     <option value="MyFatoorah">MyFatoorah</option>
@@ -270,10 +288,12 @@
                             </tbody>
                         </table>
 
-                        <p id="error-messageChat" class="text-red-500 mt-3 hidden">The total of partial payments must match the invoice total.</p>
+                        <p id="error-messageChat" class="text-red-500 mt-3 hidden">The total of partial payments must
+                            match the invoice total.</p>
 
                         <div class="flex space-x-4 mt-5">
-                            <button onclick="savePartial('partial')" type="button" class="inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button onclick="savePartial('partial')" type="button"
+                                class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                         </div>
                     </div>
@@ -286,153 +306,147 @@
     </div>
 
     <div id="client-options-modal" class="bg-white shadow-md rounded-lg mb-6 hidden">
-                                <div class="bg-white rounded-lg shadow-lg w-11/12 max-w-md">
-                                    <div class="border-b border-gray-200 p-4 flex justify-between">
-                                        <h5 class="text-lg font-semibold text-gray-700">Add New Client</h5>
-                                        <button id="close-option-client" class="text-black hover:text-gray-200">&times;</button>
-                                    </div>
-                                    <div class="p-6">
-                                        <p class="text-gray-600 mb-4">Please choose how you want to proceed:</p>
-                                        <div class="flex justify-between space-x-4">
-                                            <button
-                                                id="upload-passport-btn"
-                                                class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg focus:outline-none shadow-md"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-5 w-5 inline-block mr-2"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        d="M3 3a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2H3z"
-                                                    />
-                                                    <path
-                                                        d="M17 10H3a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2v-2a2 2 0 00-2-2z"
-                                                    />
-                                                </svg>
-                                                Upload Passport
-                                            </button>
-                                            <button
-                                                id="fill-form-btn"
-                                                class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg focus:outline-none shadow-md"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-5 w-5 inline-block mr-2"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        d="M5 3a2 2 0 012-2h6a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V3z"
-                                                    />
-                                                </svg>
-                                                Fill Form
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-
-
-                <div id="passport" >
-                    <input type="file" id="passport-upload-input" accept="image/*,application/pdf" class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" hidden>
-                    <div id="file-preview-container" class="mt-4"></div> <!-- For image preview -->
-                    <div id="upload-status" class="mt-2 text-sm text-gray-600"></div> <!-- For upload status -->
-                    <div id="passport-details" class="mt-4 text-sm text-gray-800"></div> <!-- For displaying extracted details -->
-                </div>
-
-
-          <!-- Create Client -->
-        <div id="create-client" class="bg-white shadow-md rounded-lg mb-6 hidden">
-             <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
-                <span>Create Client</span>
-                <button id="close-create-client" class="text-white hover:text-gray-200">&times;</button>
+        <div class="bg-white rounded-lg shadow-lg w-11/12 max-w-md">
+            <div class="border-b border-gray-200 p-4 flex justify-between">
+                <h5 class="text-lg font-semibold text-gray-700">Add New Client</h5>
+                <button id="close-option-client" class="text-black hover:text-gray-200">&times;</button>
             </div>
-            <div class="p-4">
-                <p class="mb-4">Enter client Information:</p>
-                <form id="client-form" class="space-y-4">
-                          <div class="mb-4 flex gap-4">
-                                <!-- Name Field -->
-                                <div class="w-1/2">
-                                    <label for="name" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                    <input id="nameChat" name="name" type="text" required
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Name" />
-                                </div>
-
-                                <!-- Email Field -->
-                                <div class="w-1/2">
-                                    <label for="email" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                    <input id="emailChat" name="email" type="email" required
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Email" />
-                                </div>
-                            </div>
-
-                            <div class="mb-4 flex gap-4">
-                                <!-- Phone Field -->
-                                <div class="w-1/2">
-                                    <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
-                                    <input id="phoneChat" name="phone" type="text" required
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Phone" />
-                                </div>
-
-                                <!-- Address Field -->
-                                <div class="w-1/2">
-                                    <label for="address" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                    <input id="addressChat" name="address" type="text"
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        placeholder="Client Address" />
-                                </div>
-                            </div>
-
-                            <!-- Passport Number Field -->
-                            <div class="mb-4 flex gap-4">
-                             <div class="w-1/2">
-                                <label for="passport_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport Number</label>
-                                <input id="passport_noChat" name="passport_no" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Passport Number" />
-                            </div>
-                            <div class="w-1/2">
-                                <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Civil Number</label>
-                                <input id="civil_noChat" name="civil_noChat" type="text" required
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    placeholder="Civil Number" />
-                            </div>
-                            </div>
-
-                            <!-- Agent Email Field -->
-                            <div class="mb-4 flex gap-4">
-                                <div class="w-1/2">
-                                    <label for="agent_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
-                                    <select id="agent_idChat" name="agent_idChat" class="w-full p-2 border rounded-md" placeholder="Select Agent">
-                                    @foreach ($agents as $agent)
-                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                                    @endforeach
-                                    </select>
-                                </div>
-                                <div class="w-1/2">
-                                <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date of Birth</label>
-                                <input id="date_of_birthChat" type="date" name="date_of_birthChat" 
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                     />
-                                </div>
-                           </div>
-                           <input id="chatClientForm" type="hidden" name="clientForm" />    
-                           <input id="clientId" type="hidden" name="clientId" />    
-                            <!-- Submit Button -->
-                            <div class="flex items-center justify-center">
-                                <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
-                                    Register Client
-                                </button>
-                            </div>
-                </form>
+            <div class="p-6">
+                <p class="text-gray-600 mb-4">Please choose how you want to proceed:</p>
+                <div class="flex justify-between space-x-4">
+                    <button id="upload-passport-btn"
+                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg focus:outline-none shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path d="M3 3a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2H3z" />
+                            <path d="M17 10H3a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2v-2a2 2 0 00-2-2z" />
+                        </svg>
+                        Upload Passport
+                    </button>
+                    <button id="fill-form-btn"
+                        class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg focus:outline-none shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path d="M5 3a2 2 0 012-2h6a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V3z" />
+                        </svg>
+                        Fill Form
+                    </button>
+                </div>
             </div>
         </div>
+    </div>
+
+
+
+    <div id="passport">
+        <input type="file" id="passport-upload-input" accept="image/*,application/pdf"
+            class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            hidden>
+        <div id="file-preview-container" class="mt-4"></div> <!-- For image preview -->
+        <div id="upload-status" class="mt-2 text-sm text-gray-600"></div> <!-- For upload status -->
+        <div id="passport-details" class="mt-4 text-sm text-gray-800"></div> <!-- For displaying extracted details -->
+    </div>
+
+
+    <!-- Create Client -->
+    <div id="create-client" class="bg-white shadow-md rounded-lg mb-6 hidden">
+        <div class="bg-green-500 text-white px-4 py-2 rounded-t-lg font-semibold flex justify-between items-center">
+            <span>Create Client</span>
+            <button id="close-create-client" class="text-white hover:text-gray-200">&times;</button>
+        </div>
+        <div class="p-4">
+            <p class="mb-4">Enter client Information:</p>
+            <form id="client-form" class="space-y-4">
+                <div class="mb-4 flex gap-4">
+                    <!-- Name Field -->
+                    <div class="w-1/2">
+                        <label for="name"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
+                        <input id="nameChat" name="name" type="text" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Client Name" />
+                    </div>
+
+                    <!-- Email Field -->
+                    <div class="w-1/2">
+                        <label for="email"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
+                        <input id="emailChat" name="email" type="email" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Client Email" />
+                    </div>
+                </div>
+
+                <div class="mb-4 flex gap-4">
+                    <!-- Phone Field -->
+                    <div class="w-1/2">
+                        <label for="phone"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                        <input id="phoneChat" name="phone" type="text" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Client Phone" />
+                    </div>
+
+                    <!-- Address Field -->
+                    <div class="w-1/2">
+                        <label for="address"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
+                        <input id="addressChat" name="address" type="text"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Client Address" />
+                    </div>
+                </div>
+
+                <!-- Passport Number Field -->
+                <div class="mb-4 flex gap-4">
+                    <div class="w-1/2">
+                        <label for="passport_no"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport
+                            Number</label>
+                        <input id="passport_noChat" name="passport_no" type="text" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Passport Number" />
+                    </div>
+                    <div class="w-1/2">
+                        <label for="civil_no"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Civil Number</label>
+                        <input id="civil_noChat" name="civil_noChat" type="text" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Civil Number" />
+                    </div>
+                </div>
+
+                <!-- Agent Email Field -->
+                <div class="mb-4 flex gap-4">
+                    <div class="w-1/2">
+                        <label for="agent_id"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
+                        <select id="agent_idChat" name="agent_idChat" class="w-full p-2 border rounded-md"
+                            placeholder="Select Agent">
+                            @foreach ($agents as $agent)
+                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label for="civil_no"
+                            class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date of Birth</label>
+                        <input id="date_of_birthChat" type="date" name="date_of_birthChat"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                    </div>
+                </div>
+                <input id="chatClientForm" type="hidden" name="clientForm" />
+                <input id="clientId" type="hidden" name="clientId" />
+                <!-- Submit Button -->
+                <div class="flex items-center justify-center">
+                    <button type="submit"
+                        class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                        Register Client
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
     <!-- Create Agent -->
@@ -486,7 +500,8 @@
                     <!-- Pricing fields will be dynamically loaded here -->
                 </div>
                 <div class="flex items-center justify-center">
-                    <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                    <button type="submit"
+                        class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
                         Register Agent
                     </button>
                 </div>
@@ -508,7 +523,8 @@
                         <!-- Name Field -->
                         <div class="mb-4">
                             <label for="name"
-                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Branch Name</label>
+                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Branch
+                                Name</label>
                             <input id="branch_name" name="branch_name" type="text" required autofocus
                                 autocomplete="name"
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -518,8 +534,7 @@
                         <div class="mb-4">
                             <label for="name"
                                 class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">User Name</label>
-                            <input name="name" type="text" required autofocus
-                                autocomplete="name"
+                            <input name="name" type="text" required autofocus autocomplete="name"
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="User Name" />
                         </div>
@@ -528,8 +543,7 @@
                         <div class="mb-4">
                             <label for="email"
                                 class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                            <input type="email" name="email" required
-                                autocomplete="username"
+                            <input type="email" name="email" required autocomplete="username"
                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 placeholder="Company Email" />
                         </div>
@@ -555,7 +569,8 @@
 
                         <!-- Submit Button -->
                         <div class="flex items-center justify-center">
-                            <button type="submit" class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
+                            <button type="submit"
+                                class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
                                 Register Branch
                             </button>
                         </div>
@@ -586,38 +601,38 @@
     const agentFields = $("#agent-fields");
     const branchFields = $("#branch-fields");
     const clientOption = $("#client-options-modal");
-        const passport = $("#passport");
-        passport.hide();
-        // let agents = [];
-        // let clients = [];
-        let clientsChat = @json($clients);
-        let agentsChat = @json($agents);
+    const passport = $("#passport");
+    passport.hide();
+    // let agents = [];
+    // let clients = [];
+    let clientsChat = @json($clients);
+    let agentsChat = @json($agents);
 
     let selectedTasks = [];
     appendMessage("cityTour", "Welcome to City Tour. You can ask anything.");
 
     function appendMessage(role, content) {
-    const messageClass = role === "user" ? "text-end" : "text-start";
-    const messageContainer = document.createElement("div");
-    messageContainer.classList.add(messageClass);
+        const messageClass = role === "user" ? "text-end" : "text-start";
+        const messageContainer = document.createElement("div");
+        messageContainer.classList.add(messageClass);
 
-    const roleElement = document.createElement("strong");
-    roleElement.textContent = `${role}: `;
-    messageContainer.appendChild(roleElement);
+        const roleElement = document.createElement("strong");
+        roleElement.textContent = `${role}: `;
+        messageContainer.appendChild(roleElement);
 
-    if (typeof content === "string" && content.startsWith("<div>")) {
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = content;
-        messageContainer.appendChild(wrapper);
-    } else {
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = content;
-        messageContainer.appendChild(wrapper);
-    }
+        if (typeof content === "string" && content.startsWith("<div>")) {
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = content;
+            messageContainer.appendChild(wrapper);
+        } else {
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = content;
+            messageContainer.appendChild(wrapper);
+        }
 
-    const chatLog = document.getElementById("chat-log");
-    chatLog.appendChild(messageContainer);
-    chatLog.scrollTop = chatLog.scrollHeight;
+        const chatLog = document.getElementById("chat-log");
+        chatLog.appendChild(messageContainer);
+        chatLog.scrollTop = chatLog.scrollHeight;
     }
 
 
@@ -628,18 +643,22 @@
         if (!userMessage) return;
 
         appendMessage("user", userMessage);
-   
+
         fetch("{{ route('chat.process') }}", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content') // CSRF token
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
+                        'content') // CSRF token
                 },
                 body: JSON.stringify({
-                    messages: [{ role: "user", content: userMessage }]
+                    messages: [{
+                        role: "user",
+                        content: userMessage
+                    }]
                 })
             })
-            .then(response => response.json()) 
+            .then(response => response.json())
             .then(response => {
                 if (response.tasks) {
                     loadTaskSelection(response.tasks);
@@ -656,7 +675,7 @@
                         let botMessage = response.choices[0].message.content;
 
                         // Clean up the message to remove any extra characters
-                        botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim(); 
+                        botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim();
                         appendMessage('cityTour', botMessage);
                     } else {
                         appendMessage('cityTour', "No response from chatbot. Please try again.");
@@ -685,13 +704,17 @@
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content') // CSRF token
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content') // CSRF token
                     },
                     body: JSON.stringify({
-                        messages: [{ role: "user", content: userMessage }]
+                        messages: [{
+                            role: "user",
+                            content: userMessage
+                        }]
                     })
                 })
-                .then(response => response.json()) 
+                .then(response => response.json())
                 .then(response => {
                     if (response.tasks) {
                         loadTaskSelection(response.tasks);
@@ -708,7 +731,7 @@
                             let botMessage = response.choices[0].message.content;
 
                             // Clean up the message to remove any extra characters
-                            botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim(); 
+                            botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim();
                             appendMessage('cityTour', botMessage);
                         } else {
                             appendMessage('cityTour', "No response from chatbot. Please try again.");
@@ -743,14 +766,14 @@
 
 
     function formatList(message) {
-    // Split the message by list numbering (e.g., "1.", "2.", "3.")
-    const listItems = message.split(/\d+\.\s/).filter(item => item.trim() !== '');
+        // Split the message by list numbering (e.g., "1.", "2.", "3.")
+        const listItems = message.split(/\d+\.\s/).filter(item => item.trim() !== '');
 
-    // Add numbering back and format each item with <br> for line breaks
-    return listItems
-        .map((item, index) => `${index + 1}. ${item.trim()}`)
-        .join('<br>');
-}
+        // Add numbering back and format each item with <br> for line breaks
+        return listItems
+            .map((item, index) => `${index + 1}. ${item.trim()}`)
+            .join('<br>');
+    }
 
 
 
@@ -766,25 +789,30 @@
         }
 
         fetch("{{ route('chat.select') }}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content") // Ensure CSRF token is included
-            },
-            body: JSON.stringify({ tasks: selectedTasks }) // Send selected task IDs
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw err; });
-            }
-            return response.json();
-        })
-        .then(data => {
-            loadTaskPricing(data.taskPricing);
-        })
-        .catch(error => {
-            alert("Error: " + (error.error || "Something went wrong!"));
-        });
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
+                        "content") // Ensure CSRF token is included
+                },
+                body: JSON.stringify({
+                    tasks: selectedTasks
+                }) // Send selected task IDs
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw err;
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadTaskPricing(data.taskPricing);
+            })
+            .catch(error => {
+                alert("Error: " + (error.error || "Something went wrong!"));
+            });
 
         taskSelection.hide();
     });
@@ -839,13 +867,18 @@
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content") // Ensure CSRF token is included
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
+                        "content") // Ensure CSRF token is included
                 },
-                body: JSON.stringify({ tasks }) // Send tasks as JSON
+                body: JSON.stringify({
+                    tasks
+                }) // Send tasks as JSON
             })
             .then(response => {
                 if (!response.ok) {
-                    return response.json().then(err => { throw err; });
+                    return response.json().then(err => {
+                        throw err;
+                    });
                 }
                 return response.json();
             })
@@ -854,12 +887,14 @@
                     const generatedLink = response.invoiceLink;
                     const invoiceNumber = response.invoiceNumber; // Assuming this is part of the response
                     const invoiceId = response.invoiceId; // Replace with actual response key for invoice ID
-                    const invoiceAmount = response.invoiceAmount; // Replace with actual response key for amount
+                    const invoiceAmount = response
+                        .invoiceAmount; // Replace with actual response key for amount
                     const due_date = response.due_date;
                     clientsChat = response.clients; // Assuming this is an array of clients
 
                     // Generate clickable link
-                    const clickableLink = `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
+                    const clickableLink =
+                        `<a href="${generatedLink}" target="_blank">Invoice generated! View it here</a>`;
                     appendMessage("cityTour", clickableLink);
 
                     document.getElementById('invoiceNumberChat').value = invoiceNumber;
@@ -1208,7 +1243,9 @@
 
 
     function afterPaymentType(type, invoiceNumber) {
-        appendMessage("cityTour", `Payment type: <span style="color: #ff9800; font-weight: bold;">${type}</span>  has been saved for invoice number: ${invoiceNumber}`);
+        appendMessage("cityTour",
+            `Payment type: <span style="color: #ff9800; font-weight: bold;">${type}</span>  has been saved for invoice number: ${invoiceNumber}`
+        );
         openpaymentType.hide();
     }
 
@@ -1258,7 +1295,8 @@
             const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
 
             if (!clientId || !date || amount <= 0) {
-                displayErrorMessage("Each split payment row must have a client, valid date, and amount greater than 0.");
+                displayErrorMessage(
+                    "Each split payment row must have a client, valid date, and amount greater than 0.");
                 return false;
             }
 
@@ -1266,12 +1304,14 @@
         }
 
         if (totalAmount > subTotal) {
-            displayErrorMessage(`The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+            displayErrorMessage(
+                `The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
             return false;
         }
 
         if (totalAmount < subTotal) {
-            displayErrorMessage(`The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+            displayErrorMessage(
+                `The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
             return false;
         }
 
@@ -1302,12 +1342,14 @@
         }
 
         if (totalAmount > subTotal) {
-            displayErrorMessage(`The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
+            displayErrorMessage(
+                `The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
             return false;
         }
 
         if (totalAmount < subTotal) {
-            displayErrorMessage(`The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
+            displayErrorMessage(
+                `The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
             return false;
         }
 
@@ -1342,137 +1384,140 @@
 
 
     function loadClient() {
-            clientOption.show();
-            // Handle button clicks
-            $('#upload-passport-btn').on('click', function () {
-                // Open file upload dialog
-                $('#passport-upload-input').click(); // Assuming a hidden file input exists
-            });
+        clientOption.show();
+        // Handle button clicks
+        $('#upload-passport-btn').on('click', function() {
+            // Open file upload dialog
+            $('#passport-upload-input').click(); // Assuming a hidden file input exists
+        });
 
-            $('#fill-form-btn').on('click', function () {
-                // Show the client creation form
-                document.getElementById('chatClientForm').value ="new";
-                createClient.show();
-                clientOption.hide(); // Hide the options modal
-            });
+        $('#fill-form-btn').on('click', function() {
+            // Show the client creation form
+            document.getElementById('chatClientForm').value = "new";
+            createClient.show();
+            clientOption.hide(); // Hide the options modal
+        });
 
-                // Show the client creation form
-                // createClient.show();
-        }
+        // Show the client creation form
+        // createClient.show();
+    }
 
-        $('#passport-upload-input').on('change', function (event) {
-                const file = event.target.files[0];
+    $('#passport-upload-input').on('change', function(event) {
+        const file = event.target.files[0];
 
-                // Check if a file is selected
-                if (file) {
-                    // Create a preview of the uploaded image
-                    const previewContainer = document.getElementById('file-preview-container'); // Ensure this container exists in your HTML
-                    previewContainer.innerHTML = ''; // Clear previous previews
+        // Check if a file is selected
+        if (file) {
+            // Create a preview of the uploaded image
+            const previewContainer = document.getElementById(
+                'file-preview-container'); // Ensure this container exists in your HTML
+            previewContainer.innerHTML = ''; // Clear previous previews
 
-                    let img = document.createElement('img');
-                    img.src = URL.createObjectURL(file);
-                    img.width = 100;
-                    img.height = 100;
-                    img.alt = "Uploaded File Preview";
-                    img.className = "rounded shadow"; // Add TailwindCSS styles
-                    previewContainer.appendChild(img);
-                    passport.show();
-                    // Create a FormData object to send the file via AJAX
-                    const formData = new FormData();
-                    formData.append('file', file);
+            let img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.width = 100;
+            img.height = 100;
+            img.alt = "Uploaded File Preview";
+            img.className = "rounded shadow"; // Add TailwindCSS styles
+            previewContainer.appendChild(img);
+            passport.show();
+            // Create a FormData object to send the file via AJAX
+            const formData = new FormData();
+            formData.append('file', file);
 
-                // Create FormData for file upload
+            // Create FormData for file upload
 
-                    fetch("{{ route('chat.handleFileUpload') }}", {
-                        method: "POST",
-                        body: formData,
-                        headers: {
-                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content") // Add CSRF token for security
-                        }
-                    })
-                    .then(response => response.json()) // Parse JSON response
-                    .then(response => {
-                        if (response.success) {
-                            document.getElementById('upload-status').textContent = 'Upload successful!';
-                            console.log(response.message);
-                            console.log(response.data);
+            fetch("{{ route('chat.handleFileUpload') }}", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            "content") // Add CSRF token for security
+                    }
+                })
+                .then(response => response.json()) // Parse JSON response
+                .then(response => {
+                    if (response.success) {
+                        document.getElementById('upload-status').textContent = 'Upload successful!';
+                        console.log(response.message);
+                        console.log(response.data);
 
-                            if (response.data) {
-                                const client = response.data;
+                        if (response.data) {
+                            const client = response.data;
 
-                                // Display client details
-                                document.getElementById('passport-details').innerHTML = `
+                            // Display client details
+                            document.getElementById('passport-details').innerHTML = `
                                     <p>Passport Number: ${client.passport_no}</p>
                                     <p>Date of Birth: ${client.date_of_birth}</p>
                                     <p>Address: ${client.address || 'N/A'}</p>
                                     <p>Status: ${client.status}</p>
                                 `;
 
-                                // Populate other form fields
-                                document.getElementById('chatClientForm').value = "update";
-                                document.getElementById('clientId').value = client.id || '';
-                                document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
-                                document.getElementById('nameChat').value = client.name || '';
-                                document.getElementById('addressChat').value = client.address || '';
-                                document.getElementById('civil_noChat').value = client.civil_no || '';
-                                document.getElementById('passport_noChat').value = client.passport_no || '';
+                            // Populate other form fields
+                            document.getElementById('chatClientForm').value = "update";
+                            document.getElementById('clientId').value = client.id || '';
+                            document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
+                            document.getElementById('nameChat').value = client.name || '';
+                            document.getElementById('addressChat').value = client.address || '';
+                            document.getElementById('civil_noChat').value = client.civil_no || '';
+                            document.getElementById('passport_noChat').value = client.passport_no || '';
 
-                                // Hide the passport modal and show the client form
-                                passport.hide();
-                                clientOption.hide();
-                                createClient.show();
-                            }
-                        } else {
-                            document.getElementById('upload-status').textContent = 'Upload failed: ' + response.message;
+                            // Hide the passport modal and show the client form
+                            passport.hide();
+                            clientOption.hide();
+                            createClient.show();
                         }
-                    })
-                    .catch(error => {
-                        document.getElementById('upload-status').textContent = 'Error uploading file. Please try again.';
-                        console.error(error);
-                    });
+                    } else {
+                        document.getElementById('upload-status').textContent = 'Upload failed: ' + response
+                            .message;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('upload-status').textContent =
+                        'Error uploading file. Please try again.';
+                    console.error(error);
+                });
 
-                } else {
-                    // Handle case where no file is selected
-                    $('#upload-status').text('No file selected.');
-                }
-            });
+        } else {
+            // Handle case where no file is selected
+            $('#upload-status').text('No file selected.');
+        }
+    });
 
 
+    document.getElementById("client-form").addEventListener("submit", async function(event) {
+        event.preventDefault();
 
+        const form = new FormData(this);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
-        // Handle form submission
-        $('#client-form').on('submit', function (event) {
-            event.preventDefault();
-            // Collect form data
-            const formData = $(this).serialize();
-
-            fetch("{{ route('chat.client') }}", {
+        try {
+            const response = await fetch("{{ route('chat.client') }}", {
                 method: "POST",
-                body: formData,
                 headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
-                }
-            })
-            .then(response => response.json()) // Convert response to JSON
-            .then(response => {
-                if (response.success) {
-                    const client = response.client;
-                    const action = response.action;
-
-                    // Determine the message based on the action
-                    const actionMessage = action === 'create' 
-                        ? `New client created: <span style="color: #ff9800; font-weight: bold;">${client.name}</span>` 
-                        : `Client updated: <span style="color: #4caf50; font-weight: bold;">${client.name}</span>`;
-
-                    // Append the message
-                    appendMessage("cityTour", actionMessage);
-                    createClient.hide();
-                }
-            })
-            .catch(error => {
-                alert("Error: " + (error.message || "Unable to register client."));
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: form, // Send FormData directly
             });
-        });
+
+            const data = await response.json(); // Convert response to JSON
+            console.log("Server Response:", data);
+
+            if (data.success) {
+                alert(`New client created: ${data.client.name}`);
+                const client = response.client;
+                appendMessage("cityTour",
+                    `New client created: <span style="color: #ff9800; font-weight: bold;">${data.client.name}</span>`
+                );
+                createClient.hide();
+            } else {
+                alert("Error: " + data.message);
+            }
+        } catch (error) {
+            console.error("Fetch error:", error);
+            alert("Fetch error: " + error.message);
+        }
+    });
+
 
 
     function loadAgent(branches) {
@@ -1501,34 +1546,39 @@
     }
 
 
-    // Handle form submission
-    $('#agent-form').on('submit', function(event) {
+    document.getElementById("agent-form").addEventListener("submit", async function(event) {
         event.preventDefault();
 
-        // Collect form data
-        const formData = $(this).serialize();
-        console.log('data:', formData);
-        // Submit the form via AJAX
-        fetch("{{ route('chat.agent') }}", {
-            method: "POST",
-            body: formData,
-            headers: {
-                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
-            }
-        })
-        .then(response => response.json()) // Convert response to JSON
-        .then(response => {
-            if (response.success) {
-                const agent = response.agent;
-                appendMessage("cityTour", `New agent created: <span style="color: #ff9800; font-weight: bold;">${agent.name}</span>`);
-                createAgent.hide();
-            }
-        })
-        .catch(error => {
-            alert("Error: " + (error.message || "Unable to register agent."));
-        });
-    });
+        const form = new FormData(this);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
+        try {
+            const response = await fetch("{{ route('chat.agent') }}", {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: form, // Send FormData directly
+            });
+
+            const data = await response.json(); // Convert response to JSON
+            console.log("Server Response:", data);
+
+            if (data.success) {
+                alert(`New agent created: ${data.agent.name}`);
+                const agent = response.agent;
+                appendMessage("cityTour",
+                    `New agent created: <span style="color: #ff9800; font-weight: bold;">${data.agent.name}</span>`
+                );
+                createAgent.hide();
+            } else {
+                alert("Error: " + data.message);
+            }
+        } catch (error) {
+            console.error("Fetch error:", error);
+            alert("Fetch error: " + error.message);
+        }
+    });
 
 
     function loadBranch(tasks) {
@@ -1536,42 +1586,50 @@
     }
 
 
-    // Handle form submission
-    $('#branch-form').on('submit', function(event) {
+    document.getElementById("branch-form").addEventListener("submit", async function(event) {
         event.preventDefault();
 
-        // Collect form data
-        const formData = $(this).serialize();
+        const form = new FormData(this);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
 
-        fetch("{{ route('chat.branch') }}", {
-            method: "POST",
-            body: formData,
-            headers: {
-                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+        try {
+            const response = await fetch("{{ route('chat.branch') }}", {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: form, // Send FormData directly
+            });
+
+            const data = await response.json(); // Convert response to JSON
+            console.log("Server Response:", data);
+
+            if (data.success) {
+                alert(`New branch created: ${data.branch.name}`);
+                const agent = response.agent;
+                appendMessage("cityTour",
+                    `New branch created: <span style="color: #ff9800; font-weight: bold;">${data.branch.name}</span>`
+                );
+                createAgent.hide();
+            } else {
+                alert("Error: " + data.message);
             }
-        })
-        .then(response => response.json()) // Convert response to JSON
-        .then(response => {
-            if (response.success) {
-                const branch = response.branch;
-                appendMessage("cityTour", `New branch created: <span style="color: #ff9800; font-weight: bold;">${branch.name}</span>`);
-                createBranch.hide();
-            }
-        })
-        .catch(error => {
-            alert("Error: " + (error.message || "Unable to register branch."));
-        });
+        } catch (error) {
+            console.error("Fetch error:", error);
+            alert("Fetch error: " + error.message);
+        }
     });
 
 
-         const agentDropdown = new TomSelect("#agent_idChat", {
-                    placeholder: "Select Agent",  // Placeholder text
-                    allowEmptyOption: true,      // Allows the first empty option
-                    create: false,               // Prevent creating new options
-                    searchField: ["text"],       // Enable searching by option text
-                    maxItems: 1,                 // Limit to single select
-                });
-      
+
+    const agentDropdown = new TomSelect("#agent_idChat", {
+        placeholder: "Select Agent", // Placeholder text
+        allowEmptyOption: true, // Allows the first empty option
+        create: false, // Prevent creating new options
+        searchField: ["text"], // Enable searching by option text
+        maxItems: 1, // Limit to single select
+    });
+
 
     document.getElementById('close-option-client').addEventListener('click', function() {
         clientOption.hide();

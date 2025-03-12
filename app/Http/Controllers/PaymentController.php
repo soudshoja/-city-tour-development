@@ -316,6 +316,23 @@ class PaymentController extends Controller
                     $payment->account_id = $receivableAccount->id;
                     $payment->save();
 
+                    // Try to create receivable account
+                    GeneralLedger::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $invoice->agent->branch->company->id,
+                        'invoice_id' =>  $invoice->id,
+                        'account_id' =>  $receivableAccount->id,
+                        'invoiceDetail_id' =>  $invoiceDetail->id,
+                        'transaction_date' => Carbon::now(),
+                        'description' => 'Payment received from: ' . $client->name,
+                        'debit' => 0,
+                        'credit' => $invoiceDetail['task_price'],
+                        'balance' => $invoiceDetail['task_price'],
+                        'name' =>  $client->name,
+                        'type' => 'receivable',
+                    ]);
+
 
                     // Update Cash/Bank Account
                     if ($bankAccount) {

@@ -35,5 +35,9 @@ class Account extends Model
     {
         return $this->belongsTo(Company::class, 'company_id'); 
     }
-
+    
+    public function agent()
+    {
+        return $this->hasOne(Agent::class, 'account_id');
+    }
 }

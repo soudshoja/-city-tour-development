@@ -69,7 +69,7 @@ class CoaController extends Controller
             // Top-level assets
             $assets = Account::where('parent_id', $assetsId)->get();
 
-            foreach ($assets as $asset) {
+            foreach ($assets as $key => $asset) {
                 $asset->level3assets = Account::where('parent_id', $asset->id)->get();
 
                 foreach ($asset->level3assets as $level3asset) {
@@ -86,13 +86,32 @@ class CoaController extends Controller
                             'actual_balance' => $actualBalanceAssets,
                             'budget_balance' => $budgetBalanceAssets,
                         ];
+
+                        if($level4asset->parent_id == 45){
+                            $invoices = Invoice::with('generalLedgers')->where('agent_id' , $level4asset->agent->id)->get();
+                            $balancesAssets['invoices'] = $invoices->sum('amount');
+
+
+                            $credit = 0.00;
+                            $debit = 0.00;
+                            $actualBalance = 0.00;
+
+                            foreach($invoices as $invoice){
+                                $credit += $invoice->generalLedgers->sum('credit');
+                                $debit += $invoice->generalLedgers->sum('debit');
+                            }
+
+                            // $level4asset->credit = $credit;
+                            // $level4asset->debit = $debit;
+                            $level4asset->actualBalance = $credit - $debit;
+                        }
+
+
                     }
+
                 }
             }
         }
-
-
-
         return $assets;
     }
 

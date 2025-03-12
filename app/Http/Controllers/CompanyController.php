@@ -20,8 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
 use App\Imports\companiesImport;
-
-
+use App\Models\Account;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -399,6 +398,17 @@ class CompanyController extends Controller
 
             Log::info('User created:', ['user_id' => $user->id]);
 
+            $account = Account::create([
+                'name' => $validatedData['name'],
+                'level' => 4,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'company_id' => $company->id,
+                'reference_id' => $user->id,
+                'code' => 'AGT-' . Str::random(5),
+            ]);
+
             // Create agent
             Agent::create([
                 'name' => $validatedData['name'],
@@ -408,6 +418,7 @@ class CompanyController extends Controller
                 'branch_id' => $validatedData['branch_id'],
                 'company_id' => $company->id,
                 'user_id' => $user->id,
+                'account_id' => $account->id,
             ]);
 
             Log::info('Agent created successfully.');

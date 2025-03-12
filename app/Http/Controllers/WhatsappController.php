@@ -23,7 +23,7 @@ class WhatsappController extends Controller
 
         $reqBody = [
             "messaging_product" => "whatsapp",
-            "to" => '+60' . $client->phone,
+            "to" => $client->phone,
             "type" => "template",
             "template" => [
                 "name" => "alphia_number",

@@ -80,7 +80,7 @@
                       @foreach ($asset->level3assets as $level3asset)
                       <a href="javascript:;"
                           class="flex items-center justify-between px-4 py-2 w-full hover:text-[#1c274c] transition-all"
-                          :class="{'border-l-4 border-[#80AF81] text-[#1c274c]': openLevels['{{ $asset->id }}']}"
+                          :class="{'border-l-4 border-[#80AF81] text-[#508D4E]': openLevels['{{ $asset->id }}']}"
                           @click="openLevels['{{ $level3asset->id }}'] = !openLevels['{{ $level3asset->id }}']">
                           <span>{{ $level3asset->name }}</span>
                           <svg x-show="!openLevels['{{ $level3asset->id }}']" width="24" height="24"

@@ -11,7 +11,7 @@
                         <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name ?? 'No Agent Set'}}</p>
                     </div>
                     <!-- <div>
-                        <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="importTaskModal = true">View</a>
+                        <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="editTaskModal = true">View</a>
                     </div> -->
                 </div>
             </div>
@@ -220,19 +220,19 @@
                                         </svg>
                                     </a>
                                     
-                                            <div x-data="{ importTaskModal_{{ $task->id }}: false }">
-                                                <a data-tooltip="edit task" href="javascript:void(0);" @click="importTaskModal_{{ $task->id }} = true">
+                                            <div x-data="{ editTaskModal_{{ $task->id }}: false }">
+                                                <a data-tooltip="edit task" href="javascript:void(0);" @click="editTaskModal_{{ $task->id }} = true">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                                         <path fill="none" stroke="currentColor" stroke-width="1.5" d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
                                                     </svg>
                                                 </a>
                                                 <div
-                                                    x-show="importTaskModal_{{ $task->id }}"
+                                                    x-show="editTaskModal_{{ $task->id }}"
                                                     x-cloak
                                                     class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                                                    <form id="imported-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                                                    <form id="edit-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
                                                         <div
-                                                            @click.away="importTaskModal_{{ $task->id }}  = false"
+                                                            @click.away="editTaskModal_{{ $task->id }}  = false"
                                                             class="bg-white rounded-md border-2w-80">
                                                             <div class="flex justify-between p-4">
                                                                 <p class="font-semibold">
@@ -240,7 +240,7 @@
                                                                 </p>
                                                                 <button
                                                                     type="button"
-                                                                    @click="importTaskModal_{{ $task->id }} = false"
+                                                                    @click="editTaskModal_{{ $task->id }} = false"
                                                                     class="text-red-500 font-bold">
                                                                     &times;
                                                                 </button>
@@ -255,23 +255,26 @@
                                                                 <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
                                                                 <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
                                                                 <select name="client_id" id="tasks_client_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                    <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>
                                                                     @foreach($clients as $client)
-                                                                    <option value="{{ $client->id }}" {{!$task->client ?? $client->id == $task->client->id ? 'selected' : ''}}>{{ $client->name }}</option>
+                                                                    <option value="{{ $client->id }}" {{$task->client ? $task->client->id === $client->id ? 'selected' : '' : ''}}>{{ $client->name }}</option>
                                                                     @endforeach
                                                                 </select>
                                                                 <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                    <option value="" {{$task->agent ?? 'selected'}}>Choose Agent</option>
                                                                     @foreach($agents as $agent)
-                                                                    <option value="{{ $agent->id }}" {{@$task->agent ?? $agent->id == $task->agent_id ? 'selected' : ''}}>{{ $agent->name }}</option>
+                                                                    <option value="{{ $agent->id }}" {{$task->agent ? $task->agent->id === $agent->id ? 'selected' : '' : ''}}>{{ $agent->name }}</option>
                                                                     @endforeach
                                                                 </select>
                                                                 <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                    <option value="" {{$task->supplier ?? 'selected'}}>Choose Supplier</option>
                                                                     @foreach($suppliers as $supplier)
-                                                                    <option value="{{ $supplier->id }}" {{!$supplier->id == $task->supplier_id ? 'selected' : ''}}>{{ $supplier->name }}</option>
+                                                                    <option value="{{ $supplier->id }}" {{ $task->supplier ? $task->supplier->id === $supplier->id ? 'selected' : '' : ''}}>{{ $supplier->name }}</option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="imported-task-form"> Update </x-primary-button>
+                                                        <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="edit-task-form"> Update </x-primary-button>
                                                     </form>
                                                 </div>
                                             </div>
@@ -285,7 +288,7 @@
 
                                     <!-- New column with switch button -->
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->reference }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client ? $task->client->name : 'Not Set' }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name ?? 'Not Set' }}</td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name ?? 'Not Set'}}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>

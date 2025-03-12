@@ -1,4 +1,24 @@
 <x-app-layout>
+    <style>
+        .no-client {
+            color: red;
+            /* position: relative; */
+        }
+
+        .no-client:hover::after {
+            content: 'This Task Not Link To Client CRM';
+            position: absolute;
+            background-color: red;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            right: 1rem;
+            top: -1rem;
+        }
+      
+    </style>
     @if($queueTasks->isNotEmpty())
     <div class="flex flex-col gap-5 w-full">
         <h2 class="text-3xl font-bold">Queue</h2>
@@ -195,89 +215,89 @@
                                     <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No tasks found</td>
                                 </tr>
                                 @else
-                                @foreach($tasks as $task)
+                                @foreach($tasks as $key => $task)
                                 <tr
                                     data-price="{{ $task->price }}" data-supplier-id="{{ $task->supplier->id }}"
-                                    data-branch-id="{{ $task->agent->branch->id }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client ? $task->client->id : null }}" data-task-id="{{ $task->id }}" class="taskRow">
+                                    data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client ? $task->client->id : null }}" data-task-id="{{ $task->id }}" class="taskRow">
                                     @can('create', 'App\Models\Invoice')
                                     <td>
-                                        <label class="custom-checkbox" data-tooltip="select task">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ $task->invoiceDetail ? 'disabled' : '' }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
+                                        <label class="custom-checkbox" data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'select task' }}">
+                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ ($task->invoiceDetail || !$task->is_complete )? 'disabled' : '' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg checkbox-border">
                                                 <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
                                             </svg>
                                         </label>
                                     </td>
                                     @endcan
                                     <td class="p-3 text-sm flex gap-3 justify-center">
-                                    <a data-tooltip="see task"
-                                        href="javascript:void(0);"
-                                        class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
-                                        data-task-id="{{ $task->id }}"
-                                        data-task-url="{{ route('tasks.show', $task->id) }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-                                        </svg>
-                                    </a>
-                                    
-                                            <div x-data="{ editTaskModal_{{ $task->id }}: false }">
-                                                <a data-tooltip="edit task" href="javascript:void(0);" @click="editTaskModal_{{ $task->id }} = true">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                                                        <path fill="none" stroke="currentColor" stroke-width="1.5" d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
-                                                    </svg>
-                                                </a>
-                                                <div
-                                                    x-show="editTaskModal_{{ $task->id }}"
-                                                    x-cloak
-                                                    class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                                                    <form id="edit-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
-                                                        <div
-                                                            @click.away="editTaskModal_{{ $task->id }}  = false"
-                                                            class="bg-white rounded-md border-2w-80">
-                                                            <div class="flex justify-between p-4">
-                                                                <p class="font-semibold">
-                                                                    Update the following information if needed
-                                                                </p>
-                                                                <button
-                                                                    type="button"
-                                                                    @click="editTaskModal_{{ $task->id }} = false"
-                                                                    class="text-red-500 font-bold">
-                                                                    &times;
-                                                                </button>
-                                                            </div>
-                                                            <hr>
-                                                            @csrf
-                                                            @method('PUT')
-                                                            <div class="p-4 inline-flex flex-col gap-2">
-                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
-                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
-                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
-                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
-                                                                <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
-                                                                <select name="client_id" id="tasks_client_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                    <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>
-                                                                    @foreach($clients as $client)
-                                                                    <option value="{{ $client->id }}" {{$task->client ? $task->client->id === $client->id ? 'selected' : '' : ''}}>{{ $client->name }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                                <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                    <option value="" {{$task->agent ?? 'selected'}}>Choose Agent</option>
-                                                                    @foreach($agents as $agent)
-                                                                    <option value="{{ $agent->id }}" {{$task->agent ? $task->agent->id === $agent->id ? 'selected' : '' : ''}}>{{ $agent->name }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                                <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                    <option value="" {{$task->supplier ?? 'selected'}}>Choose Supplier</option>
-                                                                    @foreach($suppliers as $supplier)
-                                                                    <option value="{{ $supplier->id }}" {{ $task->supplier ? $task->supplier->id === $supplier->id ? 'selected' : '' : ''}}>{{ $supplier->name }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                            </div>
+                                        <a data-tooltip="see task"
+                                            href="javascript:void(0);"
+                                            class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
+                                            data-task-id="{{ $task->id }}"
+                                            data-task-url="{{ route('tasks.show', $task->id) }}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                                            </svg>
+                                        </a>
+
+                                        <div x-data="{ editTaskModal_{{ $task->id }}: false }">
+                                            <a data-tooltip="edit task" href="javascript:void(0);" @click="editTaskModal_{{ $task->id }} = true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
+                                                </svg>
+                                            </a>
+                                            <div
+                                                x-show="editTaskModal_{{ $task->id }}"
+                                                x-cloak
+                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                <form id="edit-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                                                    <div
+                                                        @click.away="editTaskModal_{{ $task->id }}  = false"
+                                                        class="bg-white rounded-md border-2w-80">
+                                                        <div class="flex justify-between p-4">
+                                                            <p class="font-semibold">
+                                                                Update the following information if needed
+                                                            </p>
+                                                            <button
+                                                                type="button"
+                                                                @click="editTaskModal_{{ $task->id }} = false"
+                                                                class="text-red-500 font-bold">
+                                                                &times;
+                                                            </button>
                                                         </div>
-                                                        <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="edit-task-form"> Update </x-primary-button>
-                                                    </form>
-                                                </div>
+                                                        <hr>
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <div class="p-4 inline-flex flex-col gap-2">
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
+                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
+                                                            <select name="client_id" id="tasks_client_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>
+                                                                @foreach($clients as $client)
+                                                                <option value="{{ $client->id }}" {{$task->client ? $task->client->id === $client->id ? 'selected' : '' : ''}}>{{ $client->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                <option value="" {{$task->agent ?? 'selected'}}>Choose Agent</option>
+                                                                @foreach($agents as $agent)
+                                                                <option value="{{ $agent->id }}" {{$task->agent ? $task->agent->id === $agent->id ? 'selected' : '' : ''}}>{{ $agent->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                <option value="" {{$task->supplier ?? 'selected'}}>Choose Supplier</option>
+                                                                @foreach($suppliers as $supplier)
+                                                                <option value="{{ $supplier->id }}" {{ $task->supplier ? $task->supplier->id === $supplier->id ? 'selected' : '' : ''}}>{{ $supplier->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="edit-task-form"> Update </x-primary-button>
+                                                </form>
                                             </div>
+                                        </div>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                         <label class="switch">
@@ -288,10 +308,19 @@
 
                                     <!-- New column with switch button -->
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->reference }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->client_name ?? 'Not Set' }}</td>
+                                    <td class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
+                                        <p class="{{ $task->client ?? 'no-client'}}">
+                                            {{ $task->client_name ?? 'Not Set' }}
+                                        </p>
+                                        @if($task->client)
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="fill-green-500" data-tooltip="Client Linked">
+                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z" fill="" />
+                                        </svg>
+                                        @endif
+                                    </td>
                                     @if(Auth()->user()->role_id ==\App\Models\Role::COMPANY)
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->branch->name ?? 'Not Set'}}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $task->agent->name ?? 'Not Set' }}</td>
                                     @endif
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
@@ -587,7 +616,7 @@
 
         /* When the checkbox is checked */
         input:checked+.slider {
-            background-color: #ffb958 ;
+            background-color: #ffb958;
             /* Custom enabled color */
         }
 

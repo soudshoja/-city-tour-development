@@ -33,12 +33,40 @@ class Task extends Model
         'enabled'
     ];
 
+
+    protected $requiredColumn = [
+        'client_id',
+        'agent_id',
+        'company_id',
+        'supplier_id',
+        'type',
+        'status',
+        'client_name',
+        'reference',
+        'total',
+        'venue',
+    ];
+
     // protected static function booted()
     // {
     //     static::addGlobalScope('enabled', function (Builder $builder) {
     //         $builder->where('enabled', true);
     //     });
     // }
+
+    public function getIsCompleteAttribute()
+    {
+        $isComplete = true;
+
+        foreach ($this->requiredColumn as $column) {
+            if (empty($this->$column)) {
+                $isComplete = false;
+                break;
+            }
+        }
+
+        return $isComplete;
+    }
 
     public function flightDetails()
     {

@@ -107,7 +107,18 @@ class InvoiceController extends Controller
         } else {
             $taskIdsArray = $taskIds; // Single task
         }
-  
+        
+        foreach ($taskIdsArray as $taskId) {
+            $task = Task::find($taskId);
+
+            if (!$task) {
+                return Redirect::route('tasks.index')->with('error', 'Task not found!');
+            }
+
+            if(!$task->is_complete){
+                return Redirect::route('tasks.index')->with('error', 'Task do not have full information!');
+            }
+        }
         $taskIdsArray = array_map('intval', $taskIdsArray);
         $taskIdsArray = Arr::flatten($taskIdsArray);
 

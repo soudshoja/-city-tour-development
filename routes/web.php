@@ -228,9 +228,9 @@ Route::middleware(['auth'])->group(function () {
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
     Route::post('/whatsapp/send1', [WhatsappController::class, 'sendMessage1'])->name('whatsapp.send1');
+    Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);
     Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
-    Route::get('/download_media', [DownloadMediaController::class, 'download'])->name('downloadwhatsapp.media');
-    Route::match(['get','post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handleWebhook'])->name('webhook.whatsapp');
+    
 
     // open api
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');

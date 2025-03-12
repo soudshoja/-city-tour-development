@@ -376,15 +376,10 @@ class TaskController extends Controller
         $supplier = Supplier::where('name','like',$task['supplier_name'])->first();
         
         if(!$supplier) return redirect()->back()->with('errors', 'Supplier not found');
-        
-        $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
-            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first() ??
-            Agent::with(['branch' => function ($query) use ($companyId) {
-                $query->where('company_id', $companyId);
-            }])->first() : Agent::with(['branch' => function ($query) use ($companyId) {
-                $query->where('company_id', $companyId);
-            }])->first();
 
+        $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
+            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first()
+            : null;
 
         $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
 
@@ -404,22 +399,27 @@ class TaskController extends Controller
         //     ];
         // }
         logger('tasks: ', $task);
-        logger('agent: ', $agent->toArray());
+        if($agent){
+            logger('agent: ', $agent->toArray());
+        } else {
+            logger('agent dont exist');
+        }
 
         $client ? logger('client: ', $client->toArray()) : logger('client dont exist');
 
         $taskData = [
             'additional_info' => $task['additional_info'] ?? null,
             'status' => $task['status'] ?? null,
-            'client_name' => $client->name ?? null,
+            'client_name' => $task['client_name'] ?? null,
             'price' => isset($task['price']) ? $task['price'] : null,
             'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,
             'total' => isset($task['total']) ? $task['total'] : null,
             'tax' => isset($task['tax']) ? $task['tax'] : null,
             'reference' => $task['reference'] ?? null,
             'type' => $task['type'] ? strtoupper($task['type']) : null,
-            'agent_id' => $agent->id,
+            'agent_id' => $agent->id ?? null,
             'client_id' => $client->id ?? null,
+            'company_id' => $companyId,
             'supplier_id' => $supplier->id,
             'cancellation_policy' => $task['cancellation_policy'] ?? null,
             'venue' => $task['venue'] ?? null,

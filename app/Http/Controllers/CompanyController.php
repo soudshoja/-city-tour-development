@@ -319,6 +319,7 @@ class CompanyController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'dial_code' => 'nullable|string|max:30',
             'phone' => 'nullable|string|max:15',
             'address' => 'nullable|string|max:255',
         ]);
@@ -341,7 +342,7 @@ class CompanyController extends Controller
         Branch::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
-            'phone' => $validatedData['phone'] ?? null,
+            'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
             'address' => $validatedData['address'] ?? null,
             'company_id' => $validatedData['company_id'], // Use the company ID from the form
             'user_id' => $user->id,
@@ -369,6 +370,7 @@ class CompanyController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
+            'dial_code' => 'nullable|string|max:30',
             'phone' => 'nullable|string|max:15',
             'type_id' => 'required|exists:agent_type,id',
             'branch_id' => [
@@ -384,6 +386,10 @@ class CompanyController extends Controller
 
         // Log validated data
         Log::info('Validated Data:', $validatedData);
+
+        $receivableAccount = Account::where('name', 'like', '%Receivable%')
+        ->where('company_id', $company->id)
+        ->first();
 
         try {
             // Create user
@@ -405,7 +411,7 @@ class CompanyController extends Controller
                 'budget_balance' => 0,
                 'variance' => 0,
                 'company_id' => $company->id,
-                'parent_id' => 133,
+                'parent_id' => $receivableAccount->id,
                 'reference_id' => $user->id,
                 'code' => 'AGT-' . rand(1000000, 9999999),
             ]);
@@ -414,7 +420,7 @@ class CompanyController extends Controller
             Agent::create([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
-                'phone_number' => $validatedData['phone'] ?? null,
+                'phone_number' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
                 'type_id' => $validatedData['type_id'],
                 'branch_id' => $validatedData['branch_id'],
                 'company_id' => $company->id,
@@ -459,6 +465,7 @@ class CompanyController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'dial_code' => 'nullable|string|max:30',
             'phone' => 'nullable|string|max:15',
             'agent_id' => 'required|max:100',
         ]);
@@ -476,6 +483,11 @@ class CompanyController extends Controller
             ]);
 
             $companyId = Agent::where('id', $validatedData['agent_id'])->value('company_id');
+
+            $receivableAccount = Account::where('name', 'like', '%Receivable%')
+            ->where('company_id', $companyId)
+            ->first();
+            
             $account = Account::create([
                 'name' => $validatedData['name'],
                 'level' => 4,
@@ -483,7 +495,7 @@ class CompanyController extends Controller
                 'budget_balance' => 0,
                 'variance' => 0,
                 'company_id' => $companyId,
-                'parent_id' => 45,
+                'parent_id' => $receivableAccount->id,
                 'reference_id' => $user->id,
                 'code' => 'AGT-' . rand(1000000, 9999999),
             ]);
@@ -492,7 +504,7 @@ class CompanyController extends Controller
             Client::create([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
-                'phone' => $validatedData['phone'] ?? null,
+                'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
                 'agent_id' => $validatedData['agent_id'], // Associate with an agent if needed
                 'status_id' => 0,
                 'address' => null,

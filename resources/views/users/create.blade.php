@@ -237,6 +237,24 @@
 
                                         <div class="grid grid-cols-2 gap-4">
                                             <div class="mb-6 flex items-center relative">
+                                                <div class="relative">
+                                                    <select name="dial_code" id="dial_code"
+                                                        class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                                                        @foreach ($countries as $country)
+                                                            <option value="{{ $country->dialing_code }}">
+                                                                {{ $country->dialing_code }} ({{ $country->name }})
+                                                            </option>
+                                                        @endforeach
+                                                        <!-- Add more country codes as needed -->
+                                                    </select>
+                                                    <!-- Custom dropdown arrow -->
+                                                    <span
+                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                                                        ▼
+                                                    </span>
+                                                </div>
+                                                <!-- Custom dropdown arrow -->
+
                                                 <input type="tel" name="phone" id="branch_phone"
                                                     class="custom-input" placeholder="Phone number *">
                                                 <span class="tooltip-container ml-2 cursor-pointer">
@@ -362,6 +380,23 @@
                                             </div>
 
                                             <div class="mb-4 flex items-center relative">
+                                                <div class="relative">
+                                                    <select name="dial_code" id="dial_code"
+                                                        class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                                                        @foreach ($countries as $country)
+                                                            <option value="{{ $country->dialing_code }}">
+                                                                {{ $country->dialing_code }} ({{ $country->name }})
+                                                            </option>
+                                                        @endforeach
+                                                        <!-- Add more country codes as needed -->
+                                                    </select>
+                                                    <!-- Custom dropdown arrow -->
+                                                    <span
+                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                                                        ▼
+                                                    </span>
+                                                </div>
+
                                                 <input type="tel" name="phone" class="custom-input"
                                                     placeholder="Agent Number *">
                                                 <span class="tooltip-container ml-2 cursor-pointer">
@@ -466,6 +501,23 @@
 
                                             <!-- Accountant Phone -->
                                             <div class="flex items-center relative">
+                                                <div class="relative">
+                                                    <select name="dial_code" id="dial_code"
+                                                        class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                                                        @foreach ($countries as $country)
+                                                            <option value="{{ $country->dialing_code }}">
+                                                                {{ $country->dialing_code }} ({{ $country->name }})
+                                                            </option>
+                                                        @endforeach
+                                                        <!-- Add more country codes as needed -->
+                                                    </select>
+                                                    <!-- Custom dropdown arrow -->
+                                                    <span
+                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                                                        ▼
+                                                    </span>
+                                                </div>
+
                                                 <input type="tel" id="accountant_phone" name="phone"
                                                     class="custom-input" placeholder="Accountant Phone *" required>
                                                 <span class="tooltip-container ml-2 cursor-pointer">
@@ -523,6 +575,23 @@
                                             </div>
 
                                             <div class="mb-4 flex items-center relative">
+                                                <div class="relative">
+                                                    <select name="dial_code" id="dial_code"
+                                                        class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                                                        @foreach ($countries as $country)
+                                                            <option value="{{ $country->dialing_code }}">
+                                                                {{ $country->dialing_code }} ({{ $country->name }})
+                                                            </option>
+                                                        @endforeach
+                                                        <!-- Add more country codes as needed -->
+                                                    </select>
+                                                    <!-- Custom dropdown arrow -->
+                                                    <span
+                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                                                        ▼
+                                                    </span>
+                                                </div>
+
                                                 <input type="tel" name="phone" class="custom-input"
                                                     placeholder="Client Phone *" required>
                                                 <span class="tooltip-container ml-2 cursor-pointer">

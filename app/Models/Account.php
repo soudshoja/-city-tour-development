@@ -40,4 +40,9 @@ class Account extends Model
     {
         return $this->hasOne(Agent::class, 'account_id');
     }
+
+    public function client()
+    {
+        return $this->hasOne(Agent::class, 'account_id');
+    }
 }

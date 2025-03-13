@@ -405,8 +405,9 @@ class CompanyController extends Controller
                 'budget_balance' => 0,
                 'variance' => 0,
                 'company_id' => $company->id,
+                'parent_id' => 133,
                 'reference_id' => $user->id,
-                'code' => 'AGT-' . Str::random(5),
+                'code' => 'AGT-' . rand(1000000, 9999999),
             ]);
 
             // Create agent
@@ -462,29 +463,51 @@ class CompanyController extends Controller
             'agent_id' => 'required|max:100',
         ]);
 
-        // Create the client user
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => bcrypt(Str::random(10)), // Generate a random password
-            'role_id' => Role::CLIENT,
-            'remember_token' => Str::random(10),
-            'first_login' => 1,
-        ]);
+            try {
 
-        // Create the client record
-        Client::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'phone' => $validatedData['phone'] ?? null,
-            'agent_id' => $validatedData['agent_id'], // Associate with an agent if needed
-            'status' => 'active',
-            'address' => null,
-            'passport_no' => null,
-        ]);
+            // Create the client user
+            $user = User::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'password' => bcrypt(Str::random(10)), // Generate a random password
+                'role_id' => Role::CLIENT,
+                'remember_token' => Str::random(10),
+                'first_login' => 1,
+            ]);
 
-        return redirect()->back()->with('success', 'Client created successfully.');
+            $companyId = Agent::where('id', $validatedData['agent_id'])->value('company_id');
+            $account = Account::create([
+                'name' => $validatedData['name'],
+                'level' => 4,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'company_id' => $companyId,
+                'parent_id' => 45,
+                'reference_id' => $user->id,
+                'code' => 'AGT-' . rand(1000000, 9999999),
+            ]);
+
+            // Create the client record
+            Client::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'phone' => $validatedData['phone'] ?? null,
+                'agent_id' => $validatedData['agent_id'], // Associate with an agent if needed
+                'status_id' => 0,
+                'address' => null,
+                'passport_no' => null,
+                'account_id' => $account->id,           
+            ]);
+
+            return redirect()->back()->with('success', 'Client created successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Error creating client:', ['message' => $e->getMessage()]);
+            return back()->withErrors(['error' => 'Failed to create client.']);
+        }
     }
+    
 
     public function createAgentType(Request $request)
     {

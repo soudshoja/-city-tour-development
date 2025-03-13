@@ -89,7 +89,7 @@ class CoaController extends Controller
 
                         //for agent
                         if($level4asset->parent_id == 45){
-                            $invoices = Invoice::with('generalLedgers')->where('agent_id' , $level4asset->agent->id)->get();
+                            $invoices = Invoice::with('generalLedgers')->where('agent_id' , optional($level4asset->agent)->id)->get();
                             $balancesAssets['invoices'] = $invoices->sum('amount');
 
 
@@ -109,7 +109,7 @@ class CoaController extends Controller
 
                         //for client
                         if($level4asset->parent_id == 45){
-                            $invoices = Invoice::with('generalLedgers')->where('client_id' , $level4asset->client->id)->get();
+                            $invoices = Invoice::with('generalLedgers')->where('client_id' , optional($level4asset->client)->id)->get();
                             $balancesAssets['invoices'] = $invoices->sum('amount');
 
 

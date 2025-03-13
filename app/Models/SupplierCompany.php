@@ -24,4 +24,15 @@ class SupplierCompany extends Pivot
     {
         return $this->belongsTo(Company::class);
     }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    public function supplierCredential()
+    {
+        return $this->hasMany(SupplierCredential::class);
+    }
+
 }

@@ -9,6 +9,7 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
+use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
 use DateTime;
 use Generator;
@@ -58,6 +59,11 @@ class SupplierController extends Controller
             }
         }
         $suppliersCount = Supplier::count();
+        if(auth()->user()->company !== null){
+            $supplierCompany = SupplierCompany::where('company_id', $user->company->id)->get();
+            return view('suppliers.index', compact('suppliers', 'suppliersCount', 'supplierCompany'));
+        }
+
         return view('suppliers.index', compact('suppliers', 'suppliersCount'));
     }
 

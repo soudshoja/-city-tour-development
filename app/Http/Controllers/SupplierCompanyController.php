@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
@@ -34,10 +35,23 @@ class SupplierCompanyController extends Controller
             return redirect()->back()->with('error', 'Please add credentials for this supplier before activating.');
         }
 
-        // Activate supplier using SupplierCompany model
-      SupplierCompany::firstOrCreate([
+    $accountPayable = Account::where('name', 'Accounts Payable')->first();        
+
+    $account = Account::create([
+        'name' => $supplier->name,
+        'level' => 4,
+        'actual_balance' => 0,
+        'budget_balance' => 0,
+        'variance' => 0,
+        'company_id' => $company->id,
+        'parent_id' => $accountPayable->id,
+        'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
+    ]);
+
+        SupplierCompany::firstOrCreate([
             'supplier_id' => $supplier->id,
             'company_id' => $company->id,
+            'account_id' => $account->id
         ]);
 
         return redirect()->back()->with('success', 'Supplier activated successfully.');

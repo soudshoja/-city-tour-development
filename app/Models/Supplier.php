@@ -12,6 +12,7 @@ class Supplier extends Model
 
     protected $fillable = [
         'name', 
+        'account_id',
         'auth_method',
         'contact_person',
         'email',
@@ -44,5 +45,10 @@ class Supplier extends Model
     public function credentials()
     {
         return $this->hasMany(SupplierCredential::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 }

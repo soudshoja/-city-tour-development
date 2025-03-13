@@ -51,4 +51,9 @@ class Client extends Model
         return $this->hasMany(ClientGroup::class, 'child_client_id');
     }
 
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
+
 }

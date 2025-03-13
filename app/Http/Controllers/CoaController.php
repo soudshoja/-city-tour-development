@@ -87,8 +87,29 @@ class CoaController extends Controller
                             'budget_balance' => $budgetBalanceAssets,
                         ];
 
+                        //for agent
                         if($level4asset->parent_id == 45){
                             $invoices = Invoice::with('generalLedgers')->where('agent_id' , $level4asset->agent->id)->get();
+                            $balancesAssets['invoices'] = $invoices->sum('amount');
+
+
+                            $credit = 0.00;
+                            $debit = 0.00;
+                            $actualBalance = 0.00;
+
+                            foreach($invoices as $invoice){
+                                $credit += $invoice->generalLedgers->sum('credit');
+                                $debit += $invoice->generalLedgers->sum('debit');
+                            }
+
+                            // $level4asset->credit = $credit;
+                            // $level4asset->debit = $debit;
+                            $level4asset->actualBalance = $credit - $debit;
+                        }
+
+                        //for client
+                        if($level4asset->parent_id == 45){
+                            $invoices = Invoice::with('generalLedgers')->where('client_id' , $level4asset->client->id)->get();
                             $balancesAssets['invoices'] = $invoices->sum('amount');
 
 

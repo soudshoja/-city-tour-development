@@ -570,31 +570,6 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
 
-        const countrySelect = document.getElementById("country-select");
-        const phoneInput = document.getElementById("phone");
-
-        if (!countrySelect || !phoneInput) {
-            console.error("Country select or phone input not found in the DOM.");
-            return;
-        }
-
-        countrySelect.addEventListener("change", function() {
-            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
-            let dialCode = selectedOption.getAttribute("data-dial-code");
-
-            if (dialCode) {
-                dialCode = dialCode.replace(/[^+\d]/g, ""); // Keep only + and digits
-
-                // Remove any existing dial code from the phone input
-                phoneInput.value = phoneInput.value.replace(/^\+\d+/, "").trim();
-
-                // Set the new dial code
-                phoneInput.value = dialCode + "";
-                phoneInput.focus();
-            }
-        });
-
-
         // Add event listeners for all data-form buttons
         document.querySelectorAll('[data-form]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -634,6 +609,33 @@
                 console.error(`Button with data-form='${openForm}' not found.`);
             }
         }
+
+
+
+        const countrySelect = document.getElementById("country-select");
+        const phoneInput = document.getElementById("phone");
+
+        if (!countrySelect || !phoneInput) {
+            console.error("Country select or phone input not found in the DOM.");
+            return;
+        }
+
+        countrySelect.addEventListener("change", function() {
+            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+            let dialCode = selectedOption.getAttribute("data-dial-code");
+
+            if (dialCode) {
+                dialCode = dialCode.replace(/[^+\d]/g, ""); // Keep only + and digits
+
+                // Remove any existing dial code from the phone input
+                phoneInput.value = phoneInput.value.replace(/^\+\d+/, "").trim();
+
+                // Set the new dial code
+                phoneInput.value = dialCode + "";
+                phoneInput.focus();
+            }
+        });
+
 
 
 

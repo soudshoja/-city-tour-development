@@ -45,15 +45,54 @@
             </div>
         </div>
     </div>
-    <div class="flex justify-start items-center my-5 p-2 bg-white dark:bg-dark shadow-md rounded-md">
-        <div class="mr-2">
+    <div x-data="{addSupplierModal : false}" class="flex gap-2 justify-between items-center my-5 p-2 bg-white dark:bg-dark shadow-md rounded-md">
+        <div class="flex justify-start">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 7V13" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" />
                 <circle cx="12" cy="16" r="1" fill="#ff0000" />
                 <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" />
             </svg>
+            <span class="">Activate supplier to allow the system users to request API from the supplier</span>
         </div>
-        <span class="">Activate supplier to allow the system users to request API from the supplier</span>
+        <x-primary-button @click="addSupplierModal = true">Add Supplier</x-primary-button>
+        <div
+            x-cloak
+            x-show="addSupplierModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+            <div
+                @click.away="addSupplierModal = false"
+                class="bg-white w-1/2 max-h-1/4 rounded-md shadow-md p-5">
+                <h1 class="font-semibold">
+                    Register Supplier
+                </h1>
+                <form action="{{ route('supplier-company.activate') }}" method="POST" class="flex flex-col gap-2 mb-2">
+                    @csrf
+                    <input type="hidden" name="company_id" id="company_id" value="{{ auth()->user()->company->id }}">
+                    <input type="hidden" name="type" id="supplier_company_type" value="">
+                    <select name="supplier_id" id="supplier" class="border border-gray-300 rounded-md p-2 w-full">
+                        <option value="">Select Supplier</option>
+                        @foreach($suppliers as $supplier)
+                        <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">{{ $supplier->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="basic-input w-full hidden">
+                        <label for="username">Username</label>
+                        <input type="text" name="username" id="username" class="border border-gray-300 rounded-md p-2 w-full">
+                        <label for="password">Password</label>
+                        <input type="password" name="password" id="password" class="border border-gray-300 rounded-md p-2 w-full">
+                    </div>
+                    <div class="oauth-input w-full hidden">
+                        <label for="client_id">Client ID</label>
+                        <input type="text" name="client_id" id="client_id" class="border border-gray-300 rounded-md p-2 w-full">
+                        <label for="client_secret">Client Secret</label>
+                        <input type="password" name="client_secret" id="client_secret" class="border border-gray-300 rounded-md p-2 w-full">
+                    </div>
+                    <button type="submit" class="py-2 px-6 bg-blue-500 text-white w-fit rounded shadow">Submit</button>
+                </form>
+
+            </div>
+
+        </div>
     </div>
 
     @role('admin')
@@ -133,11 +172,11 @@
                     <td colspan="2" class="text-center">No suppliers found</td>
                 </tr>
                 @else
-                @foreach ($suppliers as $supplier)
+                @foreach ($supplierCompany as $supplier)
                 <tr class=" hover:bg-gray-200 dark:hover:bg-gray-600">
                     <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
                         <a href="{{ route('suppliers.show', $supplier->id) }}">
-                            <span class="font-bold">» {{ $supplier->name }}</span><br>
+                            <span class="font-bold">» {{ $supplier->supplier->name }}</span><br>
                         </a>
                     </td>
                     <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2 flex">
@@ -145,7 +184,7 @@
                             <x-primary-button @click="credentialModal_{{ $supplier->id }} = true">
                                 Credentials
                             </x-primary-button>
-                            @include('suppliers.partials.supplier_credential')
+                            @include('suppliers.partials.supplier_credential', ['supplier' => $supplier->supplier])
                         </div>
                         @if($supplier->named_route)
                         <x-primary-a-button href="">Configure</x-primary-a-button>
@@ -195,24 +234,25 @@
             });
         });
 
-        const typeCredential = document.querySelectorAll('.type-credential');
+        const supplierSelect = document.getElementById('supplier');
+        const basicInput = document.querySelector('.basic-input');
+        const oauthInput = document.querySelector('.oauth-input');
 
-        typeCredential.forEach(type => {
-            type.addEventListener('change', (e) => {
-                let div = type.parentElement;
-                const value = e.target.value;
-                const basic = div.querySelector('.basic');
-                const oauth = div.querySelector('.oauth');
+        supplierSelect.addEventListener('change', (e) => {
+            const supplier = JSON.parse(e.target.selectedOptions[0].getAttribute('data-supplier'));
+            const authMethod = supplier.auth_method
+            let type = document.getElementById('supplier_company_type');
 
-                if (value === 'basic') {
-                    basic.classList.remove('hidden');
-                    oauth.classList.add('hidden');
-                } else {
-                    basic.classList.add('hidden');
-                    oauth.classList.remove('hidden');
-                }
-
-            });
+            console.log(type);
+            type.value = authMethod;
+            console.log(type);
+            if (authMethod === 'basic') {
+                basicInput.classList.remove('hidden');
+                oauthInput.classList.add('hidden');
+            } else {
+                basicInput.classList.add('hidden');
+                oauthInput.classList.remove('hidden');
+            }
         });
     </script>
 </x-app-layout>

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Traits\HttpRequestTrait;
+use App\Models\Account;
 use App\Models\GeneralLedger;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
+use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
 use DateTime;
 use Generator;
@@ -57,6 +59,11 @@ class SupplierController extends Controller
             }
         }
         $suppliersCount = Supplier::count();
+        if(auth()->user()->company !== null){
+            $supplierCompany = SupplierCompany::where('company_id', $user->company->id)->get();
+            return view('suppliers.index', compact('suppliers', 'suppliersCount', 'supplierCompany'));
+        }
+
         return view('suppliers.index', compact('suppliers', 'suppliersCount'));
     }
 
@@ -90,12 +97,10 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
-        // Check if the user has an admin role
         if (Auth::user()->role_id !== Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Validate the request
         $request->validate([
             'name' => 'required',
             'email' => 'required|email',
@@ -103,10 +108,21 @@ class SupplierController extends Controller
             'address' => 'required',
         ]);
 
-        // Create a new supplier
-        Supplier::create($request->all());
+        $accountPayable = Account::where('name', 'Account Payable')->first();
 
-        // Redirect to the suppliers list
+        $account = Account::create([
+            'name' => $request->name,
+            'level' => 4,
+            'actual_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+            'company_id' => Auth::user()->company_id,
+            'parent_id' => $accountPayable->id,
+            'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
+        ]);
+
+
+
         return redirect()->route('suppliers.index');
     }
 

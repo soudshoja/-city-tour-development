@@ -402,8 +402,8 @@ Route::group([
     'as' => 'supplier-company.',
 ], function () {
     Route::get('/edit/{id}', [SupplierCompanyController::class, 'edit'])->name('edit');
-    Route::get('/{supplier}/{company}/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
-    Route::get('/{supplier}/{company}/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
+    Route::post('/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
+    Route::post('/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
 });
 
 // REPORTS

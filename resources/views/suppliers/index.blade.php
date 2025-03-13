@@ -45,15 +45,27 @@
             </div>
         </div>
     </div>
-    <div class="flex justify-start items-center my-5 p-2 bg-white dark:bg-dark shadow-md rounded-md">
-        <div class="mr-2">
+    <div x-data="{addSupplierModal : false}" class="flex gap-2 justify-between items-center my-5 p-2 bg-white dark:bg-dark shadow-md rounded-md">
+        <div class="flex justify-start">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 7V13" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" />
                 <circle cx="12" cy="16" r="1" fill="#ff0000" />
                 <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" />
             </svg>
+            <span class="">Activate supplier to allow the system users to request API from the supplier</span>
         </div>
-        <span class="">Activate supplier to allow the system users to request API from the supplier</span>
+        <x-primary-button @click="addSupplierModal = true">Add Supplier</x-primary-button>
+        <div 
+            x-cloak
+            x-show="addSupplierModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+            <div 
+                @click.away="addSupplierModal = false" 
+                class="bg-white w-1/2 h-1/4 rounded-md shadow-md">
+                Add Supplier
+            </div>
+
+        </div>
     </div>
 
     @role('admin')

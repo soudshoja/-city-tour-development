@@ -12,6 +12,7 @@ class SupplierCompany extends Pivot
     protected $fillable = [
         'supplier_id',
         'company_id',
+        'account_id'
     ];
 
     public function supplier()

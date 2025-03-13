@@ -12,6 +12,7 @@ class SupplierCompany extends Pivot
     protected $fillable = [
         'supplier_id',
         'company_id',
+        'account_id'
     ];
 
     public function supplier()
@@ -23,4 +24,15 @@ class SupplierCompany extends Pivot
     {
         return $this->belongsTo(Company::class);
     }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    public function supplierCredential()
+    {
+        return $this->hasMany(SupplierCredential::class);
+    }
+
 }

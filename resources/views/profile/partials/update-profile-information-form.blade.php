@@ -69,8 +69,9 @@
         <div>
             <x-input-label for="created_at" :value="__('Registered Date')" />
             <x-text-input readonly id="created_at" name="created_at" type="text" class="mt-1 block w-full"
-                :value="old('created_at', $user->created_at->format('l, F j, Y g:i A'))" autofocus />
+                :value="$user->created_at ? $user->created_at->format('l, F j, Y g:i A') : ''" autofocus />
             <x-input-error class="mt-2" :messages="$errors->get('created_at')" />
+
         </div>
 
     </form>

@@ -1146,16 +1146,43 @@ class ChatController extends Controller
                     ], 404);
                 }
     
+                $agentId = $request->get('agent_idChat');
+                $agent = Agent::find($agentId);
+
+                if (!$agent) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Agent not found.',
+                    ], 404);
+                }
+
+                $companyId = $agent->company_id;
+
+                $account = Account::where('company_id', $companyId)
+                ->where('name', 'like', '%Receivable%')
+                ->first();
+
+                if (!$account) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
+                    ], 404);
+                }
+
+                $accountId = $account->id;
+
                 $client = Client::create([
                     'name' => $request->get('name'),
                     'email' => $request->get('email'),
-                    'status' => $request->get('status'),
+                    'status' => 'active',
                     'phone' => $request->get('phone'),
                     'address' => $request->get('address'),
                     'passport_no' => $request->get('passport_no'),
-                    'date_of_birth' => $request->get('date_of_birth'),
-                    'civil_no' => $request->get('civil_no'),
-                    'agent_id' =>  $request->get('agent_id')
+                    'date_of_birth' => $request->get('date_of_birthChat'),
+                    'civil_no' => $request->get('civil_noChat'),
+                    'account_id' => $accountId,
+                    'agent_id' =>  $request->get('agent_idChat')
+                    
                 ]);
     
                 return response()->json([
@@ -1183,7 +1210,8 @@ class ChatController extends Controller
                     'passport_no' => $request->get('passport_no'),
                     'date_of_birth' => $request->get('date_of_birth'),
                     'civil_no' => $request->get('civil_no'),
-                    'agent_id' =>  $request->get('agent_id')
+                    'agent_id' =>  $request->get('agent_id'),
+                    'account_id' =>  $request->get('account_id')
                 ]);
     
                 return response()->json([

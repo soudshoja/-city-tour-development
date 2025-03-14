@@ -1,4 +1,3 @@
-console.log("tasks.js loaded");
 let currentPage = 1;
 const rowsPerPage = 10;
 const dataTableBottom = document.querySelector(".dataTable-bottom");

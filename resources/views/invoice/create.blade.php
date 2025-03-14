@@ -1440,19 +1440,19 @@
                             <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
                             </svg>
                         </div>
+<dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
+    <div class="flex justify-between items-center p-4 border-b border-black">
+        <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
+        <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+    <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
+</dialog>
 
-                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-full min-h-80 overflow-y-scroll">
-                            <div class="flex justify-between items-center p-4 border-b border-black">
-                                <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
-                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
-                        </dialog>
 
                         <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip="Remove Item">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1507,235 +1507,217 @@
                         taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
                     } else if (item.flight_details !== null) {
                         taskDetails.innerHTML += `
-                            <div class="text-lg font-bold mt-4">Flight Details</div>
-                            <hr/> 
-                                <div class="flex flex-row-reverse items-center">
-                                    <div class="p-2">
-                                        <label class="switch">
-                                            <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-                                            <span class="slider round"></span>
-                                        </label>
-                                    </div>
-                                    <strong>Toggle All</strong>
-                                </div>
+                           <div class="text-lg font-bold mt-4 flex text-center gap-2">
+    <i class="fas fa-plane-departure text-blue-500"></i>
+    Flight Details
+</div>
+<hr class="my-2"/>
 
-                                <form>
-                                <div class="task-details" style="box-sizing: border-box;">
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group" >
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Ticket Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                        
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Departure Time</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.departure_time}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_from.name}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_from}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_from}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Arrival Time</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.arrival_time}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_to.name}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_to}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_to}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airline</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airline_id}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Class</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.class_type}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full line-clamp-1">Baggage Allowed</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.baggage_allowed}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Equipment</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.equipment}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Flight Meal</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.flight_meal}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Seat No</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.seat_no}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Created At</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.created_at}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Updated At</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.updated_at}" disabled>
-                                        </div>
-                                    </div>
-                                </details>
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Route Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                    </div>
-                                </details>
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Fare Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Farebase</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.farebase}">
-                                        </div>
-                                    </div>
-                                </details>
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Void Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                    </div>
-                                </details>
-                                
-                                
-                            </div>
-                            </form>
+<div class="flex flex-row-reverse items-center gap-2">
+    <label class="switch">
+        <input type="checkbox" id="" onclick="toggleAll(${item.id})">
+        <span class="slider round"></span>
+    </label>
+    <strong>Toggle All</strong>
+</div>
+
+<form>
+    <div class="task-details p-4 rounded-lg shadow-md bg-white">
+        <details class="group border rounded-lg overflow-hidden shadow-sm">
+            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i class="fas fa-ticket-alt text-green-500"></i> Ticket Info
+                </h3>
+                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+            </summary>
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-clock text-gray-500"></i>
+                    <strong>Departure Time:</strong>
+                    <span class="text-gray-700">${item.flight_details.departure_time}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-flag text-gray-500"></i>
+                    <strong>Country From:</strong>
+                    <span class="text-gray-700">${item.flight_details.country_from.name}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-plane-departure text-gray-500"></i>
+                    <strong>Airport From:</strong>
+                    <span class="text-gray-700">${item.flight_details.airport_from}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-terminal text-gray-500"></i>
+                    <strong>Terminal From:</strong>
+                    <span class="text-gray-700">${item.flight_details.terminal_from}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-clock text-gray-500"></i>
+                    <strong>Arrival Time:</strong>
+                    <span class="text-gray-700">${item.flight_details.arrival_time}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-flag text-gray-500"></i>
+                    <strong>Country To:</strong>
+                    <span class="text-gray-700">${item.flight_details.country_to.name}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-plane-arrival text-gray-500"></i>
+                    <strong>Airport To:</strong>
+                    <span class="text-gray-700">${item.flight_details.airport_to}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-terminal text-gray-500"></i>
+                    <strong>Terminal To:</strong>
+                    <span class="text-gray-700">${item.flight_details.terminal_to}</span>
+                </div>
+            </div>
+        </details>
+        
+        <details class="group border rounded-lg overflow-hidden shadow-sm mt-2">
+            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i class="fas fa-route text-blue-500"></i> Route Info
+                </h3>
+                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+            </summary>
+            <div class="p-4">
+                <!-- Route details will be added here -->
+            </div>
+        </details>
+        
+        <details class="group border rounded-lg overflow-hidden shadow-sm mt-2">
+            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i class="fas fa-dollar-sign text-yellow-500"></i> Fare Info
+                </h3>
+                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+            </summary>
+            <div class="p-4">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-tags text-gray-500"></i>
+                    <strong>Farebase:</strong>
+                    <span class="text-gray-700">${item.flight_details.farebase}</span>
+                </div>
+            </div>
+        </details>
+        
+        <details class="group border rounded-lg overflow-hidden shadow-sm mt-2">
+            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i class="fas fa-ban text-red-500"></i> Void Info
+                </h3>
+                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+            </summary>
+            <div class="p-4">
+                <!-- Void details will be added here -->
+            </div>
+        </details>
+    </div>
+</form>
+
                             `;
 
                     } else if (item.hotel_details !== null) {
 
                         taskDetails.innerHTML += `
-                            <div class="text-lg font-bold mt-4">Hotel Details</div>
-                            <hr/>
-                            <div class="flex flex-row-reverse items-center">
-                                <div class="p-2">
-                                    <label class="switch">
-                                        <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-                                        <span class="slider round"></span>
-                                    </label>
-                                </div>
-                                <strong>Toggle All</strong>
-                            </div>
-                            <form>
-                            <div class="task-details" style="box-sizing: border-box;">
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
-                                        </div> 
-                                    </div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                            </div>
-                            </form>
+                <div class="text-lg font-bold mt-4">Hotel Details</div>
+<hr/>
+<div class="flex flex-row-reverse items-center">
+    <div class="p-2">
+        <label class="switch">
+            <input type="checkbox" id="" onclick="toggleAll(${item.id})">
+            <span class="slider round"></span>
+        </label>
+    </div>
+    <strong>Toggle All</strong>
+</div>
+<form>
+    <div class="task-details" style="box-sizing: border-box;">
+        <details class="bg-gray-200 p-2 rounded-md group">
+            <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
+                <div class="flex w-10 items-center justify-center">
+                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                </div>
+            </summary>
+            <div class="p-4">
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
+                </div>
+                <div class="flex justify-center items-center">
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
+                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
+                </div>
+            </div>
+        </details>
+        <details class="bg-gray-200 p-2 rounded-md group">
+            <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
+                <div class="flex w-10 items-center justify-center">
+                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                </div>
+            </summary>
+            <div></div>
+        </details>
+        <details class="bg-gray-200 p-2 rounded-md group">
+            <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
+                <div class="flex w-10 items-center justify-center">
+                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                </div>
+            </summary>
+            <div></div>
+        </details>
+        <details class="bg-gray-200 p-2 rounded-md group">
+            <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
+                <div class="flex w-10 items-center justify-center">
+                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                </div>
+            </summary>
+            <div></div>
+        </details>
+        <details class="bg-gray-200 p-2 rounded-md group">
+            <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
+                <div class="flex w-10 items-center justify-center">
+                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                </div>
+            </summary>
+            <div></div>
+        </details>
+    </div>
+</form>
                         `;
                     }
 

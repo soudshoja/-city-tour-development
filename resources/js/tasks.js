@@ -156,7 +156,7 @@ function toggleTasksDetails(taskId, url) {
     <div class="header">
         <h3 class="supplier-name">
             <i class="fas fa-warehouse"></i> ${
-                data.supplier?.name || "Unknown Supplier"
+                data.supplier?.name || "N/A"
             }
         </h3>
     </div>
@@ -167,10 +167,10 @@ function toggleTasksDetails(taskId, url) {
         }</span></h4>
         <div class="info-row">
             <p><i class="fas fa-map-marker-alt blue-icon"></i> <strong>Branch:</strong> ${
-                data.agent?.branch?.name || "Branch name"
+                data.agent?.branch?.name || "N/A"
             }</p>
             <p><i class="fas fa-user-tie blue-icon"></i> <strong>Agent:</strong> ${
-                data.agent?.name || "Agent name"
+                data.agent?.name || "N/A"
             }</p>
             <p><i class="fas fa-user blue-icon"></i> <strong>Client:</strong> 
             ${data.client_name !== undefined && data.client_name !== null ? data.client_name : "N/A"}</p>

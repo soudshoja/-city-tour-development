@@ -82,7 +82,7 @@
         <div class="header">
             <img src="{{ url('images/CityLogo.png') }}" width="100px">
 
-            <h2>INVOICE</h2>
+            <h2>Payment Receipt Voucher</h2>
             <p>Invoice #{{ $invoice->invoice_number }}</p>
             <p>Date: {{ $invoice->created_at->format('d M, Y') }}</p>
         </div>

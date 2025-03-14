@@ -506,7 +506,7 @@ class CompanyController extends Controller
                 'email' => $validatedData['email'],
                 'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
                 'agent_id' => $validatedData['agent_id'], // Associate with an agent if needed
-                'status_id' => 0,
+                // 'status_id' => 0,
                 'address' => null,
                 'passport_no' => null,
                 'account_id' => $account->id,           

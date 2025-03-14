@@ -191,8 +191,11 @@ class CoaController extends Controller
                 foreach ($liability->level3liabilities as $level3liability) {
                     // Fetch level 4 for each level 3
                     $level3liability->level4liabilities = Account::where('parent_id', $level3liability->id)->get();
-
+                    
                     foreach ($level3liability->level4liabilities as $level4liability) {
+                    
+                        $level4account = GeneralLedger::with('invoice.invoiceDetails.task.supplier.account')
+                            ->get();
                         // Assuming level4liability has actual_balance and budget_balance attributes
                         $actualBalanceLiabilities = $level4liability->actual_balance; // Replace with the actual field name
                         $budgetBalanceLiabilities = $level4liability->budget_balance; // Replace with the actual field name
@@ -202,6 +205,8 @@ class CoaController extends Controller
                             'budget_balance' => $budgetBalanceLiabilities,
                         ];
                     }
+
+                    dd('here');
                 }
             }
         }

@@ -1125,7 +1125,9 @@ class ChatController extends Controller
     
 
     public function createClient(Request $request)
-    {
+    {   
+        $user = Auth::user();
+
         // Validate common fields
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -1183,6 +1185,22 @@ class ChatController extends Controller
                     'account_id' => $accountId,
                     'agent_id' =>  $request->get('agent_idChat')
                     
+                ]);
+
+                $receivableAccount = Account::where('name', 'like', '%Receivable%')
+                ->where('company_id', $companyId)
+                ->first();
+                
+                $account = Account::create([
+                    'name' => $request->get('name'),
+                    'level' => 4,
+                    'actual_balance' => 0,
+                    'budget_balance' => 0,
+                    'variance' => 0,
+                    'company_id' => $companyId,
+                    'parent_id' => $receivableAccount->id,
+                    'reference_id' => $user->id,
+                    'code' => 'CLI-' . rand(1000000, 9999999),
                 ]);
     
                 return response()->json([
@@ -1260,7 +1278,23 @@ class ChatController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make('citytour123'),
-                'role_id' => 3
+                'role_id' => Role::AGENT
+            ]);
+
+            $receivableAccount = Account::where('name', 'like', '%Receivable%')
+            ->where('company_id', $company->id)
+            ->first();
+
+            $account = Account::create([
+                'name' => $request->name,
+                'level' => 4,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'company_id' => $company->id,
+                'parent_id' => $receivableAccount->id,
+                'reference_id' => $user->id,
+                'code' => 'AGT-' . rand(1000000, 9999999),
             ]);
 
             $agent = Agent::create([
@@ -1271,6 +1305,7 @@ class ChatController extends Controller
                 'company_id' => $company->id,
                 'branch_id' => $request->branch_id,
                 'type' => $request->type,
+                'account_id' => $account->id
             ]);
 
 
@@ -1310,7 +1345,7 @@ class ChatController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make('citytour123'),
-            'role_id' => 6
+            'role_id' => Role::BRANCH
         ]);
 
         $branch = Branch::create([

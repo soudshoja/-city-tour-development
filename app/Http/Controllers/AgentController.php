@@ -163,7 +163,7 @@ class AgentController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make('citytour123'),
-            'role' => 'agent'
+            'role_id' => Role::AGENT
         ]);
 
 

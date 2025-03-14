@@ -675,50 +675,49 @@
                     });
                 })
         });
-
-        document.getElementById('upload-task').addEventListener('change', function() {
-            submitBtn = document.querySelector('#upload-task-submit');
-            console.log(submitBtn);
-            submitBtn.focus();
-        });
-
-        document.getElementById('select-supplier-task').addEventListener('change', function() {
-            let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
-            let supplier = JSON.parse(selectedSupplier);
-            let formTaskContainer = document.getElementById('form-task-container');
-            let companyIdData = formTaskContainer.getAttribute('data-company-id');
-            let tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
-
-            formTaskContainer.innerHTML = '';
-            console.log(supplier.name);
-            console.log(supplier.name == 'Magic Holiday');
-            if (supplier.name === 'Magic Holiday') {
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'supplier_ref';
-                input.placeholder = 'Reference';
-                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border', 'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-300', 'p-3');
-                formTaskContainer.appendChild(input);
-            } else if (supplier.name === 'TBO Holiday') {
-                document.getElementById('task-agent-id').classList.add('hidden');
-                let a = document.createElement('a');
-                a.href = tboTaskUrl;
-                a.innerHTML = 'Import Task';
-                a.classList.add('bg-blue-500', 'text-white', 'rounded-lg', 'p-2', 'text-center', 'w-full', 'font-semibold');
-                a.innerHTML = 'Import Task';
-
-                formTaskContainer.appendChild(a);
-            } else {
-                let div = document.createElement('div');
-                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
-                div.innerHTML = 'API not available for this supplier';
-                formTaskContainer.appendChild(div);
-            }
-
-        });
-
     });
 
+    document.getElementById('upload-task').addEventListener('change', function() {
+        submitBtn = document.querySelector('#upload-task-submit');
+        console.log(submitBtn);
+        submitBtn.focus();
+    });
+
+    document.getElementById('select-supplier-task').addEventListener('change', function() {
+        console.log('change');
+        let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
+        let supplier = JSON.parse(selectedSupplier);
+        let formTaskContainer = document.getElementById('form-task-container');
+        let companyIdData = formTaskContainer.getAttribute('data-company-id');
+        let tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
+
+        formTaskContainer.innerHTML = '';
+        console.log(supplier.name);
+        console.log(supplier.name == 'Magic Holiday');
+        if (supplier.name === 'Magic Holiday') {
+            let input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'supplier_ref';
+            input.placeholder = 'Reference';
+            input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border', 'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-300', 'p-3');
+            formTaskContainer.appendChild(input);
+        } else if (supplier.name === 'TBO Holiday') {
+            document.getElementById('task-agent-id').classList.add('hidden');
+            let a = document.createElement('a');
+            a.href = tboTaskUrl;
+            a.innerHTML = 'Import Task';
+            a.classList.add('bg-blue-500', 'text-white', 'rounded-lg', 'p-2', 'text-center', 'w-full', 'font-semibold');
+            a.innerHTML = 'Import Task';
+
+            formTaskContainer.appendChild(a);
+        } else {
+            let div = document.createElement('div');
+            div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
+            div.innerHTML = 'API not available for this supplier';
+            formTaskContainer.appendChild(div);
+        }
+
+    });
     document.addEventListener('click', function(event) {
         let modalInvoice = document.getElementById('taskInvoicePlaceholder');
         let invoiceBody = document.getElementById('invoiceModalBody');

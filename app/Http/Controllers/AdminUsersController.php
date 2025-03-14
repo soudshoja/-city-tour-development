@@ -156,6 +156,8 @@ class AdminUsersController extends Controller
 
             ['name' => 'Long-Term Debt', 'level' => 3, 'parent' => 'Long-Term Liabilities'],
 
+            ['name' => 'Income On Sales', 'level' => 3, 'parent' => 'Operating Income'],
+
             ['name' => 'Salary Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
             ['name' => 'Rent Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
             ['name' => 'Depreciation Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],

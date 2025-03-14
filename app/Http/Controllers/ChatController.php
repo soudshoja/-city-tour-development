@@ -1159,7 +1159,7 @@ class ChatController extends Controller
                 $client = Client::create([
                     'name' => $request->get('name'),
                     'email' => $request->get('email'),
-                    'status_id' => 0,
+                    'status' => 'active',
                     'phone' => $request->get('phone'),
                     'address' => $request->get('address'),
                     'passport_no' => $request->get('passport_no'),

@@ -11,10 +11,12 @@ use App\Models\Agent;
 use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Account;
+use App\Models\CoaCategory;
 use App\Models\Supplier;
 use App\Models\GeneralLedger;
 use App\Models\Payment;
 use App\Models\Sequence;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 
 class CoaController extends Controller
@@ -56,7 +58,39 @@ class CoaController extends Controller
 
         return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'invoices', 'clients', 'suppliers'));
     }
+    public function addCategory(Request $request)
+    {
+        if(auth()->user()->company == null){
+            return response()->json(['success' => false, 'message' => 'User not authorized'], 404);
+        }
 
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:255',
+            'level' => 'required|integer',
+            'budget_balance' => 'required|numeric',
+            'actual_balance' => 'required|numeric',
+            'parent_id' => 'required|integer',
+            'variance' => 'required|numeric',
+        ]);
+    
+        try {
+            $category = new Account();
+            $category->name = $request->name;
+            $category->code = $request->code;
+            $category->level = $request->level;
+            $category->parent_id = $request->parent_id;
+            $category->variance = $request->variance;
+            $category->budget_balance = $request->budget_balance;
+            $category->actual_balance = $request->actual_balance;
+            $category->company_id = auth()->user()->company->id;
+            $category->save();
+    
+            return response()->json(['success' => true, 'id' => $category->id]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
     private function getAssets()
     {
         // Assets Account
@@ -132,9 +166,12 @@ class CoaController extends Controller
 
                 }
             }
+    
         }
         return $assets;
+    
     }
+    
 
     private function getLiabilities()
     {
@@ -242,7 +279,6 @@ class CoaController extends Controller
                 }
             }
         }
-
         return $expenses;
     }
 

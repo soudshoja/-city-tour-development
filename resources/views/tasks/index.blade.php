@@ -91,7 +91,7 @@
                             @endforeach
                         </select>
                         @else
-                        <input type="hidden" name="agent_id" id="agent_id" value="{{ Auth()->user()->agent->id }}">
+                        <input type="hidden" name="agent_id" id="agent_id_task_modal" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
                         <select name="supplier_id" id="select-supplier-task" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
                             <option value="">Select Supplier</option>
@@ -250,7 +250,7 @@
                                                 x-show="editTaskModal_{{ $task->id }}"
                                                 x-cloak
                                                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                                                <form id="edit-task-form" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
+                                                <form id="edit-task-form-{{ $task->id }}" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
                                                     <div
                                                         @click.away="editTaskModal_{{ $task->id }}  = false"
                                                         class="bg-white rounded-md border-2w-80">
@@ -269,24 +269,24 @@
                                                         @csrf
                                                         @method('PUT')
                                                         <div class="p-4 inline-flex flex-col gap-2">
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
-                                                            <input type="text" name="" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
-                                                            <select name="client_id" id="tasks_client_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
+                                                            <select name="client_id" id="tasks_client_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
                                                                 <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>
                                                                 @foreach($clients as $client)
                                                                 <option value="{{ $client->id }}" {{$task->client ? $task->client->id === $client->id ? 'selected' : '' : ''}}>{{ $client->name }}</option>
                                                                 @endforeach
                                                             </select>
-                                                            <select name="agent_id" id="agent_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                            <select name="agent_id" id="agent_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
                                                                 <option value="" {{$task->agent ?? 'selected'}}>Choose Agent</option>
                                                                 @foreach($agents as $agent)
                                                                 <option value="{{ $agent->id }}" {{$task->agent ? $task->agent->id === $agent->id ? 'selected' : '' : ''}}>{{ $agent->name }}</option>
                                                                 @endforeach
                                                             </select>
-                                                            <select name="supplier_id" id="supplier_id" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                            <select name="supplier_id" id="supplier_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
                                                                 <option value="" {{$task->supplier ?? 'selected'}}>Choose Supplier</option>
                                                                 @foreach($suppliers as $supplier)
                                                                 <option value="{{ $supplier->id }}" {{ $task->supplier ? $task->supplier->id === $supplier->id ? 'selected' : '' : ''}}>{{ $supplier->name }}</option>
@@ -294,7 +294,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="edit-task-form"> Update </x-primary-button>
+                                                    <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="edit-task-form-{{ $task->id }}"> Update </x-primary-button>
                                                 </form>
                                             </div>
                                         </div>
@@ -494,7 +494,7 @@
                                 </div>
 
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="supplier_id" id="supplier_id" class="selectize w-full appearance-none bg-transparent
+                                    <select name="supplier_id" id="supplier_id_right_div" class="selectize w-full appearance-none bg-transparent
                                          outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Supplier</option>
                                         @foreach($suppliers as $supplier)
@@ -512,7 +512,7 @@
                                 </div>
 
                                 <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="agent_id" id="agent_id" class="selectize w-full appearance-none bg-transparent
+                                    <select name="agent_id" id="agent_id_right_div" class="selectize w-full appearance-none bg-transparent
                                          outline-none cursor-pointer focus:outline-none focus:ring-0">
                                         <option selected value="" class="">Select Agent</option>
                                         @foreach($agents as $agent)
@@ -650,10 +650,8 @@
             });
         });
     });
-</script>
-<script>
+    
     let invoicesModal = document.querySelectorAll('.invoiceModal');
-
 
     invoicesModal.forEach(invoice => {
         invoice.addEventListener('click', function() {
@@ -719,8 +717,7 @@
         });
 
     });
-</script>
-<script>
+    
     document.addEventListener('click', function(event) {
         let modalInvoice = document.getElementById('taskInvoicePlaceholder');
         let invoiceBody = document.getElementById('invoiceModalBody');
@@ -734,8 +731,7 @@
         console.log(submitBtn);
         submitBtn.focus();
     });
-</script>
-<script>
+    
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.toggle-task-status').forEach(function(checkbox) {
             checkbox.addEventListener('change', function() {

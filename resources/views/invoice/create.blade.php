@@ -1440,18 +1440,18 @@
                             <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
                             </svg>
                         </div>
-<dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
-    <div class="flex justify-between items-center p-4 border-b border-black">
-        <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
-        <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-    </div>
-    <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
-</dialog>
+                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-1/2 min-h-80 overflow-y-scroll">
+                            <div class="flex justify-between text-center items-center p-4 border-b border-black">
+                                <h2 class="text-lg font-bold text-center text-gray-700">TASK DETAILS</h2>
+                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
+                        </dialog>
 
 
                         <div class="ml-4 cursor-pointer" onclick="removeItem(${item.id})" data-tooltip="Remove Item">
@@ -1507,7 +1507,79 @@
                         taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
                     } else if (item.flight_details !== null) {
                         taskDetails.innerHTML += `
-                           <div class="text-lg font-bold mt-4 flex text-center gap-2">
+
+                        <style>
+                        .flight-details-container {
+    display: grid;
+    grid-template-columns: 1fr; /* Single column for mobile */
+    gap: 16px;
+    padding: 20px;
+    background-color: #f9fafb; /* Light gray background */
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 768px) { /* Two columns on medium screens and up */
+    .flight-details-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+.flight-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Two columns */
+    gap: 10px;
+    padding: 20px;
+    background-color: #f8f9fa; /* Light background */
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.flight-details div {
+    background-color: #ffffff; /* White background for items */
+    padding: 10px;
+    border-radius: 5px;
+    border-left: 5px solid #007bff; /* Blue accent */
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+}
+
+.flight-details div:nth-child(odd) {
+    background-color: #e3f2fd; /* Light blue for alternating items */
+}
+
+.flight-detail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff; /* White background */
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.flight-detail:hover {
+    transform: scale(1.02);
+}
+
+.flight-detail i {
+    color: #4f46e5; /* Indigo color for icons */
+    font-size: 18px;
+}
+
+.flight-detail strong {
+    font-weight: bold;
+    color: #1f2937; /* Dark gray text */
+}
+
+.flight-detail span {
+    color: #374151; /* Slightly lighter gray */
+    font-weight: 500;
+}
+                        </style>
+                        
+                     <div class="text-lg font-bold mt-4 flex text-center gap-2">
     <i class="fas fa-plane-departure text-blue-500"></i>
     Flight Details
 </div>
@@ -1523,100 +1595,76 @@
 
 <form>
     <div class="task-details p-4 rounded-lg shadow-md bg-white">
-        <details class="group border rounded-lg overflow-hidden shadow-sm">
+        
+        <!-- Ticket Info -->
+        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
             <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
                 <h3 class="font-semibold flex items-center gap-2">
                     <i class="fas fa-ticket-alt text-green-500"></i> Ticket Info
                 </h3>
                 <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
             </summary>
-            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-clock text-gray-500"></i>
-                    <strong>Departure Time:</strong>
-                    <span class="text-gray-700">${item.flight_details.departure_time}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-flag text-gray-500"></i>
-                    <strong>Country From:</strong>
-                    <span class="text-gray-700">${item.flight_details.country_from.name}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-plane-departure text-gray-500"></i>
-                    <strong>Airport From:</strong>
-                    <span class="text-gray-700">${item.flight_details.airport_from}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-terminal text-gray-500"></i>
-                    <strong>Terminal From:</strong>
-                    <span class="text-gray-700">${item.flight_details.terminal_from}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-clock text-gray-500"></i>
-                    <strong>Arrival Time:</strong>
-                    <span class="text-gray-700">${item.flight_details.arrival_time}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-flag text-gray-500"></i>
-                    <strong>Country To:</strong>
-                    <span class="text-gray-700">${item.flight_details.country_to.name}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-plane-arrival text-gray-500"></i>
-                    <strong>Airport To:</strong>
-                    <span class="text-gray-700">${item.flight_details.airport_to}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-terminal text-gray-500"></i>
-                    <strong>Terminal To:</strong>
-                    <span class="text-gray-700">${item.flight_details.terminal_to}</span>
-                </div>
+            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div><strong>Departure Time:</strong> ${item.flight_details.departure_time}</div>
+                <div><strong>Country From:</strong> ${item.flight_details.country_from.name}</div>
+                <div><strong>Airport From:</strong> ${item.flight_details.airport_from}</div>
+                <div><strong>Terminal From:</strong> ${item.flight_details.terminal_from}</div>
+                <div><strong>Arrival Time:</strong> ${item.flight_details.arrival_time}</div>
+                <div><strong>Country To:</strong> ${item.flight_details.country_to.name}</div>
+                <div><strong>Airport To:</strong> ${item.flight_details.airport_to}</div>
+                <div><strong>Terminal To:</strong> ${item.flight_details.terminal_to}</div>
+                <div><strong>Seat No:</strong> ${item.flight_details.seat_no}</div>
+                <div><strong>Flight Meal:</strong> ${item.flight_details.flight_meal}</div>
+                <div><strong>Equipment:</strong> ${item.flight_details.equipment}</div>
+                <div><strong>Baggage Allowed:</strong> ${item.flight_details.baggage_allowed}</div>
+                <div><strong>Class Type:</strong> ${item.flight_details.class_type}</div>
+                <div><strong>Airline ID:</strong> ${item.flight_details.airline_id}</div>
             </div>
         </details>
         
-        <details class="group border rounded-lg overflow-hidden shadow-sm mt-2">
+        <!-- Route Info -->
+        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
             <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
                 <h3 class="font-semibold flex items-center gap-2">
                     <i class="fas fa-route text-blue-500"></i> Route Info
                 </h3>
                 <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
             </summary>
-            <div class="p-4">
+            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <!-- Route details will be added here -->
             </div>
         </details>
         
-        <details class="group border rounded-lg overflow-hidden shadow-sm mt-2">
+        <!-- Fare Info -->
+        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
             <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
                 <h3 class="font-semibold flex items-center gap-2">
                     <i class="fas fa-dollar-sign text-yellow-500"></i> Fare Info
                 </h3>
                 <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
             </summary>
-            <div class="p-4">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-tags text-gray-500"></i>
-                    <strong>Farebase:</strong>
-                    <span class="text-gray-700">${item.flight_details.farebase}</span>
-                </div>
+            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div><strong>Farebase:</strong> ${item.flight_details.farebase}</div>
             </div>
         </details>
         
-        <details class="group border rounded-lg overflow-hidden shadow-sm mt-2">
+        <!-- Void Info -->
+        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
             <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
                 <h3 class="font-semibold flex items-center gap-2">
                     <i class="fas fa-ban text-red-500"></i> Void Info
                 </h3>
                 <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
             </summary>
-            <div class="p-4">
+            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <!-- Void details will be added here -->
             </div>
         </details>
+        
     </div>
 </form>
 
-                            `;
+                        `;
 
                     } else if (item.hotel_details !== null) {
 

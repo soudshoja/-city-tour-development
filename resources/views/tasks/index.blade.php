@@ -310,7 +310,7 @@
                                     <td class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
                                         <p class="{{ $task->client ?? 'no-client'}}">
                                             {{ $task->client_name ?? 'Not Set' }}
-                                        </p>
+                                        </p>                           
                                         @if($task->client)
                                         <div data-tooltip="Client Linked">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="fill-green-500">

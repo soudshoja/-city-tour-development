@@ -15,15 +15,15 @@ const taskDetailsDiv = document.getElementById("taskDetails");
 const showRightDiv = document.getElementById("showRightDiv");
 let currentlyDisplayed = null;
 
-toggleFiltersButton.addEventListener("click", function () {
-    if (currentlyDisplayed === "filters") {
-        hideSidebar();
-        return;
-    }
+// toggleFiltersButton.addEventListener("click", function () {
+//     if (currentlyDisplayed === "filters") {
+//         hideSidebar();
+//         return;
+//     }
 
-    currentlyDisplayed = "filters";
-    showSidebar("filters");
-});
+//     currentlyDisplayed = "filters";
+//     showSidebar("filters");
+// });
 
 // Show Task Details
 
@@ -61,7 +61,6 @@ function toggleTasksDetails(taskId, url) {
             // console.log('data : ' ,data)
 
             if (data && data.client_name) {
-                const taskIcon =
                     data.type === "flight"
                         ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                     <path fill="#1e40af" fill-rule="evenodd"
@@ -76,7 +75,6 @@ function toggleTasksDetails(taskId, url) {
                                         d="M17 19h2v-8h-6v8h2v-6h2zM3 19V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v5h2v10h1v2H2v-2zm4-8v2h2v-2zm0 4v2h2v-2zm0-8v2h2V7z" />
                                 </svg>`;
 
-                const taskDescription =
                     data.type === "flight"
                         ? `${data.country_from} ------->> ${data.country_to}`
                         : data.hotel_name || "Hotel Name/ City";
@@ -273,205 +271,6 @@ function toggleTasksDetails(taskId, url) {
         });
 }
 
-const filters = {
-    price: {
-        element: document.getElementById("priceRange"),
-        value: NaN,
-    },
-    supplier: {
-        element: document.getElementById("supplier_id"),
-        selected: new Set(),
-    },
-    agent: {
-        element: document.getElementById("agent_id"),
-        selected: new Set(),
-    },
-    status: {
-        element: document.getElementById("status_id"),
-        selected: new Set(),
-    },
-    type: {
-        element: document.getElementById("type_id"),
-        selected: new Set(),
-    },
-};
-
-if (document.getElementById("branch_id")) {
-    filters.branch = {
-        element: document.getElementById("branch_id"),
-        selected: new Set(),
-    };
-}
-
-const filterContainers = {
-    supplier: document.getElementById("selected-suppliers"),
-    branch: document.getElementById("selected-branches"),
-    agent: document.getElementById("selected-agents"),
-    status: document.getElementById("selected-statuses"),
-    type: document.getElementById("selected-types"),
-};
-
-function updateFilterCount() {
-    const activeFilters = Object.keys(filters).filter((key) => {
-        if (key === "price") return !isNaN(filters.price.value);
-
-        return filters[key].selected.size > 0;
-    });
-
-    const filterBadge = document.querySelector(".filter-badge span");
-    if (filterBadge)
-        filterBadge.textContent = `${activeFilters.length} applied`;
-}
-
-function filterTable() {
-    const tableBody = document.querySelector("#myTable tbody");
-    const tableRows = Array.from(tableBody.querySelectorAll("tr"));
-
-    let visibleRows = 0;
-    let count = 1;
-
-    tableRows.forEach((row) => {
-        //display the row if it met all the conditions; prices, suppliers, branches, agents, statuses, and types
-        const rowPrice = parseFloat(row.getAttribute("data-price"));
-        const rowSupplier = row.getAttribute("data-supplier-id");
-        const rowAgent = row.getAttribute("data-agent-id");
-        const rowStatus = row.getAttribute("data-status");
-        const rowType = row.getAttribute("data-type");
-
-        const matchesPrice =
-            isNaN(filters.price.value) || rowPrice <= filters.price.value;
-        const matchesSupplier =
-            filters.supplier.selected.size === 0 ||
-            filters.supplier.selected.has(rowSupplier);
-        const matchesAgent =
-            filters.agent.selected.size === 0 ||
-            filters.agent.selected.has(rowAgent);
-        const matchesStatus =
-            filters.status.selected.size === 0 ||
-            filters.status.selected.has(rowStatus);
-        const matchesType =
-            filters.type.selected.size === 0 ||
-            filters.type.selected.has(rowType);
-
-        if (document.getElementById("branch_id")) {
-            const rowBranch = row.getAttribute("data-branch-id");
-            const matchesBranch =
-                filters.branch.selected.size === 0 ||
-                filters.branch.selected.has(rowBranch);
-        }
-        if (
-            matchesPrice &&
-            matchesSupplier &&
-            matchesAgent &&
-            matchesStatus &&
-            matchesType
-        ) {
-            if (row.classList.contains("hidden")) {
-                row.classList.remove("hidden");
-            }
-
-            visibleRows++;
-        } else {
-            row.classList.add("hidden");
-        }
-
-        count++;
-    });
-
-    const noDataMessage = document.getElementById("no-data-message");
-    if (visibleRows === 0) {
-        if (!noDataMessage) {
-            const messageRow = document.createElement("tr");
-            messageRow.id = "no-data-message";
-            messageRow.innerHTML = `<td colspan="8" class="text-center text-gray-500 py-4">No data for the selected criteria</td>`;
-            tableBody.appendChild(messageRow);
-        }
-    } else if (noDataMessage) {
-        noDataMessage.remove();
-    }
-
-    document.dispatchEvent(new CustomEvent("filterUpdated")); // Notify pagination script
-}
-
-function handleDropdownChange(filter, container, idAttr) {
-    const selectedOption = filter.element.options[filter.element.selectedIndex];
-    const id = selectedOption.value;
-    const name = selectedOption.text;
-
-    if (id && !document.getElementById(`${idAttr}-${id}`)) {
-        const tag = createFilterTag(id, name, idAttr);
-        container.appendChild(tag);
-        filter.selected.add(id);
-        updateFilterCount();
-        filterTable();
-    } else {
-        // console.log('filter already exist');
-    }
-
-    filter.element.value = "";
-
-    let filterTags = document.querySelectorAll(".filter");
-
-    filterTags.forEach((tag) => {
-        tag.addEventListener("click", function () {
-            console.log("clicked");
-            const id = this.getAttribute("data-id");
-            const type = this.getAttribute("data-type");
-            removeFilter(id, type);
-        });
-    });
-}
-
-filters.price.element.addEventListener("input", function () {
-    filters.price.value = parseFloat(this.value) || NaN;
-    document.getElementById("ShowTaskFilters").textContent = this.value;
-    updateFilterCount();
-    filterTable();
-});
-
-Object.keys(filters).forEach((key) => {
-    if (key !== "price") {
-        filters[key].element.addEventListener("change", () =>
-            handleDropdownChange(filters[key], filterContainers[key], key)
-        );
-    }
-});
-
-function createFilterTag(id, name, type) {
-    const tag = document.createElement("div");
-    tag.id = `${type}-${id}`;
-    tag.className =
-        "bg-[#5f77c6] text-white text-sm px-3 py-1 rounded-lg flex items-center justify-between";
-    tag.innerHTML = `<span class="ml-2 text-white filter cursor-pointer" data-type="${type}" data-id="${id}">${name} &times;</span>`;
-    return tag;
-}
-
-function removeFilter(id, type) {
-    const tag = document.getElementById(`${type}-${id}`);
-    if (tag) {
-        tag.remove();
-        filters[type].selected.delete(id);
-        updateFilterCount();
-        filterTable();
-    }
-}
-
-document.getElementById("clearFilters").addEventListener("click", function () {
-    Object.keys(filters).forEach((key) => {
-        if (key === "price") {
-            filters.price.value = NaN;
-            filters.price.element.value = filters.price.element.min;
-        } else {
-            filters[key].selected.clear();
-            filterContainers[key].innerHTML = "";
-        }
-    });
-
-    updateFilterCount();
-    filterTable();
-});
-
-filterTable();
 
 const taskListContainer = document.querySelector(".content-70"); // Main task list container
 
@@ -490,33 +289,18 @@ function showSidebar(contentId) {
     }
 }
 
-// Function to hide the sidebar
 function hideSidebar() {
     currentlyDisplayed = null;
-    // Remove the 'shrink' class from the main task list container
+    
     taskListContainer.classList.remove("shrink");
 
-    // Hide the sidebar container
     showRightDiv.classList.remove("visible");
 
-    // Hide both filters and task details
     filterBox.style.display = "none";
     taskDetailsDiv.style.display = "none";
 }
 
-function filterRows() {
-    return rows.filter((row) => row.style.display !== "none");
-}
-
-document.addEventListener("filterUpdated", function () {
-    const visibleRows = filterRows();
-    // updatePagination(visibleRows);
-    // if (visibleRows.length > 0) {
-    //     showPageParam(1, visibleRows);
-    // }
-});
-
-const visibleRows = filterRows();
+// const visibleRows = filterRows();
 // updatePagination(visibleRows);
 // showPageParam(1, visibleRows);
 
@@ -544,48 +328,6 @@ function createPagination() {
     }
 }
 
-// Function to handle page number click
-// function handlePageChange(e) {
-//     e.preventDefault();
-//     const page = parseInt(e.target.dataset.page, 10);
-//     if (page && page !== currentPage) {
-//         showPage(page);
-//     }
-// }
-
-// Event listener for previous button
-// if (prevPageButton) {
-//     prevPageButton.addEventListener("click", (e) => {
-//         e.preventDefault();
-//         if (currentPage > 1) {
-//             showPage(currentPage - 1);
-//         }
-//     });
-// }
-
-// Event listener for next button
-// if (nextPageButton) {
-//     nextPageButton.addEventListener("click", (e) => {
-//         e.preventDefault();
-//         if (currentPage < totalPages) {
-//             showPage(currentPage + 1);
-//         }
-//     });
-// }
-
-// Event listener for page numbers
-// paginationList.addEventListener("click", (e) => {
-//     if (e.target.tagName === "A" && e.target.dataset.page) {
-//         handlePageChange(e);
-//     }
-// });
-
-// Initialize pagination
-// if (totalPages > 1) {
-//     // createPagination();
-//     showPage(1); // Show the first page initially
-// }
-
 const floatingActions = document.getElementById("floatingActions");
 const closeTaskFloatingActions = document.getElementById(
     "closeTaskFloatingActions"
@@ -594,7 +336,6 @@ const selectAllCheckbox = document.getElementById("selectAll");
 const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
 const createInvoiceBtn = document.getElementById("createInvoiceBtn");
 
-// Select/Deselect all checkboxes
 selectAllCheckbox.addEventListener("change", function () {
     rowCheckboxes.forEach(
         (checkbox) => (checkbox.checked = selectAllCheckbox.checked)
@@ -602,14 +343,13 @@ selectAllCheckbox.addEventListener("change", function () {
     toggleCreateInvoiceButton(); // Update button state
 });
 
-// Toggle "Create Invoice" button based on selected checkboxes
 const toggleCreateInvoiceButton = () => {
     const isAnySelected = Array.from(rowCheckboxes).some(
         (checkbox) => checkbox.checked
     );
     createInvoiceBtn.disabled = !isAnySelected;
 };
-// Add change event to each row checkbox
+
 rowCheckboxes.forEach((checkbox) => {
     checkbox.addEventListener("change", function () {
         // Update the "Select All" checkbox state
@@ -629,10 +369,8 @@ rowCheckboxes.forEach((checkbox) => {
     });
 });
 
-// Initialize button state on page load
 toggleCreateInvoiceButton();
 
-// Gather selected task IDs and submit them
 createInvoiceBtn.addEventListener("click", function () {
     const selectedTaskIds = Array.from(rowCheckboxes)
         .filter((checkbox) => checkbox.checked)
@@ -646,31 +384,9 @@ createInvoiceBtn.addEventListener("click", function () {
     console.log(selectedTaskIds);
     const route = this.getAttribute("data-route");
     const url = route + "?task_ids=" + selectedTaskIds.join(",");
-    // Example: Redirect to the batch invoice creation route
 
     window.location.href = url;
 });
-
-function updatePagination(visibleRows) {
-    //close
-    const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
-
-    dataTableBottom.style.display =
-        visibleRows.length > rowsPerPage ? "flex" : "none";
-
-    paginationList
-        .querySelectorAll("li.page-number")
-        .forEach((el) => el.remove());
-
-    if (totalPages > 1) {
-        for (let i = 1; i <= totalPages; i++) {
-            const li = document.createElement("li");
-            li.className = `page-number ${i === currentPage ? "active" : ""}`;
-            li.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
-            paginationList.insertBefore(li, nextPageButton);
-        }
-    }
-}
 
 // Close the floating div when the "X" button is clicked
 closeTaskFloatingActions.addEventListener("click", function () {

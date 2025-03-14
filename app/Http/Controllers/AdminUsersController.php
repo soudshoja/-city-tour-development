@@ -9,11 +9,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use App\Models\Branch;
+use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentType;
 use App\Models\Role;
 use App\Models\User;
 use Exception;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class AdminUsersController extends Controller
@@ -117,6 +119,81 @@ class AdminUsersController extends Controller
         ]);
 
         Log::info('Company created:', ['company_id' => $company->id]);
+
+
+         // Insert to accounts for coa
+         $accounts = [
+            ['name' => 'Assets', 'level' => 1, 'parent' => null],
+            ['name' => 'Liabilities', 'level' => 1, 'parent' => null],
+            ['name' => 'Income', 'level' => 1, 'parent' => null],
+            ['name' => 'Expenses', 'level' => 1, 'parent' => null],
+
+            ['name' => 'Current Assets', 'level' => 2, 'parent' => 'Assets'],
+            ['name' => 'Fixed Assets', 'level' => 2, 'parent' => 'Assets'],
+            ['name' => 'Investments', 'level' => 2, 'parent' => 'Assets'],
+            ['name' => 'Deposits', 'level' => 2, 'parent' => 'Assets'],
+
+            ['name' => 'Current Liabilities', 'level' => 2, 'parent' => 'Liabilities'],
+            ['name' => 'Long-Term Liabilities', 'level' => 2, 'parent' => 'Liabilities'],
+            ['name' => 'Provisions', 'level' => 2, 'parent' => 'Liabilities'],
+
+            ['name' => 'Operating Income', 'level' => 2, 'parent' => 'Income'],
+            ['name' => 'Non-Operating Income', 'level' => 2, 'parent' => 'Income'],
+
+            ['name' => 'Fixed Expenses', 'level' => 2, 'parent' => 'Expenses'],
+            ['name' => 'Variable Expenses', 'level' => 2, 'parent' => 'Expenses'],
+
+            ['name' => 'Cash', 'level' => 3, 'parent' => 'Current Assets'],
+            ['name' => 'Accounts Receivable', 'level' => 3, 'parent' => 'Current Assets'],
+            ['name' => 'Inventory', 'level' => 3, 'parent' => 'Current Assets'],
+
+            ['name' => 'Property, Plant, and Equipment', 'level' => 3, 'parent' => 'Fixed Assets'],
+            ['name' => 'Investments in Subsidiaries', 'level' => 3, 'parent' => 'Investments'],
+            ['name' => 'Long-Term Deposits', 'level' => 3, 'parent' => 'Investments'],
+
+            ['name' => 'Accounts Payable', 'level' => 3, 'parent' => 'Current Liabilities'],
+            ['name' => 'Short-Term Debt', 'level' => 3, 'parent' => 'Current Liabilities'],
+
+            ['name' => 'Long-Term Debt', 'level' => 3, 'parent' => 'Long-Term Liabilities'],
+
+            ['name' => 'Salary Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
+            ['name' => 'Rent Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
+            ['name' => 'Depreciation Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
+
+            ['name' => 'Business Trip Expense', 'level' => 3, 'parent' => 'Variable Expenses'],
+            ['name' => 'Agent Sales Commission', 'level' => 3, 'parent' => 'Variable Expenses'],
+            ['name' => 'Sponsorship Fee', 'level' => 3, 'parent' => 'Variable Expenses'],
+            ['name' => 'Legal & Professional Fees', 'level' => 3, 'parent' => 'Variable Expenses'],
+            ['name' => 'Utilities Expense', 'level' => 3, 'parent' => 'Variable Expenses'],
+        ];
+
+        // Store newly inserted IDs
+        $idMapping = [];
+
+        // Insert accounts dynamically
+        foreach ($accounts as $account) {
+            // Determine the parent_id dynamically
+            $parentId = isset($account['parent']) && isset($idMapping[$account['parent']]) 
+            ? $idMapping[$account['parent']]->id 
+            : null;
+
+            // Insert account
+            $newId = Account::create([
+                'name' => $account['name'],
+                'level' => $account['level'],
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+                'company_id' => $company->id,
+                'parent_id' => $parentId,
+            ]);
+
+            // Store new ID for future parent_id references
+            $idMapping[$account['name']] = $newId;
+        }
+
 
         // Create a default branch for the company
         $defaultBranch = Branch::create([

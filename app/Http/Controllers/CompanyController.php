@@ -497,7 +497,7 @@ class CompanyController extends Controller
                 'company_id' => $companyId,
                 'parent_id' => $receivableAccount->id,
                 'reference_id' => $user->id,
-                'code' => 'AGT-' . rand(1000000, 9999999),
+                'code' => 'CLI-' . rand(1000000, 9999999),
             ]);
 
             // Create the client record

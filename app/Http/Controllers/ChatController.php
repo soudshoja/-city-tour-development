@@ -1148,11 +1148,26 @@ class ChatController extends Controller
     
                 $agentId = $request->get('agent_idChat');
                 $agent = Agent::find($agentId);
+
+                if (!$agent) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Agent not found.',
+                    ], 404);
+                }
+
                 $companyId = $agent->company_id;
 
                 $account = Account::where('company_id', $companyId)
                 ->where('name', 'like', '%Receivable%')
                 ->first();
+
+                if (!$account) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
+                    ], 404);
+                }
 
                 $accountId = $account->id;
 

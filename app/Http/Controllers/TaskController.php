@@ -694,7 +694,7 @@ class TaskController extends Controller
                 'surcharge' => null,
                 'total' => $prices['total']['selling']['value'] ?? null,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
-                'additional_info' => json_encode($reservation) ?? null,
+                'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $reservation['service']['passengers'][0]['firstName'],
                 'supplier_id' => $supplierId,
                 'venue' => $hotel['name'] ?? null,
                 'invoice_price' => null,

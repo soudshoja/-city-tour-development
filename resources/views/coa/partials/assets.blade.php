@@ -212,7 +212,7 @@
                           <!-- Actual Balance -->
                           <div @click="window.location='{{ route('coa.transaction') }}?level4Id={{ $level4asset->id }}'">
                               <input type="text" name="actual_balance"
-                                  class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-full"
+                                  class="text-center border-none focus:outline-none focus:ring-0 px-2 py-1 text-xs font-semibold text-green-600 rounded-full {{ $level4asset->actual_balance < 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600' }}"
                                   value="{{ number_format($level4asset->actual_balance, 2) }}" readonly
                                   style="pointer-events: none; cursor: default;">
                           </div>

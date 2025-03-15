@@ -1,6 +1,3 @@
-  <!-- Liabilities Section overview -->
-
-
   <div
       class="LiabilitiesToggleButton main-container cursor-pointer items-center justify-between p-4  flex w-full rounded-lg BoxShadow coa-partials">
       <div class="flex items-center space-x-3 ">
@@ -41,7 +38,7 @@
             <!-- Level 2 - Top-Level liabilities as Tabs -->
 
             @foreach ($liabilities as $index => $liability)
-            <li x-data="{ showAddCategoryForm: false }" class="relative w-full flex items-center">
+            <li x-data="{ showAddCategoryForm: false }" class="level2 relative w-full flex items-center">
                 <a href="javascript:;"
                     class="flex items-center px-4 py-2 w-full hover:text-[#ffc107] transition-all"
                     :class="{'border-l-4 border-[#ffc107] text-[#000000]': openLevels['{{ $liability->id }}']}"
@@ -111,7 +108,7 @@
                 <p class="text-danger">No liability here yet!</p>
                 @endif
                 @foreach ($liability->level3liabilities as $level3liability)
-                <div x-data="{ showAddCategoryForm: false }" class="relative w-full flex items-center">
+                <div x-data="{ showAddCategoryForm: false }" class="level3 relative w-full flex items-center">
                     <a href="javascript:;"
                         class="flex items-center px-4 py-2 w-full hover:text-[#ffc107] transition-all gap-x-2"
                         :class="{'border-l-4 border-[#ffc10780] text-[#000000]': openLevels['{{ $level3liability->id }}']}"
@@ -183,8 +180,7 @@
                     @endif
 
                     @foreach ($level3liability->level4liabilities as $level4liability)
-                    <div class="flex items-center justify-between p-4 rounded-lg shadow-sm w-full">
-                        <!-- Name -->
+                    <div class="level4 flex items-center justify-between p-4 rounded-lg shadow-sm w-full">
                         <span class="text-gray-800 dark:text-gray-600 font-medium">{{ $level4liability->name }}</span>
 
                         <input type="text" name="code"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Branch;
 use App\Models\GeneralLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -230,34 +231,51 @@ class ReportController extends Controller
 
     public function accountsPayableReceivableReport(Request $request)
     {
-        $startDate = $request->input('start_date');
+         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
+        $branchId = $request->input('branch_id');
 
-        $accountPayable = Account::where('name', 'like', '%payable%')->first();
+        // Assuming you have a way to get the current user's company ID
+        // For example, if you are using Laravel's authentication:
+        $companyId = auth()->user()->company->id;
+        // Or however you are managing company context
 
-        $payableTransactions = GeneralLedger::where('account_id', $accountPayable->id)
+        $payableQuery = GeneralLedger::where('account_id', 50)
+            ->where('company_id', $companyId); // Ensure we only get data for the current company
+
+        $receivableQuery = GeneralLedger::where('account_id', 45)
+            ->where('company_id', $companyId); // Ensure we only get data for the current company
+
+        // Apply branch filter if a branch ID is provided
+        if ($branchId) {
+            $payableQuery->where('branch_id', $branchId);
+            $receivableQuery->where('branch_id', $branchId);
+        }
+
+        $payableTransactions = $payableQuery
             ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
                 return $query->whereBetween('transaction_date', [$startDate, $endDate]);
             })
             ->orderBy('transaction_date')
             ->get();
 
-        $accountReceivable = Account::where('name', 'like', '%receivable%')->first();
-
-        $receivableTransactions = GeneralLedger::where('account_id', $accountReceivable->id)
+        $receivableTransactions = $receivableQuery
             ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
                 return $query->whereBetween('transaction_date', [$startDate, $endDate]);
             })
             ->orderBy('transaction_date')
             ->get();
+
+        // Fetch branches for the dropdown in the view (for the current company)
+        $branches = Branch::where('company_id', $companyId)->get();
 
         return view('reports.new-report', [
-            'accountPayable' => $accountPayable,
-            'accountReceivable' => $accountReceivable,
             'payableTransactions' => $payableTransactions,
             'receivableTransactions' => $receivableTransactions,
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'branchId' => $branchId,
+            'branches' => $branches, // Pass the branches to the view
         ]);
     }
 }

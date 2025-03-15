@@ -2,14 +2,25 @@
     <h1 class="text-center mb-2 font-semibold text-xl">Accounts Payable & Receivable Report</h1>
 
     <form method="GET" action="{{ route('reports.new-report') }}" class="p-6 my-2 w-fit flex flex-col gap-2 bg-white rounded shadow">
-        <div class="flex gap-2">
-            <div>
-                <label for="start_date">Start Date:</label>
-                <input type="date" name="start_date" id="start_date" value="{{ $startDate }}">
+        <div class="flex flex-wrap gap-4">
+            <div class="flex flex-col">
+            <label for="start_date" class="font-medium text-sm mb-1">Start Date:</label>
+            <input type="date" name="start_date" id="start_date" value="{{ $startDate }}" class="border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300">
             </div>
-            <div>
-                <label for="end_date">End Date:</label>
-                <input type="date" name="end_date" id="end_date" value="{{ $endDate }}">
+            <div class="flex flex-col">
+            <label for="end_date" class="font-medium text-sm mb-1">End Date:</label>
+            <input type="date" name="end_date" id="end_date" value="{{ $endDate }}" class="border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300">
+            </div>
+            <div class="flex flex-col">
+            <label for="branch_id" class="font-medium text-sm mb-1">Filter by Branch:</label>
+            <select name="branch_id" id="branch_id" class="border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300">
+                <option value="">All Branches</option>
+                @foreach ($branches as $branch)
+                <option value="{{ $branch->id }}" {{ $branchId == $branch->id ? 'selected' : '' }}>
+                {{ ucfirst($branch->name) }}
+                </option>
+                @endforeach
+            </select>
             </div>
         </div>
         <x-primary-button type="submit" class="flex justify-center">Filter</x-primary-button>
@@ -24,7 +35,9 @@
             <p>Showing all transactions (no date filter applied).</p>
             @endif
         </div>
-
+        @if ($branchId)
+        <p>Filtered by Branch: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
+        @endif
         <div class="p-3 border shadow rounded">
             <h2 class="font-bold">Accounts Payable Transactions <span class="font-normal">(Account ID: {{ $accountPayable->code ?? 'CI12300'}})</span></h2>
             @if ($payableTransactions->isNotEmpty())

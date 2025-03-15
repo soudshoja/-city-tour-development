@@ -311,55 +311,30 @@ div:has(> .coa-partials)
     background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
     border: 1px solid rgb(209 213 219 / var(--tw-bg-opacity, 1));
 }
-/*
-.coa-partials + div > div > ul > li > div{
-    --tw-bg-opacity: 1;
-    background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
-}
 
-.coa-partials + div > div > ul > li > div > div > div{
-    --tw-bg-opacity: 1;
-      background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-    border: 1px solid rgb(209 213 219 / var(--tw-bg-opacity, 1));
-}
 
 div:has(> :is(.dark .coa-partials)){
     background-color: var(--slate-900);
     border: 1px solid var(--gray-800);
 }
 
-.dark .coa-partials + div > div > ul{
+.dark .level2 {
     background-color: var(--slate-800);
 }
 
-.dark .coa-partials + div > div > ul > li > div{
+.dark .level3 {
     background-color: var(--slate-700);
 }
 
-.dark .coa-partials + div > div > ul > li > div > div > div{
+.dark .level4 {
+    background-color: var(--slate-800);
+    border: 1px solid var(--gray-700);
+}
+
+.dark .level5 {
     background-color: var(--slate-900);
-    border: 1px solid var(--gray-600);
-} */
-
-
-/* .coa-partials {
-    background-color: white;
+    border: 1px solid var(--gray-800);
 }
-
-.coa-partials + div {
-    --tw-bg-opacity: 1;
-    background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
-}
-
-.coa-partials + div > div div {
-    --tw-bg-opacity: 1;
-    background-color:  rgb(229 231 235 / var(--tw-bg-opacity, 1));
-}
-
-.coa-partials + div > div  div > div > div {
-    background-color: white;
-} */
-
 
 /**** chart of account page END  **************************************************************************************/
 

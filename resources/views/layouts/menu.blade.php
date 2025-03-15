@@ -184,7 +184,7 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="{{ route('reports.summary') }}"
+            <!-- <menuitem><a href="{{ route('reports.summary') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Summary</a>
             </menuitem>
             <menuitem><a href="{{ route('reports.accsummary') }}"
@@ -195,11 +195,15 @@
             </menuitem>
             <menuitem><a href="{{ route('reports.agent') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Agent
-                Reports</a></menuitem>
+                Reports</a>
+            </menuitem>
             <menuitem><a href="{{ route('reports.client') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
-                Reports</a></menuitem>
-
+                Reports</a>
+            </menuitem> -->
+            <menuitem><a href="{{ route('reports.new-report') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Report</a>
+            </menuitem>
         </menu>
         </menuitem>
 

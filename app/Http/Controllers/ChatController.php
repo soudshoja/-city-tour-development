@@ -1133,14 +1133,14 @@ class ChatController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:15', // Optional phone field
             'clientForm' => 'required|string|in:new,update', // Ensure this field is provided
+            'agent_idChat' => 'required|exists:agents,id', // Ensure the agent ID exists
         ]);
     
         try {
             // Check if it's a new client or an update
             if ($request->get('clientForm') === 'new') {
                 // Create logic
-                $agent = Agent::where('email', $request->get('agent_email'))->first();
-                
+                $agent = Agent::find($request->get('agent_idChat'));
                 if (!$agent) {
                     return response()->json([
                         'success' => false,
@@ -1150,7 +1150,7 @@ class ChatController extends Controller
     
                 $agentId = $request->get('agent_idChat');
                 $agent = Agent::find($agentId);
-
+            
                 if (!$agent) {
                     return response()->json([
                         'success' => false,

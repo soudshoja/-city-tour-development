@@ -31,7 +31,7 @@ class CoaController extends Controller
 
         // Ensure the company exists before proceeding
         if (!$company) {
-            return redirect()->route('some.route')->with('error', 'Company not found.');
+            return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
 
         // Fetch all agents related to the company
@@ -193,20 +193,42 @@ class CoaController extends Controller
                     $level3liability->level4liabilities = Account::where('parent_id', $level3liability->id)->get();
                     
                     foreach ($level3liability->level4liabilities as $level4liability) {
-                    
-                        $level4account = GeneralLedger::with('invoice.invoiceDetails.task.supplier.account')
-                            ->get();
-                        // Assuming level4liability has actual_balance and budget_balance attributes
-                        $actualBalanceLiabilities = $level4liability->actual_balance; // Replace with the actual field name
-                        $budgetBalanceLiabilities = $level4liability->budget_balance; // Replace with the actual field name
-                        // Optional: Store the values in an array for later use if needed
-                        $balancesLiabilities[] = [
-                            'actual_balance' => $actualBalanceLiabilities,
-                            'budget_balance' => $budgetBalanceLiabilities,
-                        ];
-                    }
+                        
+                        if (stripos($level3liability->name, 'payable') !== false){
 
-                    dd('here');
+                        $suppliers = Supplier::with('tasks.invoiceDetail.invoice')->where('account_id', $level4liability->id)->get();
+                        $invoiceIds = $suppliers->flatMap(function ($supplier) {
+                            return $supplier->tasks->flatMap(function ($task) {
+                                return optional($task->invoiceDetail)->invoice ? [$task->invoiceDetail->invoice->id] : [];
+                            });
+                        })->unique();
+
+                        $generalLedgers = GeneralLedger::whereIn('invoice_id', $invoiceIds)->get();
+                        
+                        $credit = 0.00;
+                        $debit = 0.00;
+                        $actualBalance = 0.00;
+                        foreach($generalLedgers as $generalLedger){
+                            $credit += $generalLedger->credit;
+                            $debit += $generalLedger->debit;
+                        }
+
+                        $level4liability->actual_balance = $credit - $debit;
+                        $level4liability->save();
+
+                        $level4liability->credit = $credit;
+                        $level4liability->debit = $debit;
+                        } else {
+                            // Assuming level4liability has actual_balance and budget_balance attributes
+                            $actualBalanceLiabilities = $level4liability->actual_balance; // Replace with the actual field name
+                            $budgetBalanceLiabilities = $level4liability->budget_balance; // Replace with the actual field name
+                            // Optional: Store the values in an array for later use if needed
+                            $balancesLiabilities[] = [
+                                'actual_balance' => $actualBalanceLiabilities,
+                                'budget_balance' => $budgetBalanceLiabilities,
+                            ];
+                        }
+                    }
                 }
             }
         }
@@ -453,7 +475,7 @@ class CoaController extends Controller
 
         // Ensure the company exists before proceeding
         if (!$company) {
-            return redirect()->route('some.route')->with('error', 'Company not found.');
+            return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
 
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
@@ -680,7 +702,7 @@ class CoaController extends Controller
 
         // Ensure the company exists before proceeding
         if (!$company) {
-            return redirect()->route('some.route')->with('error', 'Company not found.');
+            return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
 
         $level3Id = $request->input('level3Id');

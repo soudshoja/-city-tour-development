@@ -255,7 +255,7 @@
                       alert('Category name and code cannot be empty');
                       return;
                   }
-                  console.log(this.newCategoryLevel);
+                //   console.log(this.newCategoryLevel);
 
                   fetch('/addCategory', {
                           method: 'POST',
@@ -315,14 +315,14 @@
 
       const LiabilitiesToggleButton = document.querySelectorAll('.LiabilitiesToggleButton');
       const contentLiabilitiesDiv = document.getElementById('liabilitiesDetails');
-      console.log(LiabilitiesToggleButton);
+    //   console.log(LiabilitiesToggleButton);
 
       // Initially hide the content div
       contentLiabilitiesDiv.style.display = 'none';
 
       // Add click event listener to the button
       LiabilitiesToggleButton.forEach(function(button) {
-          console.log(button);
+        //   console.log(button);
           button.addEventListener('click', function() {
               // Toggle the content div visibility
               if (contentLiabilitiesDiv.style.display === 'none' || contentLiabilitiesDiv.style.display ===

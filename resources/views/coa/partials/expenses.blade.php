@@ -263,7 +263,7 @@ x-data="expenseManager()">
                       alert('Category name and code cannot be empty');
                       return;
                   }
-                  console.log(this.newCategoryLevel);
+                //   console.log(this.newCategoryLevel);
 
                   fetch('/addCategory', {
                           method: 'POST',

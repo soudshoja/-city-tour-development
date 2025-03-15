@@ -61,7 +61,7 @@ class CoaController extends Controller
 
     public function addCategory(Request $request)
     {
-        if(auth()->user()->company == null){
+        if (auth()->user()->company == null) {
             return response()->json(['success' => false, 'message' => 'User not authorized'], 404);
         }
 
@@ -74,7 +74,7 @@ class CoaController extends Controller
             'parent_id' => 'required|integer',
             'variance' => 'required|numeric',
         ]);
-    
+
         try {
             $category = new Account();
             $category->name = $request->name;
@@ -86,7 +86,7 @@ class CoaController extends Controller
             $category->actual_balance = $request->actual_balance;
             $category->company_id = auth()->user()->company->id;
             $category->save();
-    
+
             return response()->json(['success' => true, 'id' => $category->id]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -111,80 +111,39 @@ class CoaController extends Controller
                 foreach ($asset->level3assets as $level3asset) {
                     // Fetch level 4 for each level 3
                     $level3asset->level4assets = Account::where('parent_id', $level3asset->id)->get();
-                    foreach ($level3asset->level4assets as $level4asset) {
+                    foreach ($level3asset->level4assets as $key => $level4asset) {
+                        if ($agent = $level4asset->agent) {
 
-                        $client= Client::where('account_id', $level4asset->id)->first();
-                        // Fetch actual_balance and budget_balance attributes
-                        $actualBalanceAssets = $level4asset->actual_balance ?? 0; // Default to 0 if not set
-                        $budgetBalanceAssets = $level4asset->budget_balance ?? 0; // Default to 0 if not set
+                            $invoices = Invoice::with('client')->where('agent_id', $agent->id)->get();
 
-                        // Optional: Store the values in an array for later use if needed
-                        $balancesAssets[] = [
-                            'actual_balance' => $actualBalanceAssets,
-                            'budget_balance' => $budgetBalanceAssets,
-                        ];
+                            $actualBalance = 0.00;
+                            $unpaidInvoices = $invoices->where('status', 'unpaid')->sum('amount');
+                            $level4asset->actual_balance = $actualBalance - $unpaidInvoices;
 
-                        $accountReceivableId = Account::where('name', 'like', '%Receivable%')->first()->id;
-                        if($level4asset->parent_id == $accountReceivableId){
-                            //for agent
-                            $agent = Agent::with('invoices')->where('account_id', $level4asset->id)->first();
-                            if ($agent) {
-                                $invoices = $agent->invoices;
-                                $balancesAssets['invoices'] = $invoices->sum('amount');
+                            $level5assets = collect();
+
+                            // Find clients related to the invoices and make them level 5 assets
+                            foreach ($invoices as $invoice) {
+                                $level5Account = $invoice->client->account;
+                                $actualBalance = 0.00; 
+                                if ($level5Account && $invoice->status == 'unpaid') {
+                                    $actualBalance -= $invoice->amount;
+                                }
+                                $level5Account->actual_balance = $actualBalance;
+                                $level5Account->save();
+                                $level5assets->push($level5Account);
                             }
-                            $level4asset->actual_balance = $balancesAssets['invoices'];
-                            // $invoices = Invoice::with('generalLedgers')->where('agent_id' , optional($level4asset->agent)->id)->get();
-                     
-                            // $balancesAssets['invoices'] = $invoices->sum('amount');
-
-
-                            // $credit = 0.00;
-                            // $debit = 0.00;
-                            // $actualBalance = 0.00;
-
-                            // foreach($invoices as $invoice){
-                            //     $credit += $invoice->generalLedgers->sum('credit');
-                            //     $debit += $invoice->generalLedgers->sum('debit');
-                            // }
-
-                            // $level4asset->credit = $credit;
-                            // $level4asset->debit = $debit;
-                            // $level4asset->actualBalance = $credit - $debit;
-             
-                            $client = Client::with('invoices')->where('account_id', $level4asset->id)->first();
-
-                            if ($client) {
-                                $paidInvoices = $client->invoices->where('status', 'paid')->sum('amount');
-                                $unpaidInvoices = $client->invoices->where('status', 'unpaid')->sum('amount');
-                                $outstandingBalance = $paidInvoices - $unpaidInvoices;
-                                $level4asset->actual_balance = $outstandingBalance;
-                            }
-
-                            $level4asset->save();
-                            // $invoices = Invoice::with('generalLedgers')->where('client_id' , optional($level4asset->client)->id)->get();
-                            // $balancesAssets['invoices'] = $invoices->sum('amount');
-                            
-                            // $credit = 0.00;
-                            // $debit = 0.00;
-                            // foreach($invoices as $invoice){
-                            //     $credit += $invoice->generalLedgers->sum('credit');
-                            //     $debit += $invoice->generalLedgers->sum('debit');
-                            // }
-
-                            // $level4asset->credit = $credit;
-                            // $level4asset->debit = $debit;
-                            // $level4asset->actualBalance = $credit - $debit;
+                            $level4asset->level5assets = $level5assets;
+                        } else {
+                            unset($level3asset->level4assets[$key]);
                         }
                     }
-                    // dump($level3asset->level4assets);
                 }
             }
-    
         }
         return $assets;
-    
     }
-    
+
     private function getLiabilities()
     {
         // Liabilities Account
@@ -203,32 +162,32 @@ class CoaController extends Controller
                 foreach ($liability->level3liabilities as $level3liability) {
                     // Fetch level 4 for each level 3
                     $level3liability->level4liabilities = Account::where('parent_id', $level3liability->id)->get();
-                    
+
                     foreach ($level3liability->level4liabilities as $level4liability) {
-                        
-                        if (stripos($level3liability->name, 'payable') !== false){
 
-                        $suppliers = Supplier::with('tasks.invoiceDetail.invoice')->where('account_id', $level4liability->id)->get();
-                        $invoiceIds = $suppliers->flatMap(function ($supplier) {
-                            return $supplier->tasks->flatMap(function ($task) {
-                                return optional($task->invoiceDetail)->invoice ? [$task->invoiceDetail->invoice->id] : [];
-                            });
-                        })->unique();
+                        if (stripos($level3liability->name, 'payable') !== false) {
 
-                        $generalLedgers = GeneralLedger::whereIn('invoice_id', $invoiceIds)->where('account_id', $level3liability->id)->get();
-                        $credit = 0.00;
-                        $debit = 0.00;
-                        $actualBalance = 0.00;
-                        foreach($generalLedgers as $generalLedger){
-                            $credit += $generalLedger->credit;
-                            $debit += $generalLedger->debit;
-                        }
+                            $suppliers = Supplier::with('tasks.invoiceDetail.invoice')->where('account_id', $level4liability->id)->get();
+                            $invoiceIds = $suppliers->flatMap(function ($supplier) {
+                                return $supplier->tasks->flatMap(function ($task) {
+                                    return optional($task->invoiceDetail)->invoice ? [$task->invoiceDetail->invoice->id] : [];
+                                });
+                            })->unique();
 
-                        $level4liability->actual_balance = $credit - $debit;
-                        $level4liability->save();
+                            $generalLedgers = GeneralLedger::whereIn('invoice_id', $invoiceIds)->where('account_id', $level3liability->id)->get();
+                            $credit = 0.00;
+                            $debit = 0.00;
+                            $actualBalance = 0.00;
+                            foreach ($generalLedgers as $generalLedger) {
+                                $credit += $generalLedger->credit;
+                                $debit += $generalLedger->debit;
+                            }
 
-                        $level4liability->credit = $credit;
-                        $level4liability->debit = $debit;
+                            $level4liability->actual_balance = $credit - $debit;
+                            $level4liability->save();
+
+                            $level4liability->credit = $credit;
+                            $level4liability->debit = $debit;
                         } else {
                             // Assuming level4liability has actual_balance and budget_balance attributes
                             $actualBalanceLiabilities = $level4liability->actual_balance; // Replace with the actual field name

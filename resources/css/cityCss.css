@@ -290,11 +290,28 @@ div:has(> .coa-partials)
     border-bottom-left-radius: var(--border-radius);
 }
 
-.coa-partials + div > div > ul{
+.level2 {
     --tw-bg-opacity: 1;
     background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
 
+.level3 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
+}
+
+.level4 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
+    border: 1px solid rgb(209 213 219 / var(--tw-bg-opacity, 1));
+}
+
+.level5 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
+    border: 1px solid rgb(209 213 219 / var(--tw-bg-opacity, 1));
+}
+/*
 .coa-partials + div > div > ul > li > div{
     --tw-bg-opacity: 1;
     background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
@@ -322,7 +339,7 @@ div:has(> :is(.dark .coa-partials)){
 .dark .coa-partials + div > div > ul > li > div > div > div{
     background-color: var(--slate-900);
     border: 1px solid var(--gray-600);
-}
+} */
 
 
 /* .coa-partials {

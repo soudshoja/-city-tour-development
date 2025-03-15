@@ -253,7 +253,7 @@
                       alert('Category name and code cannot be empty');
                       return;
                   }
-                  console.log(this.newCategoryLevel);
+                //   console.log(this.newCategoryLevel);
 
                   fetch('/addCategory', {
                           method: 'POST',
@@ -315,13 +315,13 @@
 
 const IncomeToggleButton = document.querySelectorAll('.IncomeToggleButton');
 const contentIncomeDiv = document.getElementById('incomesDetails'); // Corrected ID
-console.log(IncomeToggleButton);
+// console.log(IncomeToggleButton);
 // Initially hide the content div
 contentIncomeDiv.style.display = 'none';
 
 // Add click event listener to the button
 IncomeToggleButton.forEach(function(button) {
-    console.log(button);
+    // console.log(button);
     button.addEventListener('click', function() {
         // Toggle the content div visibility
         if (contentIncomeDiv.style.display === 'none' || contentIncomeDiv.style.display === '') {

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\GeneralLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Transaction;
@@ -226,6 +228,36 @@ class ReportController extends Controller
         return view('reports.accsummary', compact('accounts', 'clients', 'suppliers'));
     }
 
-    
+    public function accountsPayableReceivableReport(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
+        $accountPayable = Account::where('name', 'like', '%payable%')->first();
+
+        $payableTransactions = GeneralLedger::where('account_id', $accountPayable->id)
+            ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
+                return $query->whereBetween('transaction_date', [$startDate, $endDate]);
+            })
+            ->orderBy('transaction_date')
+            ->get();
+
+        $accountReceivable = Account::where('name', 'like', '%receivable%')->first();
+
+        $receivableTransactions = GeneralLedger::where('account_id', $accountReceivable->id)
+            ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
+                return $query->whereBetween('transaction_date', [$startDate, $endDate]);
+            })
+            ->orderBy('transaction_date')
+            ->get();
+
+        return view('reports.new-report', [
+            'accountPayable' => $accountPayable,
+            'accountReceivable' => $accountReceivable,
+            'payableTransactions' => $payableTransactions,
+            'receivableTransactions' => $receivableTransactions,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+        ]);
+    }
 }

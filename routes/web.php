@@ -419,6 +419,7 @@ Route::get('/reports/clientmgmnt', [ReportController::class, 'clientMgmnt'])->na
 Route::get('/reports/performance', [ReportController::class, 'performance'])->name('reports.performance');
 Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
 Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('reports.accsummary');
+Route::get('/new-report',[ReportController::class, 'accountsPayableReceivableReport'])->name('reports.new-report');
 
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');

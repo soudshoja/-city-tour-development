@@ -203,8 +203,7 @@ class CoaController extends Controller
                             });
                         })->unique();
 
-                        $generalLedgers = GeneralLedger::whereIn('invoice_id', $invoiceIds)->get();
-                        
+                        $generalLedgers = GeneralLedger::whereIn('invoice_id', $invoiceIds)->where('account_id', $level3liability->id)->get();
                         $credit = 0.00;
                         $debit = 0.00;
                         $actualBalance = 0.00;

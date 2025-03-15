@@ -645,7 +645,7 @@ class TaskController extends Controller
 
     private function processSingleReservation($reservation, $agentId = null, $companyId)
     {
-        $clientName = $reservation['service']['passengers'][0]['firstName'] ?? null;
+        $clientName = $reservation['service']['passengers'][0]['firstName'] ? $reservation['service']['passengers'][0]['firstName'] . ' ' . $reservation['service']['passengers'][0]['lastName'] : null;
         $hotel = $reservation['service']['hotel'] ?? null;
         $serviceDates = $reservation['service']['serviceDates'] ?? null;
         $prices = $reservation['service']['prices'] ?? null;
@@ -694,21 +694,27 @@ class TaskController extends Controller
             return; // Skip this reservation if no rooms are found
         }
 
-        if(isset($reservation['reference']['external'])){
-            $existingTask = Task::where('reference', $reservation['reference']['external'])->withoutGlobalScope('enabled')->first();
-
-            if ($existingTask) {
-                
-                Log::channel('magic_holidays')->warning('Task already exists: ' . ($reservation['id']));
-                return [
-                    'status' => 'error',
-                    'message' => 'Task already exists for reservation Id ' . $existingTask->id . ', reference: ' . $reservation['reference']['external'] . ", by " . $existingTask->agent->name,
-                ];
-            }  
-        } 
-
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
+
+            //no duplication for same reference number with same room id
+            $existingTask = Task::where('reference', $reservation['id'])
+                    ->orderBy('id', 'desc')
+                    ->where('supplier_id', $supplierId)
+                    ->withoutGlobalScope('enabled')->first();
+
+            if($existingTask){
+                $existingTaskHotelDetail = TaskHotelDetail::where('task_id', $existingTask->id)->first();
+                if($existingTaskHotelDetail){
+                    if($existingTaskHotelDetail->room_reference == $room['id']){
+                        Log::channel('magic_holidays')->warning('Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ', Reservation: ' . ($reservation['id'] ?? 'Unknown').' by'.$existingTask->agent->name);
+                        return [
+                            'status' => 'error',
+                            'message' => 'Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ' by '.$existingTask->agent->name,
+                        ];
+                    }
+                }
+            }
 
             $taskData = [
                 'client_id' => null,
@@ -725,7 +731,7 @@ class TaskController extends Controller
                 'surcharge' => null,
                 'total' => $prices['total']['selling']['value'] ?? null,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
-                'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $reservation['service']['passengers'][0]['firstName'],
+                'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $clientName,
                 'supplier_id' => $supplierId,
                 'venue' => $hotel['name'] ?? null,
                 'invoice_price' => null,
@@ -768,6 +774,7 @@ class TaskController extends Controller
                     'booking_time' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
                     'check_in' => Carbon::parse($serviceDates['startDate'])->toDateTimeString() ?? null,
                     'check_out' => Carbon::parse($serviceDates['endDate'])->toDateTimeString() ?? null,
+                    'room_reference' => (string) $room['id'] ?? null,
                     'room_number' => 1,
                     'room_type' => $room['name'] ?? null,
                     'room_amount' => count($room['passengers']) ?? null,

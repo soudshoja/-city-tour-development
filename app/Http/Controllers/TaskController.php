@@ -618,6 +618,8 @@ class TaskController extends Controller
                 Log::channel('magic_holidays')->error('Error getting task from supplier: ' . $data['detail']);
                 return redirect()->back()->with('error', 'Something went wrong');
             }
+            
+            $data = $data['data'];
 
             if (isset($data['_embedded'])) { // Check if it's a list
                 foreach ($data['_embedded']['reservation'] as $reservation) {
@@ -656,6 +658,35 @@ class TaskController extends Controller
                 'status' => 'error',
                 'message' => 'Something Went Wrong',
             ];
+        }
+
+        $hotelDB = Hotel::where('name', 'like', '%' . $hotel['name'] . '%')->first();
+
+        if (!$hotelDB) {
+            try {
+
+                $hotelDB = Hotel::create([
+                    'name' => $hotel['name'] ?? null,
+                    'address' => $hotel['address'] ?? null,
+                    'city' => $hotel['city'] ?? null,
+                    'state' => $hotel['state'] ?? null,
+                    'country' => $hotel['countryId'] ?? null,
+                    'zip' => $hotel['zip'] ?? null,
+                ]);
+            } catch (Exception $e) {
+                Log::channel('magic_holidays')->error('Error creating hotel: ' . $e->getMessage(), [
+                    'hotel' => $hotel,
+                ]);
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Error creating hotel: ' . $e->getMessage(),
+                ];
+            }
+
+            Log::channel('magic_holidays')->info('Hotel created: ' . $hotelDB->id, [
+                'hotel' => $hotel,
+            ]);
         }
 
         if (!$reservation['service']['rooms']) {
@@ -714,9 +745,26 @@ class TaskController extends Controller
             try {
                 $task = Task::create($taskData);
 
+
+            } catch (Exception $e) {
+                Log::channel('magic_holidays')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
+                    'reservation' => $reservation,
+                    'room' => $room,
+                ]);
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'),
+                ];
+            }
+
+            Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'));
+
+
+            try{
                 TaskHotelDetail::create([
                     'task_id' => $task->id,
-                    'hotel_id' => $hotel['id'] ?? null,
+                    'hotel_id' => $hotelDB->id,
                     'booking_time' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
                     'check_in' => Carbon::parse($serviceDates['startDate'])->toDateTimeString() ?? null,
                     'check_out' => Carbon::parse($serviceDates['endDate'])->toDateTimeString() ?? null,
@@ -730,29 +778,29 @@ class TaskController extends Controller
                     'is_refundable' => strpos(strtolower($room['info'] ?? ''), 'non-refundable') === false,
                     'supplements' => null,
                 ]);
+            }catch(Exception $e){
+                $task->delete();
 
-
-                Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'), [
-                    'reservation' => $reservation,
-                    'room' => $room,
-                ]);
-
-                return [
-                    'status' => 'success',
-                    'message' => 'Task ' . $task->id . ' created successfully',
-                    'data' => $task,
-                ];
-            } catch (\Exception $e) {
-                Log::channel('magic_holidays')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
+                Log::channel('magic_holidays')->error('Error creating hotel details: ' . $e->getMessage(), [
                     'reservation' => $reservation,
                     'room' => $room,
                 ]);
 
                 return [
                     'status' => 'error',
-                    'message' => 'Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'),
+                    'message' => 'Error creating hotel details: ' . $e->getMessage(),
                 ];
             }
+
+            Log::channel('magic_holidays')->info('Hotel details created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'), [
+                'reservation' => $reservation,
+                'room' => $room,
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Task created successfully: ' . $task->id,
+            ];
         }
     }
 

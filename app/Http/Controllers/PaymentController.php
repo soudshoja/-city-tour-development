@@ -106,7 +106,6 @@ class PaymentController extends Controller
         if ($request->selected_items) {
             $data['selected_items'] = $request->selected_items;
         }
-
         $response = json_decode($this->initiatePayment($data)->content(), true);
 
         if (isset($response['error'])) {
@@ -197,11 +196,12 @@ class PaymentController extends Controller
         $tap = new Tap();
         Log::info('requestTap', ['requestTap' => $requestTap]);
         $response = $tap->createCharge($requestTap);
-        if (isset($response['error'])) {
-            return response()->json(['error' => $response['error']['description']], 500);
-        }
+        
+        logger('response', ['response' => $response]);
 
-        Log::info('response', ['response' => $response['id']]);
+        if (isset($response['errors'])) {
+            return response()->json(['error' => $response['errors'][0]['description']], 500);
+        }
 
         $payment->payment_reference = $response['id'];
         $payment->status = 'initiate';

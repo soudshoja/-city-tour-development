@@ -645,7 +645,7 @@ class TaskController extends Controller
 
     private function processSingleReservation($reservation, $agentId = null, $companyId)
     {
-        $clientName = $reservation['passengers'][0]['firstName'] ?? null;
+        $clientName = $reservation['service']['passengers'][0]['firstName'] ?? null;
         $hotel = $reservation['service']['hotel'] ?? null;
         $serviceDates = $reservation['service']['serviceDates'] ?? null;
         $prices = $reservation['service']['prices'] ?? null;

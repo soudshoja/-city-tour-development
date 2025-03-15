@@ -13,6 +13,7 @@ class TaskHotelDetail extends Model
         'booking_time',
         'check_in',
         'check_out',
+        'room_reference',
         'room_number',
         'room_type',
         'room_amount',

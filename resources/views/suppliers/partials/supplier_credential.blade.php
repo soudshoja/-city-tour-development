@@ -1,9 +1,9 @@
 <div
     x-cloak
-    x-show="credentialModal_{{ $supplier->id }}"
+    x-show="credentialModal"
     class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
     <div
-        @click.away="credentialModal_{{ $supplier->id }} = false"
+        @click.away="credentialModal = false"
         class="bg-white dark:bg-gray-800 rounded-md shadow-md">
         <div class="p-2">
             <h1 class="font-bold">
@@ -33,7 +33,7 @@
         </form>
         <div class="p-2 flex justify-center gap-2">
             <button class="bg-green-700 text-white px-2 py-1 rounded" type="submit" form="store-credential_{{ $supplier->id }}">Save</button>
-            <button @click="credentialModal_{{ $supplier->id }}=false" class="bg-red-700 text-white px-2 py-1 rounded">Cancel</button>
+            <button @click="credentialModal = false" class="bg-red-700 text-white px-2 py-1 rounded">Cancel</button>
         </div>
     </div>
 </div>

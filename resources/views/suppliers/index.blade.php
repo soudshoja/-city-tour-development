@@ -180,12 +180,15 @@
                         </a>
                     </td>
                     <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2 flex">
-                        <div x-data="{credentialModal_{{ $supplier->id }}: false}">
-                            <x-primary-button @click="credentialModal_{{ $supplier->id }} = true">
+                        <div x-data="{credentialModal: false}">
+                            <x-primary-button @click="credentialModal = true">
                                 Credentials
                             </x-primary-button>
                             @include('suppliers.partials.supplier_credential', ['supplier' => $supplier->supplier])
                         </div>
+                        <x-primary-a-button href="{{ route('tasks.supplier', $supplier->supplier->id) }}">
+                            Get All Task
+                        </x-primary-a-button>
                         @if($supplier->named_route)
                         <x-primary-a-button href="">Configure</x-primary-a-button>
                         @endif

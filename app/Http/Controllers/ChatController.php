@@ -28,6 +28,7 @@ use App\Models\InvoiceSequence;
 use App\Models\InvoiceDetail;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Exception;
 
 class ChatController extends Controller
 {
@@ -1083,13 +1084,45 @@ class ChatController extends Controller
             // Create client from parsed passport data
             $dateOfBirth = $this->convertToDate($data['date_of_birth'] ?? null);
 
+            $receivableAccount = Account::where('name', 'like', '%Receivable%')
+                ->where('company_id', auth()->user()->company->id)
+                ->first();
+
+            if (!$receivableAccount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
+                ], 404);
+            }
+
+            try {
+                $account = Account::create([
+                    'name' => $data['name'],
+                    'level' => 4,
+                    'actual_balance' => 0,
+                    'budget_balance' => 0,
+                    'variance' => 0,
+                    'company_id' => auth()->user()->company->id,
+                    'parent_id' => $receivableAccount->id,
+                    'reference_id' => 1,
+                    'code' => 'CLI-' . rand(1000000, 9999999),
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to create account: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error creating account',
+                ], 400);
+            }
+
             $client = Client::create([
                 'name' => $data['name'],
                 'status' => 'active',
                 'address' => $data['place_of_issue'], // Make sure place_of_issue exists, otherwise handle accordingly
                 'passport_no' => $data['passport_no'],
                 'civil_no' => $data['civil_no'],
-                'date_of_birth' => $dateOfBirth
+                'date_of_birth' => $dateOfBirth,
+                'account_id' => $account->id,
             ]);
     
             \Log::info('Client created successfully', ['client' => $client]);
@@ -1160,18 +1193,37 @@ class ChatController extends Controller
 
                 $companyId = $agent->company_id;
 
-                $account = Account::where('company_id', $companyId)
-                ->where('name', 'like', '%Receivable%')
-                ->first();
+                $receivableAccount = Account::where('name', 'like', '%Receivable%')
+                    ->where('company_id', $companyId)
+                    ->first();
 
-                if (!$account) {
+                if (!$receivableAccount) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
                     ], 404);
                 }
 
-                $accountId = $account->id;
+
+                try{
+                    $account = Account::create([
+                        'name' => $request->get('name'),
+                        'level' => 4,
+                        'actual_balance' => 0,
+                        'budget_balance' => 0,
+                        'variance' => 0,
+                        'company_id' => $companyId,
+                        'parent_id' => $receivableAccount->id,
+                        'reference_id' => $user->id,
+                        'code' => 'CLI-' . rand(1000000, 9999999),
+                    ]);
+                } catch (Exception $e) {
+                    Log::error('Failed to create account: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error creating account',
+                    ], 400);
+                }
 
                 $client = Client::create([
                     'name' => $request->get('name'),
@@ -1182,7 +1234,7 @@ class ChatController extends Controller
                     'passport_no' => $request->get('passport_no'),
                     'date_of_birth' => $request->get('date_of_birthChat'),
                     'civil_no' => $request->get('civil_noChat'),
-                    'account_id' => $accountId,
+                    'account_id' => $account->id,
                     'agent_id' =>  $request->get('agent_idChat')
                     
                 ]);

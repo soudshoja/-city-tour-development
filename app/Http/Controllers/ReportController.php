@@ -231,27 +231,24 @@ class ReportController extends Controller
 
     public function accountsPayableReceivableReport(Request $request)
     {
-         $startDate = $request->input('start_date');
+        $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
 
-        // Assuming you have a way to get the current user's company ID
-        // For example, if you are using Laravel's authentication:
-        $companyId = auth()->user()->company->id;
-        // Or however you are managing company context
+        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
 
         $payableQuery = GeneralLedger::where('account_id', 50)
-            ->where('company_id', $companyId); // Ensure we only get data for the current company
+            ->where('company_id', $companyId);
 
         $receivableQuery = GeneralLedger::where('account_id', 45)
-            ->where('company_id', $companyId); // Ensure we only get data for the current company
+            ->where('company_id', $companyId);
 
-        // Apply branch filter if a branch ID is provided
         if ($branchId) {
             $payableQuery->where('branch_id', $branchId);
             $receivableQuery->where('branch_id', $branchId);
         }
 
+        // Get individual transactions (for the detailed view)
         $payableTransactions = $payableQuery
             ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
                 return $query->whereBetween('transaction_date', [$startDate, $endDate]);
@@ -266,16 +263,34 @@ class ReportController extends Controller
             ->orderBy('transaction_date')
             ->get();
 
-        // Fetch branches for the dropdown in the view (for the current company)
+        $receivableBalance = $receivableTransactions->sum('debit') - $receivableTransactions->sum('credit');
+        $payableBalance = $payableTransactions->sum('credit') - $payableTransactions->sum('debit');
+
+        $receivableSum = 0.0;
+        foreach ($payableTransactions as $transaction) {
+            $balance = $transaction->credit - $transaction->debit;
+            $receivableSum += $balance;
+            $transaction->balance = $receivableSum;
+        }
+
+        $payableSum = 0.0;
+        foreach ($receivableTransactions as $transaction) {
+            $balance = $transaction->debit - $transaction->credit;
+            $payableSum += $balance;
+            $transaction->balance = $payableSum;
+        }
+
         $branches = Branch::where('company_id', $companyId)->get();
 
         return view('reports.new-report', [
             'payableTransactions' => $payableTransactions,
             'receivableTransactions' => $receivableTransactions,
+            'payableBalance' => $payableBalance, // Pass the payable balance to the view
+            'receivableBalance' => $receivableBalance, // Pass the receivable balance to the view
             'startDate' => $startDate,
             'endDate' => $endDate,
             'branchId' => $branchId,
-            'branches' => $branches, // Pass the branches to the view
+            'branches' => $branches,
         ]);
     }
 }

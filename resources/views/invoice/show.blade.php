@@ -119,7 +119,11 @@
                 <tr class="text-sm text-gray-700">
                     <td class="px-4 py-2 border">
                         {{ $detail->task_description ?? 'N/A' }}
-                        <p><b>{{ $detail->task->description }}</b><br>Info: {{ $detail->task->additional_info }}<br>Type: {{ ucfirst($detail->task->type) }}<br>Venue: {{ $detail->task->venue }}</p>
+                        <p>
+                            <br> Info: {{ $detail->task->additional_info }}
+                            <br>Type: {{ ucfirst($detail->task->type) }}
+                            <br>Venue: {{ $detail->task->venue }}
+                        </p>
                     </td>
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 0 }}</td>
                     <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>

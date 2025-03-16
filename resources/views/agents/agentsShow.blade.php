@@ -267,7 +267,7 @@
                                         <td class="py-4 px-6 border-b"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
                                         <td class="py-4 px-6 border-b">{{ $task->created_at }}</td>
                                         <td class="py-4 px-6 border-b">{{ $task->status }}</td>
-                                        <td class="py-4 px-6 border-b">{{ $task->client->name }}</td>
+                                        <td class="py-4 px-6 border-b">{{ $task->client !== null ? $task->client->name : $task->client_name ?? 'Not Set' }}</td>
                                         <td class="py-4 px-6 border-b">
                                             <a href="#" class="text-indigo-500">View</a>
                                         </td>

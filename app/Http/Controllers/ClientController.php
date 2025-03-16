@@ -105,13 +105,31 @@ class ClientController extends Controller
         }
     }
 
-    // Show a specific client
+    /**
+     * Check if a string is valid JSON.
+     *
+     * @param string $string
+     * @return bool
+     */
+    private function isValidJson($string)
+    {
+        json_decode($string);
+        return (json_last_error() === JSON_ERROR_NONE);
+    }
+
     public function show($id)
     {
         $client = Client::findOrFail($id);
         $agents = Agent::with('branch')->get();
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
+
+        foreach($tasks as $task){
+            if (is_string($task->cancellation_policy) && $this->isValidJson($task->cancellation_policy)) {
+                $task->cancellation_policy = json_decode($task->cancellation_policy)->policies;
+            }
+        }
+
         $paid = $invoices->where('status', 'paid')->sum('amount');
         $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
         $clients = Client::with('agent.branch')->get();
@@ -135,7 +153,6 @@ class ClientController extends Controller
                     'relation' => $group->relation, // Include relation column
                 ];
             });
-
 
         return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'childClients', 'parentClients', 'clients')); // Ensure the view exists
     }

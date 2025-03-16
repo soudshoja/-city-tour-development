@@ -117,8 +117,7 @@
                 <tbody>
                     @foreach ($invoiceDetails as $detail)
                         <tr class="text-sm text-gray-700">
-                            <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }} (Note:
-                                {{ $detail->client_notes ?? 'N/A' }})</td>
+                            <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }}</td>
                             <td class="px-4 py-2 border">{{ $detail->quantity ?? 0 }}</td>
                             <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
                             <td class="px-4 py-2 border">

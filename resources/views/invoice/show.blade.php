@@ -67,15 +67,15 @@
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100">
 
     @if (session('status'))
-        <div class="bg-green-100 text-green-700 p-4 rounded mb-4">
-            {{ session('status') }}
-        </div>
+    <div class="bg-green-100 text-green-700 p-4 rounded mb-4">
+        {{ session('status') }}
+    </div>
     @endif
 
     @if (session('error'))
-        <div class="bg-red-100 text-red-700 p-4 rounded mb-4">
-            {{ session('error') }}
-        </div>
+    <div class="bg-red-100 text-red-700 p-4 rounded mb-4">
+        {{ session('error') }}
+    </div>
     @endif
 
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
@@ -85,7 +85,7 @@
                 <h1 class="text-3xl font-bold text-gray-800">INVOICE</h1>
                 <p class="text-sm text-gray-600">Invoice #{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
-            </div> 
+            </div>
             <div class="text-right">
                 <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
@@ -103,122 +103,128 @@
         </div>
 
         @if ($invoice->payment_type === 'full')
-            <!-- Full Payment Table -->
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Full Payment ({{ $invoice->currency }})</h3>
-            <table class="min-w-full mb-8 border border-gray-200">
-                <thead>
-                    <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                        <th class="px-4 py-2 border">Item Description</th>
-                        <th class="px-4 py-2 border">Quantity</th>
-                        <th class="px-4 py-2 border">Price</th>
-                        <th class="px-4 py-2 border">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($invoiceDetails as $detail)
-                        <tr class="text-sm text-gray-700">
-                            <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }}</td>
-                            <td class="px-4 py-2 border">{{ $detail->quantity ?? 0 }}</td>
-                            <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
-                            <td class="px-4 py-2 border">
-                                {{ number_format(($detail->quantity ?? 0) * ($detail->task_price ?? 0), 2) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <!-- Full Payment Table -->
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Full Payment ({{ $invoice->currency }})</h3>
+        <table class="min-w-full mb-8 border border-gray-200">
+            <thead>
+                <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                    <th class="px-4 py-2 border">Item Description</th>
+                    <th class="px-4 py-2 border">Quantity</th>
+                    <th class="px-4 py-2 border">Price</th>
+                    <th class="px-4 py-2 border">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($invoiceDetails as $detail)
+                <tr class="text-sm text-gray-700">
+                    <td class="px-4 py-2 border">
+                        {{ $detail->task_description ?? 'N/A' }}
+                        <p><b>{{ $detail->task->description }}</b><br>Info: {{ $detail->task->additional_info }}<br>Type: {{ ucfirst($detail->task->type) }}<br>Venue: {{ $detail->task->venue }}</p>
+                    </td>
+                    <td class="px-4 py-2 border">{{ $detail->quantity ?? 0 }}</td>
+                    <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
+                    <td class="px-4 py-2 border">
+                        {{ number_format(($detail->quantity ?? 0) * ($detail->task_price ?? 0), 2) }}
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
         @endif
 
         @if ($invoice->payment_type === 'partial')
-            <!-- Partial Payment Table -->
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>
+        <!-- Partial Payment Table -->
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>
 
-            <div class="mb-4">
-                <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
-                <ul class="list-disc pl-6">
-                    @foreach ($invoiceDetails as $detail)
-                        <li class="text-sm text-gray-700">
-                            <strong>{{ $detail->task_description ?? 'N/A' }}</strong>:
-                            {{ $detail->quantity ?? 0 }} (Note: {{ $detail->client_notes ?? 'N/A' }})
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
+        <div class="mb-4">
+            <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
+            <ul class="list-disc pl-6">
+                @foreach ($invoiceDetails as $detail)
+                <li class="text-sm text-gray-700">
+                    <strong>{{ $detail->task_description ?? 'N/A' }}</strong>:
+                    {{ $detail->quantity ?? 0 }} (Note: {{ $detail->client_notes ?? 'N/A' }})
+                </li>
+                @endforeach
+            </ul>
+        </div>
 
-            <table class="min-w-full mb-8 border border-gray-200">
-                <thead>
-                    <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                        <th class="px-4 py-2 border">Select</th>
-                        <th class="px-4 py-2 border">Expiry Date</th>
-                        <th class="px-4 py-2 border">Status</th>
-                        <th class="px-4 py-2 border">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($invoicePartials as $partial)
-                        <tr class="text-sm text-gray-700 @if ($partial->status === 'paid') disabled-row @endif">
-                            <td class="px-4 py-2 border">
-                                <input type="checkbox" class="partial-checkbox" name="selected_partials[]"
-                                    value="{{ $partial->id }}" data-amount="{{ $partial->amount }}"
-                                    @if ($partial->status === 'paid') disabled 
-            checked
-            class="disabled-checkbox" @endif
-                                    @if ($partial->status !== 'paid') checked @endif>
-                            </td>
-                            <td class="px-4 py-2 border">
-                                {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}</td>
-                            <td class="px-4 py-2 border">{{ $partial->status }}</td>
-                            <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <table class="min-w-full mb-8 border border-gray-200">
+            <thead>
+                <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                    <th class="px-4 py-2 border">Select</th>
+                    <th class="px-4 py-2 border">Expiry Date</th>
+                    <th class="px-4 py-2 border">Status</th>
+                    <th class="px-4 py-2 border">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($invoicePartials as $partial)
+                <tr class="text-sm text-gray-700 @if ($partial->status === 'paid') disabled-row @endif">
+                    <td class="px-4 py-2 border">
+                        <input type="checkbox" class="partial-checkbox" name="selected_partials[]"
+                            value="{{ $partial->id }}" data-amount="{{ $partial->amount }}"
+                            @if ($partial->status === 'paid') disabled
+                        checked
+                        class="disabled-checkbox" @endif
+                        @if ($partial->status !== 'paid') checked @endif>
+                    </td>
+                    <td class="px-4 py-2 border">
+                        {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
+                    </td>
+                    <td class="px-4 py-2 border">{{ $partial->status }}</td>
+                    <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
         @endif
 
         @if ($invoice->payment_type === 'split')
-            <!-- Split Payment Table -->
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Split Payment ({{ $invoice->currency }})</h3>
+        <!-- Split Payment Table -->
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Split Payment ({{ $invoice->currency }})</h3>
 
-            <div class="mb-4">
-                <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
-                <ul class="list-disc pl-6">
-                    @foreach ($invoiceDetails as $detail)
-                        <li class="text-sm text-gray-700">
-                            <strong>{{ $detail->task_description ?? 'N/A' }}</strong>:
-                            {{ $detail->quantity ?? 0 }}
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
+        <div class="mb-4">
+            <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
+            <ul class="list-disc pl-6">
+                @foreach ($invoiceDetails as $detail)
+                <li class="text-sm text-gray-700">
+                    <strong>{{ $detail->task_description ?? 'N/A' }}</strong>:
+                    {{ $detail->quantity ?? 0 }}
+                </li>
+                @endforeach
+            </ul>
+        </div>
 
-            <table class="min-w-full mb-8 border border-gray-200">
-                <thead>
-                    <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                        <th class="px-4 py-2 border">Link</th>
-                        <th class="px-4 py-2 border">Client</th>
-                        <th class="px-4 py-2 border">Expiry Date</th>
-                        <th class="px-4 py-2 border">Status</th>
-                        <th class="px-4 py-2 border">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($invoicePartials as $partial)
-                        <tr class="text-sm text-gray-700">
+        <table class="min-w-full mb-8 border border-gray-200">
+            <thead>
+                <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                    <th class="px-4 py-2 border">Link</th>
+                    <th class="px-4 py-2 border">Client</th>
+                    <th class="px-4 py-2 border">Expiry Date</th>
+                    <th class="px-4 py-2 border">Status</th>
+                    <th class="px-4 py-2 border">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($invoicePartials as $partial)
+                <tr class="text-sm text-gray-700">
 
-                            <td class="px-4 py-2 border">
-                                <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id) }}"
-                                    class="text-blue-500 underline" target="_blank">
-                                    View Details
-                                </a>
-                            </td>
-                            <td class="px-4 py-2 border">{{ $partial->client->name }}</td>
-                            <td class="px-4 py-2 border">
-                                {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}</td>
-                            <td class="px-4 py-2 border">{{ $partial->status }}</td>
-                            <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    <td class="px-4 py-2 border">
+                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id) }}"
+                            class="text-blue-500 underline" target="_blank">
+                            View Details
+                        </a>
+                    </td>
+                    <td class="px-4 py-2 border">{{ $partial->client->name }}</td>
+                    <td class="px-4 py-2 border">
+                        {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
+                    </td>
+                    <td class="px-4 py-2 border">{{ $partial->status }}</td>
+                    <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
         @endif
 
 
@@ -245,56 +251,56 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
-                <form action="{{ route('whatsapp.send') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="client" value='{{ $invoice->client }}'>
-                    <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
-                    <button type="submit"
+            <form action="{{ route('whatsapp.send') }}" method="POST">
+                @csrf
+                <input type="hidden" name="client" value='{{ $invoice->client }}'>
+                <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
+                <button type="submit"
+                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                    Send Invoice To Client
+                </button>
+            </form>
+            <form id="paymentForm"
+                action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
+                method="POST">
+                @csrf
+                <input type="hidden" id="totalAmountInput" name="total_amount"
+                    value="{{ $invoicePartials->sum('amount') }}">
+                <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
+                <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
+                <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
+                <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" id="payNowBtn"
                         class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                        Send Invoice To Client
+                        Pay Now
                     </button>
-                </form>
-                <form id="paymentForm"
-                    action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
-                    method="POST">
-                    @csrf
-                    <input type="hidden" id="totalAmountInput" name="total_amount"
-                        value="{{ $invoicePartials->sum('amount') }}">
-                    <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-                    <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
-                    <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-                    <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
+                    <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
+                        {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
+                    </span>
+                </div>
+                <div id="loadingSpinner" class="hidden mt-2">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    Processing...
+                </div>
+            </form>
 
-                    <div class="flex items-center gap-2">
-                        <button type="submit" id="payNowBtn"
-                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                            Pay Now
-                        </button>
-                        <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                            {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
-                        </span>
-                    </div>
-                    <div id="loadingSpinner" class="hidden mt-2">
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        Processing...
-                    </div>
-                </form>
+            @if (auth()->user() &&
+            (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
+            <div class="flex gap-2 mt-2" id="invoice-link">
+                <p>
+                    {{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}
+                </p>
+                <button
+                    onclick="copyToClipboard('{{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}')">
+                    <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
+                </button>
 
-                @if (auth()->user() &&
-                        (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
-                    <div class="flex gap-2 mt-2" id="invoice-link">
-                        <p>
-                            {{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}
-                        </p>
-                        <button
-                            onclick="copyToClipboard('{{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}')">
-                            <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
-                        </button>
-
-                    </div>
-                @endif
+            </div>
+            @endif
             @else
-                <span class="text-green-600 font-bold">PAID</span>
+            <span class="text-green-600 font-bold">PAID</span>
             @endif
         </div>
 
@@ -303,7 +309,8 @@
             <div class="text-sm">
                 <p class="text-gray-600">If you have any questions about this invoice, please contact:</p>
                 <p class="text-gray-600">{{ $invoice->agent->branch->company->name }},
-                    {{ $invoice->agent->branch->company->phone }}, {{ $invoice->agent->branch->company->email }}</p>
+                    {{ $invoice->agent->branch->company->phone }}, {{ $invoice->agent->branch->company->email }}
+                </p>
             </div>
             <div class="text-right">
                 <p class="font-bold text-gray-800">Thank you for your business!</p>
@@ -311,57 +318,57 @@
         </div>
     </div>
     @if ($invoice->status === 'paid' || $invoice->status === 'partial')
-        <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
-            <div class="invoice">
-                <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
-                    <h3 class="text-xl font-semibold text-green-700 mb-2">Payment Receipt</h3>
-                </div>
+    <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
+        <div class="invoice">
+            <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
+                <h3 class="text-xl font-semibold text-green-700 mb-2">Payment Receipt</h3>
+            </div>
 
-                <table class="min-w-full mb-8 border border-gray-200">
-                    <thead>
-                        <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                            <th class="px-4 py-2 border">Receipt #</th>
-                            <th class="px-4 py-2 border">Reference</th>
-                            <th class="px-4 py-2 border">Payment Date</th>
-                            <th class="px-4 py-2 border">Payment Gateway</th>
-                            <th class="px-4 py-2 border">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($paidPartials as $partial)
-                            <tr class="text-sm text-gray-700">
-                                <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
-                                <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
-                                <td class="px-4 py-2 border">
-                                    {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : 'N/A' }}
-                                </td>
-                                <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
-                                <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <table class="min-w-full mb-8 border border-gray-200">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                        <th class="px-4 py-2 border">Receipt #</th>
+                        <th class="px-4 py-2 border">Reference</th>
+                        <th class="px-4 py-2 border">Payment Date</th>
+                        <th class="px-4 py-2 border">Payment Gateway</th>
+                        <th class="px-4 py-2 border">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($paidPartials as $partial)
+                    <tr class="text-sm text-gray-700">
+                        <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
+                        <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
+                        <td class="px-4 py-2 border">
+                            {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : 'N/A' }}
+                        </td>
+                        <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                        <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
 
-                <div class="flex justify-end mb-8">
-                    <div class="w-1/3 text-sm">
-                        <div class="flex justify-between py-2 border-b border-gray-200">
-                            <span>Balance:</span>
-                            <span id="balance"></span>
-                        </div>
+            <div class="flex justify-end mb-8">
+                <div class="w-1/3 text-sm">
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span>Balance:</span>
+                        <span id="balance"></span>
                     </div>
-                </div>
-
-
-                <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
-                    <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
-                    <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been sent to
-                        your address.</p>
                 </div>
             </div>
 
 
-
+            <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
+                <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
+                <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been sent to
+                    your address.</p>
+            </div>
         </div>
+
+
+
+    </div>
     @endif
 
     <script>

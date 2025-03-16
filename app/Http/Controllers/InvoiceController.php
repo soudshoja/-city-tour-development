@@ -805,7 +805,7 @@ class InvoiceController extends Controller
     {
 
         // Retrieve the invoice based on the invoice number
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice', 'payment')->get();
 
         // Check if the invoice exists

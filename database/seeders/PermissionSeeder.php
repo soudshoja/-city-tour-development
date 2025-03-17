@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Permission;
+use App\Models\Role;
 
 class PermissionSeeder extends Seeder
 {
@@ -76,5 +77,9 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view currency exchange', 'group' => 'currency exchange']);
         Permission::firstOrCreate(['name' => 'update currency exchange', 'group' => 'currency exchange']);
         Permission::firstOrCreate(['name' => 'delete currency exchange', 'group' => 'currency exchange']);
+
+        $role = Role::where('name', 'admin')->first();
+        $permissions = Permission::all();
+        $role->syncPermissions($permissions);
     }
 }

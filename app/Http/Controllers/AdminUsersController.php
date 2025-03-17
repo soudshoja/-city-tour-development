@@ -63,9 +63,16 @@ class AdminUsersController extends Controller
 
     public function create()
     {
-        $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+        $user = auth()->user();
+        if ($user->role_id == Role::ADMIN) {
+            $branches = Branch::all();
+        } elseif ($user->role_id == Role::COMPANY) {
+            $branches = Branch::where('company_id', auth()->user()->company->id)->get();
+        } else {
+            return redirect()->route('home')->with('error', 'You are not authorized to access this page.');
+        }
 
-        $branches_id = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
+        $branches_id = $branches->pluck('id');
 
         $agents = Agent::whereIn('branch_id', $branches_id)->get();
         

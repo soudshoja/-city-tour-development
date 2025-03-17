@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained();
             $table->foreignId('agent_id')->constrained();
             $table->foreignId('company_id')->constrained();
+            $table->foreignId('supplier_id');
             $table->string('type');
             $table->string('status');
             $table->string('client_name');

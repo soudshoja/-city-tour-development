@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('supplier_companies', function (Blueprint $table) {
+        Schema::create('country_currencies', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('supplier_id');
-            $table->foreignId('company_id')->constrained()->onDelete('cascade');
-            $table->foreignId('account_id');
+            $table->foreignId('country_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('currency_id');
             $table->timestamps();
         });
     }
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('supplier_companies');
+        Schema::dropIfExists('country_currencies');
     }
 };

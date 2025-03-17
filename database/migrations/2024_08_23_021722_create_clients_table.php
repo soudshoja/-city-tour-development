@@ -14,10 +14,15 @@ return new class extends Migration
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->integer('agent_id');
-            $table->string('note')->nullable();
+            $table->foreignId('agent_id')->constrained()->nullable();
+            $table->foreignId('account_id')->nullable();
+            $table->string('email')->nullable();
+            $table->string('address')->nullable();
+            $table->string('passport_no')->nullable();
+            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->string('civil_no')->nullable();
+            $table->date('date_of_birth')->nullable();
             $table->string('phone');
-            $table->string('status');
             $table->timestamps();
         });
     }

@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('supplier_companies', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('supplier_id');
-            $table->foreignId('company_id')->constrained()->onDelete('cascade');
-            $table->foreignId('account_id');
-            $table->timestamps();
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->foreign('country_id')->references('id')->on('countries');
         });
     }
 
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('supplier_companies');
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->dropForeign(['country_id']);
+        });
     }
 };

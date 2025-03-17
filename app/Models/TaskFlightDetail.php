@@ -10,6 +10,7 @@ class TaskFlightDetail extends Model
     use HasFactory;
 
     protected $fillable = [
+        'task_id',
         'farebase',
         'departure_time',
         'country_id_from',
@@ -26,7 +27,6 @@ class TaskFlightDetail extends Model
         'equipment',
         'flight_meal',
         'seat_no',
-        'task_id',
     ];
 
     protected function casts(): array

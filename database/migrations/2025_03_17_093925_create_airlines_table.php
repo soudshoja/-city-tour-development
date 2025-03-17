@@ -11,11 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('supplier_companies', function (Blueprint $table) {
+        Schema::create('airlines', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('supplier_id');
-            $table->foreignId('company_id')->constrained()->onDelete('cascade');
-            $table->foreignId('account_id');
+            $table->string('name');
+            $table->string('iata_designator')->nullable();
+            $table->string('code')->nullable();
+            $table->string('icao_designator')->nullable();
             $table->timestamps();
         });
     }
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('supplier_companies');
+        Schema::dropIfExists('airlines');
     }
 };

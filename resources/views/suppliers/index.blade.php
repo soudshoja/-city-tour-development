@@ -55,6 +55,7 @@
             <span class="">Activate supplier to allow the system users to request API from the supplier</span>
         </div>
         <x-primary-button @click="addSupplierModal = true">Add Supplier</x-primary-button>
+        @if(auth()->user()->company !== null)
         <div
             x-cloak
             x-show="addSupplierModal"
@@ -93,6 +94,7 @@
             </div>
 
         </div>
+        @endif
     </div>
 
     @role('admin')

@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('invoice', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::table('country_currencies', function (Blueprint $table) {
+            $table->foreign('currency_id')->references('id')->on('currencies')->cascadeOnDelete(); 
         });
     }
 
@@ -22,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('invoice');
+        Schema::table('country_currencies', function (Blueprint $table) {
+          $table->dropForeign(['currency_id']);
+        });
     }
 };

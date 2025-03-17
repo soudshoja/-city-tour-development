@@ -184,7 +184,7 @@
                         </div>
                     </div>
                     <!-- ./div to show the forms -->
-
+                    @if(auth()->user()->company !== null)
                     <div id="formDiv"
                         class="hidden h-auto bg-white dark:bg-gray-700 rounded-lg p-3 BoxShadow flex flex-col justify-between w-full">
                         <div class="my-5">
@@ -630,6 +630,7 @@
                         </div>
 
                     </div>
+                    @endif
                 </div>
             </div>
         </div>

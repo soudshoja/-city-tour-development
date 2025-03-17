@@ -15,12 +15,12 @@ class Company extends Model
     protected $fillable = [
         'name',
         'user_id',
+        'country_id',
         'status',
         'code',
         'email',
         'address',
         'phone',
-        'nationality_id'
     ];
 
     public function branches()

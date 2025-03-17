@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->string('transaciton_type');
-            $table->float('transaction_amount');
-            $table->integer('transaction_method_id');
-            $table->integer('transaction_status_id');
-            $table->text('transaction_details')->nullable();
-            $table->integer('agent_id');
-            $table->integer('client_id')->nullable();
+            $table->foreignId('entity_id');
+            $table->enum('entity_type', ['company', 'branch','agent', 'client']);
+            $table->string('transaction_type');
+            $table->float('amount');
+            $table->dateTime('date');
+            $table->text('description');
+            $table->foreignId('invoice_id')->nullable();
+            $table->enum('reference_type', ['Invoice', 'Payment']);
             $table->timestamps();
         });
     }

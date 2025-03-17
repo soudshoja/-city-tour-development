@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('supplier_credentials', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('supplier_id')->constrained()->onDelete('cascade');
+            $table->foreignId('supplier_id');
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
             $table->enum('environment', ['sandbox', 'production']);
             $table->enum('type', ['basic', 'oauth']);

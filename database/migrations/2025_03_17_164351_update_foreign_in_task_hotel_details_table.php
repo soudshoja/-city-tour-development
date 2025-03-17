@@ -11,10 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('roles', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique();
-            $table->timestamps();
+        Schema::table('task_hotel_details', function (Blueprint $table) {
+            $table->foreign('hotel_id')->references('id')->on('hotels')->onDelete('cascade');
         });
     }
 
@@ -23,8 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('roles', function (Blueprint $table) {
-            $table->dropColumn('name');
+        Schema::table('task_hotel_details', function (Blueprint $table) {
+            $table->dropForeign(['hotel_id']);
         });
     }
 };
+

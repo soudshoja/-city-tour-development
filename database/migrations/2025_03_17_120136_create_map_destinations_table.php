@@ -11,9 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('items_status', function (Blueprint $table) {
+        Schema::create('map_destinations', function (Blueprint $table) {
             $table->id();
-            $table->string('item_status_name');
+            $table->foreignId('destination_id')->constrained();
+            $table->foreignId('supplier_destination_id');
             $table->timestamps();
         });
     }
@@ -23,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('items_status');
+        Schema::dropIfExists('map_destinations');
     }
 };

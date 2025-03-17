@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->boolean('enabled')->default(false);
-            $table->timestamps();
+        Schema::table('clients', function (Blueprint $table) {
+            $table->foreign('account_id')->references('id')->on('accounts');
         });
     }
 
@@ -22,9 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->boolean('enabled')->change();
-            $table->dropTimestamps();
+        Schema::table('clients', function (Blueprint $table) {
+            $table->dropForeign(['account_id']);
         });
     }
 };

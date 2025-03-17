@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn('status');
-            $table->unsignedBigInteger('status_id')->after('phone');
+        Schema::create('airports', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('location')->nullable();
+            $table->string('city_code')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -22,9 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->string('status')->after('phone');
-            $table->dropColumn('status_id');
-        });
+        Schema::dropIfExists('airports');
     }
 };

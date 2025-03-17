@@ -13,6 +13,11 @@ class Country extends Model
         'name',
         'iso_code'
     ];
+    
+    public function currencies()
+    {
+        return $this->hasMany(Currency::class);
+    }
 
     // public function companies()
     // {

@@ -101,27 +101,30 @@ class InvoiceController extends Controller
         }
 
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
+        $taskIdsArray = [];
 
-        if (gettype($taskIds) == 'string') {
-            $taskIdsArray = explode(',', $taskIds); // Multiple tasks
-        } else {
-            $taskIdsArray = $taskIds; // Single task
-        }
-        
-        foreach ($taskIdsArray as $taskId) {
-            $task = Task::find($taskId);
-
-            if (!$task) {
-                return Redirect::route('tasks.index')->with('error', 'Task not found!');
+        if (!empty($taskIds)) {
+            if (gettype($taskIds) == 'string') {
+                $taskIdsArray = explode(',', $taskIds); // Multiple tasks
+            } else {
+                $taskIdsArray = $taskIds; // Single task
             }
-
-            if(!$task->is_complete){
-                return Redirect::route('tasks.index')->with('error', 'Task do not have full information!');
+        
+            foreach ($taskIdsArray as $taskId) {
+                $task = Task::find($taskId);
+        
+                if (!$task) {
+                    return Redirect::route('tasks.index')->with('error', 'Task not found!');
+                }
+        
+                if (!$task->is_complete) {
+                    return Redirect::route('tasks.index')->with('error', 'Task does not have full information!');
+                }
             }
         }
         $taskIdsArray = array_map('intval', $taskIdsArray);
         $taskIdsArray = Arr::flatten($taskIdsArray);
-
+        
         if (count($taskIdsArray) !== count(Arr::flatten($taskIdsArray, 1))) {
             throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
         }
@@ -523,7 +526,6 @@ class InvoiceController extends Controller
             ->first();
 
 
-
         $payableAccount =  Account::where('name', 'like', '%Payable%')
             ->where('company_id', $companyId)
             ->first();
@@ -532,22 +534,8 @@ class InvoiceController extends Controller
             ->where('company_id', $companyId)
             ->first();
 
-        if(!$receivableAccount || !$payableAccount || !$incomeAccount){
-            if(!$receivableAccount){
-                logger('Receivable account not found');
-            }
-
-            if(!$payableAccount){
-                logger('Payable account not found');
-            }
-
-            if(!$incomeAccount){
-                logger('Income account not found');
-            }
-            return response()->json('Something went wrong', 500);
-        }
-
         try {
+
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'agent_id' => $agentId,
@@ -562,12 +550,14 @@ class InvoiceController extends Controller
 
             if (!empty($tasks)) {
                 foreach ($tasks as $task) {
-                    $selectedtask = Task::where('id', operator: $task['id'])->first();
-                    $supplier = Supplier::where('id', operator: $task['supplier_id'])->first();
-                    $client = Client::where('id', operator: $task['client_id'])->first();
-                    $agent = Agent::where('id', operator: $task['agent_id'])->first();
-                    // Create a transaction record first
-                    try{
+                    try {
+
+                        $selectedtask = Task::where('id', operator: $task['id'])->first();
+                        $supplier = Supplier::where('id', operator: $task['supplier_id'])->first();
+                        $client = Client::where('id', operator: $task['client_id'])->first();
+                        $agent = Agent::where('id', operator: $task['agent_id'])->first();
+                        // Create a transaction record first
+
                         $invoiceDetail =  InvoiceDetail::create([
                             'invoice_id' => $invoice->id,
                             'invoice_number' => $invoiceNumber,
@@ -581,12 +571,6 @@ class InvoiceController extends Controller
                             'paid' => false,
                         ]);
 
-                    } catch(Exception $e){
-                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description'], 500);
-                    }
-
-                    try {
                         $transaction = Transaction::create([
                             'entity_id' => $companyId,
                             'entity_type' => 'company',
@@ -597,14 +581,20 @@ class InvoiceController extends Controller
                             'invoice_id' => $invoice->id,
                             'reference_type' => 'Invoice',
                         ]);
-                    } catch (Exception $e) {
-                        $invoiceDetail->delete();
-                        Log::error('Failed to create Transaction: ' . $e->getMessage());
-                        return response()->json('Failed to create Transaction for task: ' . $task['description'], 500);
-                    }
 
 
-                    try{
+                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
+                        if ($payableAccount) {
+                            $filteredPayableChildAccount = $payableAccount->children()
+                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
+                                ->first(); // Get the first matching child account
+                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
+                        } else {
+                            $PayablechildAccountId = null; // Handle case when no parent account is found
+                        }
+
+
                         // Try to create payable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
@@ -622,6 +612,7 @@ class InvoiceController extends Controller
                             'type' => 'payable',
                         ]);
 
+
                         // Try to create receivable account
                         GeneralLedger::create([
                             'transaction_id' => $transaction->id,
@@ -638,6 +629,8 @@ class InvoiceController extends Controller
                             'name' =>  $client->name,
                             'type' => 'receivable',
                         ]);
+
+
 
                         $markup = $task['invprice'] - $selectedtask->total;
                         // Try to create income
@@ -661,23 +654,8 @@ class InvoiceController extends Controller
                         $selectedtask->status = 'Assigned';
                         $selectedtask->save();
                     } catch (Exception $e) {
-                        $invoiceDetail->delete();
-                        $transaction->delete();
-
-                        Log::error('Failed to create General Ledger: ' . $e->getMessage());
-                        return response()->json('Failed to create invoice for task: ' . $task['description'], 500);
-                    }
-
-
-                    Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
-                    if ($payableAccount) {
-                        $filteredPayableChildAccount = $payableAccount->children()
-                            ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
-                            ->first(); // Get the first matching child account
-                        Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
-                        $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
-                    } else {
-                        $PayablechildAccountId = null; // Handle case when no parent account is found
+                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description'], 500);
                     }
                 }
             }
@@ -805,7 +783,7 @@ class InvoiceController extends Controller
     {
 
         // Retrieve the invoice based on the invoice number
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice', 'payment')->get();
 
         // Check if the invoice exists

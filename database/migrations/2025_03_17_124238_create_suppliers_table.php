@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('suppliers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->foreignId('account_id')->constrained()->nullable();
-            $table->string('auth_method');
+            $table->string('auth_method')->default('basic');
             $table->string('contact_person')->nullable();
             $table->string('email')->nullable();
             $table->string('phone')->nullable();

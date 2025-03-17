@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\SystemExchangeRate;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -13,12 +14,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(KnowledgeBaseSeeder::class);
-        // User::factory(10)->create();
-
-        // User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        $this->call([
+            AdminSeeder::class,
+            RoleSeeder::class,
+            PermissionSeeder::class,
+            CountrySeeder::class,
+            SupplierSeeder::class,
+            AgentTypeSeeder::class,
+            SystemExchangeRateSeeder::class
+        ]);
     }
 }

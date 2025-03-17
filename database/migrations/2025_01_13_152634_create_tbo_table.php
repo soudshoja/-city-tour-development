@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('hotel_code');
             $table->string('hotel_name');
             $table->string('room_name');
+            $table->integer('room_quantity');
             $table->string('inclusion');
             $table->string('currency');
             $table->string('day_rates');

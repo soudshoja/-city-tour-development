@@ -11,10 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('client_status', function (Blueprint $table) {
+        Schema::create('currencies', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('country_id');
             $table->string('name');
+            $table->string('iso_code', 3);
+            $table->string('symbol', 10);
             $table->timestamps();
+
+            $table->unique(['country_id', 'iso_code']);
+            $table->foreign('country_id')->references('id')->on('countries')->onDelete('cascade');
         });
     }
 
@@ -23,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('client_status');
+        Schema::dropIfExists('currencies');
     }
 };

@@ -12,6 +12,8 @@ class Payment extends Model
 
     protected $fillable = [
         'voucher_number',
+        'payment_reference',
+        'invoice_id',
         'from',
         'pay_to',
         'account_id',
@@ -28,8 +30,6 @@ class Payment extends Model
         'tax',
         'discount',
         'shipping',
-        'payment_reference',
-        'invoice_id',
     ];
     public function client()
     {

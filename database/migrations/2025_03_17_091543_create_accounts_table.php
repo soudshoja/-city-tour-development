@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('accounts');
             $table->foreignId('company_id')->constrained('companies');
             $table->foreignId('reference_id')->nullable()->constrained('accounts');
-            $table->string('code');
+            $table->string('code')->nullable();
             $table->timestamps();
         });
     }

@@ -118,7 +118,7 @@ class AdminUsersController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'code' => $validatedData['code'],
-            'nationality_id' => $validatedData['nationality_id'],
+            'country_id' => $validatedData['nationality_id'],
             'address' => $validatedData['address'],
             'phone' => $validatedData['phone'] ?? null,
             'user_id' => $user->id,
@@ -228,15 +228,14 @@ class AdminUsersController extends Controller
 
         Log::info('Default agent user created:', ['user_id' => $defaultAgentUser->id]);
 
-        Agent::create([
-            'name' => 'Default Agent',
-            'email' => $defaultAgentUser->email,
-            'phone_number' => null,
-            'type_id' => 1,
-            'branch_id' => $defaultBranch->id,
-            'company_id' => $company->id,
-            'user_id' => $defaultAgentUser->id,
-        ]);
+        // Agent::create([
+        //     'name' => 'Default Agent',
+        //     'email' => $defaultAgentUser->email,
+        //     'phone_number' => null,
+        //     'type_id' => 1,
+        //     'branch_id' => $defaultBranch->id,
+        //     'user_id' => $defaultAgentUser->id,
+        // ]);
 
         Log::info('Default agent created.');
 

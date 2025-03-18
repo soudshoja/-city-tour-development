@@ -21,6 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
 use App\Imports\companiesImport;
 use App\Models\Account;
+use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -388,8 +389,8 @@ class CompanyController extends Controller
         Log::info('Validated Data:', $validatedData);
 
         $receivableAccount = Account::where('name', 'like', '%Receivable%')
-        ->where('company_id', $company->id)
-        ->first();
+            ->where('company_id', $company->id)
+            ->first();
 
         try {
             // Create user
@@ -470,24 +471,32 @@ class CompanyController extends Controller
             'agent_id' => 'required|max:100',
         ]);
 
-            try {
-
-            // Create the client user
+        try {
             $user = User::create([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
-                'password' => bcrypt(Str::random(10)), // Generate a random password
+                'password' => bcrypt(Str::random(10)),
                 'role_id' => Role::CLIENT,
                 'remember_token' => Str::random(10),
                 'first_login' => 1,
             ]);
+        } catch (Exception $e) {
+            logger('Failed to create user for client: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create client.');
+        }
+        $branchId = Agent::where('id', $validatedData['agent_id'])->value('branch_id');
+        $companyId = Branch::where('id', $branchId)->pluck('company_id')->first();
 
-            $companyId = Agent::where('id', $validatedData['agent_id'])->value('company_id');
-
-            $receivableAccount = Account::where('name', 'like', '%Receivable%')
+        $receivableAccount = Account::where('name', 'like', '%Receivable%')
             ->where('company_id', $companyId)
             ->first();
-            
+        
+        if(!$receivableAccount) {
+            $user->delete();
+            return redirect()->back()->with('error', 'Receivable account not found.');
+        }
+
+        try {
             $account = Account::create([
                 'name' => $validatedData['name'],
                 'level' => 4,
@@ -499,27 +508,33 @@ class CompanyController extends Controller
                 'reference_id' => $user->id,
                 'code' => 'CLI-' . rand(1000000, 9999999),
             ]);
+        } catch (Exception $e) {
+            $user->delete();
+            logger('Failed to create account for client: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create client.');
+        }
 
-            // Create the client record
+        try {
             Client::create([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
-                'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
-                'agent_id' => $validatedData['agent_id'], // Associate with an agent if needed
+                'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''),
+                'agent_id' => $validatedData['agent_id'],
                 // 'status_id' => 0,
                 'address' => null,
                 'passport_no' => null,
-                'account_id' => $account->id,           
+                'account_id' => $account->id,
             ]);
 
             return redirect()->back()->with('success', 'Client created successfully.');
-
         } catch (\Exception $e) {
+            $user->delete();
+            $account->delete();
             Log::error('Error creating client:', ['message' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Failed to create client.']);
         }
     }
-    
+
 
     public function createAgentType(Request $request)
     {

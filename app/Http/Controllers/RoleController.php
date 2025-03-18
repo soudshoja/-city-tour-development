@@ -26,17 +26,17 @@ class RoleController extends Controller
     {
         $roles = $this->getAllRole();
         $user = Auth::user();
-        Log::info('Debugging User Permissions:', [
-            'roles' => $user->getRoleNames(),
-            'permissions' => $user->getAllPermissions()->pluck('name'),
-            'view_companies' => $user->can('viewAny', App\Models\Company::class),
-            'view_branches' => $user->can('viewAny', App\Models\Branch::class),
-            'view_agents' => $user->can('viewAny', App\Models\Agent::class),
-            'has_permission_web' => $user->can('view company', 'web'),
-            'has_permission_api' => $user->can('view company', 'api'),
-            'guard' => auth()->guard()->name,
-            'user' => auth()->user(),
-        ]);
+        // Log::info('Debugging User Permissions:', [
+        //     'roles' => $user->getRoleNames(),
+        //     'permissions' => $user->getAllPermissions()->pluck('name'),
+        //     'view_companies' => $user->can('viewAny', App\Models\Company::class),
+        //     'view_branches' => $user->can('viewAny', App\Models\Branch::class),
+        //     'view_agents' => $user->can('viewAny', App\Models\Agent::class),
+        //     'has_permission_web' => $user->can('view company', 'web'),
+        //     'has_permission_api' => $user->can('view company', 'api'),
+        //     'guard' => auth()->guard()->name,
+        //     'user' => auth()->user(),
+        // ]);
 
         return view('role.index', compact('roles'));
     }

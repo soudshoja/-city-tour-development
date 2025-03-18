@@ -217,16 +217,16 @@ class AdminUsersController extends Controller
         Log::info('Default branch created:', ['branch_id' => $defaultBranch->id]);
 
         // Create a default agent for the company
-        $defaultAgentUser = User::create([
-            'name' => 'Default Agent',
-            'email' => 'agent_' . $company->code . '@example.com',
-            'password' => Hash::make('password123'),
-            'role_id' => 3,
-            'remember_token' => Str::random(10),
-            'first_login' => 1,
-        ]);
+        // $defaultAgentUser = User::create([
+        //     'name' => 'Default Agent',
+        //     'email' => 'agent_' . $company->code . '@example.com',
+        //     'password' => Hash::make('password123'),
+        //     'role_id' => 3,
+        //     'remember_token' => Str::random(10),
+        //     'first_login' => 1,
+        // ]);
 
-        Log::info('Default agent user created:', ['user_id' => $defaultAgentUser->id]);
+        // Log::info('Default agent user created:', ['user_id' => $defaultAgentUser->id]);
 
         // Agent::create([
         //     'name' => 'Default Agent',
@@ -237,7 +237,7 @@ class AdminUsersController extends Controller
         //     'user_id' => $defaultAgentUser->id,
         // ]);
 
-        Log::info('Default agent created.');
+        // Log::info('Default agent created.');
 
         return redirect()->route('companies.index')->with('success', 'Company registered successfully.');
     }

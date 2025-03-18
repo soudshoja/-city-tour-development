@@ -1282,8 +1282,7 @@ class ChatController extends Controller
                     'passport_no' => $request->get('passport_no'),
                     'date_of_birth' => $request->get('date_of_birthChat'),
                     'civil_no' => $request->get('civil_noChat'),
-                    'agent_id' =>  $request->get('agent_idChat'),
-                    //'account_id' =>  $request->get('account_id')
+                    'agent_id' =>  $request->get('agent_idChat')
                 ]);
     
                 return response()->json([

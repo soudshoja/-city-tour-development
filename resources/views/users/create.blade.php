@@ -196,8 +196,7 @@
                                             <img src="{{ asset('images/BranchPic.png') }}" alt="Branch"
                                                 class="w-10 h-10">
                                         </div>
-                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New
-                                            Branch</h2>
+                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Branch</h2>
                                     </div>
 
                                     <form action="{{ route('companies.createBranch') }}" method="POST"
@@ -349,8 +348,7 @@
                                             <img src="{{ asset('images/AgentPic.png') }}" alt="Agent"
                                                 class="w-10 h-10">
                                         </div>
-                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New
-                                            Agent</h2>
+                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Agent</h2>
                                     </div>
 
                                     <form action="{{ route('companies.createAgent') }}" method="POST"
@@ -464,8 +462,7 @@
                                             <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant"
                                                 class="w-10 h-10">
                                         </div>
-                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New
-                                            Accountant</h2>
+                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Accountant</h2>
                                     </div>
                                     <form action="{{ route('companies.createAccountant') }}" method="POST"
                                         class="w-full space-y-4">
@@ -544,8 +541,7 @@
                                             <img src="{{ asset('images/ClientPic.png') }}" alt="Client"
                                                 class="w-10 h-10">
                                         </div>
-                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New
-                                            Client</h2>
+                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Client</h2>
                                     </div>
 
                                     <form action="{{ route('companies.createClient') }}" method="POST"

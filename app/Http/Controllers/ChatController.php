@@ -868,8 +868,10 @@ class ChatController extends Controller
                 $imagePath = $file->getRealPath();  // Path to the temporary uploaded file
                 $extension = pathinfo($fileName, PATHINFO_EXTENSION); 
                 // Process the image using OCR
-            
+                
                 \Log::info('extension:', ['extension' => $extension]);
+                \Log::info('extension:', ['extension' => $imagePath]);
+
                 if ($extension === 'pdf') {
 
                     $text = $this->extractTextFromPdf($filePath);
@@ -918,7 +920,7 @@ class ChatController extends Controller
                         $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
                     }
 
-                
+                    \Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
                       // Check if OCR response contains parsed text
                       if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
                         return response()->json([
@@ -980,7 +982,7 @@ class ChatController extends Controller
                             \Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
                     
                             // Update the client's passport details
-                            $client = $this->createClientPassport($passportData);
+                            //$client = $this->createClientPassport($passportData);
                     
                             return response()->json([
                                 'success' => true,
@@ -1274,7 +1276,7 @@ class ChatController extends Controller
                 $client->update([
                     'name' => $request->get('name'),
                     'email' => $request->get('email'),
-                    'status' => $request->get('status'),
+                    'status' => 'active',
                     'phone' => $request->get('phone'),
                     'address' => $request->get('address'),
                     'passport_no' => $request->get('passport_no'),

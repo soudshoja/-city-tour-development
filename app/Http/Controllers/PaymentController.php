@@ -261,6 +261,8 @@ class PaymentController extends Controller
             'message' => 'Payment successful for invoice: ' . $invoiceNumber,
         ]);
 
+        $totalPaidAmount = $response['amount'];
+
         // Fetch the invoice to get payment details
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
 
@@ -304,7 +306,8 @@ class PaymentController extends Controller
                         'entity_id' =>  $invoice->agent->branch->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
-                        'amount'=> $invoiceDetail['task_price'],
+                        //'amount'=> $invoiceDetail['task_price'],
+                        'amount'=> $totalPaidAmount,
                         'date'=> Carbon::now(),
                         'description'=> 'pay to Invoice:' . $invoiceNumber,
                         'invoice_id'=> $invoice->id,
@@ -327,8 +330,8 @@ class PaymentController extends Controller
                         'transaction_date' => Carbon::now(),
                         'description' => 'Payment received from: ' . $client->name,
                         'debit' => 0,
-                        'credit' => $invoiceDetail['task_price'],
-                        'balance' => $invoiceDetail['task_price'],
+                        'credit' => $totalPaidAmount,
+                        'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
                         'name' =>  $client->name,
                         'type' => 'receivable',
                     ]);
@@ -345,9 +348,9 @@ class PaymentController extends Controller
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment transfered to: ' . $bankAccount->name,
-                            'debit' => $invoiceDetail['task_price'],
+                            'debit' => $totalPaidAmount,
                             'credit' =>0,
-                            'balance' => $invoiceDetail['task_price'],
+                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
                             'name' =>  $bankAccount->name,
                             'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,

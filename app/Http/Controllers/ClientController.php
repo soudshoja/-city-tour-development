@@ -130,8 +130,9 @@ class ClientController extends Controller
             }
         }
 
-        $paid = $invoices->where('status', 'paid')->sum('amount');
-        $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
+        $paid = $invoices->flatMap->invoiceDetails->where('status', 'paid')->sum('task_price');
+        $unpaid = $invoices->flatMap->invoiceDetails->where('status', '<>', 'paid')->sum('task_price');
+
         $clients = Client::with('agent.branch')->get();
             // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
             $childClients = ClientGroup::where('parent_client_id', $id)

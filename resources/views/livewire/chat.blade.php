@@ -5,7 +5,7 @@
 
     <!-- Chat Section -->
     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg h-[550px] w-[450px] flex flex-col"
-        style=" background-position: center; background-size: cover; background-repeat: no-repeat;">
+        style="background-image: url('images/aibgPic02.svg'); background-position: center; background-size: cover; background-repeat: no-repeat;">
         <!-- Header -->
         <div class="px-4 py-2 justify-start font-semibold flex items-center dark:text-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 14">
@@ -336,8 +336,6 @@
         </div>
     </div>
 
-
-
     <div id="passport">
         <input type="file" id="passport-upload-input" accept="image/*,application/pdf"
             class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -379,6 +377,22 @@
 
                 <div class="mb-4 flex gap-4">
                     <!-- Phone Field -->
+                    {{-- <div class="relative">
+                        <select name="countryChat" id="countryChat"
+                            class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                            @foreach ($countries as $country)
+                                <option value="{{ $country->dialing_code }}">
+                                    {{ $country->dialing_code }} ({{ $country->name }})
+                                </option>
+                            @endforeach
+                            <!-- Add more country codes as needed -->
+                        </select>
+                        <!-- Custom dropdown arrow -->
+                        <span
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                            ▼
+                        </span>
+                    </div> --}}
                     <div class="w-1/2">
                         <label for="phone"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
@@ -600,6 +614,7 @@
     const clientFields = $("#client-fields");
     const agentFields = $("#agent-fields");
     const branchFields = $("#branch-fields");
+    const countryFields = $("#country-fields");
     const clientOption = $("#client-options-modal");
     const passport = $("#passport");
     passport.hide();
@@ -1453,8 +1468,8 @@
                                 `;
 
                             // Populate other form fields
-                            document.getElementById('chatClientForm').value = "new";
-                            //document.getElementById('clientId').value = client.id || '';
+                            document.getElementById('chatClientForm').value = "update";
+                            document.getElementById('clientId').value = client.id || '';
                             document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
                             document.getElementById('nameChat').value = client.name || '';
                             document.getElementById('addressChat').value = client.address || '';
@@ -1545,6 +1560,29 @@
         agentFields.append(addAgentForm);
     }
 
+    function loadCountry() {
+        agentFields.empty();
+        createAgent.show();
+        // Define the HTML for the "Add New Client" form
+
+        const branchOptions = branches.map(branch => `<option value="${branch.id}">${branch.name}</option>`).join('');
+
+        const addAgentForm = `
+                                 
+                               <!-- Branches Dropdown -->
+                                    <div class="mb-4">
+                                        <label for="branch_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Branch</label>
+                                        <select id="branch_id" name="branch_id" required
+                                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                            <option value="" disabled selected>Select Branch</option>
+                                            ${branchOptions}
+                                        </select>
+                                    </div>
+                `;
+
+        // Append the form to the clientFields container
+        agentFields.append(addAgentForm);
+    }
 
     document.getElementById("agent-form").addEventListener("submit", async function(event) {
         event.preventDefault();
@@ -1624,6 +1662,14 @@
 
     const agentDropdown = new TomSelect("#agent_idChat", {
         placeholder: "Select Agent", // Placeholder text
+        allowEmptyOption: true, // Allows the first empty option
+        create: false, // Prevent creating new options
+        searchField: ["text"], // Enable searching by option text
+        maxItems: 1, // Limit to single select
+    });
+
+    const countryDropdown = new TomSelect("#countryChat", {
+        placeholder: "Select Country", // Placeholder text
         allowEmptyOption: true, // Allows the first empty option
         create: false, // Prevent creating new options
         searchField: ["text"], // Enable searching by option text

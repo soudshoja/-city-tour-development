@@ -40,8 +40,8 @@
                             </div>
 
                             <div class="mb-6">
-                                <label for="nationality_id" class="block text-gray-700 text-sm font-medium mb-2">Select Country</label>
-                                <select name="nationality_id" id="nationality_id" class="form-control w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:border-blue-500" required>
+                                <label for="country_id" class="block text-gray-700 text-sm font-medium mb-2">Select Country</label>
+                                <select name="country_id" id="country_id" class="form-control w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:border-blue-500" required>
                                     <option value="" disabled selected>Select a country</option>
                                     @foreach($countries as $country)
                                     <option value="{{ $country->id }}">{{ $country->name }}</option>

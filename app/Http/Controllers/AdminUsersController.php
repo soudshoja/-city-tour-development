@@ -94,7 +94,7 @@ class AdminUsersController extends Controller
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:15',
             'code' => 'required|string|max:100|unique:companies,code',
-            'nationality_id' => 'required|integer|exists:countries,id',
+            'country_id' => 'required|integer|exists:countries,id',
             'address' => 'nullable|string|max:255',
             'status' => 'required|in:0,1',
         ]);
@@ -118,7 +118,7 @@ class AdminUsersController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'code' => $validatedData['code'],
-            'country_id' => $validatedData['nationality_id'],
+            'country_id' => $validatedData['country_id'],
             'address' => $validatedData['address'],
             'phone' => $validatedData['phone'] ?? null,
             'user_id' => $user->id,

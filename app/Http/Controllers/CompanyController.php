@@ -423,7 +423,6 @@ class CompanyController extends Controller
                 'phone_number' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
                 'type_id' => $validatedData['type_id'],
                 'branch_id' => $validatedData['branch_id'],
-                'company_id' => $company->id,
                 'user_id' => $user->id,
                 'account_id' => $account->id,
             ]);

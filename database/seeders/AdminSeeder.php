@@ -15,12 +15,14 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::create([
+        $user = User::firstOrCreate(
+            ['email' => 'it@alphia.net'],
+            [
             'name' => 'Superadmin',
-            'email' => 'it@alphia.net',
             'role_id' => 1,
             'password' => bcrypt(config('auth.admin_password')),
-        ]);
+            ]
+        );
 
         $role = Role::firstOrCreate(['name' => 'admin']);
 

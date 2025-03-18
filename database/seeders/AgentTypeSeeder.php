@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-
+use App\Models\AgentType;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -11,9 +11,7 @@ class AgentTypeSeeder extends Seeder
 {
     public function run()
     {
-        DB::table('agent_type')->insert([
-            ['name' => 'Salary', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Commission', 'created_at' => now(), 'updated_at' => now()],
-        ]);
+        AgentType::firstOrCreate(['name' => 'Salary']);
+        AgentType::firstOrCreate(['name' => 'Commission']);
     }
 }

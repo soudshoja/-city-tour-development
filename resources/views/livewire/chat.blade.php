@@ -4,8 +4,7 @@
 <div class="container mx-auto">
 
     <!-- Chat Section -->
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg h-[550px] w-[450px] flex flex-col"
-        style="background-image: url('images/aibgPic02.svg'); background-position: center; background-size: cover; background-repeat: no-repeat;">
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg h-[550px] w-[450px] flex flex-col">
         <!-- Header -->
         <div class="px-4 py-2 justify-start font-semibold flex items-center dark:text-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 14">

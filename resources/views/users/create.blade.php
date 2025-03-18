@@ -26,7 +26,7 @@
                         </div>
 
                         <div class="mb-6">
-                            <select id="country-select" name="nationality_id"
+                            <select id="country-select" name="country_id"
                                 class="form-control w-full rounded-full border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-gray-400">
                                 <option value="" disabled selected>Select a country</option>
                                 @foreach ($countries as $country)

@@ -18,7 +18,7 @@ class CompanyFactory extends Factory
     {
         return [
             'code' => $this->faker->unique()->randomNumber(5),
-            'nationality_id' => rand(1,100),
+            'country_id' => rand(1,100),
             'name' => $this->faker->company,
             'phone' => $this->faker->phoneNumber,
             'email' => $this->faker->unique()->safeEmail,

@@ -1453,8 +1453,8 @@
                                 `;
 
                             // Populate other form fields
-                            document.getElementById('chatClientForm').value = "update";
-                            document.getElementById('clientId').value = client.id || '';
+                            document.getElementById('chatClientForm').value = "new";
+                            //document.getElementById('clientId').value = client.id || '';
                             document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
                             document.getElementById('nameChat').value = client.name || '';
                             document.getElementById('addressChat').value = client.address || '';

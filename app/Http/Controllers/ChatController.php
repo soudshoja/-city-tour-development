@@ -982,7 +982,7 @@ class ChatController extends Controller
                             \Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
                     
                             // Update the client's passport details
-                            //$client = $this->createClientPassport($passportData);
+                            $client = $this->createClientPassport($passportData);
                     
                             return response()->json([
                                 'success' => true,

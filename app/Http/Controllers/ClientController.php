@@ -121,6 +121,7 @@ class ClientController extends Controller
     {
         $client = Client::findOrFail($id);
         $agents = Agent::with('branch')->get();
+        
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
 
@@ -130,8 +131,9 @@ class ClientController extends Controller
             }
         }
 
-        $paid = $invoices->flatMap->invoiceDetails->where('status', 'paid')->sum('task_price');
-        $unpaid = $invoices->flatMap->invoiceDetails->where('status', '<>', 'paid')->sum('task_price');
+        $invoicesPart = Invoice::with('invoicePartials', 'agent')->where('client_id', $id)->get();
+        $paid = $invoicesPart->flatMap->invoicePartials->where('status', 'paid')->sum('amount');
+        $unpaid = $invoicesPart->flatMap->invoicePartials->where('status', '<>', 'paid')->sum('amount');
 
         $clients = Client::with('agent.branch')->get();
             // Fetch the client groups where this client is the parent (i.e., group of sub-clients)

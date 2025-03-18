@@ -404,7 +404,7 @@
                     <div class="w-1/2">
                         <label for="address"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                        <input id="addressChat" name="address" type="text"
+                        <input id="addressChat" name="address" type="text" required
                             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                             placeholder="Client Address" />
                     </div>
@@ -434,7 +434,7 @@
                     <div class="w-1/2">
                         <label for="agent_id"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
-                        <select id="agent_idChat" name="agent_idChat" class="w-full p-2 border rounded-md"
+                        <select id="agent_idChat" name="agent_idChat" required class="w-full p-2 border rounded-md"
                             placeholder="Select Agent">
                             @foreach ($agents as $agent)
                                 <option value="{{ $agent->id }}">{{ $agent->name }}</option>
@@ -444,7 +444,7 @@
                     <div class="w-1/2">
                         <label for="civil_no"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date of Birth</label>
-                        <input id="date_of_birthChat" type="date" name="date_of_birthChat"
+                        <input id="date_of_birthChat" type="date" name="date_of_birthChat" required
                             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
                     </div>
                 </div>

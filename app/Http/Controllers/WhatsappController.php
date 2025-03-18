@@ -23,7 +23,7 @@ class WhatsappController extends Controller
         
         $header = "Your Invoice Is Ready!";
 
-        $link = 'invoice/send/' . $invoiceNumber;
+        $link = 'invoice/' . $invoiceNumber;
 
         $reqBody = [
             "messaging_product" => "whatsapp",

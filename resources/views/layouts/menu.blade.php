@@ -48,16 +48,21 @@
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Chart
                     Of Account</a></menuitem>
             @endcan
+            @can('viewAny', 'App\Models\CoaCategory')
+                <menuitem><a href="{{ route('general-ledgers.create') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">General
+                    Ledger</a></menuitem>
+            @endcan
             @can('viewAny', 'App\Models\Charge')
                 <menuitem><a href="{{ route('charges.index') }}"
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage
                     Charges</a></menuitem>
             @endcan
-            @can('viewAny', 'App\Models\CoaCategory')
+            {{-- @can('viewAny', 'App\Models\CoaCategory')
                 <menuitem><a href="{{ route('coa.payment') }}"
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment
                     Voucher</a></menuitem>
-            @endcan
+            @endcan --}}
             @can('viewAny', 'App\Models\Account')
                 <menuitem><a href="{{ route('accounting.transaction') }}"
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transactions</a>

@@ -213,6 +213,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
     Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
+    Route::get('/general-ledgers/create', [AccountingController::class, 'createGeneralLedger'])->name('general-ledgers.create');
+    Route::post('/general-ledgers/store', [AccountingController::class, 'storeGeneralLedger'])->name('general-ledgers.store');
+    Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
+    Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
+
+
     //BRANCHES
     Route::group([
         'as' => 'branches.',

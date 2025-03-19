@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\GeneralLedger;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Transaction;
@@ -234,6 +235,7 @@ class ReportController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
+        $supplierId = $request->input('supplier_id');
 
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
 
@@ -246,6 +248,14 @@ class ReportController extends Controller
         if ($branchId) {
             $payableQuery->where('branch_id', $branchId);
             $receivableQuery->where('branch_id', $branchId);
+        }
+
+        if ($supplierId) {
+            $supplier = Supplier::find($supplierId);
+                if ($supplier) {
+                    $payableQuery->where('name', $supplier->name);
+                    $receivableQuery->where('name', $supplier->name);
+                }
         }
 
         // Get individual transactions (for the detailed view)
@@ -281,6 +291,7 @@ class ReportController extends Controller
         }
 
         $branches = Branch::where('company_id', $companyId)->get();
+        $suppliers = Supplier::all();
 
         return view('reports.new-report', [
             'payableTransactions' => $payableTransactions,
@@ -290,7 +301,9 @@ class ReportController extends Controller
             'startDate' => $startDate,
             'endDate' => $endDate,
             'branchId' => $branchId,
+            'supplierId' => $supplierId,
             'branches' => $branches,
+            'suppliers' => $suppliers,
         ]);
     }
 }

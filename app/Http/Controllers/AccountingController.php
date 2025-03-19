@@ -271,7 +271,116 @@ class AccountingController extends Controller
     }
     
     
+    public function getAccountsByCompanyReceivable(Request $request)
+    {
+        $accounts = Account::where('company_id', $request->company_id)
+        ->whereIn('level', [3, 4])
+        ->where(function ($query) {
+            
+            $query->whereHas('parent', function ($query) {
+                $query->where('level', 1)
+                      ->whereIn('name', ['Assets', 'Income']);
+            })
+            
+            ->orWhereHas('parent.parent', function ($query) {
+                $query->where('level', 1)
+                      ->whereIn('name', ['Assets', 'Income']);
+            })
+            
+            ->orWhereHas('parent.parent.parent', function ($query) {
+                $query->where('level', 1)
+                      ->whereIn('name', ['Assets', 'Income']);
+            });
+        })
+        ->orderBy('level') // Order by level in ascending order
+        ->get();    
+    
+        return response()->json(['accounts' => $accounts]);
+    }
 
+
+    public function getAccountsByCompanyPayable(Request $request)
+    {
+        $accounts = Account::where('company_id', $request->company_id)
+        ->whereIn('level', [3, 4])
+        ->where(function ($query) {
+            
+            $query->whereHas('parent', function ($query) {
+                $query->where('level', 1)
+                      ->whereIn('name', ['Liabilities', 'Expenses']);
+            })
+            
+            ->orWhereHas('parent.parent', function ($query) {
+                $query->where('level', 1)
+                      ->whereIn('name', ['Liabilities', 'Expenses']);
+            })
+            
+            ->orWhereHas('parent.parent.parent', function ($query) {
+                $query->where('level', 1)
+                      ->whereIn('name', ['Liabilities', 'Expenses']);
+            });
+        })
+        ->orderBy('level') // Order by level in ascending order
+        ->get();    
+    
+        return response()->json(['accounts' => $accounts]);
+    }
+    
+
+    public function createGeneralLedger()
+    {
+        $user = Auth::user();
+
+        $companies = Company::all();
+        $accounts = Account::whereIn('level', [3, 4])->get();
+        $branches = Branch::all();
+        $invoices = Invoice::all();
+        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+
+        $generalLedgers = GeneralLedger::whereIn('type', ['receivable', 'income'])
+        ->orderByDesc('created_at')  // Sort by date in descending order
+        ->get()
+        ->groupBy('type');  // Group by type (receivable, income)
+
+        $generalLedgers2 = GeneralLedger::whereIn('type', ['payable', 'expenses'])
+        ->orderByDesc('created_at')  // Sort by date in descending order
+        ->get()
+        ->groupBy('type');
+
+        $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+
+        return view('accounting.create', compact('accounts', 'companies', 'branches', 'invoices', 'suppliers', 'clients', 'generalLedgers', 'generalLedgers2'));
+        
+    }
+
+    public function storeGeneralLedger(Request $request)
+    {
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'account_id' => 'required|integer',
+            'company_id' => 'required|integer',
+            'branch_id' => 'required|integer',
+            'transaction_id' => 'nullable|integer',
+            'description' => 'required|string|max:255',
+            'debit' => 'required|numeric',
+            'credit' => 'required|numeric',
+            'balance' => 'required|numeric',
+            'invoice_id' => 'nullable|integer',
+            'voucher_number' => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|max:255',
+            'invoice_detail_id' => 'nullable|integer',
+            'type_reference_id' => 'nullable|integer',
+        ]);
+
+        GeneralLedger::create($validated);
+
+        return redirect()->route('general-ledgers.create')
+        ->with('success', 'Entry added successfully!')
+        ->with('active_tab', request('active_tab'));
+    }
 
 
 }

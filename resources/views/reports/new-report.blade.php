@@ -95,15 +95,24 @@
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
                         <tr>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
+                            <th style="width:220px; style="padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
                             <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Debit</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Credit</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Balance</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                            $totalDebit = 0;
+                            $totalCredit = 0;
+                        @endphp
                         @foreach ($payableTransactions as $transaction)
+                            @php
+                                $totalDebit += $transaction->debit;
+                                $totalCredit += $transaction->credit;
+                                $totalAll = $totalDebit - $totalCredit;
+                            @endphp
                             <tr>
                                 <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->transaction_date }}
                                 </td>
@@ -111,9 +120,12 @@
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->credit, 2) }}</td>
+                                    {{ $transaction->credit > 0 ? '-' : '' }}{{ number_format($transaction->credit, 2) }}
+                                </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->balance, 2) }}</td>
+                                    {{ number_format($totalAll, 2) }}
+                                    {{-- {{ number_format($transaction->balance, 2) }} --}}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -129,15 +141,24 @@
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
                         <tr>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
+                            <th style="width:220px; style="padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
                             <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Debit</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Credit</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Balance</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
+                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                            $totalDebit = 0;
+                            $totalCredit = 0;
+                        @endphp
                         @foreach ($receivableTransactions as $transaction)
+                            @php
+                                $totalDebit += $transaction->debit;
+                                $totalCredit += $transaction->credit;
+                                $totalAll = $totalDebit - $totalCredit;
+                            @endphp
                             <tr>
                                 <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->transaction_date }}
                                 </td>
@@ -145,9 +166,12 @@
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->credit, 2) }}</td>
+                                    {{ $transaction->credit > 0 ? '-' : '' }}{{ number_format($transaction->credit, 2) }}
+                                </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->balance, 2) }}</td>
+                                    {{ number_format($totalAll, 2) }}
+                                    {{-- {{ number_format($transaction->balance, 2) }} --}}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

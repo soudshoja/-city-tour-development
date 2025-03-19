@@ -28,36 +28,40 @@
                     <h2 class="text-lg font-semibold mb-2">LIST OF PAYABLES RECORD</h2>
                     <input type="hidden" name="active_tab" id="active_tab" value="payables">
                     <!-- Collapsible Filters -->
-
-                    @foreach ($generalLedgers2 as $type => $ledgers)
-                        <h2 class="text-lg font-bold mt-4 text-red-600">{{ ucfirst($type) }}</h2>
-                        <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
-                            <thead>
-                                <tr class="border-b bg-gray-200">
-                                    <th class="text-left py-2 px-2">Description</th>
-                                    <th class="text-left py-2 px-2">Debit</th>
-                                    <th class="text-right py-2 px-2">Credit</th>
-                                    <th class="text-right py-2 px-2">Balance</th>
-                                    <th class="text-right py-2 px-2">Supplier</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($ledgers as $ledger)
-                                    <tr class="border-b hover:bg-gray-100">
-                                        <td class="py-2 px-2">
-                                            <small>{{ $ledger->transaction_date }}</small><br>{{ $ledger->description }}
-                                        </td>
-                                        <td class="py-2 px-2 text-red-600">{{ number_format($ledger->debit, 2) }}</td>
-                                        <td class="py-2 px-2 text-right text-green-600">
-                                            {{ number_format($ledger->credit, 2) }}</td>
-                                        <td class="py-2 px-2 text-right font-bold">
-                                            {{ number_format($ledger->balance, 2) }}</td>
-                                        <td class="py-2 px-2 text-right">{{ $ledger->name ?? 'N/A' }}</td>
+                    <div class="max-h-[500px] overflow-y-auto border border-gray-300 rounded-md p-2">
+                        @foreach ($generalLedgers2 as $type => $ledgers)
+                            <h2 class="text-lg font-bold mt-4 text-red-600">{{ ucfirst($type) }}</h2>
+                            <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
+                                <thead>
+                                    <tr class="border-b bg-gray-200">
+                                        <th class="text-left py-2 px-2">Description</th>
+                                        <th class="text-left py-2 px-2">Debit</th>
+                                        <th class="text-right py-2 px-2">Credit</th>
+                                        <th class="text-right py-2 px-2">Balance</th>
+                                        <th class="text-right py-2 px-2">Supplier</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endforeach
+                                </thead>
+                                <tbody>
+                                    @foreach ($ledgers as $ledger)
+                                        <tr class="border-b hover:bg-gray-100">
+                                            <td class="py-2 px-2">
+                                                <small>{{ $ledger->transaction_date }}</small><br>{{ $ledger->description }}
+                                            </td>
+                                            <td class="py-2 px-2 text-red-600">{{ number_format($ledger->debit, 2) }}
+                                            </td>
+                                            <td class="py-2 px-2 text-right text-green-600">
+                                                {{ number_format($ledger->credit, 2) }}</td>
+                                            <td class="py-2 px-2 text-right font-bold">
+                                                {{ number_format($ledger->balance, 2) }}</td>
+                                            <td class="py-2 px-2 text-right">{{ $ledger->name ?? 'N/A' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endforeach
+                    </div>
+
+
                 </div>
 
                 <!-- Payable Details Section -->
@@ -204,36 +208,38 @@
                     <input type="hidden" name="active_tab" id="active_tab" value="receivables">
                     <!-- Collapsible Filters -->
 
-
-                    @foreach ($generalLedgers as $type => $ledgers)
-                        <h2 class="text-lg font-bold mt-4  text-green-600">{{ ucfirst($type) }}</h2>
-                        <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
-                            <thead>
-                                <tr class="border-b bg-gray-200">
-                                    <th class="text-left py-2 px-2">Description</th>
-                                    <th class="text-left py-2 px-2">Debit</th>
-                                    <th class="text-right py-2 px-2">Credit</th>
-                                    <th class="text-right py-2 px-2">Balance</th>
-                                    <th class="text-right py-2 px-2">Agent/Client</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($ledgers as $ledger)
-                                    <tr class="border-b hover:bg-gray-100">
-                                        <td class="py-2 px-2">
-                                            <small>{{ $ledger->transaction_date }}</small><br>{{ $ledger->description }}
-                                        </td>
-                                        <td class="py-2 px-2 text-red-600">{{ number_format($ledger->debit, 2) }}</td>
-                                        <td class="py-2 px-2 text-right text-green-600">
-                                            {{ number_format($ledger->credit, 2) }}</td>
-                                        <td class="py-2 px-2 text-right font-bold">
-                                            {{ number_format($ledger->balance, 2) }}</td>
-                                        <td class="py-2 px-2 text-right">{{ $ledger->name ?? 'N/A' }}</td>
+                    <div class="max-h-[500px] overflow-y-auto border border-gray-300 rounded-md p-2">
+                        @foreach ($generalLedgers as $type => $ledgers)
+                            <h2 class="text-lg font-bold mt-4  text-green-600">{{ ucfirst($type) }}</h2>
+                            <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
+                                <thead>
+                                    <tr class="border-b bg-gray-200">
+                                        <th class="text-left py-2 px-2">Description</th>
+                                        <th class="text-left py-2 px-2">Debit</th>
+                                        <th class="text-right py-2 px-2">Credit</th>
+                                        <th class="text-right py-2 px-2">Balance</th>
+                                        <th class="text-right py-2 px-2">Agent/Client</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endforeach
+                                </thead>
+                                <tbody>
+                                    @foreach ($ledgers as $ledger)
+                                        <tr class="border-b hover:bg-gray-100">
+                                            <td class="py-2 px-2">
+                                                <small>{{ $ledger->transaction_date }}</small><br>{{ $ledger->description }}
+                                            </td>
+                                            <td class="py-2 px-2 text-red-600">{{ number_format($ledger->debit, 2) }}
+                                            </td>
+                                            <td class="py-2 px-2 text-right text-green-600">
+                                                {{ number_format($ledger->credit, 2) }}</td>
+                                            <td class="py-2 px-2 text-right font-bold">
+                                                {{ number_format($ledger->balance, 2) }}</td>
+                                            <td class="py-2 px-2 text-right">{{ $ledger->name ?? 'N/A' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endforeach
+                    </div>
                 </div>
 
                 <!-- Payable Details Section -->

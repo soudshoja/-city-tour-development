@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Branch;
@@ -329,7 +330,11 @@ class AccountingController extends Controller
 
     public function createGeneralLedger()
     {
-        $user = Auth::user();
+        $user = auth()->user();
+
+        if ($user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
 
         $companies = Company::all();
         $accounts = Account::whereIn('level', [3, 4])->get();
@@ -357,6 +362,12 @@ class AccountingController extends Controller
 
     public function storeGeneralLedger(Request $request)
     {
+        $user = auth()->user();
+
+        if ($user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
+        
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',

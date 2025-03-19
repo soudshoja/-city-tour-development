@@ -10,6 +10,7 @@ use App\Models\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
+use Barryvdh\DomPDF\Facade\Pdf; // Add this import
 
 
 class WhatsappController extends Controller
@@ -93,8 +94,22 @@ class WhatsappController extends Controller
         }
 
         return Redirect::back()->with('success', 'Message sent successfully');
-    }
 
+        $pdf = Pdf::loadView('pdf', compact('client', 'agent', 'invoiceNumber'));
+        $pdfPath = storage_path('app/public/invoice_' . $invoiceNumber . '.pdf');
+        $pdf->save($pdfPath);
+
+        // Upload PDF to a public URL
+        $pdfUrl = Storage::url('invoice_' . $invoiceNumber . '.pdf');
+
+        // Update the link to the PDF
+        $link = $pdfUrl;
+
+
+        $reqBody['template']['components'][2]['parameters'][0]['text'] = $link;
+
+ 
+    }
 
     public function sendMessage1(Request $request)
     {
@@ -103,7 +118,7 @@ class WhatsappController extends Controller
         $invoiceNumber = $request->invoiceNumber;
 
         $header = "Your Invoice Is Ready!";
-        $link = 'invoice/send/' . $invoiceNumber;
+        $link = 'invoice/' . $invoiceNumber;
 
         $reqBody = [
             "messaging_product" => "whatsapp",
@@ -149,8 +164,52 @@ class WhatsappController extends Controller
         return redirect('/company/agents/invoices')->with('success', 'Message sent successfully');
     }
 
+    public function sendMessagepdf(Request $request)
+    {
+        $client = json_decode($request->client);
+        $agent = Agent::find($client->agent_id);
+        $invoiceNumber = $request->invoiceNumber;
+        $link = 'invoice/sendpdf/' . $invoiceNumber;
 
-
+        // Generate PDF from Blade view
+        $pdf = Pdf::loadView('invoice.pdf', compact('client', 'agent', 'invoiceNumber'));
+        $pdfPath = storage_path('app/public/invoice_' . $invoiceNumber . '.pdf');
+        $pdf->save($pdfPath);
+    
+        // Upload PDF to a public URL
+        $pdfUrl = Storage::url('invoice_' . $invoiceNumber . '.pdf');
+    
+        // Update the link to the PDF
+        $link = $pdfUrl;
+    
+        $reqBody = [
+            "messaging_product" => "whatsapp",
+            "to" => $client->phone,
+            "type" => "document",
+            "document" => [
+                "link" => $link,
+                "filename" => 'invoice_' . $invoiceNumber . '.pdf'
+            ]
+        ];
+    
+        logger($reqBody);
+        $response = $this->postRequest(
+            config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages',
+            array(
+                'Authorization: Bearer ' . config('services.whatsapp.token'),
+                'Content-Type: application/json'
+            ),
+            json_encode($reqBody),
+        );
+    
+        logger($response);
+        
+        if(!isset($response['messages'][0]['message_status'])){
+            return Redirect::back()->with('error', 'Failed to send message');
+        }
+    
+        return Redirect::back()->with('success', 'Message sent successfully');
+    }
     // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
     private $VERIFY_TOKEN = 'd41d8cd98f00b204e9800998ecf8427e';

@@ -73,11 +73,10 @@ class SupplierController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $supplier = Supplier::with('tasks.invoiceDetail.invoice')->findOrFail($suppliersId);
+        $supplier = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->findOrFail($suppliersId)->supplier;
         $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
         $invoicesId = array_values(array_filter($invoicesId));
-
-        $generalLedger = GeneralLedger::select('id', 'debit', 'credit', 'created_at')
+        $generalLedger = generalLedger::select('id', 'debit', 'credit', 'created_at')
             ->whereIn('invoice_id', $invoicesId)
             ->get();
 

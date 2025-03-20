@@ -275,7 +275,7 @@ class AccountingController extends Controller
     public function getAccountsByCompanyReceivable(Request $request)
     {
         $accounts = Account::where('company_id', $request->company_id)
-        ->whereIn('level', [3, 4])
+        ->whereIn('level', [4])
         ->where(function ($query) {
             
             $query->whereHas('parent', function ($query) {
@@ -303,7 +303,7 @@ class AccountingController extends Controller
     public function getAccountsByCompanyPayable(Request $request)
     {
         $accounts = Account::where('company_id', $request->company_id)
-        ->whereIn('level', [3, 4])
+        ->whereIn('level', [4])
         ->where(function ($query) {
             
             $query->whereHas('parent', function ($query) {
@@ -482,7 +482,6 @@ class AccountingController extends Controller
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
-            'company_id' => 'required|integer',
             'branch_id' => 'required|integer',
             'transaction_id' => 'nullable|integer',
             'description' => 'required|string|max:255',
@@ -491,20 +490,35 @@ class AccountingController extends Controller
             'balance' => 'nullable|numeric',
             'invoice_id' => 'nullable|integer',
             'voucher_number' => 'nullable|string|max:255',
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'type' => 'required|string|max:255',
             'invoice_detail_id' => 'nullable|integer',
             'type_reference_id' => 'nullable|integer',
         ]);
 
+        // Check if user is admin (role_id = 1)
+        if (auth()->user()->role_id === 1) {
+            $validated['company_id'] = 'required|integer';
+        } else {
+            $validated['company_id'] = $user->company->id;
+        }
+        $accountName = Account::find($request->account_id);
+ 
         //Account_From (company_bank)
-        $companyName = Company::find($request->company_id)?->name;
+        
+        if (auth()->user()->role_id === 1) {
+            $companyName = Company::find($request->company_id)?->name;
+        } else {
+            $companyName = Company::find(auth()->user()->company->id)?->name;
+        }
+
+        
         if ($request->has('amount')) {
             $validated['debit'] = $request->amount;
             $validated['credit'] = "0.00";
             $validated['balance'] = $request->amount;
         }
-        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($request->name) . ')';
+        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $companyName;
         GeneralLedger::create($validated);
 
@@ -515,8 +529,8 @@ class AccountingController extends Controller
             $validated['balance'] = "0.00";
         }
 
-        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($request->name) . ')';
-        $validated['name'] = $request->name;
+        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['name'] = $accountName->name;
         GeneralLedger::create($validated);
 
         return redirect()->route('payable-details.payable-create')
@@ -567,7 +581,6 @@ class AccountingController extends Controller
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
-            'company_id' => 'required|integer',
             'branch_id' => 'required|integer',
             'transaction_id' => 'nullable|integer',
             'description' => 'required|string|max:255',
@@ -576,11 +589,18 @@ class AccountingController extends Controller
             'balance' => 'nullable|numeric',
             'invoice_id' => 'nullable|integer',
             'voucher_number' => 'nullable|string|max:255',
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'type' => 'required|string|max:255',
             'invoice_detail_id' => 'nullable|integer',
             'type_reference_id' => 'nullable|integer',
         ]);
+
+         // Check if user is admin (role_id = 1)
+         if (auth()->user()->role_id === 1) {
+             $validated['company_id'] = 'required|integer';
+         } else {
+             $validated['company_id'] = $user->company->id;
+         }
 
         //Account_From (client_name)
         if ($request->has('amount')) {
@@ -599,7 +619,13 @@ class AccountingController extends Controller
             $validated['credit'] = $request->amount;
             $validated['balance'] = "0.00";
         }
-        $companyName = Company::find($request->company_id)?->name;
+
+        if (auth()->user()->role_id === 1) {
+            $companyName = Company::find($request->company_id)?->name;
+        } else {
+            $companyName = Company::find(auth()->user()->company->id)?->name;
+        }
+
         $validated['description'] = $request->description . ' (From ' . strtoupper($request->name) . ' to ' . strtoupper($request->bank_account) . ')';
         $validated['name'] = $companyName;
         GeneralLedger::create($validated);

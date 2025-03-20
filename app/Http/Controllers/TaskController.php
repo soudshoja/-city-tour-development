@@ -224,6 +224,7 @@ class TaskController extends Controller
             'client_id' => 'required',
             'agent_id' => 'required',
             'supplier_id' => 'required',
+            'total' => 'required',
         ]);
 
         // Find the task
@@ -246,7 +247,7 @@ class TaskController extends Controller
         } else {
 
             try {
-                $task->update($request->only(['client_id', 'agent_id', 'supplier_id']));
+                $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total']));
                 $task->client_name = $client->name;
                 $task->save();
                 return redirect()->back()->with('success', 'Task updated successfully.');

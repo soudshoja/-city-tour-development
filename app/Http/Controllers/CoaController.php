@@ -110,6 +110,7 @@ class CoaController extends Controller
 
                 foreach ($asset->level3assets as $level3asset) {
                     // Fetch level 4 for each level 3
+                    $level5assetsId = [];
                     $level3asset->level4assets = Account::where('parent_id', $level3asset->id)->get();
                     foreach ($level3asset->level4assets as $key => $level4asset) {
                         if ($agent = $level4asset->agent) {
@@ -125,16 +126,20 @@ class CoaController extends Controller
                             // Find clients related to the invoices and make them level 5 assets
                             foreach ($invoices as $invoice) {
                                 $level5Account = $invoice->client->account;
-                                $actualBalance = 0.00; 
+                                $actualBalance = 0.00;
                                 if ($level5Account && $invoice->status == 'unpaid') {
                                     $actualBalance -= $invoice->amount;
                                 }
                                 $level5Account->actual_balance = $actualBalance;
                                 $level5Account->save();
                                 $level5assets->push($level5Account);
+
+                                $level5assetsId[] = $level5Account->id;
                             }
                             $level4asset->level5assets = $level5assets;
-                        } else {
+                        }
+
+                        if (in_array($level4asset->id, $level5assetsId)) {
                             unset($level3asset->level4assets[$key]);
                         }
                     }

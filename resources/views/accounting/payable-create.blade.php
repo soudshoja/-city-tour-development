@@ -96,13 +96,6 @@
                                 @endif
                             </div>
 
-                            <!-- Account Name -->
-                            <div>
-                                <label class="block font-medium text-sm">Supplier Account Name</label>
-                                <select id="account_id_payable" name="account_id" class="w-full p-2 border rounded">
-                                    <option value="">Select Account</option>
-                                </select>
-                            </div>
 
                             <!-- Branch Name -->
                             <div>
@@ -111,6 +104,15 @@
                                     <option value="">Select Branch</option>
                                 </select>
                             </div>
+
+                            <!-- Account Name -->
+                            <div>
+                                <label class="block font-medium text-sm">Supplier Account Name</label>
+                                <select id="account_id_payable" name="account_id" class="w-full p-2 border rounded">
+                                    <option value="">Select Account</option>
+                                </select>
+                            </div>
+
 
                             {{-- <!-- Supplier Name -->
                             <div>

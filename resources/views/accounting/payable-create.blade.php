@@ -98,7 +98,7 @@
 
                             <!-- Account Name -->
                             <div>
-                                <label class="block font-medium text-sm">Account Name</label>
+                                <label class="block font-medium text-sm">Supplier Account Name</label>
                                 <select id="account_id_payable" name="account_id" class="w-full p-2 border rounded">
                                     <option value="">Select Account</option>
                                 </select>
@@ -112,13 +112,13 @@
                                 </select>
                             </div>
 
-                            <!-- Supplier Name -->
+                            {{-- <!-- Supplier Name -->
                             <div>
                                 <label class="block font-medium text-sm">Supplier Name</label>
                                 <select id="supplier_id_payable" name="name" class="w-full p-2 border rounded">
                                     <option value="">Select Supplier</option>
                                 </select>
-                            </div>
+                            </div> --}}
 
                             <!-- Bank Account -->
                             <div>
@@ -173,13 +173,11 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-
-            function setupAccountDropdownPayable(companySelectId, accountSelectId, branchSelectId, supplierSelectId,
+            function setupAccountDropdownPayable(companySelectId, accountSelectId, branchSelectId,
                 bankAccountSelectId, userRole, userCompanyId) {
                 const companySelect = document.getElementById(companySelectId);
                 const accountSelect = document.getElementById(accountSelectId);
                 const branchSelect = document.getElementById(branchSelectId);
-                const supplierSelect = document.getElementById(supplierSelectId);
                 const bankAccountSelect = document.getElementById(bankAccountSelectId);
 
                 // If user is NOT an admin, set company and disable dropdown
@@ -200,7 +198,6 @@
 
                     accountSelect.innerHTML = '<option value="">Loading...</option>';
                     branchSelect.innerHTML = '<option value="">Loading...</option>';
-                    supplierSelect.innerHTML = '<option value="">Loading...</option>';
                     bankAccountSelect.innerHTML = '<option value="">Loading...</option>';
 
                     // Fetch accounts
@@ -246,32 +243,6 @@
                             branchSelect.innerHTML = '<option value="">Error loading branches</option>';
                         });
 
-                    // Fetch suppliers
-                    fetch(`{{ route('get.suppliers.by.company') }}?company_id=${companyId}`)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch suppliers');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            supplierSelect.innerHTML = '<option value="">Select Supplier</option>';
-                            if (data.suppliers && Array.isArray(data.suppliers)) {
-                                data.suppliers.forEach(supplier => {
-                                    const option = document.createElement("option");
-                                    option.value = supplier.name;
-                                    option.textContent = supplier.name;
-                                    supplierSelect.appendChild(option);
-                                });
-                            } else {
-                                supplierSelect.innerHTML = '<option value="">No suppliers found</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Fetch Error (Suppliers):", error);
-                            supplierSelect.innerHTML = '<option value="">Error loading suppliers</option>';
-                        });
-
                     // Fetch bank accounts
                     fetch(`{{ route('get.bank.accounts.by.company') }}?company_id=${companyId}`)
                         .then(response => response.json())
@@ -306,12 +277,10 @@
                 "company_id_payable",
                 "account_id_payable",
                 "branch_id_payable",
-                "supplier_id_payable",
                 "bank_account_id_payable",
                 userRole,
                 userCompanyId
             );
-
         });
     </script>
 </x-app-layout>

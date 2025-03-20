@@ -213,11 +213,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/filter-ledgers', [AccountingController::class, 'filterLedgers']);
     Route::post('/export-excel', [AccountingController::class, 'exportExcel']);
 
-    Route::get('/general-ledgers/create', [AccountingController::class, 'createGeneralLedger'])->name('general-ledgers.create');
-    Route::post('/general-ledgers/store', [AccountingController::class, 'storeGeneralLedger'])->name('general-ledgers.store');
+    Route::get('/payable-details/payable-create', [AccountingController::class, 'createPayableDetail'])->name('payable-details.payable-create');
+    Route::post('/payable-details/payable-store', [AccountingController::class, 'storePayableDetail'])->name('payable-details.payable-store');
+    Route::get('/receivable-details/receivable-create', [AccountingController::class, 'createReceivableDetail'])->name('receivable-details.receivable-create');
+    Route::post('/receivable-details/receivable-store', [AccountingController::class, 'storeReceivableDetail'])->name('receivable-details.receivable-store');
     Route::get('/get-accounts-by-company-payable', [AccountingController::class, 'getAccountsByCompanyPayable'])->name('get.accounts.by.company.payable');
     Route::get('/get-accounts-by-company-receivable', [AccountingController::class, 'getAccountsByCompanyReceivable'])->name('get.accounts.by.company.receivable');
-
+    Route::get('/get-branches-by-company', [AccountingController::class, 'getBranchByCompany'])->name('get.branches.by.company');
+    Route::get('/get-agents-by-branch-company', [AccountingController::class, 'getAgentByBranchCompany'])->name('get.agents.by.branch.company');
+    Route::get('/get-suppliers-by-company', [AccountingController::class, 'getSupplierByCompany'])->name('get.suppliers.by.company');
+    Route::get('/get-agents-clients-by-company', [AccountingController::class, 'getAgentClientByCompany'])->name('get.agents.clients.by.company');
+    Route::get('/get-bank-accounts-by-company', [AccountingController::class, 'getBankAccountByCompany'])->name('get.bank.accounts.by.company');
+    Route::get('/get-invoices-by-generalledger', [AccountingController::class, 'getInvoicesByGeneralLedger'])->name('get.invoices.by.generalledger');
 
     //BRANCHES
     Route::group([

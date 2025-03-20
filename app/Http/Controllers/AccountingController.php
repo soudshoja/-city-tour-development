@@ -326,27 +326,138 @@ class AccountingController extends Controller
     
         return response()->json(['accounts' => $accounts]);
     }
+
+
+    public function getBranchByCompany(Request $request)
+    {
+        $branches = Branch::where('company_id', $request->company_id)->get(); 
+
+        if ($branches->isEmpty()) {
+            return response()->json(['message' => 'No branches found for this company'], 404);
+        }
+
+        return response()->json(['branches' => $branches]);
+    }
+
+    public function getAgentByBranchCompany(Request $request)
+    {
+        $agents = Agent::where('company_id', $request->company_id)
+                       ->where('branch_id', $request->branch_id)
+                       ->get(); 
+    
+        if ($agents->isEmpty()) {
+            return response()->json(['message' => 'No agents found for this branch and company'], 404);
+        }
+    
+        return response()->json(['agents' => $agents]);
+    }
+
+    public function getSupplierByCompany(Request $request)
+    {
+        // Get all parent account IDs where the name contains "Payable"
+        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+
+        // Retrieve suppliers linked to the selected company and parent accounts
+        $suppliers = Account::where('company_id', $request->company_id)
+                            ->whereIn('parent_id', $parentIds)
+                            ->whereNotNull('name') // Ensure name exists for suppliers
+                            ->get(); 
+
+        if ($suppliers->isEmpty()) {
+            return response()->json(['message' => 'No suppliers found for this company'], 404);
+        }
+
+        return response()->json(['suppliers' => $suppliers]);
+    }
+
+    public function getAgentClientByCompany(Request $request)
+    {
+        // Get all parent account IDs where the name contains "Receivable"
+        $parentIds = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+    
+        // Retrieve agents linked to the selected company and parent accounts
+        $agents = Account::where('company_id', $request->company_id)
+                         ->whereIn('parent_id', $parentIds)
+                         ->whereNotNull('name') // Ensure name exists for agents
+                         ->get();
+    
+        if ($agents->isEmpty()) {
+            return response()->json(['message' => 'No client or agents found for this company'], 404);
+        }
+    
+        return response()->json(['agents' => $agents]);
+    }
+
+    public function getBankAccountByCompany(Request $request)
+    {
+        $companyId = $request->company_id;
+
+        // Log company ID (optional)
+        \Log::info("Fetching Bank Accounts for Company ID: " . $companyId);
+
+        // Get parent account IDs where the name contains "Bank Accounts" and belongs to the selected company
+        $parentIds = Account::where('name', 'LIKE', '%Bank Accounts%')
+                            ->where('company_id', $companyId)
+                            ->pluck('id');
+
+        \Log::info("Parent Account IDs: " . json_encode($parentIds));
+
+        // Fetch bank accounts under these parent IDs and the selected company
+        $bankaccounts = Account::whereIn('parent_id', $parentIds)
+                            ->where('company_id', $companyId)
+                            ->get();
+
+        \Log::info("Retrieved Bank Accounts: " . json_encode($bankaccounts));
+
+        if ($bankaccounts->isEmpty()) {
+            return response()->json(['message' => 'No bank account has been set for this company'], 404);
+        }
+
+        return response()->json(['bankaccounts' => $bankaccounts]);
+    }
+
+
+    public function getInvoicesByGeneralLedger(Request $request)
+    {
+   
+        // Retrieve general ledger entries for the given company
+        $ledgerEntries = GeneralLedger::where('company_id', $request->company_id)
+                                      ->pluck('invoice_id'); // Get associated invoice IDs
+    
+        if ($ledgerEntries->isEmpty()) {
+            return response()->json(['message' => 'No invoice record found for this company'], 404);
+        }
+    
+        // Retrieve invoices linked to the general ledger entries
+        $invoices = Invoice::whereIn('id', $ledgerEntries)->get();
+    
+        if ($invoices->isEmpty()) {
+            return response()->json(['message' => 'No invoices found for this company'], 404);
+        }
+    
+        return response()->json(['invoices' => $invoices]);
+    }
     
 
-    public function createGeneralLedger()
+
+    public function createPayableDetail()
     {
         $user = auth()->user();
 
-        if ($user->role_id != Role::COMPANY) {
-            return abort(403, 'Unauthorized action.');
+        if ($user->role_id != Role::ADMIN) {
+            if ($user->role_id != Role::COMPANY) {
+                return abort(403, 'Unauthorized action.');
+            }
+            else {
+                $companies = Company::where('user_id', $user->id)->get();
+            }
+        }
+        else {
+            $companies = Company::all();
         }
 
-        $companies = Company::all();
-        $accounts = Account::whereIn('level', [3, 4])->get();
-        $branches = Branch::all();
-        $invoices = Invoice::all();
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
-
-        $generalLedgers = GeneralLedger::whereIn('type', ['receivable', 'income'])
-        ->orderByDesc('created_at')  // Sort by date in descending order
-        ->get()
-        ->groupBy('type');  // Group by type (receivable, income)
 
         $generalLedgers2 = GeneralLedger::whereIn('type', ['payable', 'expenses'])
         ->orderByDesc('created_at')  // Sort by date in descending order
@@ -356,11 +467,11 @@ class AccountingController extends Controller
         $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.create', compact('accounts', 'companies', 'branches', 'invoices', 'suppliers', 'clients', 'generalLedgers', 'generalLedgers2'));
+        return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'generalLedgers2'));
         
     }
 
-    public function storeGeneralLedger(Request $request)
+    public function storePayableDetail(Request $request)
     {
         $user = auth()->user();
 
@@ -375,9 +486,9 @@ class AccountingController extends Controller
             'branch_id' => 'required|integer',
             'transaction_id' => 'nullable|integer',
             'description' => 'required|string|max:255',
-            'debit' => 'required|numeric',
-            'credit' => 'required|numeric',
-            'balance' => 'required|numeric',
+            'debit' => 'nullable|numeric',
+            'credit' => 'nullable|numeric',
+            'balance' => 'nullable|numeric',
             'invoice_id' => 'nullable|integer',
             'voucher_number' => 'nullable|string|max:255',
             'name' => 'required|string|max:255',
@@ -386,12 +497,116 @@ class AccountingController extends Controller
             'type_reference_id' => 'nullable|integer',
         ]);
 
+        //Account_From (company_bank)
+        $companyName = Company::find($request->company_id)?->name;
+        if ($request->has('amount')) {
+            $validated['debit'] = $request->amount;
+            $validated['credit'] = "0.00";
+            $validated['balance'] = $request->amount;
+        }
+        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($request->name) . ')';
+        $validated['name'] = $companyName;
         GeneralLedger::create($validated);
 
-        return redirect()->route('general-ledgers.create')
+        //Account_From (supplier_name)
+        if ($request->has('amount')) {
+            $validated['debit'] = "0.00";
+            $validated['credit'] = $request->amount;
+            $validated['balance'] = "0.00";
+        }
+
+        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($request->name) . ')';
+        $validated['name'] = $request->name;
+        GeneralLedger::create($validated);
+
+        return redirect()->route('payable-details.payable-create')
         ->with('success', 'Entry added successfully!')
         ->with('active_tab', request('active_tab'));
     }
 
+    public function createReceivableDetail()
+    {
+        $user = auth()->user();
+
+        if ($user->role_id != Role::ADMIN) {
+            if ($user->role_id != Role::COMPANY) {
+                return abort(403, 'Unauthorized action.');
+            }
+            else {
+                $companies = Company::where('user_id', $user->id)->get();
+            }
+        }
+        else {
+            $companies = Company::all();
+        }
+
+        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+
+        $generalLedgers = GeneralLedger::whereIn('type', ['receivable', 'income'])
+        ->orderByDesc('created_at')  
+        ->get()
+        ->groupBy('type');  
+
+        $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+
+        return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'generalLedgers'));
+        
+    }
+
+    public function storeReceivableDetail(Request $request)
+    {
+        $user = auth()->user();
+        
+
+        if ($user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
+        
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'account_id' => 'required|integer',
+            'company_id' => 'required|integer',
+            'branch_id' => 'required|integer',
+            'transaction_id' => 'nullable|integer',
+            'description' => 'required|string|max:255',
+            'debit' => 'nullable|numeric',
+            'credit' => 'nullable|numeric',
+            'balance' => 'nullable|numeric',
+            'invoice_id' => 'nullable|integer',
+            'voucher_number' => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|max:255',
+            'invoice_detail_id' => 'nullable|integer',
+            'type_reference_id' => 'nullable|integer',
+        ]);
+
+        //Account_From (client_name)
+        if ($request->has('amount')) {
+            $validated['debit'] = $request->amount;
+            $validated['credit'] = "0.00";
+            $validated['balance'] = $request->amount;
+        }
+        $validated['description'] = $request->description . ' (From ' . strtoupper($request->name) . ' to ' . strtoupper($request->bank_account) . ')';
+        $validated['name'] = $request->name;
+        GeneralLedger::create($validated);
+
+        
+        //Account_To (company_bank)
+        if ($request->has('amount')) {
+            $validated['debit'] = "0.00";
+            $validated['credit'] = $request->amount;
+            $validated['balance'] = "0.00";
+        }
+        $companyName = Company::find($request->company_id)?->name;
+        $validated['description'] = $request->description . ' (From ' . strtoupper($request->name) . ' to ' . strtoupper($request->bank_account) . ')';
+        $validated['name'] = $companyName;
+        GeneralLedger::create($validated);
+
+        return redirect()->route('receivable-details.receivable-create')
+        ->with('success', 'Entry added successfully!')
+        ->with('active_tab', request('active_tab'));
+    }
 
 }

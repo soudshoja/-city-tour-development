@@ -7,17 +7,17 @@
 
             <!-- Input Fields Section -->
             <div class="grid grid-cols-12 gap-4">
-                <div class="flex flex-col col-span-6 lg:col-span-3">
+                <div class="flex flex-col col-span-6 lg:col-span-2">
                     <label for="start_date" class="font-medium text-sm mb-1">Start Date:</label>
                     <input type="date" name="start_date" id="start_date" value="{{ $startDate }}"
                         class="border rounded px-2 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                 </div>
-                <div class="flex flex-col col-span-6 lg:col-span-3">
+                <div class="flex flex-col col-span-6 lg:col-span-2">
                     <label for="end_date" class="font-medium text-sm mb-1">End Date:</label>
                     <input type="date" name="end_date" id="end_date" value="{{ $endDate }}"
                         class="border rounded px-2 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                 </div>
-                <div class="flex flex-col col-span-6 lg:col-span-3">
+                <div class="flex flex-col col-span-6 lg:col-span-2">
                     <label for="branch_id" class="font-medium text-sm mb-1">Filter by Branch:</label>
                     <select name="branch_id" id="branch_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
@@ -39,6 +39,21 @@
                                 {{ ucfirst($supplier->name) }}
                             </option>
                         @endforeach
+                    </select>
+                </div>
+                @php
+                    $selectedType = request()->input('type_id', 'All');
+                @endphp
+                <div class="flex flex-col col-span-6 lg:col-span-3">
+                    <label for="type_id" class="font-medium text-sm mb-1">Filter by Type:</label>
+                    <select name="type_id" id="type_id"
+                        class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
+                        <option value="all" {{ $selectedType == 'all' ? 'selected' : '' }}>All Payable & Receivable
+                        </option>
+                        <option value="payable" {{ $selectedType == 'payable' ? 'selected' : '' }}>Payable only
+                        </option>
+                        <option value="receivable" {{ $selectedType == 'receivable' ? 'selected' : '' }}>Receivable
+                            only</option>
                     </select>
                 </div>
             </div>
@@ -66,6 +81,11 @@
                             {{ \App\Models\Supplier::find($supplierId)->name ?? 'Unknown Supplier' }}
                         </p>
                     @endif
+                    @if ($selectedType)
+                        <p>Filtered by Type: {{ ucfirst($selectedType) }}</p>
+                    @endif
+
+
                 </div>
             </div>
 
@@ -88,7 +108,8 @@
                 </div>
             </div>
         </header>
-        <div class="p-3 border shadow rounded">
+        <div id="account_payable"
+            class="{{ $selectedType == 'payable' ? '' : ($selectedType == 'receivable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
             <h2 class="font-bold">Accounts Payable Transactions <span class="font-normal">(Account ID:
                     {{ $accountPayable->code ?? 'CI12300' }})</span></h2>
             @if ($payableTransactions->isNotEmpty())
@@ -120,7 +141,7 @@
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $transaction->credit > 0 ? '-' : '' }}{{ number_format($transaction->credit, 2) }}
+                                    {{ number_format($transaction->credit, 2) }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($totalAll, 2) }}
@@ -134,7 +155,8 @@
                 <p class="text-red-500">No Accounts Payable transactions found for the selected period.</p>
             @endif
         </div>
-        <div class="p-3 mt-4 border shadow">
+        <div id="account_receivable"
+            class="{{ $selectedType == 'receivable' ? '' : ($selectedType == 'payable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
             <h2 class="font-bold">Accounts Receivable Transactions <span class="font-normal">(Account ID:
                     {{ $accountReceivable->code ?? 'CI12301' }})</span></h2>
             @if ($receivableTransactions->isNotEmpty())
@@ -166,7 +188,7 @@
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $transaction->credit > 0 ? '-' : '' }}{{ number_format($transaction->credit, 2) }}
+                                    {{ number_format($transaction->credit, 2) }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($totalAll, 2) }}
@@ -181,4 +203,25 @@
             @endif
         </div>
     </div>
+    <script>
+        function filterType() {
+            let type = document.getElementById('type_id').value;
+            let payableDiv = document.getElementById('account_payable');
+            let receivableDiv = document.getElementById('account_receivable');
+
+            // Hide both initially
+            payableDiv.classList.add('hidden');
+            receivableDiv.classList.add('hidden');
+
+            // Show based on selection
+            if (type === 'payable') {
+                payableDiv.classList.remove('hidden');
+            } else if (type === 'receivable') {
+                receivableDiv.classList.remove('hidden');
+            } else {
+                payableDiv.classList.remove('hidden');
+                receivableDiv.classList.remove('hidden');
+            }
+        }
+    </script>
 </x-app-layout>

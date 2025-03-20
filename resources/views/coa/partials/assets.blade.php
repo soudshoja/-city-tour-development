@@ -222,10 +222,9 @@
                   </div>
 
                   <div x-show="openLevels['{{ $level4asset->id }}']" class="ml-6 space-y-2">
-                      @if ($level4asset->level5assets->isEmpty())
+                      @if (!$level4asset->level5assets ?? $level4asset->level5assets->isEmpty())
                       <p class="text-danger">No Asset here yet!</p>
-                      @endif
-
+                      @else
                       @foreach ($level4asset->level5assets as $level5asset)
                       <div class="level5 flex items-center justify-between p-4 rounded-lg shadow-sm  w-full">
                           <span class="text-gray-800 dark:text-gray-600 font-medium">{{ $level5asset->name }}</span>
@@ -242,6 +241,7 @@
                           </div>
                       </div>
                       @endforeach
+                      @endif
                   </div>
                   @endforeach
               </div>

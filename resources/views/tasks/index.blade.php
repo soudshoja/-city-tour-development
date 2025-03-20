@@ -272,6 +272,9 @@
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->tax }}" placeholder="Tax" readonly>
+                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->surcharge }}" placeholder="Surcharge" readonly>
+                                                            <input type="text" name="total" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->total }}" placeholder="Total">
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
                                                             <select name="client_id" id="tasks_client_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
                                                                 <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>

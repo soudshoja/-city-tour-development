@@ -49,9 +49,14 @@
                     Of Account</a></menuitem>
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
-                <menuitem><a href="{{ route('general-ledgers.create') }}"
-                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">General
-                    Ledger</a></menuitem>
+                <menuitem><a href="{{ route('receivable-details.receivable-create') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Receivable</a>
+                </menuitem>
+            @endcan
+            @can('viewAny', 'App\Models\CoaCategory')
+                <menuitem><a href="{{ route('payable-details.payable-create') }}"
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payable</a>
+                </menuitem>
             @endcan
             @can('viewAny', 'App\Models\Charge')
                 <menuitem><a href="{{ route('charges.index') }}"

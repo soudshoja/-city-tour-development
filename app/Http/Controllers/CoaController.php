@@ -138,14 +138,6 @@ class CoaController extends Controller
                             }
                             $level4asset->level5assets = $level5assets;
                         }
-
-                                             
-                    }
-
-                    foreach($level3asset->level4assets as $level4asset){
-                        if (in_array($level4asset->id, $level5assetsId)) {
-                            unset($level3asset->level4assets);
-                        }  
                     }
                 }
             }

@@ -174,10 +174,9 @@
 
               <!-- Level 4 - Nested under each level 3 asset -->
               <div x-show="openLevels['{{ $level3asset->id }}']" class="ml-6 space-y-2">
-                  @if ($level3asset->level4assets->isEmpty())
+                  @if (!$level3asset->level4assets ?? $level3asset->level4assets->isEmpty())
                   <p class="text-danger">No Asset here yet!</p>
-                  @endif
-
+                  @else
                   @foreach ($level3asset->level4assets as $level4asset)
                   <div
                       @click="openLevels['{{ $level4asset->id }}'] = !openLevels['{{ $level4asset->id }}']"
@@ -222,10 +221,9 @@
                   </div>
 
                   <div x-show="openLevels['{{ $level4asset->id }}']" class="ml-6 space-y-2">
-                      @if ($level4asset->level5assets->isEmpty())
+                      @if (!$level4asset->level5assets ?? $level4asset->level5assets->isEmpty())
                       <p class="text-danger">No Asset here yet!</p>
-                      @endif
-
+                      @else
                       @foreach ($level4asset->level5assets as $level5asset)
                       <div class="level5 flex items-center justify-between p-4 rounded-lg shadow-sm  w-full">
                           <span class="text-gray-800 dark:text-gray-600 font-medium">{{ $level5asset->name }}</span>
@@ -242,8 +240,10 @@
                           </div>
                       </div>
                       @endforeach
+                      @endif
                   </div>
                   @endforeach
+                  @endif
               </div>
 
 

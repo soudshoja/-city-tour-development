@@ -144,7 +144,7 @@
                                     {{ number_format($transaction->credit, 2) }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($totalAll, 2) }}
+                                    {{ $totalAll > 0 ? '-' . number_format($totalAll, 2) : number_format($totalAll, 2) }}
                                     {{-- {{ number_format($transaction->balance, 2) }} --}}
                                 </td>
                             </tr>

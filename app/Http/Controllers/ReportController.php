@@ -239,12 +239,34 @@ class ReportController extends Controller
 
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
 
-        $payableQuery = GeneralLedger::where('account_id', 50)
-            ->where('company_id', $companyId);
+        // $payableQuery = GeneralLedger::where('account_id', 50)
+        //     ->where('company_id', $companyId);
+        $payableQuery = GeneralLedger::where('company_id', $companyId)
+        ->where(function ($query) {
+            $query->where('account_id', 50)
+                  ->orWhereIn('account_id', function ($subquery) {
+                      $subquery->select('id')
+                               ->from('accounts')
+                               ->where('parent_id', 50);
+                  });
+        })
+        ->orderBy('created_at', 'desc'); 
+    
+    
+        // $receivableQuery = GeneralLedger::where('account_id', 45)
+        //     ->where('company_id', $companyId);
+        $receivableQuery = GeneralLedger::where('company_id', $companyId)
+        ->where(function ($query) {
+            $query->where('account_id', 45)
+                  ->orWhereIn('account_id', function ($subquery) {
+                      $subquery->select('id')
+                               ->from('accounts')
+                               ->where('parent_id', 45);
+                  });
+        })
+        ->orderBy('created_at', 'desc');  
 
-        $receivableQuery = GeneralLedger::where('account_id', 45)
-            ->where('company_id', $companyId);
-
+        
         if ($branchId) {
             $payableQuery->where('branch_id', $branchId);
             $receivableQuery->where('branch_id', $branchId);

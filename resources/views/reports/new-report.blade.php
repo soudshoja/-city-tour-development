@@ -134,20 +134,24 @@
                                 $totalCredit += $transaction->credit;
                                 $totalAll = $totalDebit - $totalCredit;
                             @endphp
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->transaction_date }}
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->description }}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->debit, 2) }}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->credit, 2) }}
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $totalAll > 0 ? '-' . number_format($totalAll, 2) : number_format($totalAll, 2) }}
-                                    {{-- {{ number_format($transaction->balance, 2) }} --}}
-                                </td>
-                            </tr>
+                            @if ($transaction->debit > 0)
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">
+                                        {{ $transaction->transaction_date }}
+                                    </td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->description }}
+                                    </td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">
+                                        {{ number_format($transaction->debit, 2) }}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">
+                                        {{ number_format($transaction->credit, 2) }}
+                                    </td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">
+                                        {{ number_format($totalAll, 2) }}
+                                        {{-- {{ number_format($transaction->balance, 2) }} --}}
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

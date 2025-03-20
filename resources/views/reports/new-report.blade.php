@@ -100,7 +100,7 @@
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
                     <h3>Accounts Payable</h3>
-                    <p><strong>Outstanding Balance: {{ number_format($payableBalance, 2) }}</strong></p>
+                    <p><strong>Outstanding Balance: -{{ number_format($payableBalance, 2) }}</strong></p>
                 </div>
                 <div class="border w-full p-2 rounded">
                     <h3>Accounts Receivable</h3>

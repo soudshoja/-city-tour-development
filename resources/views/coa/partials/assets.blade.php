@@ -174,9 +174,10 @@
 
               <!-- Level 4 - Nested under each level 3 asset -->
               <div x-show="openLevels['{{ $level3asset->id }}']" class="ml-6 space-y-2">
-                  @if (!$level3asset->level4assets ?? $level3asset->level4assets->isEmpty())
+                  @if ($level3asset->level4assets->isEmpty())
                   <p class="text-danger">No Asset here yet!</p>
-                  @else
+                  @endif
+
                   @foreach ($level3asset->level4assets as $level4asset)
                   <div
                       @click="openLevels['{{ $level4asset->id }}'] = !openLevels['{{ $level4asset->id }}']"
@@ -243,7 +244,6 @@
                       @endif
                   </div>
                   @endforeach
-                  @endif
               </div>
 
 

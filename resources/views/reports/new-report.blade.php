@@ -95,7 +95,7 @@
 
     <div class="p-4 bg-white rounded shadow">
         <header class="p-3 flex flex-col gap-2">
-
+            {{-- 
             <h2 class="flex justify-start"><strong>Outstanding Balances</strong></h2>
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
@@ -106,7 +106,7 @@
                     <h3>Accounts Receivable</h3>
                     <p><strong>Outstanding Balance: {{ number_format($receivableBalance, 2) }}</strong></p>
                 </div>
-            </div>
+            </div> --}}
         </header>
         <div id="account_payable"
             class="{{ $selectedType == 'payable' ? '' : ($selectedType == 'receivable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
@@ -129,12 +129,12 @@
                             $totalCredit = 0;
                         @endphp
                         @foreach ($payableTransactions as $transaction)
-                            @php
-                                $totalDebit += $transaction->debit;
-                                $totalCredit += $transaction->credit;
-                                $totalAll = $totalDebit - $totalCredit;
-                            @endphp
-                            @if ($transaction->debit > 0)
+                            @if (Str::startsWith($transaction->description, 'Payment:') || $transaction->credit == '0.00')
+                                @php
+                                    $totalDebit += $transaction->debit;
+                                    $totalCredit += $transaction->credit;
+                                    $totalAll1 = $totalDebit - $totalCredit;
+                                @endphp
                                 <tr>
                                     <td style="padding: 8px; border: 1px solid #ddd;">
                                         {{ $transaction->transaction_date }}
@@ -147,7 +147,7 @@
                                         {{ number_format($transaction->credit, 2) }}
                                     </td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">
-                                        {{ number_format($totalAll, 2) }}
+                                        {{ number_format($totalAll1, 2) }}
                                         {{-- {{ number_format($transaction->balance, 2) }} --}}
                                     </td>
                                 </tr>
@@ -183,19 +183,22 @@
                             @php
                                 $totalDebit += $transaction->debit;
                                 $totalCredit += $transaction->credit;
-                                $totalAll = $totalDebit - $totalCredit;
+                                $totalAll2 = $totalDebit - $totalCredit;
                             @endphp
+
                             <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->transaction_date }}
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    {{ $transaction->transaction_date }}
                                 </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->description }}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->description }}
+                                </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->credit, 2) }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($totalAll, 2) }}
+                                    {{ number_format($totalAll2, 2) }}
                                     {{-- {{ number_format($transaction->balance, 2) }} --}}
                                 </td>
                             </tr>
@@ -205,6 +208,20 @@
             @else
                 <p class="text-red-500">No Accounts Receivable transactions found for the selected period.</p>
             @endif
+        </div>
+
+        <div class="p-3 flex flex-col gap-2">
+            <h2 class="flex justify-start"><strong>Outstanding Balances</strong></h2>
+            <div class="flex gap-2">
+                <div class="border w-full p-2 rounded">
+                    <h3>Accounts Payable</h3>
+                    <p><strong>Outstanding Balance: {{ number_format($totalAll1, 2) }}</strong></p>
+                </div>
+                <div class="border w-full p-2 rounded">
+                    <h3>Accounts Receivable</h3>
+                    <p><strong>Outstanding Balance: {{ number_format($totalAll2, 2) }}</strong></p>
+                </div>
+            </div>
         </div>
     </div>
     <script>

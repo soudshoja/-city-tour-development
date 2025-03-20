@@ -72,7 +72,7 @@
                     Credit
                 </div>
             </div>
-            <div class="text-center bg-white p-2 rounded-b-md">
+            <!-- <div class="text-center bg-white p-2 rounded-b-md">
                 <div colspan="2">
                     <div class="flex">
                         <div class="rounded-l-md bg-gray-200 p-2 flex justify-center items-center">
@@ -88,7 +88,7 @@
                         <input type="date" name="" id="" class="w-full rounded-r-md p-2" disabled>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
         </div>
         <div class="flex flex-col rounded-md bg-white p-4 shadow-md">
@@ -106,7 +106,7 @@
                         @foreach($supplier->tasks as $task)
                         <tr>
                             <td>{{ $task->reference }}</td>
-                            <td>{{ $task->agent->name }}</td>
+                            <td>{{ $task->agent ? $task->agent->name : 'Not Set' }}</td>
                             <td>{{ $task->type }}</td>
                         </tr>
                         @endforeach
@@ -160,7 +160,7 @@
         </div>
     </div>
     <script>
-        let supplierId = @json($supplier - > id);
+        let supplierId = @json($supplier -> id);
 
         const debitCredit = document.getElementById('debit-credit');
         debitCredit.scrollTop = debitCredit.scrollHeight;

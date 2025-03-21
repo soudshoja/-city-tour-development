@@ -291,7 +291,7 @@
                             if (data.bankaccounts && data.bankaccounts.length > 0) {
                                 data.bankaccounts.forEach(bankAccount => {
                                     const option = document.createElement("option");
-                                    option.value = bankAccount.name;
+                                    option.value = bankAccount.id;
                                     option.textContent = `${bankAccount.name}`;
                                     bankAccountSelect.appendChild(option);
                                 });

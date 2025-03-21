@@ -155,7 +155,28 @@ class ChatController extends Controller
                     <tr><th style='background-color: #f2f2f2; padding: 8px;'>Invoice Number</th><th style='background-color: #f2f2f2; padding: 8px;'>Amount</th></tr>
                     <tr><td style='background-color: #f2f2f2; padding: 8px;'>101</td><td style='background-color: #f2f2f2; padding: 8px;'>$500.00</td></tr>
                   </table>`
-        
+
+                - User query: 'Profit for agent'
+                - Response:
+                  `<table border='1' style='border-collapse: collapse; width: 100%;'>
+                    <tr><th style='background-color: #f2f2f2; padding: 8px;'>Agent</th><th style='background-color: #f2f2f2; padding: 8px;'>Profit</th></tr>
+                    <tr><td style='background-color: #f2f2f2; padding: 8px;'>101</td><td style='background-color: #f2f2f2; padding: 8px;'>$500.00</td></tr>
+                  </table>`
+
+                - User query: 'Payment to supplier'
+                - Response:
+                  `<table border='1' style='border-collapse: collapse; width: 100%;'>
+                    <tr><th style='background-color: #f2f2f2; padding: 8px;'>Supplier</th><th style='background-color: #f2f2f2; padding: 8px;'>Payment</th></tr>
+                    <tr><td style='background-color: #f2f2f2; padding: 8px;'>101</td><td style='background-color: #f2f2f2; padding: 8px;'>$500.00</td></tr>
+                  </table>`
+
+                - User query: 'Pending or Unpaid invoice link'
+                - Response:
+                  `<table border='1' style='border-collapse: collapse; width: 100%;'>
+                    <tr><th style='background-color: #f2f2f2; padding: 8px;'>Invoice Number</th><th style='background-color: #f2f2f2; padding: 8px;'>Total Amount</th><th style='background-color: #f2f2f2; padding: 8px;'>Link</th></tr>
+                    <tr><td style='background-color: #f2f2f2; padding: 8px;'>101</td><td style='background-color: #f2f2f2; padding: 8px;'>$500.00</td><td style='background-color: #f2f2f2; padding: 8px;'>http://127.0.0.1:8000/invoice/INV-2025-01301</td></tr>
+                  </table>`
+
                 Format all listings as an HTML table with relevant headers and a grey background color for both headers and content.",
             ],
             [
@@ -362,6 +383,7 @@ class ChatController extends Controller
                 'supplier' => $suppliers,
                 'company' => [
                     'name' => $company->name,  // Essential company data
+                    'contactPerson' => $company->contact_person, 
                     'id' => $company->id,
                 ],
                 'branches' => $company->branches->map(function ($branch) {
@@ -480,6 +502,7 @@ class ChatController extends Controller
                 'supplier' => $suppliers,
                 'company' => [
                     'name' => $company->name,  // Essential company data
+                    'contactPerson' => $company->contact_person, 
                     'id' => $company->id,
                 ],
                 'branches' => $company->branches->map(function ($branch) {

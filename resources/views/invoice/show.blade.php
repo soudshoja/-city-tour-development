@@ -255,7 +255,7 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
-            <form action="{{ route('whatsapp.send') }}" method="POST">
+            <form action="{{ route('whatsapp.sendpdf') }}" method="POST">
                 @csrf
                 <input type="hidden" name="client" value='{{ $invoice->client }}'>
                 <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
@@ -268,8 +268,9 @@
                 action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
                 method="POST">
                 @csrf
+                
                 <input type="hidden" id="totalAmountInput" name="total_amount"
-                    value="{{ $invoicePartials->sum('amount') }}">
+                       value="{{ $invoicePartials->sum('amount') }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                 <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
@@ -307,8 +308,61 @@
             <span class="text-green-600 font-bold">PAID</span>
             @endif
         </div>
+<!-- Payment pdf -->
+<!-- <div class="mb-8 inline-flex gap-2">
+    @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
+    <form action="{{ route('whatsapp.send') }}" method="POST">
+        @csrf
+        <input type="hidden" name="client" value='{{ json_encode($invoice->client) }}'>
+        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
+        <button type="submit"
+            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+            Send Invoice To Client
+        </button>
+    </form>
+    <form id="paymentForm" action="{{ route('whatsapp.send') }}" method="POST">
+        @csrf
+        <input type="hidden" id="totalAmountInput" name="total_amount" value="{{ $invoicePartials->sum('amount') }}">
+        <input type="hidden" name="client" value='{{ json_encode($invoice->client) }}'>
+        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
+        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
+        <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
+        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
+        <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
 
-        <!-- Signature Section -->
+        <div class="flex items-center gap-2">
+            <button type="submit" id="payNowBtn"
+                class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                Pay Now
+            </button>
+            <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
+                {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
+            </span>
+        </div>
+        <div id="loadingSpinner" class="hidden mt-2">
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Processing...
+        </div>
+    </form>
+
+    @if (auth()->user() &&
+    (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
+    <div class="flex gap-2 mt-2" id="invoice-link">
+        <p>
+            {{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}
+        </p>
+        <button
+            onclick="copyToClipboard('{{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}')">
+            <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
+        </button>
+
+    </div>
+    @endif
+    @else
+    <span class="text-green-600 font-bold">PAID</span>
+    @endif
+</div> -->
+        <!-- Signatdiure Section -->
         <div class="flex justify-between items-center">
             <div class="text-sm">
                 <p class="text-gray-600">If you have any questions about this invoice, please contact:</p>

@@ -243,9 +243,11 @@ Route::middleware(['auth'])->group(function () {
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
     Route::post('/whatsapp/send1', [WhatsappController::class, 'sendMessage1'])->name('whatsapp.send1');
+    Route::post('/whatsapp/sendpdf', [WhatsappController::class, 'sendMessagepdf'])->name('whatsapp.sendpdf');
+
     Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);
     Route::get('/invoice/send/{invoiceNumber}', [InvoiceController::class, 'sendInvoice']);
-    
+
 
     // open api
     Route::get('/open-ai', [OpenAiController::class, 'index'])->name('open-ai.index');

@@ -16,19 +16,13 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node @v3
       with:
-        node-version: '20'  # Use the Node.js version required by your project
+        node-version: '23'  # Use the Node.js version required by your project
 
     - name: Install dependencies
       run: npm install
       
     - name: Build assets
       run: npm run build
-
-    - name: Install Composer
-      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-
-    - name: Run Migration Fresh
-      run: php artisan migrate --force
 
     - name: Deploy to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4

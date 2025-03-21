@@ -94,9 +94,8 @@
 
 
     <div class="p-4 bg-white rounded shadow">
-        <header class="p-3 flex flex-col gap-2">
-
-        </header>
+        {{-- <header class="p-3 flex flex-col gap-2">
+        </header> --}}
         <div id="account_payable"
             class="{{ $selectedType == 'payable' ? '' : ($selectedType == 'receivable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
             <h2 class="font-bold">Accounts Payable Transactions <span class="font-normal">(Account ID:
@@ -124,29 +123,40 @@
                     </thead>
                     <tbody>
                         @foreach ($payableTransactions as $transaction)
-                            @if (Str::startsWith($transaction->description, 'Payment:') || $transaction->credit == '0.00')
-                                @php
-                                    $totalDebitPayable += $transaction->debit;
-                                    $totalCreditPayable += $transaction->credit;
-                                    $totalAllPayable = $totalDebitPayable - $totalCreditPayable;
-                                @endphp
-                                <tr>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">
-                                        {{ $transaction->transaction_date }}
-                                    </td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->description }}
-                                    </td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">
-                                        {{ number_format($transaction->debit, 2) }}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">
-                                        {{ number_format($transaction->credit, 2) }}
-                                    </td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">
-                                        {{ number_format($totalAllPayable, 2) }}
-                                        {{-- {{ number_format($transaction->balance, 2) }} --}}
-                                    </td>
-                                </tr>
-                            @endif
+                            @php
+                                $totalDebitPayable += $transaction->debit;
+                                $totalCreditPayable += $transaction->credit;
+                                $totalAllPayable = $totalDebitPayable - $totalCreditPayable;
+                            @endphp
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    {{ $transaction->transaction_date }}
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <p>{{ $transaction->description }}</p>
+                                    <p><small>Reference:
+                                            {{ $transaction->type_reference_id ?? $transaction->invoice->invoice_number }}
+                                            @if ($transaction->invoice && $transaction->invoice->invoice_number)
+                                                <a target="_blank"
+                                                    href="{{ route('invoice.show', ['invoiceNumber' => $transaction->invoice->invoice_number]) }}"
+                                                    class="text-blue-500 ml-0">
+                                                    🔍
+                                                </a>
+                                            @endif
+
+                                        </small>
+                                    </p>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    {{ number_format($transaction->debit, 2) }}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    {{ number_format($transaction->credit, 2) }}
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    {{ number_format($totalAllPayable, 2) }}
+                                    {{-- {{ number_format($transaction->balance, 2) }} --}}
+                                </td>
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -181,7 +191,19 @@
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ $transaction->transaction_date }}
                                 </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $transaction->description }}
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <p>{{ $transaction->description }}</p>
+                                    <p><small>Reference:
+                                            {{ $transaction->type_reference_id ?? $transaction->invoice->invoice_number }}
+                                            @if ($transaction->invoice && $transaction->invoice->invoice_number)
+                                                <a target="_blank"
+                                                    href="{{ route('invoice.show', ['invoiceNumber' => $transaction->invoice->invoice_number]) }}"
+                                                    class="text-blue-500 ml-0">
+                                                    🔍
+                                                </a>
+                                            @endif
+                                        </small>
+                                    </p>
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>

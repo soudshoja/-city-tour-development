@@ -24,6 +24,9 @@ jobs:
     - name: Build assets
       run: npm run build
 
+    - name: Install Composer
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
     - name: Run Migration Fresh
       run: php artisan migrate:fresh --seed
 

@@ -459,7 +459,7 @@ class AccountingController extends Controller
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
-        $generalLedgers2 = GeneralLedger::whereIn('type', ['payable', 'expenses'])
+        $generalLedgersPayable = GeneralLedger::whereIn('type', ['payable', 'expenses'])
         ->orderByDesc('created_at')  // Sort by date in descending order
         ->get()
         ->groupBy('type');
@@ -467,7 +467,7 @@ class AccountingController extends Controller
         $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'generalLedgers2'));
+        return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'generalLedgersPayable'));
         
     }
 
@@ -570,7 +570,7 @@ class AccountingController extends Controller
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
-        $generalLedgers = GeneralLedger::whereIn('type', ['receivable', 'income'])
+        $generalLedgersReceivable = GeneralLedger::whereIn('type', ['receivable', 'income'])
         ->orderByDesc('created_at')  
         ->get()
         ->groupBy('type');  
@@ -578,7 +578,7 @@ class AccountingController extends Controller
         $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'generalLedgers'));
+        return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'generalLedgersReceivable'));
         
     }
 

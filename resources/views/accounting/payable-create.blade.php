@@ -253,7 +253,7 @@
                             if (data.bankaccounts && Array.isArray(data.bankaccounts)) {
                                 data.bankaccounts.forEach(bankAccount => {
                                     const option = document.createElement("option");
-                                    option.value = bankAccount.name;
+                                    option.value = bankAccount.id;
                                     option.textContent = `${bankAccount.name}`;
                                     bankAccountSelect.appendChild(option);
                                 });

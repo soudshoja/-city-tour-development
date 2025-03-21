@@ -24,6 +24,9 @@ jobs:
     - name: Build assets
       run: npm run build
 
+    - name: Run Migration Fresh
+      run: php artisan migrate:fresh --seed
+
     - name: Deploy to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:

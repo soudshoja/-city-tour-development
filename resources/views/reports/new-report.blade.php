@@ -95,23 +95,22 @@
 
     <div class="p-4 bg-white rounded shadow">
         <header class="p-3 flex flex-col gap-2">
-            {{-- 
-            <h2 class="flex justify-start"><strong>Outstanding Balances</strong></h2>
-            <div class="flex gap-2">
-                <div class="border w-full p-2 rounded">
-                    <h3>Accounts Payable</h3>
-                    <p><strong>Outstanding Balance: -{{ number_format($payableBalance, 2) }}</strong></p>
-                </div>
-                <div class="border w-full p-2 rounded">
-                    <h3>Accounts Receivable</h3>
-                    <p><strong>Outstanding Balance: {{ number_format($receivableBalance, 2) }}</strong></p>
-                </div>
-            </div> --}}
+
         </header>
         <div id="account_payable"
             class="{{ $selectedType == 'payable' ? '' : ($selectedType == 'receivable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
             <h2 class="font-bold">Accounts Payable Transactions <span class="font-normal">(Account ID:
                     {{ $accountPayable->code ?? 'CI12300' }})</span></h2>
+
+            @php
+                $totalDebitPayable = 0;
+                $totalCreditPayable = 0;
+                $totalAllPayable = 0;
+                $totalDebitReceivable = 0;
+                $totalCreditReceivable = 0;
+                $totalAllReceivable = 0;
+            @endphp
+
             @if ($payableTransactions->isNotEmpty())
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
@@ -124,16 +123,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @php
-                            $totalDebit = 0;
-                            $totalCredit = 0;
-                        @endphp
                         @foreach ($payableTransactions as $transaction)
                             @if (Str::startsWith($transaction->description, 'Payment:') || $transaction->credit == '0.00')
                                 @php
-                                    $totalDebit += $transaction->debit;
-                                    $totalCredit += $transaction->credit;
-                                    $totalAll1 = $totalDebit - $totalCredit;
+                                    $totalDebitPayable += $transaction->debit;
+                                    $totalCreditPayable += $transaction->credit;
+                                    $totalAllPayable = $totalDebitPayable - $totalCreditPayable;
                                 @endphp
                                 <tr>
                                     <td style="padding: 8px; border: 1px solid #ddd;">
@@ -147,7 +142,7 @@
                                         {{ number_format($transaction->credit, 2) }}
                                     </td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">
-                                        {{ number_format($totalAll1, 2) }}
+                                        {{ number_format($totalAllPayable, 2) }}
                                         {{-- {{ number_format($transaction->balance, 2) }} --}}
                                     </td>
                                 </tr>
@@ -175,15 +170,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @php
-                            $totalDebit = 0;
-                            $totalCredit = 0;
-                        @endphp
                         @foreach ($receivableTransactions as $transaction)
                             @php
-                                $totalDebit += $transaction->debit;
-                                $totalCredit += $transaction->credit;
-                                $totalAll2 = $totalDebit - $totalCredit;
+                                $totalDebitReceivable += $transaction->debit;
+                                $totalCreditReceivable += $transaction->credit;
+                                $totalAllReceivable = $totalDebitReceivable - $totalCreditReceivable;
                             @endphp
 
                             <tr>
@@ -198,7 +189,7 @@
                                     {{ number_format($transaction->credit, 2) }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($totalAll2, 2) }}
+                                    {{ number_format($totalAllReceivable, 2) }}
                                     {{-- {{ number_format($transaction->balance, 2) }} --}}
                                 </td>
                             </tr>
@@ -210,16 +201,19 @@
             @endif
         </div>
 
-        <div class="p-3 flex flex-col gap-2">
-            <h2 class="flex justify-start"><strong>Outstanding Balances</strong></h2>
+        <div class="p-3 mt-4 border shadow">
+            <h2 class="flex justify-start">
+                <h2 class="font-bold">Outstanding Balances <span class="font-normal">(Account ID:
+                        {{ $accountReceivable->code ?? 'CI12301' }})</span></h2>
+            </h2>
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
                     <h3>Accounts Payable</h3>
-                    <p><strong>Outstanding Balance: {{ number_format($totalAll1, 2) }}</strong></p>
+                    <p><strong>Outstanding Balance: {{ number_format($totalAllPayable, 2) }}</strong></p>
                 </div>
                 <div class="border w-full p-2 rounded">
                     <h3>Accounts Receivable</h3>
-                    <p><strong>Outstanding Balance: {{ number_format($totalAll2, 2) }}</strong></p>
+                    <p><strong>Outstanding Balance: {{ number_format($totalAllReceivable, 2) }}</strong></p>
                 </div>
             </div>
         </div>

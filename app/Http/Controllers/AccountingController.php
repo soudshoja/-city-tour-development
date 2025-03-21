@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\LedgerExport;
+use App\Services\EncryptionService;
+
 
 class AccountingController extends Controller
 {
@@ -438,8 +440,6 @@ class AccountingController extends Controller
         return response()->json(['invoices' => $invoices]);
     }
     
-
-
     public function createPayableDetail()
     {
         $user = auth()->user();
@@ -496,46 +496,59 @@ class AccountingController extends Controller
             'type_reference_id' => 'nullable|integer',
         ]);
 
-        // Check if user is admin (role_id = 1)
+        $encryptionService = new EncryptionService();
+        $type_reference_number = $encryptionService->generateEncryptedNumber();
+
+        $validated['type_reference_id'] = $type_reference_number;
+
+        //Account
         if (auth()->user()->role_id === 1) {
             $validated['company_id'] = 'required|integer';
         } else {
             $validated['company_id'] = $user->company->id;
         }
         $accountName = Account::find($request->account_id);
- 
-        //Account_From (company_bank)
+        $bankaccountId = Account::find($request->bank_account);
+        $bankaccountName = $bankaccountId->name;
         
+        //Account_From (company_bank)
         if (auth()->user()->role_id === 1) {
             $companyName = Company::find($request->company_id)?->name;
         } else {
             $companyName = Company::find(auth()->user()->company->id)?->name;
         }
-
         
         if ($request->has('amount')) {
             $validated['debit'] = $request->amount;
             $validated['credit'] = "0.00";
             $validated['balance'] = $request->amount;
         }
-        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $companyName;
         GeneralLedger::create($validated);
 
-        //Account_From (supplier_name)
+        //update actual_balance 
+        Account::where('id', $request->bank_account)
+        ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
+
+
+        //Account_To (supplier_name)
         if ($request->has('amount')) {
             $validated['debit'] = "0.00";
             $validated['credit'] = $request->amount;
             $validated['balance'] = "0.00";
         }
 
-        $validated['description'] = $request->description . ' (From ' . strtoupper($request->bank_account) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $accountName->name;
         GeneralLedger::create($validated);
 
+        //update actual_balance 
+        Account::where('id', $request->bank_account)
+        ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+
         return redirect()->route('payable-details.payable-create')
-        ->with('success', 'Entry added successfully!')
-        ->with('active_tab', request('active_tab'));
+        ->with('success', 'Entry added successfully!');
     }
 
     public function createReceivableDetail()
@@ -595,6 +608,11 @@ class AccountingController extends Controller
             'type_reference_id' => 'nullable|integer',
         ]);
 
+        $encryptionService = new EncryptionService();
+        $type_reference_number = $encryptionService->generateEncryptedNumber();
+
+        $validated['type_reference_id'] = $type_reference_number;
+
          // Check if user is admin (role_id = 1)
          if (auth()->user()->role_id === 1) {
              $validated['company_id'] = 'required|integer';
@@ -602,17 +620,19 @@ class AccountingController extends Controller
              $validated['company_id'] = $user->company->id;
          }
 
+         $bankaccountId = Account::find($request->bank_account);
+         $bankaccountName = $bankaccountId->name;
+
         //Account_From (client_name)
         if ($request->has('amount')) {
             $validated['debit'] = $request->amount;
             $validated['credit'] = "0.00";
             $validated['balance'] = $request->amount;
         }
-        $validated['description'] = $request->description . ' (From ' . strtoupper($request->name) . ' to ' . strtoupper($request->bank_account) . ')';
+        $validated['description'] = $request->description . ' (Received to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
         $validated['name'] = $request->name;
         GeneralLedger::create($validated);
-
-        
+       
         //Account_To (company_bank)
         if ($request->has('amount')) {
             $validated['debit'] = "0.00";
@@ -626,13 +646,12 @@ class AccountingController extends Controller
             $companyName = Company::find(auth()->user()->company->id)?->name;
         }
 
-        $validated['description'] = $request->description . ' (From ' . strtoupper($request->name) . ' to ' . strtoupper($request->bank_account) . ')';
+        $validated['description'] = $request->description . ' (Cleared & added to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
         $validated['name'] = $companyName;
         GeneralLedger::create($validated);
 
         return redirect()->route('receivable-details.receivable-create')
-        ->with('success', 'Entry added successfully!')
-        ->with('active_tab', request('active_tab'));
+        ->with('success', 'Entry added successfully!');
     }
 
 }

@@ -16,6 +16,7 @@ use App\Models\Supplier;
 use App\Models\GeneralLedger;
 use App\Models\Payment;
 use App\Models\Sequence;
+use App\Models\SupplierCompany;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 
@@ -151,7 +152,6 @@ class CoaController extends Controller
 
     private function getLiabilities()
     {
-        // Liabilities Account
         $liabilitiesId = Account::where('name', 'Liabilities')->value('id');
 
         // Initialize liabilities collection
@@ -172,7 +172,9 @@ class CoaController extends Controller
 
                         if (stripos($level3liability->name, 'payable') !== false) {
 
-                            $suppliers = Supplier::with('tasks.invoiceDetail.invoice')->where('account_id', $level4liability->id)->get();
+                            $suppliers = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->where('account_id', $level4liability->id)->get();
+                            $suppliers = $suppliers->pluck('supplier');
+
                             $invoiceIds = $suppliers->flatMap(function ($supplier) {
                                 return $supplier->tasks->flatMap(function ($task) {
                                     return optional($task->invoiceDetail)->invoice ? [$task->invoiceDetail->invoice->id] : [];

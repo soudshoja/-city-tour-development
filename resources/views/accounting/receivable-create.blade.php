@@ -31,7 +31,18 @@
                                         @foreach ($ledgers as $ledger)
                                             <tr class="border-b hover:bg-gray-100">
                                                 <td class="py-2 px-2">
-                                                    <small>{{ $ledger->transaction_date }}</small><br>{{ $ledger->description }}
+                                                    <small>{{ $ledger->transaction_date }}</small>
+                                                    <p>{{ $ledger->description }}</p>
+                                                    <p>Ref:
+                                                        {{ !empty($ledger->type_reference_id) ? $ledger->type_reference_id : $ledger->invoice->invoice_number ?? '' }}
+                                                        @if ($ledger->invoice && $ledger->invoice->invoice_number)
+                                                            <a target="_blank"
+                                                                href="{{ route('invoice.show', ['invoiceNumber' => $ledger->invoice->invoice_number]) }}"
+                                                                class="text-blue-500 ml-0">
+                                                                🔍
+                                                            </a>
+                                                        @endif
+                                                    </p>
                                                 </td>
                                                 <td class="py-2 px-2 text-red-600">
                                                     {{ number_format($ledger->debit, 2) }}

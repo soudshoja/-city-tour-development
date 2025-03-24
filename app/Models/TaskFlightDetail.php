@@ -39,6 +39,34 @@ class TaskFlightDetail extends Model
         ];
     }
 
+    public function getDurationByCalculateAttribute()
+    {
+        $durationInMinutes = $this->departure_time->diffInMinutes($this->arrival_time);
+        $hours = floor($durationInMinutes / 60);
+        $minutes = $durationInMinutes % 60;
+        return sprintf('%02d:%02d', $hours, $minutes);
+    }
+
+    public function getDeparturePlaceTimeAttribute()
+    {
+        return $this->countryFrom->name . ' (' . $this->airport_from . ') - ' . $this->departure_time->format('Y-m-d g:i A');
+    }
+
+    public function getArrivalPlaceTimeAttribute()
+    {
+        return $this->countryTo->name . ' (' . $this->airport_to . ') - ' . $this->arrival_time->format('Y-m-d g:i A');
+    }
+
+    public function getReadableDepartureTimeAttribute()
+    {
+        return $this->departure_time->format('F j, Y g:i A');
+    }
+
+    public function getReadableTimeRangeAttribute()
+    {
+        return $this->departure_time->format('g:i A') . ' - ' . $this->arrival_time->format('g:i A');
+    }
+
     public function countryFrom()
     {
         return $this->belongsTo(Country::class, 'country_id_from');

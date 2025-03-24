@@ -140,6 +140,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/supplier-task/{id}',[TaskController::class, 'supplierTask'])->name('supplier');
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
         Route::get('/get-tbo/{companyId}',[TaskController::class, 'getTboTask'])->name('get-tbo');
+        Route::get('/pdf/flight/{taskId}',[TaskController::class, 'flightPdf'])->name('pdf.flight');
     });
 
     // SUPPLIERS

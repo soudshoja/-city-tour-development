@@ -229,21 +229,22 @@ class SupplierController extends Controller
     )
     {
         
-        $data = $this->getClientCredential($scopes);
+        $responseCredential = $this->getClientCredential($scopes);
 
-        if(isset($data['error'])){
+        if(isset($responseCredential['error'])){
             return [
                 'status' => 'error',
-                'data' => $data,
-                'message' => $data['error']
+                'data' => $responseCredential,
+                'message' => $responseCredential['error']
             ];
         }
 
-        $accessToken = $data['token_type'] . ' ' . $data['access_token'];
+        $accessToken = $responseCredential['token_type'] . ' ' . $responseCredential['access_token'];
 
         $header = [
             'Authorization: ' . $accessToken,
             'Accept: application/json',
+            'Content-Type: application/json',
         ];
 
         Log::channel('magic_holidays')->info('Request', [
@@ -253,7 +254,10 @@ class SupplierController extends Controller
             'data' => $data
         ]);
 
-        switch ($method) {
+        $data = json_encode($data);
+        
+         
+         switch ($method) {
             case 'GET':
             $response = $this->getRequest($url, $header);
             break;
@@ -337,7 +341,7 @@ class SupplierController extends Controller
             'data' => $data
         ]);
 
-        $response = $this->putRequest($url, $header, $data);
+        $response = $this->magicApiRequest('PUT', $url, $header, $data, ['write:reservations-webhooks']);
         
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Response', $response);
 

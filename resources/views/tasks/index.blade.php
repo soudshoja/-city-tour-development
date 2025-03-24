@@ -17,6 +17,59 @@
             right: 1rem;
             top: -1rem;
         }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        /* Custom slider */
+        .slider {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+            background-color: #ccc;
+            /* Default background */
+            border-radius: 20px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+
+        .slider::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        /* When the checkbox is checked */
+        input:checked+.slider {
+            background-color: #ffb958;
+            /* Custom enabled color */
+        }
+
+
+        input:checked+.slider::before {
+            transform: translateX(20px);
+            background-color: #fff;
+            /* Ensure contrast */
+        }
+
+        /* Rounded slider style */
+        .slider.round {
+            border-radius: 20px;
+        }
+
+        .slider.round::before {
+            border-radius: 50%;
+        }
     </style>
     @if($queueTasks->isNotEmpty())
     <div class="flex flex-col gap-5 w-full">
@@ -300,7 +353,7 @@
                                                 </form>
                                             </div>
                                         </div>
-                                    </td>
+
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                         <label class="switch">
                                             <input type="checkbox" class="toggle-task-status" data-task-id="{{ $task->id }}" {{ $task->enabled ? 'checked' : '' }}>
@@ -313,7 +366,7 @@
                                     <td class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
                                         <p class="{{ $task->client ?? 'no-client'}}">
                                             {{ $task->client_name ?? 'Not Set' }}
-                                        </p>                           
+                                        </p>
                                         @if($task->client)
                                         <div data-tooltip="Client Linked">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="fill-green-500">
@@ -586,60 +639,6 @@
             </div>
         </div>
     </div>
-    <style>
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        /* Custom slider */
-        .slider {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-            background-color: #ccc;
-            /* Default background */
-            border-radius: 20px;
-            transition: 0.3s;
-            cursor: pointer;
-        }
-
-        .slider::before {
-            content: "";
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            left: 2px;
-            bottom: 2px;
-            background-color: white;
-            border-radius: 50%;
-            transition: 0.3s;
-        }
-
-        /* When the checkbox is checked */
-        input:checked+.slider {
-            background-color: #ffb958;
-            /* Custom enabled color */
-        }
-
-
-        input:checked+.slider::before {
-            transform: translateX(20px);
-            background-color: #fff;
-            /* Ensure contrast */
-        }
-
-        /* Rounded slider style */
-        .slider.round {
-            border-radius: 20px;
-        }
-
-        .slider.round::before {
-            border-radius: 50%;
-        }
-    </style>
 </x-app-layout>
 @vite('resources/js/tasks.js')
 

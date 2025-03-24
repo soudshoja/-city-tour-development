@@ -99,7 +99,7 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="{{ route('invoices.company.agents') }}"
+            <menuitem><a href="{{ route('invoices.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices
                 List</a></menuitem>
             <menuitem><a href="{{ route('invoices.link') }}"

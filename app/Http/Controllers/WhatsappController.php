@@ -161,7 +161,7 @@ class WhatsappController extends Controller
             return Redirect::back()->with('error', 'Failed to send message');
         }
 
-        return redirect('/company/agents/invoices')->with('success', 'Message sent successfully');
+        return redirect()->route('invoices.index')->with('success', 'Message sent successfully');
     }
 
     public function sendMessagepdf(Request $request)

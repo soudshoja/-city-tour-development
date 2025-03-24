@@ -184,7 +184,7 @@ class WhatsappController extends Controller
             "to" => $client->phone,
             "type" => "template",
             "template" => [
-                "name" => "alphia_number",
+                "name" => "alphia_payment_done",
                 "language" => ["code" => "en_US"],
                 "components" => [
                     [

@@ -1057,7 +1057,16 @@ class TaskController extends Controller
     {
         $task = Task::with('flightDetails', 'flightDetails.countryFrom', 'flightDetails.countryTo')->findOrFail($taskId);
         $flight = $task->flightDetails;
-        $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight'));
+        // $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight'));
         return view('tasks.pdf.flight', compact('task', 'flight'));
     }
+
+    public function hotelPdf($taskId)
+    {
+        $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.hotel.country')->findOrFail($taskId);
+        $hotelDetails = $task->hotelDetails;
+        // $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight'));
+        return view('tasks.pdf.hotel', compact('task','hotelDetails'));
+    }
+
 }

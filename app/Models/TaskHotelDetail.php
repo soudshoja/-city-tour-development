@@ -25,6 +25,31 @@ class TaskHotelDetail extends Model
         'supplements',
     ];
 
+    public function getReadableCheckInAttribute()
+    {
+        return date('l, F d, Y', strtotime($this->check_in));
+    }
+
+    public function getReadableCheckOutAttribute()
+    {
+        return date('l, F d, Y', strtotime($this->check_out));
+    }
+
+    public function getDateCheckInAttribute()
+    {
+        return date('M', strtotime($this->check_in));
+    }
+
+    public function getDayCheckInAttribute()
+    {
+        return date('d', strtotime($this->check_in));
+    }
+
+    public function getYearCheckInAttribute()
+    {
+        return date('Y', strtotime($this->check_in));
+    }
+
     public function task()
     {
         return $this->belongsTo(Task::class, 'task_id');

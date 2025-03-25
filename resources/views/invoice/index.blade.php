@@ -4,7 +4,7 @@
             background: rgba(255, 255, 255, 0.5);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.18);
-            /* box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); */
+            box-shadow: 0 6px 10px 0 rgba(31, 38, 135, 0.37);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             border-radius: 7px;
@@ -216,7 +216,7 @@
                                                 <div @click.away="viewVoucherModal_{{ $invoice->id }}=false"
                                                     class="bg-white rounded-md border-2 w-auto">
                                                     <div class="flex justify-between gap-4 p-4">
-                                                        <p class="font-semibold">
+                                                        <p class="text-lg font-semibold">
                                                             Voucher
                                                         </p>
                                                         <button type="button"
@@ -226,13 +226,13 @@
                                                         </button>
                                                     </div>
                                                     <hr>
-                                                    <div class="p-4 flex flex-col gap-4">
+                                                    <div class="py-6 px-10 flex flex-col gap-4">
                                                         @foreach ($invoice->invoiceDetails as $invoiceDetail)
                                                         @if (strtolower($invoiceDetail->task->type) === 'flight')
                                                         <a href="{{ route('tasks.pdf.flight', ['taskId' => $invoiceDetail->task->id]) }}"
                                                             target="_blank">
                                                             <div
-                                                                class="p-2 rounded-xl shadow min-w-80 flex flex-col border-2 border-blue-700 bg-gradient-to-r from-blue-300 to-koromiko-200">
+                                                                class="p-2 rounded-xl shadow min-w-80 flex flex-col border-2 border-blue-700 bg-gradient-to-r from-blue-300 to-koromiko-200 hover:shadow-xl">
                                                                 <div
                                                                     class="p-2 flex justify-between gap-2">
                                                                     <p> {{ $invoiceDetail->task->reference }}
@@ -288,23 +288,21 @@
                                                         <a href="{{ route('tasks.pdf.hotel', ['taskId' => $invoiceDetail->task->id]) }}"
                                                             target="_blank">
                                                             <div
-                                                                class="flex gap-2 border-2 border-gray-500 rounded-xl p-2 min-h-40">
+                                                                class="flex gap-2 border-2 border-blue-700 bg-gradient-to-r from-blue-300 to-koromiko-200 rounded-xl p-2 min-h-40 hover:shadow-xl">
                                                                 <div
-                                                                    class="rotate border-r border-gray-200">
+                                                                    class="rotate border-r border-gray-400">
                                                                    {{ $invoiceDetail->task->supplier->name }}</div>
                                                                 <div
                                                                     class="min-w-72 flex flex-col justify-between align-center">
-                                                                    <h1 class="text-center">You Have Hotel
-                                                                        Reservation</h1>
+                                                                    <h1 class="text-center">You Have Hotel Reservation</h1>
                                                                     <div
-                                                                        class="p-1 border-y text-center">
+                                                                        class="p-1 border-y border-gray-400 text-center font-bold">
                                                                         {{ $invoiceDetail->task->hotelDetails->hotel->name }}
                                                                     </div>
                                                                     <div
                                                                         class="flex justify-between gap-2 p-2">
-                                                                        <div
-                                                                            class="pe-2">
-                                                                            <div class="border border-gray-300 rounded p-2 text-center min-w-20">
+                                                                        <div class="pe-2">
+                                                                            <div class="glass-effect rounded p-2 text-center min-w-20">
                                                                                 <p>
                                                                                     {{ $invoiceDetail->task->hotelDetails->date_check_in }}
                                                                                 </p>
@@ -317,7 +315,7 @@
 
                                                                             </div>
                                                                         </div>
-                                                                        <div class="border border-gray-500"></div>
+                                                                        <div class="border border-gray-400"></div>
                                                                         <div class="flex flex-col gap-1">
                                                                             <p>{{ $invoiceDetail->task->hotelDetails->room_reference }}</p>
                                                                             <p>{{ $invoiceDetail->task->hotelDetails->room_type }}</p>
@@ -325,7 +323,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <div
-                                                                    class="border-l border-gray-200">
+                                                                    class="ps-2 border-l border-gray-400">
                                                                     <svg width="24"
                                                                         height="24"
                                                                         viewBox="0 0 24 24"

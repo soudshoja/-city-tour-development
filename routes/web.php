@@ -37,7 +37,7 @@ use App\Models\Charge;
 use Google\ApiCore\Testing\ProtobufMessageComparator;
 use App\Http\Controllers\DownloadMediaController;
 use App\Http\Controllers\WhatsAppWebhookController;
-
+use App\Http\Controllers\BankPaymentController;
 
 
 Route::middleware(['auth'])->group(function () {
@@ -354,6 +354,12 @@ Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('sea
 Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
 
 
+
+Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');
+Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->name('bank-payments.store');
+Route::get('/bank-payments/edit', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
+Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
+Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
 
 
 // PAYMENT

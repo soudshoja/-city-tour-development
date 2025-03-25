@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width: 600px, initial-scale=1.0"> <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
+    <title>Flight Voucher: {{ $task->reference }}</title>
+    <style>
+        :root {
+            --gray100: #f4f4f4;
+            --gray200: #ddd;
+            --gray300: #888;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 600px; /* Container width to match viewport */
+            background-color: white;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            background-color: var(--gray200);
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        main {
+            background-color: var(--gray100);
+            padding: 1em;
+            display: flex;
+            flex-direction: column;
+        }
+
+        section {
+            background-color: var(--gray200);
+            padding: 0;
+        }
+
+        footer {
+            background-color: var(--gray100);
+            padding: 10px;
+            text-align: center;
+        }
+
+        section > p {
+            padding: 0;
+        }
+
+        .voucher-title {
+            font-size: 1.25em;
+            font-weight: 300;
+        }
+
+        .voucher-details {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .voucher-details > .items {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .voucher-details h1 {
+            font-size: 1.2em;
+        }
+        .voucher-details h2 {
+            font-size: 1em;
+            margin-top: 0;
+        }
+
+        .voucher-details p {
+            margin: 5px 0;
+        }
+
+        .text-right {
+            padding: 1em;
+            margin: 0px;
+            text-align: right;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <img src="{{ asset('images/CityLogo.png')}}" alt="Company Logo" width="100">
+            <h1 class="voucher-title">Flight Voucher:<strong>{{ $task->reference }}</strong></h1>
+        </header>
+        <main>
+            <div class="voucher-details">
+                <h2>Passenger Information</h2>
+                <p><strong>Name:</strong> {{ $task->client->name }}</p>
+                <p><strong>Email:</strong> {{ $task->client->email }}</p>
+            </div>
+            <div class="voucher-details">
+                <h1>Flight Information</h1>
+                <h2> Kuwait Airways </h2>
+                <p><strong>Flight:</strong> Flight 123</p>
+                <p><strong>Departure: </strong> {{ $task->flightDetails->departure_place_time }}</p>
+                <p><strong>Arrival: </strong>{{ $task->flightDetails->arrival_place_time}}</p>
+                <hr>
+                <div class="items">
+                    <p>Duration </p>
+                    <p> {{ $task->duration ?? $task->flightDetails->duration_by_calculate }} </p>
+                </div>
+                <div class="items">
+                    <p>Booking Status</p>
+                    <p>Confirmed</p>
+                </div>
+                <div class="items">
+                    <p>Class</p>
+                    <p>Economy</p>
+                </div>
+                <div class="items">
+                    <p>Equipment</p>
+                    <p>AIRBUS A220-300</p>
+                </div>
+                <div class="items">
+                    <p> Flight Meal </p>
+                    <p> Food and beverages for purchase</p>
+                </div>
+            </div>
+        </main>
+        <section>
+            <p class="text-right"><strong>Total:</strong>KD {{ $task->total }}</p>
+        </section>
+        <footer class="footer">
+            <p>This voucher is valid for the specified flight only. Please present it at the check-in counter.</p>
+        </footer>
+    </div>
+</body>
+</html>

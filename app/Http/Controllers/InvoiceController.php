@@ -35,34 +35,32 @@ class InvoiceController extends Controller
     use NotificationTrait;
     use NotificationTrait;
 
-    public function index($id = null)
+    public function index()
     {
-
         $user = Auth::user();
 
+       // Gate::authorize('viewAny', Invoice::class);
 
-        if (is_null($id)) {
-            $agent = Agent::find($id);
-        } else {
-            $agent = Agent::find($user->agent->id);
-        }
+        // Get all agents under the company
+        $agents = Agent::with(['branch' => function ($query) use ($user) {
+            $query->where('company_id', $user->company_id);
+        }])->get();
 
-        if ($user->role_id == Role::ADMIN) {
-            // Admin can see all trips and tasks
-            $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role_id == Role::COMPANY) {
-            // Company can only see trips with tasks under their agents
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            }])->pluck('id');
+        $agentIds = $agents->pluck('id');
+        // Get invoices related to those agents
+        $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
 
-            $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $id)->paginate(6);
-        } elseif ($user->role_id == Role::AGENT) {
-            // Agent can see their tasks
-            $invoices = Invoice::with('agent.branch', 'client')->where('agent_id', $user->agent->id)->paginate(6);
-        }
+        // Get clients related to the agents
+        $clients = Client::whereIn('agent_id', $agentIds)->get();
 
-        return view('invoice.index', compact('invoices', 'agent'));
+        // Get tasks related to the agents
+        $tasks = Task::whereIn('agent_id', $agentIds)->get();
+        $suppliers = Supplier::all();
+        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
+        $types = Task::distinct()->pluck('type');
+        $totalInvoices = $invoices->total();
+
+        return view('invoice.index', compact('invoices', 'types', 'suppliers','branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
     }
 
     public function salelist()
@@ -709,33 +707,6 @@ class InvoiceController extends Controller
         return sprintf('INV-%s-%05d', $year, $sequence);
     }
 
-    public function companyAgentsInvoices()
-    {
-        $user = Auth::user();
-
-       // Gate::authorize('viewAny', Invoice::class);
-
-        // Get all agents under the company
-        $agents = Agent::with(['branch' => function ($query) use ($user) {
-            $query->where('company_id', $user->company_id);
-        }])->get();
-
-        $agentIds = $agents->pluck('id');
-        // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
-
-        // Get clients related to the agents
-        $clients = Client::whereIn('agent_id', $agentIds)->get();
-
-        // Get tasks related to the agents
-        $tasks = Task::whereIn('agent_id', $agentIds)->get();
-        $suppliers = Supplier::all();
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
-        $types = Task::distinct()->pluck('type');
-        $totalInvoices = $invoices->total();
-
-        return view('invoice.companyAgentsInvoices', compact('invoices', 'types', 'suppliers','branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
-    }
 
 
     public function link()
@@ -1017,7 +988,7 @@ class InvoiceController extends Controller
 
              $invoice->delete();
 
-             return redirect()->route('invoices.company.agents')->with('status', 'Invoice deleted successfully!');
+             return redirect()->route('invoices.index')->with('status', 'Invoice deleted successfully!');
 
         } catch (Exception $error) {
             logger('Failed to delete invoice: ' . $error->getMessage());

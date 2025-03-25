@@ -782,7 +782,7 @@ class MobileController extends Controller
 
              $invoice->delete();
 
-             return redirect()->route('invoices.company.agents')->with('status', 'Invoice deleted successfully!');
+             return redirect()->route('invoices.index')->with('status', 'Invoice deleted successfully!');
 
         } catch (Exception $error) {
             logger('Failed to delete invoice: ' . $error->getMessage());

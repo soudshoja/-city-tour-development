@@ -140,6 +140,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/supplier-task/{id}',[TaskController::class, 'supplierTask'])->name('supplier');
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
         Route::get('/get-tbo/{companyId}',[TaskController::class, 'getTboTask'])->name('get-tbo');
+        Route::get('/pdf/flight/{taskId}',[TaskController::class, 'flightPdf'])->name('pdf.flight');
+        Route::get('/pdf/hotel/{taskId}',[TaskController::class, 'hotelPdf'])->name('pdf.hotel');
     });
 
     // SUPPLIERS
@@ -308,11 +310,15 @@ Route::group([
     Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
     
 // INVOICE
-Route::middleware('auth')->group(function () {
-    Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('invoice.salelist');
-    Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
-    Route::get('/company/agents/invoices', [InvoiceController::class, 'companyAgentsInvoices'])->name('invoices.company.agents');
-    Route::get('/invoices/link', [InvoiceController::class, 'link'])->name('invoices.link');
+Route::group([
+    'middleware' => ['auth'],
+    'prefix' => 'invoices',
+    'as' => 'invoices.',
+], function () {
+    Route::get('/', [InvoiceController::class, 'index'])->name('index');
+    Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('salelist');
+    Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('create');
+    Route::get('/link', [InvoiceController::class, 'link'])->name('link');
 });
 
 Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');

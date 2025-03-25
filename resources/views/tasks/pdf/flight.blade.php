@@ -1,14 +1,25 @@
 <!DOCTYPE html>
 <html>
-<head lang="en">
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width: 600px, initial-scale=1.0"> <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
+    <meta name="viewport" content="width: 600px, initial-scale=1.0"> 
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
     <title>Flight Voucher: {{ $task->reference }}</title>
     <style>
         :root {
             --gray100: #f4f4f4;
             --gray200: #ddd;
             --gray300: #888;
+            --blue100: #dbeafe;
+            --blue200: #bfdbfe;
+            --blue300: #93c5fd;
+            --blue400: #60a5fa;
+            --blue500: #3b82f6;
+            --blue600: #2563eb;
+            --blue700: #1d4ed8;
+            --blue800: #1e40af;
+            --blue900: #1e3a8a;
+            --blue950: #172554;
         }
 
         body {
@@ -42,13 +53,13 @@
             flex-direction: column;
         }
 
-        section {
+        /* section {
             background-color: var(--gray200);
             padding: 0;
-        }
+        } */
 
         footer {
-            background-color: var(--gray100);
+            background-color: var(--gray200);
             padding: 10px;
             text-align: center;
         }
@@ -103,7 +114,7 @@
 <body>
     <div class="container">
         <header>
-            <img src="{{ asset('images/CityLogo.png')}}" alt="Company Logo" width="100">
+            <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers" width="100">
             <h1 class="voucher-title">Flight Voucher:<strong>{{ $task->reference }}</strong></h1>
         </header>
         <main>
@@ -141,9 +152,6 @@
                 </div>
             </div>
         </main>
-        <section>
-            <p class="text-right"><strong>Total:</strong>KD {{ $task->total }}</p>
-        </section>
         <footer class="footer">
             <p>This voucher is valid for the specified flight only. Please present it at the check-in counter.</p>
         </footer>

@@ -1116,16 +1116,53 @@ class TaskController extends Controller
     {
         $task = Task::with('flightDetails', 'flightDetails.countryFrom', 'flightDetails.countryTo')->findOrFail($taskId);
         $flight = $task->flightDetails;
-        // $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight'));
-        return view('tasks.pdf.flight', compact('task', 'flight'));
+        
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        return view('tasks.pdfView.flight-view', compact('task', 'flight', 'companyLogoSrc'));
+    }
+
+    public function flightPdfDownload($taskId)
+    {
+        $task = Task::with('flightDetails', 'flightDetails.countryFrom', 'flightDetails.countryTo')->findOrFail($taskId);
+        $flight = $task->flightDetails;
+
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+        
+        $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight', 'companyLogoSrc'));
+
+        return $pdf->download('flight.pdf');
     }
 
     public function hotelPdf($taskId)
     {
         $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country')->findOrFail($taskId);
         $hotelDetails = $task->hotelDetails;
-        // $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight'));
-        return view('tasks.pdf.hotel', compact('task','hotelDetails'));
+ 
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;      
+
+        return view('tasks.pdfView.hotel-view', compact('task','hotelDetails', 'companyLogoSrc'));
+    }
+
+
+    public function hotelPdfDownload($taskId)
+    {
+        $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country')->findOrFail($taskId);
+        $hotelDetails = $task->hotelDetails;
+
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+        
+        $pdf = Pdf::loadView('tasks.pdf.hotel', compact('task', 'hotelDetails', 'companyLogoSrc'));
+
+        return $pdf->download('hotel.pdf');
     }
 
 }

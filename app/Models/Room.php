@@ -9,6 +9,7 @@ class Room extends Model
     protected $fillable = [
         'task_hotel_details_id',
         'name',
+        'reference',
         'adult_quantity',
         'child_quantity',
     ];

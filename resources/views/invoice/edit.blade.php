@@ -160,12 +160,12 @@
 
                         <div class="pl-2">
                             @if ($company)
-                                <h3>{{ $company->name }}</h3>
-                                <p>{!! nl2br(e($company->address)) !!}</p>
-                                <p>{{ $company->email }}</p>
-                                <p>{{ $company->phone }}</p>
+                            <h3>{{ $company->name }}</h3>
+                            <p>{!! nl2br(e($company->address)) !!}</p>
+                            <p>{{ $company->email }}</p>
+                            <p>{{ $company->phone }}</p>
                             @else
-                                <p>No company assigned</p>
+                            <p>No company assigned</p>
                             @endif
                         </div>
 
@@ -174,10 +174,10 @@
                             <div
                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                        data-value="{{ $branch->id }}">
-                                        {{ $branch->name }}
-                                    </div>
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                    data-value="{{ $branch->id }}">
+                                    {{ $branch->name }}
+                                </div>
                                 @endforeach
                             </div>
 
@@ -270,19 +270,19 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                                <button id="select-agent" type="button" onclick="openAgentModal()"
-                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button id="select-agent" type="button" onclick="openAgentModal()"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                        <path
-                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                            fill="#004c9e" />
-                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                            stroke-width="1.5" stroke-linecap="round" />
-                                    </svg><span class="pl-5">Choose Agent</span>
-                                </button>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path
+                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                        fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Agent</span>
+                            </button>
                             @endcan
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
@@ -390,8 +390,7 @@
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
-                                <input type="radio" id="payment_type_full" name="payment_type" value="full"
-                                    onclick="hideModal()" hidden class="peer" checked />
+                                <input type="radio" id="payment_type_full" name="payment_type" value="full" hidden class="peer" checked />
                                 <div
                                     class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
                                     <span class="font-medium">Fully Payment</span>
@@ -431,7 +430,7 @@
                                 <select id="payment_gateway" name="payment_gateway"
                                     class="border border-gray-300 p-2 rounded w-full">
                                     @foreach ($paymentGateways as $gateway)
-                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -733,8 +732,8 @@
                                                     <select id="payment_gateway1" name="payment_gateway1"
                                                         class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}
-                                                            </option>
+                                                        <option value="{{ $gateway }}">{{ $gateway }}
+                                                        </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -807,10 +806,10 @@
                                     class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                                     <!-- Dynamic list items go here -->
                                     @foreach ($agents as $agent)
-                                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
-                                            onclick="chooseTasksAgent('{{ $agent }}')">
-                                            {{ $agent->name }}
-                                        </li>
+                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
+                                        onclick="chooseTasksAgent('{{ $agent }}')">
+                                        {{ $agent->name }}
+                                    </li>
                                     @endforeach
                                 </ul>
                                 <!-- ./List of Agents -->
@@ -2094,27 +2093,16 @@
         }
 
         async function save(type, data) {
+            console.log(data)
             const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
 
             const invoiceUrl = "{{ route('invoice.partial') }}";
+            
             const csrfToken = "{{ csrf_token() }}";
             const invoiceId = document.getElementById('invoiceId').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
-
-
-            const response1 = await fetch(invoiceUrl1, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({
-                    invoiceId,
-                    invoiceNumber,
-                }),
-            });
-
-
+            const amount = data.amount;
+            
             if (type === 'full') {
                 const clientId = document.getElementById('receiverId').value;
 
@@ -2513,16 +2501,14 @@
         function copyLink() {
             const invoiceNumber = document.getElementById('invoiceNumber').value;
             const copyFeedback = document.getElementById('copyFeedback');
-            const baseUrl = window.location.origin;
-            const invoiceLink = `${baseUrl}/invoice/${invoiceNumber}/pdf`;
             const fetchUrl =
-                "{{ route('invoice.pdf', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
                     ":invoiceNumber",
                     invoiceNumber
                 );
 
-            navigator.clipboard.writeText(invoiceLink).then(() => {
-                alert('Link copied to clipboard: ' + invoiceLink); // Use invoiceLink here
+            navigator.clipboard.writeText(fetchUrl).then(() => {
+                alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here
                 copyFeedback.classList.remove('hidden');
                 console.log(fetchUrl);
                 setTimeout(() => copyFeedback.classList.add('hidden'), 3000);

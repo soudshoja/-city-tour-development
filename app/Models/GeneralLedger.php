@@ -25,6 +25,13 @@ class GeneralLedger extends Model
         'name',
         'type',
         'type_reference_id',
+        'currency',
+        'exchange_rate',
+        'amount',
+        'cheque_no',
+        'cheque_date',
+        'bank_info',
+        'auth_no',
     ];
 
     // Define the relationship to the Invoice model

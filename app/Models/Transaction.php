@@ -13,12 +13,17 @@ class Transaction extends Model
     protected $fillable = [
     'entity_id',
     'entity_type',
+    'branch_id',
     'transaction_type',
     'amount',
     'date',
     'description',
     'invoice_id', 
     'reference_type', 
+    'reference_number',
+    'name',
+    'remarks_internal',
+    'remarks_fl',
     ];
 
 

@@ -654,4 +654,115 @@ class AccountingController extends Controller
         ->with('success', 'Entry added successfully!');
     }
 
+    public function createBankPayment()
+    {
+        $user = auth()->user();
+
+        if ($user->role_id != Role::ADMIN) {
+            if ($user->role_id != Role::COMPANY) {
+                return abort(403, 'Unauthorized action.');
+            }
+            else {
+                $companies = Company::where('user_id', $user->id)->get();
+            }
+        }
+        else {
+            $companies = Company::all();
+        }
+
+        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+
+        $generalLedgersPayable = GeneralLedger::whereIn('type', ['payable', 'expenses'])
+        ->orderByDesc('created_at')  // Sort by date in descending order
+        ->get()
+        ->groupBy('type');
+
+        $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+
+        return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'generalLedgersPayable'));
+        
+    }
+
+    public function storeBankPayment(Request $request)
+    {
+        $user = auth()->user();
+
+        if ($user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
+        
+        $validated = $request->validate([
+            'transaction_date' => 'required|date',
+            'account_id' => 'required|integer',
+            'branch_id' => 'required|integer',
+            'transaction_id' => 'nullable|integer',
+            'description' => 'required|string|max:255',
+            'debit' => 'nullable|numeric',
+            'credit' => 'nullable|numeric',
+            'balance' => 'nullable|numeric',
+            'invoice_id' => 'nullable|integer',
+            'voucher_number' => 'nullable|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'type' => 'required|string|max:255',
+            'invoice_detail_id' => 'nullable|integer',
+            'type_reference_id' => 'nullable|integer',
+        ]);
+
+        $encryptionService = new EncryptionService();
+        $type_reference_number = $encryptionService->generateEncryptedNumber();
+
+        $validated['type_reference_id'] = $type_reference_number;
+
+        //Account
+        if (auth()->user()->role_id === 1) {
+            $validated['company_id'] = 'required|integer';
+        } else {
+            $validated['company_id'] = $user->company->id;
+        }
+        $accountName = Account::find($request->account_id);
+        $bankaccountId = Account::find($request->bank_account);
+        $bankaccountName = $bankaccountId->name;
+        
+        //Account_From (company_bank)
+        if (auth()->user()->role_id === 1) {
+            $companyName = Company::find($request->company_id)?->name;
+        } else {
+            $companyName = Company::find(auth()->user()->company->id)?->name;
+        }
+        
+        if ($request->has('amount')) {
+            $validated['debit'] = $request->amount;
+            $validated['credit'] = "0.00";
+            $validated['balance'] = $request->amount;
+        }
+        $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['name'] = $companyName;
+        GeneralLedger::create($validated);
+
+        //update actual_balance 
+        Account::where('id', $request->bank_account)
+        ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
+
+
+        //Account_To (supplier_name)
+        if ($request->has('amount')) {
+            $validated['debit'] = "0.00";
+            $validated['credit'] = $request->amount;
+            $validated['balance'] = "0.00";
+        }
+
+        $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
+        $validated['name'] = $accountName->name;
+        GeneralLedger::create($validated);
+
+        //update actual_balance 
+        Account::where('id', $request->bank_account)
+        ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+
+        return redirect()->route('bank-payment.create')
+        ->with('success', 'Entry added successfully!');
+    }
+
 }

@@ -142,22 +142,23 @@
                 <h2>Booking Details</h2>
                 <p><strong>Check-in:</strong> {{ $hotelDetails->readable_check_in }}</p>
                 <p><strong>Check-in:</strong> {{ $hotelDetails->readable_check_out }}</p>
-                <p><strong>Guests:</strong> 2 adults, 2 children</p>
-                <p><strong>Unit:</strong> Apartment Lido</p>
+                <p><strong>Guests:</strong> {{ $hotelDetails->room->adult_quantity }} Adults, {{ $hotelDetails->room->child_quantity }} Children</p>
             </div>
             <div>
                 <h2>BOOKING</h2>
-                <p><strong>Booking #:</strong> 0000038</p>
-                <p><strong>Booking Date:</strong> 26-07-2024</p>
-                <p><strong>Status:</strong> Confirmed</p>
+                <p><strong>Booking #:</strong> {{ $hotelDetails->room_reference }}</p>
+                <p><strong>Booking Date:</strong> {{ date('d M, Y', strtotime($hotelDetails->booking_time)) }}</p>
+                <p><strong>Status:</strong> {{ $task->status }}</p>
             </div>
         </div>
 
         <div class="booked-by">
             <div>
                 <h2>Booked By</h2>
-                <p>Adriana Lucas</p>
-                <p><a href="mailto:adriana.lucas@gmail.com">adriana.lucas@gmail.com</a></p>
+                <p> {{ $task->agent->name }}</p>
+                @if($task->agent->email)
+                    <p><a href="mailto:{{ $task->agent->email }}">{{ $task->agent->email }}</a></p>
+                @endif
             </div>
         </div>
 
@@ -171,7 +172,13 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
+               <tr>
+                    <td>1</td>
+                    <td> {{ $hotelDetails->room->name }} </td>
+                    <td>KD {{ $task->total }} </td>
+                    <td>KD {{ $task->total }} </td>
+               </tr> 
+                <!-- <tr>
                     <td>7.00</td>
                     <td>Nights in apartment Lido</td>
                     <td>£ 100.00</td>
@@ -188,15 +195,15 @@
                     <td>Airport pick-up</td>
                     <td>£ 80.00</td>
                     <td class="amount">£ 80.00</td>
-                </tr>
+                </tr> -->
             </tbody>
         </table>
 
         <div class="total-amount">
-            <p>Subtotal: £ 986.05</p>
-            <p>VAT: £ 73.95</p>
-            <p><strong>Total: £ 1060.00</strong></p>
-            <p style="font-size: 0.8em;">*VAT: 7.50%</p>
+            <p>Subtotal: KD {{ $task->total }}</p>
+            <p>VAT: KD {{ $task->tax ?? 0.00}}</p>
+            <p><strong>Total: {{ $task->total }}</strong></p>
+            <!-- <p style="font-size: 0.8em;">*VAT: 7.50%</p> -->
         </div>
 
         <div class="additional-info">

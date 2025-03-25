@@ -60,5 +60,10 @@ class TaskHotelDetail extends Model
         return $this->hasOne(Hotel::class, 'id');
     }
 
+    public function room()
+    {
+        return $this->hasOne(Room::class, 'task_hotel_details_id');
+    }
+
     use HasFactory;
 }

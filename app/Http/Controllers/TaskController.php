@@ -1063,7 +1063,7 @@ class TaskController extends Controller
 
     public function hotelPdf($taskId)
     {
-        $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.hotel.country')->findOrFail($taskId);
+        $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country')->findOrFail($taskId);
         $hotelDetails = $task->hotelDetails;
         // $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight'));
         return view('tasks.pdf.hotel', compact('task','hotelDetails'));

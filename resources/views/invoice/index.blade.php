@@ -10,8 +10,15 @@
             border-radius: 7px;
             border: 1px solid rgba(255, 255, 255, 0.18);
         }
+
+        .rotate {
+            transform: rotate(0deg);
+            writing-mode: tb-rl;
+            -o-writing-mode: tb-rl;
+            -ms-writing-mode: tb-rl;
+        }
     </style>
-    <!-- page title -->
+
     <div class="flex justify-between items-center gap-5 my-3 ">
 
 
@@ -55,12 +62,7 @@
 
 
     </div>
-    <!-- ./page title -->
 
-
-
-
-    <!-- page content -->
     <div class="tableCon">
         <div class="content-70">
             <!-- Table  -->
@@ -198,57 +200,81 @@
                                         @else
                                         <div x-data="{ viewVoucherModal_{{ $invoice->id }}: false }" class="group">
                                             <div data-tooltip="View Voucher">
-                                                <svg @click="viewVoucherModal_{{ $invoice->id }} = true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M15.3929 4.05365L14.8912 4.61112L15.3929 4.05365ZM19.3517 7.61654L18.85 8.17402L19.3517 7.61654ZM21.654 10.1541L20.9689 10.4592V10.4592L21.654 10.1541ZM3.17157 20.8284L3.7019 20.2981H3.7019L3.17157 20.8284ZM20.8284 20.8284L20.2981 20.2981L20.2981 20.2981L20.8284 20.8284ZM14 21.25H10V22.75H14V21.25ZM2.75 14V10H1.25V14H2.75ZM21.25 13.5629V14H22.75V13.5629H21.25ZM14.8912 4.61112L18.85 8.17402L19.8534 7.05907L15.8947 3.49618L14.8912 4.61112ZM22.75 13.5629C22.75 11.8745 22.7651 10.8055 22.3391 9.84897L20.9689 10.4592C21.2349 11.0565 21.25 11.742 21.25 13.5629H22.75ZM18.85 8.17402C20.2034 9.3921 20.7029 9.86199 20.9689 10.4592L22.3391 9.84897C21.9131 8.89241 21.1084 8.18853 19.8534 7.05907L18.85 8.17402ZM10.0298 2.75C11.6116 2.75 12.2085 2.76158 12.7405 2.96573L13.2779 1.5653C12.4261 1.23842 11.498 1.25 10.0298 1.25V2.75ZM15.8947 3.49618C14.8087 2.51878 14.1297 1.89214 13.2779 1.5653L12.7405 2.96573C13.2727 3.16993 13.7215 3.55836 14.8912 4.61112L15.8947 3.49618ZM10 21.25C8.09318 21.25 6.73851 21.2484 5.71085 21.1102C4.70476 20.975 4.12511 20.7213 3.7019 20.2981L2.64124 21.3588C3.38961 22.1071 4.33855 22.4392 5.51098 22.5969C6.66182 22.7516 8.13558 22.75 10 22.75V21.25ZM1.25 14C1.25 15.8644 1.24841 17.3382 1.40313 18.489C1.56076 19.6614 1.89288 20.6104 2.64124 21.3588L3.7019 20.2981C3.27869 19.8749 3.02502 19.2952 2.88976 18.2892C2.75159 17.2615 2.75 15.9068 2.75 14H1.25ZM14 22.75C15.8644 22.75 17.3382 22.7516 18.489 22.5969C19.6614 22.4392 20.6104 22.1071 21.3588 21.3588L20.2981 20.2981C19.8749 20.7213 19.2952 20.975 18.2892 21.1102C17.2615 21.2484 15.9068 21.25 14 21.25V22.75ZM21.25 14C21.25 15.9068 21.2484 17.2615 21.1102 18.2892C20.975 19.2952 20.7213 19.8749 20.2981 20.2981L21.3588 21.3588C22.1071 20.6104 22.4392 19.6614 22.5969 18.489C22.7516 17.3382 22.75 15.8644 22.75 14H21.25ZM2.75 10C2.75 8.09318 2.75159 6.73851 2.88976 5.71085C3.02502 4.70476 3.27869 4.12511 3.7019 3.7019L2.64124 2.64124C1.89288 3.38961 1.56076 4.33855 1.40313 5.51098C1.24841 6.66182 1.25 8.13558 1.25 10H2.75ZM10.0298 1.25C8.15538 1.25 6.67442 1.24842 5.51887 1.40307C4.34232 1.56054 3.39019 1.8923 2.64124 2.64124L3.7019 3.7019C4.12453 3.27928 4.70596 3.02525 5.71785 2.88982C6.75075 2.75158 8.11311 2.75 10.0298 2.75V1.25Z" class="fill-black group-hover:fill-blue-600" />
-                                                    <path opacity="0.5" d="M13 2.5V5C13 7.35702 13 8.53553 13.7322 9.26777C14.4645 10 15.643 10 18 10H22" stroke="#1C274C" stroke-width="1.5" />
+                                                <svg @click="viewVoucherModal_{{ $invoice->id }} = true"
+                                                    width="20" height="20" viewBox="0 0 24 24"
+                                                    fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        d="M15.3929 4.05365L14.8912 4.61112L15.3929 4.05365ZM19.3517 7.61654L18.85 8.17402L19.3517 7.61654ZM21.654 10.1541L20.9689 10.4592V10.4592L21.654 10.1541ZM3.17157 20.8284L3.7019 20.2981H3.7019L3.17157 20.8284ZM20.8284 20.8284L20.2981 20.2981L20.2981 20.2981L20.8284 20.8284ZM14 21.25H10V22.75H14V21.25ZM2.75 14V10H1.25V14H2.75ZM21.25 13.5629V14H22.75V13.5629H21.25ZM14.8912 4.61112L18.85 8.17402L19.8534 7.05907L15.8947 3.49618L14.8912 4.61112ZM22.75 13.5629C22.75 11.8745 22.7651 10.8055 22.3391 9.84897L20.9689 10.4592C21.2349 11.0565 21.25 11.742 21.25 13.5629H22.75ZM18.85 8.17402C20.2034 9.3921 20.7029 9.86199 20.9689 10.4592L22.3391 9.84897C21.9131 8.89241 21.1084 8.18853 19.8534 7.05907L18.85 8.17402ZM10.0298 2.75C11.6116 2.75 12.2085 2.76158 12.7405 2.96573L13.2779 1.5653C12.4261 1.23842 11.498 1.25 10.0298 1.25V2.75ZM15.8947 3.49618C14.8087 2.51878 14.1297 1.89214 13.2779 1.5653L12.7405 2.96573C13.2727 3.16993 13.7215 3.55836 14.8912 4.61112L15.8947 3.49618ZM10 21.25C8.09318 21.25 6.73851 21.2484 5.71085 21.1102C4.70476 20.975 4.12511 20.7213 3.7019 20.2981L2.64124 21.3588C3.38961 22.1071 4.33855 22.4392 5.51098 22.5969C6.66182 22.7516 8.13558 22.75 10 22.75V21.25ZM1.25 14C1.25 15.8644 1.24841 17.3382 1.40313 18.489C1.56076 19.6614 1.89288 20.6104 2.64124 21.3588L3.7019 20.2981C3.27869 19.8749 3.02502 19.2952 2.88976 18.2892C2.75159 17.2615 2.75 15.9068 2.75 14H1.25ZM14 22.75C15.8644 22.75 17.3382 22.7516 18.489 22.5969C19.6614 22.4392 20.6104 22.1071 21.3588 21.3588L20.2981 20.2981C19.8749 20.7213 19.2952 20.975 18.2892 21.1102C17.2615 21.2484 15.9068 21.25 14 21.25V22.75ZM21.25 14C21.25 15.9068 21.2484 17.2615 21.1102 18.2892C20.975 19.2952 20.7213 19.8749 20.2981 20.2981L21.3588 21.3588C22.1071 20.6104 22.4392 19.6614 22.5969 18.489C22.7516 17.3382 22.75 15.8644 22.75 14H21.25ZM2.75 10C2.75 8.09318 2.75159 6.73851 2.88976 5.71085C3.02502 4.70476 3.27869 4.12511 3.7019 3.7019L2.64124 2.64124C1.89288 3.38961 1.56076 4.33855 1.40313 5.51098C1.24841 6.66182 1.25 8.13558 1.25 10H2.75ZM10.0298 1.25C8.15538 1.25 6.67442 1.24842 5.51887 1.40307C4.34232 1.56054 3.39019 1.8923 2.64124 2.64124L3.7019 3.7019C4.12453 3.27928 4.70596 3.02525 5.71785 2.88982C6.75075 2.75158 8.11311 2.75 10.0298 2.75V1.25Z"
+                                                        class="fill-black group-hover:fill-blue-600" />
+                                                    <path opacity="0.5"
+                                                        d="M13 2.5V5C13 7.35702 13 8.53553 13.7322 9.26777C14.4645 10 15.643 10 18 10H22"
+                                                        stroke="#1C274C" stroke-width="1.5" />
                                                 </svg>
                                             </div>
-                                            <div x-cloak x-show="viewVoucherModal_{{  $invoice->id }}" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                                                <div @click.away="viewVoucherModal_{{ $invoice->id }}=false" class="bg-white rounded-md border-2 w-auto">
+                                            <div x-cloak x-show="viewVoucherModal_{{ $invoice->id }}"
+                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                <div @click.away="viewVoucherModal_{{ $invoice->id }}=false"
+                                                    class="bg-white rounded-md border-2 w-auto">
                                                     <div class="flex justify-between gap-4 p-4">
                                                         <p class="font-semibold">
                                                             Voucher
                                                         </p>
-                                                        <button
-                                                            type="button"
+                                                        <button type="button"
                                                             @click="viewVoucherModal_{{ $invoice->id }} = false"
                                                             class="text-red-500 font-bold text-xl">
                                                             &times;
                                                         </button>
                                                     </div>
                                                     <hr>
-                                                    <div class="p-4">
-                                                        @foreach($invoice->invoiceDetails as $invoiceDetail)
-                                                        @if(strtolower($invoiceDetail->task->type) === 'flight')
-                                                        <a href="{{ route('tasks.pdf.flight', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
-                                                            <div class="p-2 rounded-xl shadow min-w-80 flex flex-col border-2 border-blue-700 bg-gradient-to-r from-blue-300 to-koromiko-200">
-                                                                <div class="p-2 flex justify-between gap-2">
-                                                                    <p> {{ $invoiceDetail->task->reference}} </p>
+                                                    <div class="p-4 flex flex-col gap-4">
+                                                        @foreach ($invoice->invoiceDetails as $invoiceDetail)
+                                                        @if (strtolower($invoiceDetail->task->type) === 'flight')
+                                                        <a href="{{ route('tasks.pdf.flight', ['taskId' => $invoiceDetail->task->id]) }}"
+                                                            target="_blank">
+                                                            <div
+                                                                class="p-2 rounded-xl shadow min-w-80 flex flex-col border-2 border-blue-700 bg-gradient-to-r from-blue-300 to-koromiko-200">
+                                                                <div
+                                                                    class="p-2 flex justify-between gap-2">
+                                                                    <p> {{ $invoiceDetail->task->reference }}
+                                                                    </p>
                                                                     <p>Flight Booking</p>
                                                                 </div>
-                                                                <div class="p-2 flex justify-between gap-2 glass-effect font-bold">
+                                                                <div
+                                                                    class="p-2 flex justify-between gap-2 glass-effect font-bold">
                                                                     <p>
-                                                                        {{ $invoiceDetail->task->flightDetails->airport_from}}
+                                                                        {{ $invoiceDetail->task->flightDetails->airport_from }}
                                                                     </p>
-                                                                    <svg width="1.5em" height="1.5em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                                        <path fill-rule="evenodd" clip-rule="evenodd" d="M6.51192 4.43057C6.82641 4.161 7.29989 4.19743 7.56946 4.51192L13.5695 11.5119C13.8102 11.7928 13.8102 12.2072 13.5695 12.4881L7.56946 19.4881C7.29989 19.8026 6.82641 19.839 6.51192 19.5695C6.19743 19.2999 6.161 18.8264 6.43057 18.5119L12.0122 12L6.43057 5.48811C6.161 5.17361 6.19743 4.70014 6.51192 4.43057ZM10.5121 4.43068C10.8266 4.16111 11.3001 4.19753 11.5697 4.51202L17.5697 11.512C17.8104 11.7929 17.8104 12.2073 17.5697 12.4882L11.5697 19.4882C11.3001 19.8027 10.8266 19.8391 10.5121 19.5696C10.1976 19.3 10.1612 18.8265 10.4308 18.512L16.0124 12.0001L10.4308 5.48821C10.1612 5.17372 10.1976 4.70024 10.5121 4.43068Z" fill="#1C274C" />
+                                                                    <svg width="1.5em"
+                                                                        height="1.5em"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        xmlns="http://www.w3.org/2000/svg">
+                                                                        <path fill-rule="evenodd"
+                                                                            clip-rule="evenodd"
+                                                                            d="M6.51192 4.43057C6.82641 4.161 7.29989 4.19743 7.56946 4.51192L13.5695 11.5119C13.8102 11.7928 13.8102 12.2072 13.5695 12.4881L7.56946 19.4881C7.29989 19.8026 6.82641 19.839 6.51192 19.5695C6.19743 19.2999 6.161 18.8264 6.43057 18.5119L12.0122 12L6.43057 5.48811C6.161 5.17361 6.19743 4.70014 6.51192 4.43057ZM10.5121 4.43068C10.8266 4.16111 11.3001 4.19753 11.5697 4.51202L17.5697 11.512C17.8104 11.7929 17.8104 12.2073 17.5697 12.4882L11.5697 19.4882C11.3001 19.8027 10.8266 19.8391 10.5121 19.5696C10.1976 19.3 10.1612 18.8265 10.4308 18.512L16.0124 12.0001L10.4308 5.48821C10.1612 5.17372 10.1976 4.70024 10.5121 4.43068Z"
+                                                                            fill="#1C274C" />
                                                                     </svg>
                                                                     <p>
-                                                                        {{ $invoiceDetail->task->flightDetails->airport_to}}
+                                                                        {{ $invoiceDetail->task->flightDetails->airport_to }}
                                                                     </p>
                                                                 </div>
                                                                 <div class="p-2">
-                                                                    <p class="flex justify-between gap-2">
+                                                                    <p
+                                                                        class="flex justify-between gap-2">
                                                                         <strong>Name</strong>
-                                                                        <span> {{ $invoiceDetail->task->client->name}} </span>
+                                                                        <span>
+                                                                            {{ $invoiceDetail->task->client->name }}
+                                                                        </span>
                                                                     </p>
-                                                                    <p class="flex justify-between gap-2">
+                                                                    <p
+                                                                        class="flex justify-between gap-2">
                                                                         <strong>Date</strong>
                                                                         <span>
                                                                             {{ $invoiceDetail->task->flightDetails->readable_departure_time }}
                                                                         </span>
                                                                     </p>
-                                                                    <p class="flex justify-between gap-2">
+                                                                    <p
+                                                                        class="flex justify-between gap-2">
                                                                         <strong>Reference </strong>
                                                                         <span>
                                                                             {{ $invoiceDetail->task->reference }}
@@ -259,6 +285,60 @@
                                                             </div>
                                                         </a>
                                                         @elseif(strtolower($invoiceDetail->task->type) === 'hotel')
+                                                        <a href="{{ route('tasks.pdf.hotel', ['taskId' => $invoiceDetail->task->id]) }}"
+                                                            target="_blank">
+                                                            <div
+                                                                class="flex gap-2 border-2 border-gray-500 rounded-xl p-2 min-h-40">
+                                                                <div
+                                                                    class="rotate border-r border-gray-200">
+                                                                   {{ $invoiceDetail->task->supplier->name }}</div>
+                                                                <div
+                                                                    class="min-w-72 flex flex-col justify-between align-center">
+                                                                    <h1 class="text-center">You Have Hotel
+                                                                        Reservation</h1>
+                                                                    <div
+                                                                        class="p-1 border-y text-center">
+                                                                        {{ $invoiceDetail->task->hotelDetails->hotel->name }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="flex justify-between gap-2 p-2">
+                                                                        <div
+                                                                            class="pe-2">
+                                                                            <div class="border border-gray-300 rounded p-2 text-center min-w-20">
+                                                                                <p>
+                                                                                    {{ $invoiceDetail->task->hotelDetails->date_check_in }}
+                                                                                </p>
+                                                                                <p class="text-2xl">
+                                                                                    {{ $invoiceDetail->task->hotelDetails->day_check_in }}
+                                                                                </p>
+                                                                                <p class="">
+                                                                                    {{ $invoiceDetail->task->hotelDetails->year_check_in }}
+                                                                                </p>
+
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="border border-gray-500"></div>
+                                                                        <div class="flex flex-col gap-1">
+                                                                            <p>{{ $invoiceDetail->task->hotelDetails->room_reference }}</p>
+                                                                            <p>{{ $invoiceDetail->task->hotelDetails->room_type }}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    class="border-l border-gray-200">
+                                                                    <svg width="24"
+                                                                        height="24"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        xmlns="http://www.w3.org/2000/svg">
+                                                                        <path fill-rule="evenodd"
+                                                                            clip-rule="evenodd"
+                                                                            d="M10.948 1.25H13.052C13.9505 1.24997 14.6997 1.24995 15.2945 1.32991C15.9223 1.41432 16.4891 1.59999 16.9445 2.05546C17.4 2.51093 17.5857 3.07773 17.6701 3.70552C17.7501 4.30031 17.75 5.04953 17.75 5.94801L17.75 7.25005C18.3266 7.25051 18.8152 7.25491 19.219 7.29599C19.6925 7.34415 20.1318 7.44886 20.5278 7.71346C20.8281 7.9141 21.0859 8.17191 21.2865 8.47218C21.5511 8.86818 21.6559 9.30755 21.704 9.78102C21.75 10.2334 21.75 10.7921 21.75 11.4617V21.25H22C22.4142 21.25 22.75 21.5858 22.75 22C22.75 22.4142 22.4142 22.75 22 22.75H2C1.58579 22.75 1.25 22.4142 1.25 22C1.25 21.5858 1.58579 21.25 2 21.25H2.25L2.25 11.4617C2.24998 10.7921 2.24997 10.2334 2.29598 9.78102C2.34415 9.30755 2.44886 8.86818 2.71346 8.47218C2.91409 8.17191 3.17191 7.9141 3.47218 7.71346C3.86818 7.44886 4.30755 7.34415 4.78102 7.29599C5.18483 7.25491 5.67343 7.25051 6.25 7.25005L6.25 5.94801C6.24997 5.04953 6.24995 4.30031 6.32991 3.70552C6.41432 3.07773 6.59999 2.51093 7.05546 2.05546C7.51093 1.59999 8.07773 1.41432 8.70552 1.32991C9.3003 1.24995 10.0495 1.24997 10.948 1.25ZM6.25 8.7501C5.66741 8.75075 5.25586 8.75542 4.93283 8.78828C4.57796 8.82438 4.41399 8.8882 4.30554 8.96067C4.16905 9.05186 4.05186 9.16905 3.96066 9.30554C3.8882 9.41399 3.82438 9.57796 3.78828 9.93283C3.75091 10.3002 3.75 10.7822 3.75 11.5V21.25H6.25V8.7501ZM7.75 21.25H11.25V19C11.25 18.5858 11.5858 18.25 12 18.25C12.4142 18.25 12.75 18.5858 12.75 19V21.25H16.25V6C16.25 5.03599 16.2484 4.38843 16.1835 3.90539C16.1214 3.44393 16.0142 3.24644 15.8839 3.11612C15.7536 2.9858 15.5561 2.87858 15.0946 2.81654C14.6116 2.7516 13.964 2.75 13 2.75H11C10.036 2.75 9.38843 2.7516 8.90539 2.81654C8.44393 2.87858 8.24643 2.9858 8.11612 3.11612C7.9858 3.24644 7.87858 3.44393 7.81654 3.90539C7.75159 4.38843 7.75 5.03599 7.75 6V21.25ZM17.75 21.25H20.25V11.5C20.25 10.7822 20.2491 10.3002 20.2117 9.93283C20.1756 9.57796 20.1118 9.41399 20.0393 9.30554C19.9481 9.16905 19.8309 9.05186 19.6945 8.96067C19.586 8.8882 19.422 8.82438 19.0672 8.78828C18.7441 8.75542 18.3326 8.75075 17.75 8.7501V21.25ZM9.25 5C9.25 4.58579 9.58579 4.25 10 4.25H14C14.4142 4.25 14.75 4.58579 14.75 5C14.75 5.41422 14.4142 5.75 14 5.75H10C9.58579 5.75 9.25 5.41422 9.25 5ZM9.25 8C9.25 7.58579 9.58579 7.25 10 7.25H14C14.4142 7.25 14.75 7.58579 14.75 8C14.75 8.41422 14.4142 8.75 14 8.75H10C9.58579 8.75 9.25 8.41422 9.25 8ZM9.25 11C9.25 10.5858 9.58579 10.25 10 10.25H14C14.4142 10.25 14.75 10.5858 14.75 11C14.75 11.4142 14.4142 11.75 14 11.75H10C9.58579 11.75 9.25 11.4142 9.25 11ZM9.25 14C9.25 13.5858 9.58579 13.25 10 13.25H14C14.4142 13.25 14.75 13.5858 14.75 14C14.75 14.4142 14.4142 14.75 14 14.75H10C9.58579 14.75 9.25 14.4142 9.25 14Z"
+                                                                            fill="#1C274C" />
+                                                                    </svg>
+                                                                </div>
+                                                            </div>
+                                                        </a>
                                                         @else
                                                         <div>
                                                             <p>Task type not supported</p>
@@ -574,8 +654,9 @@
             </div>
         </div>
     </div>
-    <!--./page content-->
+
     @include('invoice.tasksjs')
+
     <script>
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");

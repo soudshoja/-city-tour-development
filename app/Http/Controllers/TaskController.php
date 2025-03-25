@@ -19,6 +19,7 @@ use App\Models\Hotel;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\Branch;
+use App\Models\Room;
 use App\Models\TaskHotelDetail;
 use App\Services\TextFileProcessor;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -651,8 +652,23 @@ class TaskController extends Controller
         $hotel = $reservation['service']['hotel'] ?? null;
         $serviceDates = $reservation['service']['serviceDates'] ?? null;
         $prices = $reservation['service']['prices'] ?? null;
-        $cancellationPolicy = $reservation['service']['cancellationPolicy'] ?? null;
+
+        $cancellationPolicy = [];
+
+        if (isset($reservation['service']['cancellationPolicy'])) {
+            logger('Cancellation Policy: ', $reservation['service']['cancellationPolicy']);
+            foreach ($reservation['service']['cancellationPolicy']['policies'] as $policy) {
+                $cancellationPolicy[] = [
+                    'type' => $policy['type'],
+                    'charge' => $policy['charge'] !== null ? $policy['charge']['value'] : null,
+                ];
+            }
+        }
+
+        $cancellationPolicy = json_encode($cancellationPolicy);
+
         $supplierId = Supplier::where('name', 'Magic Holiday')->first()->id;
+        $passengers = $reservation['service']['passengers'] ?? null;
 
         if(!$supplierId){
             Log::channel('magic_holidays')->error('Supplier not found: Magic Holiday');
@@ -770,7 +786,7 @@ class TaskController extends Controller
 
 
             try{
-                TaskHotelDetail::create([
+                $taskHotelDetail = TaskHotelDetail::create([
                     'task_id' => $task->id,
                     'hotel_id' => $hotelDB->id,
                     'booking_time' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
@@ -798,6 +814,49 @@ class TaskController extends Controller
                 return [
                     'status' => 'error',
                     'message' => 'Error creating hotel details: ' . $e->getMessage(),
+                ];
+            }
+
+            $adultCount = 0;
+            $childCount = 0;
+
+            foreach($room['passengers'] as $passengerId){
+                $passenger = collect($passengers)->where('paxId', $passengerId)->first();
+
+                if(!$passenger){
+                    continue;
+                }
+
+                if ($passenger['type'] == 'adult') {
+                    $adultCount++;
+                } elseif ($passenger['type'] == 'child') {
+                    $childCount++;
+                } else {
+                    logger('Unknown passenger type: ' . $passenger['type']);
+                    continue;
+                }
+            }
+
+            try {
+                Room::create([
+                    'task_hotel_details_id' => $taskHotelDetail->id,
+                    'name' => $room['name'] ?? null,
+                    'reference' => (string)$room['id'] ?? null,
+                    'adult_count' => $adultCount,
+                    'child_count' => $childCount,
+                ]);
+            } catch (Exception $e) {
+                $task->delete();
+                $taskHotelDetail->delete();
+
+                Log::channel('magic_holidays')->error('Error creating room: ' . $e->getMessage(), [
+                    'reservation' => $reservation,
+                    'room' => $room,
+                ]);
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Error creating room: ' . $e->getMessage(),
                 ];
             }
 

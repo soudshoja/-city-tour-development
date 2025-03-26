@@ -18,7 +18,6 @@ return new class extends Migration {
             $table->string('reference_number', 20)->nullable()->after('name');
             $table->text('remarks_internal')->nullable()->after('reference_number');
             $table->text('remarks_fl')->nullable()->after('remarks_internal');
-            $table->timestamp('created_at')->useCurrent()->after('remarks_fl');
         });
     }
 
@@ -30,7 +29,7 @@ return new class extends Migration {
     public function down()
     {
         Schema::table('transactions', function (Blueprint $table) {
-            $table->dropColumn(['branch_id', 'name', 'reference_number', 'remarks_internal', 'remarks_fl', 'created_at']);
+            $table->dropColumn(['branch_id', 'name', 'reference_number', 'remarks_internal', 'remarks_fl']);
         });
     }
 };

@@ -56,7 +56,7 @@
 
             <div class="flex flex-col items-center ">
                 <a
-                    href="{{ route('invoice.create') }}">
+                    href="{{ route('invoices.create') }}">
 
                     <div class="relative">
                         

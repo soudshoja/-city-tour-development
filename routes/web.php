@@ -359,8 +359,8 @@ Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('se
 
 Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');
 Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->name('bank-payments.store');
-Route::get('/bank-payments/edit', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
 Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
+Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])->name('bank-payments.update');
 Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
 
 

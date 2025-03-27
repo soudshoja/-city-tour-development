@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -67,40 +68,42 @@ class BranchController extends Controller
     // Store a new branch
     public function store(Request $request)
     {
-        $this->authorize('create', Branch::class);
-        // Validate the incoming request
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:branches,email', // Corrected table name
-            'phone' => 'nullable|string|max:15', // Optional phone field
-            'address' => 'required|string|max:255', // Added address validation
+            'email' => 'required|email|unique:branches,email',
+            'dial_code' => 'nullable|string|max:30',
+            'phone' => 'nullable|string|max:15',
+            'address' => 'nullable|string|max:255',
+            'user_id' => 'required|integer|exists:users,id',
+            'company_id' => 'required|integer|exists:companies,id',
         ]);
 
-
-        // Create a new branch record
         try {
-
-            //Create user before create branch
-            $user = User::create([
-                'name' => $request->get('name'),
-                'email' => $request->get('email'),
-                'password' => Hash::make('password'), // Default password
-                'role_id' => Role::BRANCH, // Default role
+            $branch = Branch::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''),
+                'address' => $validatedData['address'] ?? null,
+                'company_id' => $validatedData['company_id'],
+                'user_id' => $validatedData['user_id'],
             ]);
 
-            Branch::create([
-                'user_id' => $user->id,
-                'name' => $request->get('name'),
-                'email' => $request->get('email'),
-                'phone' => $request->get('phone'),
-                'address' => $request->get('address'),
-                'company_id' => auth()->user()->company()->first()->id,
-            ]);
-
-            // Redirect to the branches list with a success message
-            return redirect()->route('branches.index')->with('success', 'Branch added successfully!');
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Branch created successfully',
+                'data' => $branch,
+            ], 201);
         } catch (Exception $e) {
-            return redirect()->back()->withInput()->with('error', 'An error occurred: ' . $e->getMessage());
+
+            logger('Branch creation failed with error: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Branch creation failed',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
+
+
 }

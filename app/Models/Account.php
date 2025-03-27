@@ -10,13 +10,20 @@ class Account extends Model
     use HasFactory;
 
     protected $fillable = [
+       'serial_number',
+       'account_type',
        'name', 
        'level', 
        'actual_balance',
        'budget_balance',    
-       'variance',  
+       'variance', 
        'parent_id', 
+       'root_id',
        'company_id', 
+       'branch_id',
+       'agent_id',
+       'client_id',
+       'supplier_id',
        'reference_id', 
        'code',
     ];

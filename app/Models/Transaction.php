@@ -31,5 +31,10 @@ class Transaction extends Model
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
     
 }

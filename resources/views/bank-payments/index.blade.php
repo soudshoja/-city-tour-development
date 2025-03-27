@@ -5,7 +5,7 @@
 
 
         <div class="flex items-center gap-5 ">
-            <h2 class="text-3xl font-bold">Bank Payment Voucher List</h2>
+            <h2 class="text-3xl font-bold">Payment Voucher List</h2>
             <!-- total Invoice number -->
             <div data-tooltip="number of records"
                 class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
@@ -28,7 +28,7 @@
 
             <!-- add new records -->
             <a href="{{ route('bank-payments.create') }}">
-                <div data-tooltip="Create Bank Payment Voucher"
+                <div data-tooltip="Create Payment Voucher"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
 
 

@@ -56,7 +56,7 @@
     <div class="panel h-full overflow-hidden border-0 p-0">
         <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
             <div class="flex items-center justify-between text-white">
-                <p class="text-2xl">Bank Payment Voucher</p>
+                <p class="text-2xl">Payment Voucher</p>
                 <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
@@ -99,7 +99,7 @@
                         </div>
                         <div class="w-full lg:w-1/2 lg:max-w-fit mt-20">
                             <div class="flex items-center gap-x-4">
-                                <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Bank Payment
+                                <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment
                                     Ref <span class="text-red-500">*</span></label>
                                 <input required readonly id="bankpaymentref" value="BPV{{ now()->timestamp }}"
                                     type="text" name="bankpaymentref"
@@ -392,9 +392,9 @@
                         
                         <datalist id="accountList_${index}">
                             ${accpayreceives.map(accpayreceive => 
-                                `<option value="${accpayreceive.id}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                            [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                        </option>`
+                                `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
+                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                    </option>`
                             ).join('')}
                         </datalist>
 

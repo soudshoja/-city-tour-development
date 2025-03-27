@@ -102,7 +102,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Routes for creating new records
     Route::get('/companies', [CompanyController::class, 'index'])->name('companies.list');
-    Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
+    // Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
     Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
     Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');

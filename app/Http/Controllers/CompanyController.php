@@ -305,49 +305,82 @@ class CompanyController extends Controller
 
     public function createBranch(Request $request)
     {
+        $user = Auth::user();
 
-
-        $company = Company::where('user_id', Auth::id())->first();
-
-        if (!$company) {
-            dd('No company found for the logged-in user.');
+        if ($user->company == null) {
+            return back()->withErrors(['error' => 'No company found for the logged-in user.']);
         }
 
-        // Retrieve the company ID
-        $companyID = $company->id;
+        $company = $user->company;
 
+        $userController = new UserController();
 
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'dial_code' => 'nullable|string|max:30',
-            'phone' => 'nullable|string|max:15',
-            'address' => 'nullable|string|max:255',
-        ]);
-        // Add the company_id to the validated data
-        $validatedData = array_merge($validatedData, [
-            'company_id' => $companyID,
-        ]);
+        $userCreationResponse = $userController->store($request);
 
-        // Create the branch user
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => bcrypt(Str::random(10)), // Generate a random password
-            'role_id' => Role::BRANCH,
-            'remember_token' => Str::random(10),
-            'first_login' => 1,
-        ]);
+        if ($userCreationResponse->getStatusCode() !== 201) {
+            return back()->withErrors(['error' => 'Failed to create user.']);
+        }
 
-        // Create the branch record
-        Branch::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'phone' => ($validatedData['dial_code'] ?? '') . ($validatedData['phone'] ?? ''), // Combine dial code with phone
-            'address' => $validatedData['address'] ?? null,
-            'company_id' => $validatedData['company_id'], // Use the company ID from the form
+        $userCreationResponseData = json_decode($userCreationResponse->getContent());
+        
+        $userBranchId = $userCreationResponseData->data->id;
+        $user = User::find($userBranchId);
+
+        $request->merge([
             'user_id' => $user->id,
+            'company_id' => $company->id,
         ]);
+
+        $branchController = new BranchController();
+
+        $branchCreationResponse = $branchController->store($request);
+
+        if($branchCreationResponse->getStatusCode() !== 201) {
+            $user->delete();
+            return back()->withErrors(['error' => 'Failed to create branch.']);
+        }
+
+        $branchCreationResponseData = json_decode($branchCreationResponse->getContent());
+
+        $branchId = $branchCreationResponseData->data->id;
+        $branch = Branch::find($branchId);
+
+        $liability = Account::where('name', 'Liabilities')->first();
+        $accountReceivable = Account::where('name', 'like', '%Receivable%')->first();
+
+        if(!$liability->id) {
+            $user->delete();
+            $branch->delete();
+            return back()->withErrors(['error' => 'Liability account not found.']);
+        }
+
+        if(!$accountReceivable->id) {
+            $user->delete();
+            $branch->delete();
+            return back()->withErrors(['error' => 'Receivable account not found.']);
+        }
+
+        try {
+            $account = Account::create([
+                'name' => $request->name,
+                'level' => 3,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'company_id' => $company->id,
+                'root_id' => $liability->id,
+                'parent_id' => $accountReceivable->id,
+                'branch_id' => $branch->id,
+                'reference_id' => $userBranchId,
+                'code' => 'BRN-' . rand(1000000, 9999999),
+            ]);
+        } catch (Exception $e) {
+            $user->delete();
+            $branch->delete();
+
+            logger('Failed to create account for branch: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to create account.']);
+        }
 
         return redirect()->back()->with('success', 'Branch created successfully.');
     }

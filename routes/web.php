@@ -319,7 +319,7 @@ Route::group([
 ], function () {
     Route::get('/', [InvoiceController::class, 'index'])->name('index');
     Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('salelist');
-    Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('create');
+    Route::get('/create', [InvoiceController::class, 'create'])->name('create');
     Route::get('/link', [InvoiceController::class, 'link'])->name('link');
 });
 

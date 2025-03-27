@@ -56,11 +56,11 @@
     <div class="panel h-full overflow-hidden border-0 p-0">
         <div class="min-h-[80px] bg-gradient-to-r from-[#160f6b] to-[#4361ee] p-6 flex items-center text-white">
             <div class="flex items-center justify-between text-white">
-                <p class="text-2xl">Bank Payment Voucher</p>
+                <p class="text-2xl">Payment Voucher</p>
                 <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
-        <form method="POST" action="{{ route('bank-payments.edit', $bankPayment->id) }}">
+        <form method="POST" action="{{ route('bank-payments.update', $bankPayment->id) }}">
             @csrf
             @method('PUT')
 
@@ -71,45 +71,31 @@
                         <div class="mb-6 w-full lg:w-1/2">
                             <div class="mt-6 space-y-1 text-gray-800 dark:text-gray-400">
                                 <x-application-logo class="custom-logo-size" />
-                                {{-- @if ($companies)
-                                    <div class="pl-2">
-                                        <h3>{{ $companies->name }}</h3>
-                                        <p>{!! nl2br(e($companies->address)) !!}</p>
-                                        <p>{{ $companies->email }}</p>
-                                        <p>{{ $companies->phone }}</p>
-                                    </div>
-                                @endif --}}
-                                {{-- <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}"> --}}
-                                CITY TRAVELERS<br>
-                                AL AHMADI - KUWAIT<br>
-                                ALSALEM ALSEBAH ST.<br>
-                                ABU HALI - BLOCK 3<br>
-
-                                citytravelers@agency.co<br>
-
-                                +965 22210017
+                                <h3>CITY TRAVELERS</h3>
+                                <p>AL AHMADI - KUWAIT</p>
+                                <p>ALSALEM ALSEBAH ST.</p>
+                                <p>ABU HALI - BLOCK 3</p>
+                                <p>citytravelers@agency.co</p>
+                                <p>+965 22210017</p>
                             </div>
                         </div>
 
                         <div class="w-full lg:w-1/2 lg:max-w-fit mt-20">
-                            {{-- <div class="flex items-center gap-x-4">
-                                <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
-                                    Bank Payment Ref <span class="text-red-500">*</span>
-                                </label>
+                            <div class="flex items-center gap-x-4">
+                                <label for="bankpaymentref" class="mb-0 flex-1">Payment Ref <span
+                                        class="text-red-500">*</span></label>
                                 <input required readonly id="bankpaymentref"
-                                    value="{{ old('bankpaymentref', $transaction->bankpaymentref) }}" type="text"
-                                    name="bankpaymentref"
-                                    class="form-input w-2/3 lg:w-[250px] bg-gray-200 text-gray-700" />
-                            </div> --}}
+                                    value="{{ old('bankpaymentref', $bankPayment->reference_number) }}" type="text"
+                                    name="bankpaymentref" class="form-input w-2/3 bg-gray-200 text-gray-700" />
+                            </div>
 
                             <div class="flex items-center gap-x-4 mt-4">
-                                <label for="branch_id" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Branch <span
+                                <label for="branch_id" class="mb-0 flex-1">Branch <span
                                         class="text-red-500">*</span></label>
-                                <select required id="branch_id" name="branch_id" class="form-input w-2/3 lg:w-[250px]">
-                                    <option value="">Select Branch</option>
+                                <select required id="branch_id" name="branch_id" class="form-input w-2/3">
                                     @foreach ($branches as $branch)
                                         <option value="{{ $branch->id }}"
-                                            {{ $bankPayment->branch_id == $branch->id ? 'selected' : '' }}>
+                                            {{ old('branch_id', $bankPayment->branch_id) == $branch->id ? 'selected' : '' }}>
                                             {{ $branch->name }}
                                         </option>
                                     @endforeach
@@ -117,11 +103,12 @@
                             </div>
 
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="docdate" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Doc Date <span
+                                <label for="docdate" class="mb-0 flex-1">Doc Date <span
                                         class="text-red-500">*</span></label>
-                                <input required id="docdate" type="date" name="docdate"
-                                    class="form-input w-2/3 lg:w-[250px]"
-                                    value="{{ old('docdate', $bankPayment->date) }}" />
+
+                                <input required id="docdate" type="date" name="docdate" class="form-input w-2/3"
+                                    value="{{ old('docdate', isset($bankPayment->date) ? \Carbon\Carbon::parse($bankPayment->date)->format('Y-m-d') : '') }}" />
+
                             </div>
                         </div>
                     </div>
@@ -133,15 +120,16 @@
                             <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
                                 <div class="text-lg font-semibold">Bank Payment To</div>
                                 <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="pay_to" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Pay To <span
+                                    <label for="pay_to" class="mb-0 w-1/3">Pay To <span
                                             class="text-red-500">*</span></label>
-                                    <input required id="pay_to" type="text" name="pay_to"
-                                        class="form-input flex-1" list="supplierList" placeholder="Enter Payee Name"
-                                        value="{{ old('pay_to', $bankPayment->description) }}" />
+                                    <input required id="pay_to" type="text" name="pay_to" list="supplierList"
+                                        placeholder="Enter Payee Name" value="{{ old('pay_to', $bankPayment->name) }}"
+                                        class="form-input flex-1" />
                                     <datalist id="supplierList">
                                         @foreach ($suppliers as $supplier)
                                             <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
-                                                {{ $supplier->name }} </option>
+                                                {{ $supplier->name }}
+                                            </option>
                                         @endforeach
                                     </datalist>
                                 </div>
@@ -149,16 +137,36 @@
 
                             <div class="w-full lg:w-1/2">
                                 <div class="text-lg font-semibold">Remarks</div>
+
                                 <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="remarks_create" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks <span
-                                            class="text-red-500">*</span></label>
+                                    <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
+                                        <span class="text-red-500">*</span></label>
                                     <input required id="remarks_create" type="text" name="remarks_create"
                                         class="form-input flex-1" placeholder="Enter Remarks"
                                         value="{{ old('remarks_create', $bankPayment->description) }}" />
                                 </div>
+
+                                <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal
+                                        Remarks</label>
+                                    <input id="internal_remarks" type="text" name="internal_remarks"
+                                        class="form-input flex-1" placeholder="Enter Internal Remarks"
+                                        value="{{ old('internal_remarks', $bankPayment->remarks_internal) }}" />
+                                </div>
+
+                                <div class="mt-4 flex items-center gap-x-4">
+                                    <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
+                                        FL</label>
+                                    <input id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1"
+                                        placeholder="Enter Remarks FL"
+                                        value="{{ old('remarks_fl', $bankPayment->remarks_fl) }}" />
+                                </div>
                             </div>
+
+
                         </div>
                     </div>
+
 
                     <div class="overflow-x-auto">
                         <table class="table table-bordered bank-payment-table mt-10 w-full">
@@ -177,51 +185,118 @@
                                     <th>Auth No</th>
                                     <th>Branch</th>
                                     <th>Balance</th>
-                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody id="paymentTable">
-                                @foreach ($generalLedgers as $transaction)
+                                @foreach ($generalLedgers as $index => $transaction)
                                     <tr>
-                                        <td><input type="text" name="transactions.account_id"
-                                                value="{{ $transaction->account_id }}" /></td>
-                                        <td><input type="text" name="transactions.description"
-                                                value="{{ $transaction->description }}" /></td>
-                                        <td><input type="text" name="transactions.currency" value="KWD" /></td>
-                                        <td><input type="text" name="transactions.exchange_rate" value="1.00" />
+                                        <td>
+                                            {{ $transaction->account ? '[' . $transaction->account->id . '] ' . $transaction->account->name : 'N/A' }}
+                                            <input type="hidden" name="items[{{ $index }}][account_id]"
+                                                value="{{ old("items.$index.account_id", $transaction->account_id) }}" />
                                         </td>
-                                        <td><input type="text" name="transactions.amount"
-                                                value="{{ $transaction->amount }}" /></td>
-                                        <td><input type="text" name="transactions.debit"
-                                                value="{{ $transaction->debit }}" /></td>
-                                        <td><input type="text" name="transactions.credit"
-                                                value="{{ $transaction->credit }}" /></td>
-                                        <td><input type="text" name="transactions.cheque_no"
-                                                value="{{ $transaction->cheque_no }}" /></td>
-                                        <td><input type="text" name="transactions.cheque_date"
-                                                value="{{ $transaction->cheque_date }}" /></td>
-                                        <td><input type="text" name="transactions.bank_name"
-                                                value="{{ $transaction->bank_name }}" /></td>
-                                        <td><input type="text" name="transactions.auth_no"
-                                                value="{{ $transaction->auth_no }}" /></td>
-                                        <td><input type="text" name="transactions.branch_name"
-                                                value="{{ $transaction->branch_name }}" /></td>
-                                        <td><input type="text" name="transactions.balance"
-                                                value="{{ $transaction->balance }}" /></td>
+                                        <td><input type="text" name="items[{{ $index }}][description]"
+                                                value="{{ old("items.$index.description", $transaction->description) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][currency]"
+                                                value="KWD" /></td>
+                                        <td><input type="text" name="items[{{ $index }}][exchange_rate]"
+                                                value="1.00" /></td>
+                                        <td><input type="text" name="items[{{ $index }}][amount]"
+                                                value="{{ old("items.$index.amount", $transaction->amount) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][debit]"
+                                                value="{{ old("items.$index.debit", $transaction->debit) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][credit]"
+                                                value="{{ old("items.$index.credit", $transaction->credit) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][cheque_no]"
+                                                value="{{ old("items.$index.cheque_no", $transaction->cheque_no) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][cheque_date]"
+                                                value="{{ old("items.$index.cheque_date", $transaction->cheque_date) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][bank_name]"
+                                                value="{{ old("items.$index.bank_name", $transaction->bank_name) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][auth_no]"
+                                                value="{{ old("items.$index.auth_no", $transaction->auth_no) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][branch_name]"
+                                                value="{{ old("items.$index.branch_name", $transaction->branch_name) }}" />
+                                        </td>
+                                        <td><input type="text" name="items[{{ $index }}][balance]"
+                                                value="{{ old("items.$index.balance", $transaction->balance) }}" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
 
+
+                    <div class="panel overflow-hidden mt-10">
+                        <div class="relative">
+                            <div class="grid grid-cols-2 gap-6 md:grid-cols-3">
+                                <div class="mt-2">
+                                    <div class="text-primary">Total Debit</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="total_debit">0.00</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <div class="text-primary">Total Credit</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="total_credit">0.00</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <div class="text-primary">Difference</div>
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        <span id="total_difference">0.00</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="absolute -bottom-12 right-12 h-36 w-36"> <!-- Increased parent div size -->
+                                <svg id="correct" width="36" height="36" viewBox="0 0 24 24"
+                                    fill="none" xmlns="http://www.w3.org/2000/svg"
+                                    class="h-full w-full text-success opacity-20">
+                                    <circle opacity="0.5" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+
+                                <svg id="false" width="36" height="36" viewBox="0 0 24 24"
+                                    fill="none" xmlns="http://www.w3.org/2000/svg"
+                                    class="h-full w-full text-danger opacity-20">
+                                    <circle opacity="0.5" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="1.5" />
+                                    <path d="M12 7V13" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" />
+                                    <circle cx="12" cy="16" r="1" fill="currentColor" />
+                                </svg>
+                            </div>
+
+
+                        </div>
+                    </div>
+
+
                     <div class="mt-6 flex justify-between px-4">
-                        <button type="submit" class="btn btn-success px-6 py-2 w-40 rounded-lg">Update</button>
+                        <button type="submit" @click="validateForm()"
+                            class="btn btn-success px-6 py-2 w-40 rounded-lg">Update</button>
                         <a href="{{ route('bank-payments.index') }}"
                             class="btn btn-danger px-6 py-2 w-40 rounded-lg">Cancel</a>
                     </div>
                 </div>
             </div>
         </form>
+
 
     </div>
     <script>
@@ -241,7 +316,7 @@
                 let id = crypto.randomUUID();
                 let item = {
                     id,
-                    ac_code: "",
+                    account_id: "",
                     remarks: "",
                     currency: "KWD",
                     exchange_rate: 1.0,
@@ -334,6 +409,24 @@
                 }
             }
 
+            function setDisplayValue(input) {
+                const displayName = input.getAttribute('data-display');
+                if (displayName) {
+                    input.value = displayName;
+                }
+            }
+
+            function setStoredValue(input) {
+                const datalist = document.getElementById(input.getAttribute('list'));
+                const selectedOption = Array.from(datalist.options).find(option => option.text === input.value);
+
+                if (selectedOption) {
+                    input.value = selectedOption.value;
+                    input.setAttribute('data-display', selectedOption.text);
+                } else {
+                    input.value = "";
+                }
+            }
 
             function renderTable() {
                 paymentTable.innerHTML = "";
@@ -344,21 +437,21 @@
                     <td>
                         <input required list="accountList_${index}" 
                             class="form-control form-control-sm" 
-                            name="items[${index}][ac_code]" 
-                            value="${item.ac_code}" 
-                            oninput="updateField(${index}, 'ac_code', this.value); selectedAccName(this, ${index});">
+                            name="items[${index}][account_id]" 
+                            value="${item.account_id}" 
+                            oninput="updateField(${index}, 'account_id', this.value); selectedAccName(this, ${index});">
                         
                         <datalist id="accountList_${index}">
                             ${accpayreceives.map(accpayreceive => 
-                                `<option value="${accpayreceive.id}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                                                    </option>`
+                                `<option value="${accpayreceive.id}" ${item.account_id == accpayreceive.id ? 'selected' : ''}>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </option>`
                             ).join('')}
                         </datalist>
 
                     <small id="selectedAccName_${index}" class="text-muted">
                         ${(() => {
-                            let acc = accpayreceives.find(acc => acc.id == item.ac_code);
+                            let acc = accpayreceives.find(acc => acc.id == item.account_id);
                             return acc ? `[${acc.id}] ${acc.name}` : '';
                         })()}
                     </small>

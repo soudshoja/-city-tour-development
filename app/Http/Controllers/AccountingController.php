@@ -14,7 +14,7 @@ use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Account;
 use App\Models\Supplier;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Sequence;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +32,7 @@ class AccountingController extends Controller
     
         // Retrieve the company associated with the user, including the necessary relationships
         $company = Company::where('user_id', $user->id)->with([
-            'branches.agents.clients.invoices.invoiceDetails.generalLedgers' => function ($query) {
+            'branches.agents.clients.invoices.invoiceDetails.JournalEntrys' => function ($query) {
                 // You can apply any specific queries here, if needed
             }
         ])->first();
@@ -92,9 +92,9 @@ class AccountingController extends Controller
                 }
 
 
-        // Prepare data for generalLedgers (to replace transactions)
-        $generalLedgers = [];
-        $groupedGeneralLedgers = [];
+        // Prepare data for JournalEntrys (to replace transactions)
+        $JournalEntrys = [];
+        $groupedJournalEntrys = [];
 
         foreach ($company->branches as $branch) {
             foreach ($branch->agents as $agent) {
@@ -104,20 +104,20 @@ class AccountingController extends Controller
                             // Retrieve the task associated with this invoiceDetail
                             $task = $invoiceDetail->task; // assuming each invoiceDetail has a related task
                             $taskName = $task ? $task->reference .'-'. $task->additional_info .'-'. $task->venue .'-'. $task->type : null;
-                            foreach ($invoiceDetail->generalLedgers as $generalLedger) {
-                                $groupedGeneralLedgers[$taskName][]  = [
-                                    'generalLedger_id' => $generalLedger->id,
-                                    'generalLedger_name' => $generalLedger->name,
+                            foreach ($invoiceDetail->JournalEntrys as $JournalEntry) {
+                                $groupedJournalEntrys[$taskName][]  = [
+                                    'JournalEntry_id' => $JournalEntry->id,
+                                    'JournalEntry_name' => $JournalEntry->name,
                                     'client_name' => $client->name,
                                     'supplier_name' => $task->supplier->name,
-                                    'credit' => $generalLedger->credit,
-                                    'debit' => $generalLedger->debit,
-                                    'balance' => $generalLedger->balance,
-                                    'transaction_date' => $generalLedger->created_at,
-                                    'description' => $generalLedger->description,
+                                    'credit' => $JournalEntry->credit,
+                                    'debit' => $JournalEntry->debit,
+                                    'balance' => $JournalEntry->balance,
+                                    'transaction_date' => $JournalEntry->created_at,
+                                    'description' => $JournalEntry->description,
                                     'branch_name' => $branch->name,
                                     'agent_name' => $agent->name,
-                                    'type' => $generalLedger->type,
+                                    'type' => $JournalEntry->type,
                                     'invoice_number' => $invoice->invoice_number,
                                     'status' => $invoice->status,
                                     'task_name' => $taskName,
@@ -133,11 +133,11 @@ class AccountingController extends Controller
     
         // Pass the data to the view
         return view('accounting.index', [
-            'groupedGeneralLedgers' => $groupedGeneralLedgers,
+            'groupedJournalEntrys' => $groupedJournalEntrys,
             'company' => $company,
             'accounts' => $accountsArray,
             'branches' => $company->branches, 
-            'generalLedgers' => $generalLedgers, // To display in the table
+            'JournalEntrys' => $JournalEntrys, // To display in the table
         ]);
     }
     
@@ -162,7 +162,7 @@ class AccountingController extends Controller
         }
     
         // Build the query with conditional filters
-        $ledgersQuery = GeneralLedger::query()
+        $ledgersQuery = JournalEntry::query()
             ->when($fromDate, fn($query) => $query->where('transaction_date', '>=', $fromDate))
             ->when($toDate, fn($query) => $query->where('transaction_date', '<=', $toDate))
             ->when($parsedAccount['account_id'], fn($query) => $query->where('account_id', $parsedAccount['account_id']))
@@ -192,7 +192,7 @@ class AccountingController extends Controller
             'description' => $ledger->description,
             'agent_name' => $ledger->invoice->agent->name,
             'branch_name' => $ledger->branch->name,
-            'generalLedger_name' => $ledger->name ?? null,
+            'JournalEntry_name' => $ledger->name ?? null,
             'debit' => $ledger->debit,
             'credit' => $ledger->credit,
         ]);
@@ -209,7 +209,7 @@ class AccountingController extends Controller
             $totalCredit = $request->input('total_credit');
 
             // Export the data along with totals to Excel
-            return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'GeneralLedgerReport.xlsx');
+            return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'JournalEntryReport.xlsx');
 
     }
 
@@ -227,7 +227,7 @@ class AccountingController extends Controller
 
             $accounts = Account::all(['id', 'name']);
 
-            $generalLedgers = GeneralLedger::where('company_id', $company->id)->get();
+            $JournalEntrys = JournalEntry::where('company_id', $company->id)->get();
         // Process summary for branches, agents, clients, and invoices
         $companySummary = $company->branches->map(function ($branch) {
             $branch->total_credits = 0;
@@ -270,7 +270,7 @@ class AccountingController extends Controller
             return $branch;
         });
     
-        return view('accounting.summary', compact('company', 'accounts', 'generalLedgers', 'companySummary'));
+        return view('accounting.summary', compact('company', 'accounts', 'JournalEntrys', 'companySummary'));
     }
     
     
@@ -419,11 +419,11 @@ class AccountingController extends Controller
     }
 
 
-    public function getInvoicesByGeneralLedger(Request $request)
+    public function getInvoicesByJournalEntry(Request $request)
     {
    
         // Retrieve general ledger entries for the given company
-        $ledgerEntries = GeneralLedger::where('company_id', $request->company_id)
+        $ledgerEntries = JournalEntry::where('company_id', $request->company_id)
                                       ->pluck('invoice_id'); // Get associated invoice IDs
     
         if ($ledgerEntries->isEmpty()) {
@@ -459,7 +459,7 @@ class AccountingController extends Controller
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
-        $generalLedgersPayable = GeneralLedger::whereIn('type', ['payable', 'expenses'])
+        $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
         ->orderByDesc('created_at')  // Sort by date in descending order
         ->get()
         ->groupBy('type');
@@ -467,7 +467,7 @@ class AccountingController extends Controller
         $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'generalLedgersPayable'));
+        return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
         
     }
 
@@ -525,7 +525,7 @@ class AccountingController extends Controller
         }
         $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $companyName;
-        GeneralLedger::create($validated);
+        JournalEntry::create($validated);
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
@@ -541,7 +541,7 @@ class AccountingController extends Controller
 
         $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $accountName->name;
-        GeneralLedger::create($validated);
+        JournalEntry::create($validated);
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
@@ -570,7 +570,7 @@ class AccountingController extends Controller
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
-        $generalLedgersReceivable = GeneralLedger::whereIn('type', ['receivable', 'income'])
+        $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
         ->orderByDesc('created_at')  
         ->get()
         ->groupBy('type');  
@@ -578,7 +578,7 @@ class AccountingController extends Controller
         $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'generalLedgersReceivable'));
+        return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysReceivable'));
         
     }
 
@@ -631,7 +631,7 @@ class AccountingController extends Controller
         }
         $validated['description'] = $request->description . ' (Received to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
         $validated['name'] = $request->name;
-        GeneralLedger::create($validated);
+        JournalEntry::create($validated);
        
         //Account_To (company_bank)
         if ($request->has('amount')) {
@@ -648,7 +648,7 @@ class AccountingController extends Controller
 
         $validated['description'] = $request->description . ' (Cleared & added to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
         $validated['name'] = $companyName;
-        GeneralLedger::create($validated);
+        JournalEntry::create($validated);
 
         return redirect()->route('receivable-details.receivable-create')
         ->with('success', 'Entry added successfully!');
@@ -673,7 +673,7 @@ class AccountingController extends Controller
         $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
-        $generalLedgersPayable = GeneralLedger::whereIn('type', ['payable', 'expenses'])
+        $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
         ->orderByDesc('created_at')  // Sort by date in descending order
         ->get()
         ->groupBy('type');
@@ -681,7 +681,7 @@ class AccountingController extends Controller
         $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
-        return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'generalLedgersPayable'));
+        return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
         
     }
 
@@ -739,7 +739,7 @@ class AccountingController extends Controller
         }
         $validated['description'] = $request->description . ' (Sent payment from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $companyName;
-        GeneralLedger::create($validated);
+        JournalEntry::create($validated);
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
@@ -755,7 +755,7 @@ class AccountingController extends Controller
 
         $validated['description'] = $request->description . ' (Deducted from ' . strtoupper($bankaccountName) . ' to ' . strtoupper($accountName->name) . ')';
         $validated['name'] = $accountName->name;
-        GeneralLedger::create($validated);
+        JournalEntry::create($validated);
 
         //update actual_balance 
         Account::where('id', $request->bank_account)

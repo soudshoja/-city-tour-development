@@ -14,8 +14,8 @@
 
                     <!-- Collapsible Filters -->
                     <div class="max-h-[500px] overflow-y-auto border border-gray-300 rounded-md p-2">
-                        @if ($generalLedgersPayable->isNotEmpty())
-                            @foreach ($generalLedgersPayable as $type => $ledgers)
+                        @if ($JournalEntrysPayable->isNotEmpty())
+                            @foreach ($JournalEntrysPayable as $type => $ledgers)
                                 <h2 class="text-lg font-bold mt-4 text-red-600">{{ ucfirst($type) }}</h2>
                                 <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
                                     <thead>

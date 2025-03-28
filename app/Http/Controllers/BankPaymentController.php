@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Branch;
@@ -154,7 +154,7 @@ class BankPaymentController extends Controller
 
             // Store General Ledger Entries
             foreach ($request->items as $item) {
-                GeneralLedger::create([
+                JournalEntry::create([
                     'transaction_date' => $request->docdate,
                     'account_id' => $item['ac_code'],
                     'company_id' => $request->company_id,
@@ -191,7 +191,7 @@ class BankPaymentController extends Controller
     {
         // $user = auth()->user();
         $bankPayment = Transaction::findOrFail($id);
-        $generalLedgers = GeneralLedger::where('transaction_id', $bankPayment->id)->get();
+        $JournalEntrys = JournalEntry::where('transaction_id', $bankPayment->id)->get();
         
         $user = auth()->user();
         if($user->role_id == Role::ADMIN){
@@ -231,16 +231,16 @@ class BankPaymentController extends Controller
         }
 
 
-        // return view('bank-payments.edit', compact('bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'generalLedgers'));
+        // return view('bank-payments.edit', compact('bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
 
         // $bankPayment = Transaction::findOrFail($id);
         // $accounts = Account::all();
         // $branches = Branch::all();
         // $accpayreceives = $this->getPayableReceivableAccounts();
         // $suppliers = $this->getSupplierAccounts();
-        // $generalLedgers = GeneralLedger::where('transaction_id', $bankPayment->id)->get();
+        // $JournalEntrys = JournalEntry::where('transaction_id', $bankPayment->id)->get();
 
-        return view('bank-payments.edit', compact('bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'generalLedgers'));
+        return view('bank-payments.edit', compact('bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
     
 
     }
@@ -290,8 +290,8 @@ class BankPaymentController extends Controller
             ]);
 
             // Remove old general ledger entries and insert new ones
-            GeneralLedger::where('transaction_id', $id)->delete();
-            $this->storeGeneralLedgerEntries($request->items, $request, $id);
+            JournalEntry::where('transaction_id', $id)->delete();
+            $this->storeJournalEntryEntries($request->items, $request, $id);
 
             DB::commit();
             return redirect()->back()->with('success', 'Bank Payment Updated Successfully.');
@@ -305,7 +305,7 @@ class BankPaymentController extends Controller
     /**
      * Store general ledger entries for a transaction.
      */
-    private function storeGeneralLedgerEntries($items, $request, $transactionId)
+    private function storeJournalEntryEntries($items, $request, $transactionId)
     {
         foreach ($items as $item) {
             
@@ -313,7 +313,7 @@ class BankPaymentController extends Controller
             $account = Account::find($item['account_id']);
             $companyId = $account ? $account->company_id : null; // Ensure company_id exists
 
-            GeneralLedger::create([
+            JournalEntry::create([
                 'transaction_date' => $request->docdate,
                 'account_id' => $item['account_id'],
                 'company_id' => $companyId,

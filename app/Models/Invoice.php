@@ -60,9 +60,9 @@ class Invoice extends Model
     }
 
 
-    public function generalLedgers()
+    public function JournalEntrys()
     {
-        return $this->hasMany(GeneralLedger::class);
+        return $this->hasMany(JournalEntry::class);
     }
 
     public function transactions()

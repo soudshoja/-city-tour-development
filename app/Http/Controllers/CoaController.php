@@ -13,7 +13,7 @@ use App\Models\Client;
 use App\Models\Account;
 use App\Models\CoaCategory;
 use App\Models\Supplier;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Sequence;
 use App\Models\SupplierCompany;
@@ -185,13 +185,13 @@ class CoaController extends Controller
                                 });
                             })->unique();
 
-                            $generalLedgers = GeneralLedger::whereIn('invoice_id', $invoiceIds)->where('account_id', $level3liability->id)->get();
+                            $JournalEntrys = JournalEntry::whereIn('invoice_id', $invoiceIds)->where('account_id', $level3liability->id)->get();
                             $credit = 0.00;
                             $debit = 0.00;
                             $actualBalance = 0.00;
-                            foreach ($generalLedgers as $generalLedger) {
-                                $credit += $generalLedger->credit;
-                                $debit += $generalLedger->debit;
+                            foreach ($JournalEntrys as $JournalEntry) {
+                                $credit += $JournalEntry->credit;
+                                $debit += $JournalEntry->debit;
                             }
 
                             $level4liability->actual_balance = $credit - $debit;
@@ -578,7 +578,7 @@ class CoaController extends Controller
         $level4Id = $request->query('level4_id');
 
         // Fetch transactions where account_id matches the selected Level 4 ID
-        $transactions = GeneralLedger::where('account_id', $level4Id)->get();
+        $transactions = JournalEntry::where('account_id', $level4Id)->get();
 
         return response()->json($transactions);
     }
@@ -646,7 +646,7 @@ class CoaController extends Controller
 
             $newBalance = $this->calculateNewBalance($account->actual_balance, $entry['debit'], $entry['credit']);
             Log::info('newBalance', ['newBalance' => $newBalance]);
-            GeneralLedger::create([
+            JournalEntry::create([
                 'transaction_id' => $payment->id,
                 'company_id' => $company->id,
                 'account_id' => $entry['account_id'],
@@ -690,7 +690,7 @@ class CoaController extends Controller
         $level4Id = $request->input('level4Id');
 
         // Retrieve all transactions ordered by date descending
-        $transactions = GeneralLedger::orderBy('created_at', 'desc')->get();
+        $transactions = JournalEntry::orderBy('created_at', 'desc')->get();
 
         // Group transactions by date (e.g., "2025-01-11")
         $transactionsByDate = $transactions->groupBy(function ($transaction) {

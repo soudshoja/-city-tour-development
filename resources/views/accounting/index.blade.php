@@ -67,17 +67,17 @@
                             </tr>
                         </thead>
                         <tbody id="payablesBody" class="text-gray-800">
-                            @foreach ($groupedGeneralLedgers as $taskName => $ledgers)
-                            @foreach ($ledgers as $generalLedger)
+                            @foreach ($groupedJournalEntrys as $taskName => $ledgers)
+                            @foreach ($ledgers as $JournalEntry)
                             <tr class="general-ledger-row hover:bg-gray-50 text-xs">
-                                <td class="px-4 py-3 border-b">{{ $generalLedger['invoice_number'] }}</td>
-                                <td class="px-4 py-3 border-b">{{ $generalLedger['transaction_date'] }}</td>
-                                <td class="px-4 py-3 border-b">{{ $generalLedger['description'] }}</td>
-                                <td class="px-4 py-3 border-b">{{ $generalLedger['branch_name'] }}</td>
-                                <td class="px-4 py-3 border-b">{{ $generalLedger['agent_name'] }}</td>
-                                <td class="px-4 py-3 border-b">{{ $generalLedger['generalLedger_name'] }}</td>
-                                <td class="px-4 py-3 border-b text-right">{{ $generalLedger['debit'] }}</td>
-                                <td class="px-4 py-3 border-b text-right">{{ $generalLedger['credit'] }}</td>
+                                <td class="px-4 py-3 border-b">{{ $JournalEntry['invoice_number'] }}</td>
+                                <td class="px-4 py-3 border-b">{{ $JournalEntry['transaction_date'] }}</td>
+                                <td class="px-4 py-3 border-b">{{ $JournalEntry['description'] }}</td>
+                                <td class="px-4 py-3 border-b">{{ $JournalEntry['branch_name'] }}</td>
+                                <td class="px-4 py-3 border-b">{{ $JournalEntry['agent_name'] }}</td>
+                                <td class="px-4 py-3 border-b">{{ $JournalEntry['JournalEntry_name'] }}</td>
+                                <td class="px-4 py-3 border-b text-right">{{ $JournalEntry['debit'] }}</td>
+                                <td class="px-4 py-3 border-b text-right">{{ $JournalEntry['credit'] }}</td>
                             </tr>
                             @endforeach
                             @endforeach

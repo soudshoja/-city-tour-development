@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\Branch;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,20 +45,20 @@ class ReportController extends Controller
             ->groupBy('agents.name')
             ->get();
 
-        $agentLedgers = DB::table('general_ledgers')
-            ->join('transactions', 'general_ledgers.transaction_id', '=', 'transactions.id')
+        $agentLedgers = DB::table('journal_entries')
+            ->join('transactions', 'journal_entries.transaction_id', '=', 'transactions.id')
             ->join('clients', 'clients.id', '=', 'transactions.client_id')
             ->join('agents', 'agents.id', '=', 'clients.agent_id')
             ->select(
                 'agents.name as agent_name',
-                'general_ledgers.transaction_date',
-                'general_ledgers.description',
-                'general_ledgers.debit',
-                'general_ledgers.credit',
-                'general_ledgers.balance'
+                'journal_entries.transaction_date',
+                'journal_entries.description',
+                'journal_entries.debit',
+                'journal_entries.credit',
+                'journal_entries.balance'
             )
             ->orderBy('agent_name')
-            ->orderBy('general_ledgers.transaction_date')
+            ->orderBy('journal_entries.transaction_date')
             ->get();
 
         return view('reports.agent', compact('agents', 'agentLedgers'));
@@ -82,19 +82,19 @@ class ReportController extends Controller
             ->groupBy('clients.name')
             ->get();
 
-        $clientLedgers = DB::table('general_ledgers')
-            ->join('transactions', 'general_ledgers.transaction_id', '=', 'transactions.id')
+        $clientLedgers = DB::table('journal_entries')
+            ->join('transactions', 'journal_entries.transaction_id', '=', 'transactions.id')
             ->join('clients', 'clients.id', '=', 'transactions.client_id')
             ->select(
                 'clients.name as client_name',
-                'general_ledgers.transaction_date',
-                'general_ledgers.description',
-                'general_ledgers.debit',
-                'general_ledgers.credit',
-                'general_ledgers.balance'
+                'journal_entries.transaction_date',
+                'journal_entries.description',
+                'journal_entries.debit',
+                'journal_entries.credit',
+                'journal_entries.balance'
             )
             ->orderBy('client_name')
-            ->orderBy('general_ledgers.transaction_date')
+            ->orderBy('journal_entries.transaction_date')
             ->get();
 
         return view('reports.client', compact('clients', 'clientLedgers'));
@@ -239,9 +239,9 @@ class ReportController extends Controller
 
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
 
-        // $payableQuery = GeneralLedger::where('account_id', 50)
+        // $payableQuery = JournalEntry::where('account_id', 50)
         //     ->where('company_id', $companyId);
-        $payableQuery = GeneralLedger::where('company_id', $companyId)
+        $payableQuery = JournalEntry::where('company_id', $companyId)
         ->where(function ($query) {
             $query->where('account_id', 50)
                   ->orWhereIn('account_id', function ($subquery) {
@@ -253,9 +253,9 @@ class ReportController extends Controller
         ->orderBy('created_at', 'desc'); 
     
     
-        // $receivableQuery = GeneralLedger::where('account_id', 45)
+        // $receivableQuery = JournalEntry::where('account_id', 45)
         //     ->where('company_id', $companyId);
-        $receivableQuery = GeneralLedger::where('company_id', $companyId)
+        $receivableQuery = JournalEntry::where('company_id', $companyId)
         ->where(function ($query) {
             $query->where('account_id', 45)
                   ->orWhereIn('account_id', function ($subquery) {

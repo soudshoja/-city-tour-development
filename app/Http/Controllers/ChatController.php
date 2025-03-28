@@ -21,7 +21,7 @@ use App\Models\Account;
 use App\Models\Agent;
 use App\Models\Branch;
 use App\Models\Client;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Task;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
@@ -705,7 +705,7 @@ class ChatController extends Controller
 
 
                         // Try to create payable account
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
                             'branch_id' => $branchId,
@@ -727,7 +727,7 @@ class ChatController extends Controller
 
 
                         // Try to create receivable account
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
                             'branch_id' => $branchId,
@@ -751,7 +751,7 @@ class ChatController extends Controller
 
                         $markup = $task['invprice'] - $selectedtask->total;
                         // Try to create income
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $companyId,
                             'branch_id' => $branchId,

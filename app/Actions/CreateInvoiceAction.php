@@ -4,7 +4,7 @@ namespace App\Actions;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\Client;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\Supplier;
@@ -114,7 +114,7 @@ class CreateInvoiceAction
                 'reference_type' => 'Invoice',
             ]);
 
-            $this->createGeneralLedgers($transaction, $companyId, $branchId, $payableAccount, $receivableAccount, $incomeAccount, $selectedTask, $task, $invoice, $invoiceDetail, $supplier, $client, $agent);
+            $this->createJournalEntrys($transaction, $companyId, $branchId, $payableAccount, $receivableAccount, $incomeAccount, $selectedTask, $task, $invoice, $invoiceDetail, $supplier, $client, $agent);
 
             $selectedTask->status = 'Assigned';
             $selectedTask->save();
@@ -124,9 +124,9 @@ class CreateInvoiceAction
         }
     }
 
-    private function createGeneralLedgers($transaction, $companyId, $branchId, $payableAccount, $receivableAccount, $incomeAccount, $selectedTask, $task, $invoice, $invoiceDetail, $supplier, $client, $agent)
+    private function createJournalEntrys($transaction, $companyId, $branchId, $payableAccount, $receivableAccount, $incomeAccount, $selectedTask, $task, $invoice, $invoiceDetail, $supplier, $client, $agent)
     {
         // Logic for creating general ledger entries (Payable, Receivable, Income)
-        // Add the code for GeneralLedger creation as in your original function
+        // Add the code for JournalEntry creation as in your original function
     }
 }

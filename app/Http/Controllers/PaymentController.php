@@ -7,7 +7,7 @@ use App\Services\WhatsAppNotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Sequence;
 use App\Models\Supplier;
@@ -320,7 +320,7 @@ class PaymentController extends Controller
                     $payment->save();
 
                     // Try to create receivable account
-                    GeneralLedger::create([
+                    JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'branch_id' => $invoice->agent->branch->id,
                         'company_id' => $invoice->agent->branch->company->id,
@@ -339,7 +339,7 @@ class PaymentController extends Controller
 
                     // Update Cash/Bank Account
                     if ($bankAccount) {
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
@@ -362,7 +362,7 @@ class PaymentController extends Controller
                     }
 
                     if ($tapAccount) {
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $payment->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,

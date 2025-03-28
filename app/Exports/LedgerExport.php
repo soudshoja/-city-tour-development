@@ -33,7 +33,7 @@ class LedgerExport implements FromArray
                 $ledger['description'],
                 $ledger['branch_name'],
                 $ledger['agent_name'],
-                $ledger['generalLedger_name'],
+                $ledger['JournalEntry_name'],
                 $ledger['debit'],
                 $ledger['credit'],
             ];

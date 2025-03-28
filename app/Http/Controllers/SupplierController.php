@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Account;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -76,11 +76,11 @@ class SupplierController extends Controller
         $supplier = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->findOrFail($suppliersId)->supplier;
         $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
         $invoicesId = array_values(array_filter($invoicesId));
-        $generalLedger = generalLedger::select('id', 'debit', 'credit', 'created_at')
+        $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at')
             ->whereIn('invoice_id', $invoicesId)
             ->get();
 
-        return view('suppliers.show', compact('supplier', 'generalLedger'));
+        return view('suppliers.show', compact('supplier', 'JournalEntry'));
     }
 
     public function create()
@@ -131,8 +131,8 @@ class SupplierController extends Controller
         $supplier = Supplier::with('tasks.invoiceDetail.invoice')->findOrFail($supplierId);
         $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
         $invoicesId = array_values(array_filter($invoicesId));
-        $totalDebit = GeneralLedger::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('debit');
-        $totalCredit = GeneralLedger::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('credit');
+        $totalDebit = JournalEntry::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('debit');
+        $totalCredit = JournalEntry::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('credit');
         
         return response()->json([
             'totalDebit' => $totalDebit,

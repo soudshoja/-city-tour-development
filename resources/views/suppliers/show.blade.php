@@ -56,7 +56,7 @@
                 </button>
             </div>
             <div id="debit-credit" class="bg-white mt-2 rounded-t-md shadow-md w-full max-h-96 overflow-y-auto">
-                @foreach($generalLedger as $item)
+                @foreach($JournalEntry as $item)
                 <div id="{{ $item->id }}" class="general-ledger-rows grid grid-cols-2 gap-2 p-2 text-center">
                     <div>{{ $item->debit }}</div>
                     <div>{{ $item->credit }}</div>

@@ -188,7 +188,7 @@
                                 </tr>
                             </thead>
                             <tbody id="paymentTable">
-                                @foreach ($generalLedgers as $index => $transaction)
+                                @foreach ($JournalEntrys as $index => $transaction)
                                     <tr>
                                         <td>
                                             {{ $transaction->account ? '[' . $transaction->account->id . '] ' . $transaction->account->name : 'N/A' }}

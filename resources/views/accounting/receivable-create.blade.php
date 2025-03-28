@@ -14,8 +14,8 @@
 
                     <!-- Collapsible Filters -->
                     <div class="max-h-[500px] overflow-y-auto border border-gray-300 rounded-md p-2">
-                        @if ($generalLedgersReceivable->isNotEmpty())
-                            @foreach ($generalLedgersReceivable as $type => $ledgers)
+                        @if ($JournalEntrysReceivable->isNotEmpty())
+                            @foreach ($JournalEntrysReceivable as $type => $ledgers)
                                 <h2 class="text-lg font-bold mt-4  text-green-600">{{ ucfirst($type) }}</h2>
                                 <table class="w-full text-sm border-collapse border border-gray-300 mt-2">
                                     <thead>
@@ -323,7 +323,7 @@
                         });
 
                     // Fetch invoices
-                    fetch(`{{ route('get.invoices.by.generalledger') }}?company_id=${companyId}`)
+                    fetch(`{{ route('get.invoices.by.JournalEntry') }}?company_id=${companyId}`)
                         .then(response => response.json())
                         .then(data => {
                             invoiceSelect.innerHTML = '<option value="">Select Invoice</option>';

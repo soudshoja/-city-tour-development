@@ -79,7 +79,7 @@
         }
 
         // Construct the URL with query parameters
-        const url = new URL(window.location.origin + "/invoice/create");
+        const url = new URL(window.location.origin + "/invoices/create");
         url.searchParams.append("task_ids", JSON.stringify(taskIds));
 
         // Redirect to the constructed URL

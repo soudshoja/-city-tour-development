@@ -241,7 +241,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/get-suppliers-by-company', [AccountingController::class, 'getSupplierByCompany'])->name('get.suppliers.by.company');
     Route::get('/get-agents-clients-by-company', [AccountingController::class, 'getAgentClientByCompany'])->name('get.agents.clients.by.company');
     Route::get('/get-bank-accounts-by-company', [AccountingController::class, 'getBankAccountByCompany'])->name('get.bank.accounts.by.company');
-    Route::get('/get-invoices-by-generalledger', [AccountingController::class, 'getInvoicesByGeneralLedger'])->name('get.invoices.by.generalledger');
+    Route::get('/get-invoices-by-JournalEntry', [AccountingController::class, 'getInvoicesByJournalEntry'])->name('get.invoices.by.JournalEntry');
 
     //BRANCHES
     Route::group([

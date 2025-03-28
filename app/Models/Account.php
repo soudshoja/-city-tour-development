@@ -67,21 +67,21 @@ class Account extends Model
     //     return $this->hasOne(Agent::class, 'account_id');
     // }
 
-    public function generalLedgers()
+    public function JournalEntrys()
     {
-        return $this->hasMany(GeneralLedger::class, 'account_id');
+        return $this->hasMany(JournalEntry::class, 'account_id');
     }
 
     public function calculateSupplierBalances()
     {
         // Fetch all general ledger entries for this account
-        $generalLedgers = $this->generalLedgers;
+        $JournalEntrys = $this->JournalEntrys;
 
         $supplierBalances = [];
 
-        foreach ($generalLedgers as $generalLedger) {
+        foreach ($JournalEntrys as $JournalEntry) {
             // Traverse through the relationships to reach suppliers
-            $invoice = $generalLedger->invoice;
+            $invoice = $JournalEntry->invoice;
             if (!$invoice) {
                 continue;
             }
@@ -105,8 +105,8 @@ class Account extends Model
                 }
 
                 // Sum up credit and debit for this supplier
-                $supplierBalances[$supplier->id]['credit'] += $generalLedger->credit;
-                $supplierBalances[$supplier->id]['debit'] += $generalLedger->debit;
+                $supplierBalances[$supplier->id]['credit'] += $JournalEntry->credit;
+                $supplierBalances[$supplier->id]['debit'] += $JournalEntry->debit;
                 $supplierBalances[$supplier->id]['actual_balance'] = $supplierBalances[$supplier->id]['credit'] - $supplierBalances[$supplier->id]['debit'];
             }
         }

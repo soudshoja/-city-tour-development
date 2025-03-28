@@ -14,7 +14,7 @@ use App\Models\InvoicePartial;
 use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Company;
-use App\Models\GeneralLedger;
+use App\Models\JournalEntry;
 use App\Models\InvoiceDetail;
 use App\Models\Task;
 use Exception;
@@ -594,7 +594,7 @@ class InvoiceController extends Controller
 
 
                         // Try to create payable account
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'branch_id' => $branchId,
                             'company_id' => $companyId,
@@ -612,7 +612,7 @@ class InvoiceController extends Controller
 
 
                         // Try to create receivable account
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'branch_id' => $branchId,
                             'company_id' => $companyId,
@@ -632,7 +632,7 @@ class InvoiceController extends Controller
 
                         $markup = $task['invprice'] - $selectedtask->total;
                         // Try to create income
-                        GeneralLedger::create([
+                        JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'branch_id' => $branchId,
                             'company_id' => $companyId,
@@ -871,7 +871,7 @@ class InvoiceController extends Controller
             // 🔹 Delete related records before updating
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
             Transaction::where('invoice_id', $invoice->id)->delete();
-            GeneralLedger::where('invoice_id', $invoice->id)->delete();
+            JournalEntry::where('invoice_id', $invoice->id)->delete();
     
             // 🔹 Update invoice
             $invoice->update([
@@ -920,7 +920,7 @@ class InvoiceController extends Controller
                     ]);
     
                     // Update General Ledger Entries
-                    GeneralLedger::create([
+                    JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'branch_id' => $branchId,
                         'company_id' => $companyId,
@@ -936,7 +936,7 @@ class InvoiceController extends Controller
                         'type' => 'payable',
                     ]);
     
-                    GeneralLedger::create([
+                    JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'branch_id' => $branchId,
                         'company_id' => $companyId,
@@ -983,7 +983,7 @@ class InvoiceController extends Controller
         try {
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
             InvoicePartial::where('invoice_id', $invoice->id)->delete();
-            GeneralLedger::where('invoice_id', $invoice->id)->delete();
+            JournalEntry::where('invoice_id', $invoice->id)->delete();
             Transaction::where('invoice_id', $invoice->id)->delete();
 
              $invoice->delete();

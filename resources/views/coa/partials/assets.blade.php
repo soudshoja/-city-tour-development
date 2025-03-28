@@ -80,29 +80,59 @@
 
 
                   <!-- Add form for each category -->
-                  <div x-data="{
-                            newCategoryName: '',
-                            newCategoryCode: '',
-                            newCategoryLevel: {{ $asset->level }},
-                            newCategoryParentId: {{ $asset->id }},
-                            variance: 0,
-                            budgetBalance: 0,
-                            actualBalance: 0,
-                        }"
-                      x-show="showAddCategoryForm" class="flex items-center ml-2">
-                      <input type="text" x-model="newCategoryName" placeholder="Enter Category Name" class="border p-2 rounded">
-                      <input type="text" x-model="newCategoryCode" placeholder="Enter Code" class="border p-2 rounded ml-2">
-                      <input type="hidden" x-model="newCategoryLevel">
-                      <input type="hidden" x-model="newCategoryParentId">
-                      <input type="hidden" x-model="variance">
-                      <input type="hidden" x-model="budgetBalance">
-                      <input type="hidden" x-model="actualBalance">
-                      <button @click="addCategory" type="submit" class="ml-2 text-green-600 hover:text-green-800">
-                          Add
-                      </button>
-                      <button @click="showAddCategoryForm = false" class="ml-2 text-red-600 hover:text-red-800">
-                          Close
-                      </button>
+                  <div x-show="showAddCategoryForm"
+                      @keydown.escape.window="showAddCategoryForm = false; resetForm()"
+                      class="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-sm">
+                      <div class="bg-white rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 relative">
+                          <button @click="showAddCategoryForm = false; resetForm()" class="absolute top-3 right-3 text-2xl text-gray-700 hover:text-black">
+                              &times;
+                          </button>
+                          <h2 class="text-xl font-semibold mb-3">New Assets</h2>
+                          <hr class="mb-3">
+                          <form @submit.prevent="addCategory">
+                              <div class="mb-4">
+                                  <label class="block text-sm font-medium mb-1">Category Name<span class="text-red-500"> *</span></label>
+                                  <input type="text" x-model="newCategoryName" required placeholder="Enter category name"
+                                      class="w-full border rounded text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                  <p x-show="errors.name" class="text-xs text-red-500 mt-1">Please enter category name</p>
+                              </div>
+                              <div class="mb-4">
+                                  <label class="block text-sm font-medium mb-1">Code<span class="text-red-500"> *</span></label>
+                                  <input type="text" x-model="newCategoryCode" required placeholder="Enter code"
+                                      class="w-full border rounded text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                  <p x-show="errors.code" class="text-xs text-red-500 mt-1">Please enter category code</p>
+                              </div>
+                              <div class="mb-4" x-data x-init="new TomSelect($refs.accountType, { closeAfterSelect: true, hideSelected: true, create: false})">
+                                  <label class="block text-sm font-medium mb-1">
+                                      Account Type<span class="text-red-500"> *</span>
+                                  </label>
+                                  <select x-model="newCategoryType" x-ref="accountType" id="account-type" required placeholder="Select type" autocomplete="off">
+                                      <option value="">Select type</option>
+                                      <option value="expenses">Expenses</option>
+                                      <option value="fixed_assets">Fixed Assets</option>
+                                      <option value="acc_payable">Account Payable</option>
+                                  </select>
+                                  <p x-show="errors?.type" class="text-xs text-red-500 mt-1">Please select account type</p>
+                              </div>
+                              <div class="mb-4" x-data x-init="new TomSelect($refs.entity, { closeAfterSelect: true, hideSelected: true, create: false})">
+                                  <label class="block text-sm font-medium mb-1">
+                                      Entity<span class="text-red-500"> *</span>
+                                  </label>
+                                  <select x-model="newCategoryEntity" x-ref="entity" id="entity" required placeholder="Select entity" autocomplete="off">
+                                      <option value="">Select entity</option>
+                                      <option value="client">Client</option>
+                                      <option value="agent">Agent</option>
+                                      <option value="company">Company</option>
+                                  </select>
+                                  <p x-show="errors?.type" class="text-xs text-red-500 mt-1">Please select account type</p>
+                              </div>
+                              <div class="text-right">
+                                  <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-800">
+                                      Create New
+                                  </button>
+                              </div>
+                          </form>
+                      </div>
                   </div>
               </li>
 
@@ -253,17 +283,29 @@
       @endforeach
   </div>
 
+  <!-- <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script> -->
   <script>
       document.addEventListener('alpine:init', () => {
           Alpine.data('assetManager', () => ({
               showAddCategoryForm: false,
               newCategoryName: '',
               newCategoryCode: '', // Add this line
+              newCategoryType: '',
+              newCategoryEntity: '',
               newCategoryLevel: '',
               newCategoryParentId: '',
               variance: '',
               budgetBalance: '',
               actualBalance: '',
+              errors: {},
+
+              resetForm() {
+                  this.newCategoryName = '';
+                  this.newCategoryCode = '';
+                  this.newCategoryType = '';
+                  this.newCategoryEntity = '';
+                  this.errors = {};
+              },
 
               openLevels: {},
               assets: @json($assets), // Initialize the assets array with the existing assets
@@ -403,3 +445,13 @@
           }, 3000); // Adjust the duration as needed (3000ms = 3 seconds)
       }
   </script>
+
+  <style>
+      .ts-control {
+          border: 1px solid;
+          font-size: 0.875rem;
+          line-height: 1.25rem;
+          padding-top: 0.5rem;
+          padding-bottom: 0.5rem;
+      }
+  </style>

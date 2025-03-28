@@ -251,7 +251,7 @@
                             </td>
 
                             <td class="px-4 py-2 flex gap-2">
-                                <a href="{{ route('companiesshow.show', ['id' => $company->id]) }}">
+                                <a href="{{ route('companies.show', ['id' => $company->id]) }}">
                                     <svg class="dark:fill-white" width="24" height="24" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
                                         <path

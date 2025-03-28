@@ -75,33 +75,34 @@ class ClientController extends Controller
         return view('clients.create');
     }
 
-    // Store a new client
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:clients,email',
-            'phone' => 'nullable|string|max:15',    // Optional phone field
+            'dial_code' => 'nullable|string|max:30',
+            'phone' => 'nullable|string|max:15',
+            'agent_id' => 'required|exists:agents,id',
         ]);
 
-        // Create a new client record
         try {
-            $agent = Agent::where('email', $request->get('agent_email'))->first();
 
             Client::create([
-                'name' => $request->get('name'),
-                'email' => $request->get('email'),
-                'status' => $request->get('status'),
-                'phone' => $request->get('phone'),
-                'address' => $request->get('address'),
-                'passport_no' => $request->get('passport_no'),
-                'agent_id' => $agent->id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'status' => $request->status,
+                'phone' => $request->dial_code . $request->phone,
+                'address' => $request->address,
+                'status' => 'active',
+                'passport_no' => $request->passport_no,
+                'agent_id' => $request->agent_id,
             ]);
 
             // Redirect to the clients list with a success message
             return redirect()->route('clients.index')->with('success', 'Client added successfully!');
         } catch (Exception $e) {
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
+            logger('Error creating client: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', ('Failed to create client'));
         }
     }
 

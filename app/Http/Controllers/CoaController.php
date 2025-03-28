@@ -114,7 +114,8 @@ class CoaController extends Controller
                     $level5assetsId = [];
                     $level3asset->level4assets = Account::where('parent_id', $level3asset->id)->get();
                     foreach ($level3asset->level4assets as $key => $level4asset) {
-                        if ($agent = $level4asset->agent) {
+
+                        if ($agent = $level4asset->agent && false) {
 
                             $invoices = Invoice::with('client')->where('agent_id', $agent->id)->get();
 
@@ -125,24 +126,27 @@ class CoaController extends Controller
                             $level5assets = collect();
 
                             // Find clients related to the invoices and make them level 5 assets
-                            foreach ($invoices as $invoice) {
-                                $level5Account = $invoice->client->account;
-                                $actualBalance = 0.00;
-                                if ($level5Account && $invoice->status == 'unpaid') {
-                                    $actualBalance -= $invoice->amount;
-                                }
-                                $level5Account->actual_balance = $actualBalance;
-                                $level5Account->save();
-                                $level5assets->push($level5Account);
+                            // foreach ($invoices as $invoice) {
+                            //     $level5Account = $invoice->client->account;
+                            //     $actualBalance = 0.00;
+                            //     if ($level5Account && $invoice->status == 'unpaid') {
+                            //         $actualBalance -= $invoice->amount;
+                            //     }
+                            //     $level5Account->actual_balance = $actualBalance;
+                            //     $level5Account->save();
+                            //     $level5assets->push($level5Account);
 
-                                $level5assetsId[] = $level5Account->id;
-                            }
-                            $level4asset->level5assets = $level5assets;
+                            //     $level5assetsId[] = $level5Account->id;
+                            // }
+                            // $level4asset->level5assets = $level5assets;
                         }
 
-                        if (in_array($level4asset->id, $level5assetsId)) {
-                            unset($level3asset->level4assets[$key]);
-                        }
+                        $level4asset->level5assets = Account::where('parent_id', $level4asset->id)->get();
+
+
+                        // if (in_array($level4asset->id, $level5assetsId)) {
+                        //     unset($level3asset->level4assets[$key]);
+                        // }
                     }
                 }
             }

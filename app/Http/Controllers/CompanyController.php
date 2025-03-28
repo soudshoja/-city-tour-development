@@ -190,13 +190,12 @@ class CompanyController extends Controller
         $company = Company::with([
             'agents.tasks.client',
             'agents.invoices',
-            'agents.tasks.item'
+            'agents.tasks'
         ])->findOrFail($id);
 
 
         // Return the view, passing the specific company to it
-        return view('companies.companiesShow', compact('company', 'companies'));
-        return view('companies.companiesShow', compact('company', 'companies'));
+        return view('companies.show', compact('company', 'companies'));
     }
 
 

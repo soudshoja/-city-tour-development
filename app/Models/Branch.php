@@ -33,8 +33,8 @@ class Branch extends Model
         return $this->hasMany(Agent::class);
     }
 
-    public function accounts()
+    public function account()
     {
-        return $this->hasMany(Account::class);
+        return $this->hasOne(Account::class);
     }
 }

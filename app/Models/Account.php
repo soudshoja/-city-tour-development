@@ -51,16 +51,21 @@ class Account extends Model
     {
         return $this->belongsTo(Company::class, 'company_id'); 
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
     
     public function agent()
     {
         return $this->hasOne(Agent::class, 'account_id');
     }
 
-    public function client()
-    {
-        return $this->hasOne(Agent::class, 'account_id');
-    }
+    // public function client()
+    // {
+    //     return $this->hasOne(Agent::class, 'account_id');
+    // }
 
     public function generalLedgers()
     {

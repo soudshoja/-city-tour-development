@@ -13,6 +13,7 @@ use App\Models\Client;
 use App\Models\Invoice;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
+use App\Models\Account;
 use App\Models\AgentType;
 use App\Models\Branch;
 use App\Models\Role;
@@ -21,7 +22,7 @@ use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Support\Str;
 class AgentController extends Controller
 {
     use NotificationTrait;
@@ -53,6 +54,7 @@ class AgentController extends Controller
         // Pass both 'agents' and 'agentCount' to the view
         return view('agents.index', compact('agents', 'agentCount'));
     }
+
 
     public function new()
     {
@@ -144,58 +146,96 @@ class AgentController extends Controller
         }
     }
 
-
     public function store(Request $request)
     {
-        $user = Auth::user();
-        $role = $user->role_id;
-
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
-            'phone_number' => 'required|string',
+            'dial_code' => 'nullable|string|max:30',
+            'phone' => 'required|string',
+            'branch_id' => 'required',
             'company_id' => 'required',
-            'type' => 'required'
+            'type_id' => 'required',
         ]);
 
-        // Create a new user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make('citytour123'),
-            'role_id' => Role::AGENT
-        ]);
+        $branch = Branch::with('account')->find($request->branch_id);
 
-
-        if ($role == Role::ADMIN) {
-            // Create new agent
-            $agent = Agent::create([
-                'user_id' => $user->id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone_number' => $request->phone_number,
-                'company_id' => $request->company_id,
-                'type' => $request->type,
-            ]);
-        } else {
-            $agent = Agent::create([
-                'user_id' => $user->id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone_number' => $request->phone_number,
-                'company_id' => $user->company->id,
-                'type' => $request->type,
-            ]);
+        if (!$branch->account) {
+            logger('Failed to create agent: Branch ' . $branch->name . ' does not have an account');
+            return redirect()->back()->with('error', 'Something went wrong, please contact support');
         }
 
+        $assetsAccount = Account::where('name' , 'Assets')->first();
+
+        if (!$assetsAccount) {
+            logger('Failed to create agent: Assets account does not exist');
+            return redirect()->back()->with('error', 'Something went wrong, please contact support');
+        }
+
+        try{
+
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make('citytour123'),
+                'role_id' => Role::AGENT,
+                'remember_token' => Str::random(10),
+                'first_login' => 1,
+            ])->assignRole(Role::AGENT);
+
+        } catch(Exception $e){
+            logger('Failed to create user for agent: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create user');
+        }
+
+        try {
+            $agent = Agent::create([
+                'user_id' => $user->id,
+                'branch_id' => $request->branch_id,
+                'account_id' => $request->account_id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone_number' => $request->dial_code . $request->phone,
+                'type_id' => $request->type_id,
+            ]);
+        } catch (Exception $e) {
+            $user->delete();
+            logger('Failed to create agent: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create agent');
+        }
+
+
+        try{
+            Account::create([
+                'serial_number' => $request->serial_number,
+                'account_type' => $request->account_type,
+                'name' => $request->name,
+                'level' => 1,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'parent_id' =>  $branch->account->id,
+                'root_id' => $assetsAccount->id,
+                'code' => 'AGT-' . rand(1000000, 9999999),
+                'reference_id' => $user->id,
+                'company_id' => $request->company_id,
+                'agent_id' => $agent->id,
+            ]);
+        } catch(Exception $e){
+            $agent->delete();
+            $user->delete();
+
+            logger('Failed to create account for agent: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create account');
+        }
+    
         $this->storeNotification([
             'user_id' => $user->id,
             'title' => 'Agent Registration',
-            'message' => 'You have been registered as an agent.'
+            'message' => 'Agent ' . $request->name . ' has been registered successfully.'
         ]);
 
-        return redirect()->route('companiesshow.show', ['id' => $request->company_id])
-            ->with('success', 'Agent registered successfully');
+        return redirect()->route('agents.index')->with('success', 'Agent registered successfully');
     }
 
     public function getTasks($id)

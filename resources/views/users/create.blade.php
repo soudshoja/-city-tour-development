@@ -351,7 +351,7 @@
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Agent</h2>
                                     </div>
 
-                                    <form action="{{ route('companies.createAgent') }}" method="POST"
+                                    <form action="{{ route('agents.store') }}" method="POST"
                                         class="w-full">
                                         @csrf
                                         <input type="hidden" name="company_id"
@@ -544,7 +544,7 @@
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Client</h2>
                                     </div>
 
-                                    <form action="{{ route('companies.createClient') }}" method="POST"
+                                    <form action="{{ route('clients.store') }}" method="POST"
                                         class="w-full">
                                         @csrf
                                         <input type="hidden" name="company_id"

@@ -86,7 +86,7 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'agents.',
     ], function () {
         Route::get('/', [AgentController::class, 'index'])->name('index');
-        Route::get('/new', [AgentController::class, 'new'])->name('new');
+        // Route::get('/new', [AgentController::class, 'new'])->name('new');
         Route::post('/', [AgentController::class, 'store'])->name('store');
         Route::get('/upload', [AgentController::class, 'upload'])->name('upload');
         Route::post('/upload', [AgentController::class, 'import'])->name('import');
@@ -119,11 +119,21 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/companiesupload', [CompanyController::class, 'upload'])->name('companiesupload.upload');
     Route::post('/companiesupload', [CompanyController::class, 'import'])->name('companiesupload.import');
-    Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('companiesshow.show');
+    // Route::get('/companies/{id}', [CompanyController::class, 'show'])->name('.show');
     Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
     Route::put('/companies/{id}', [CompanyController::class, 'update'])->name('companies.update');
     Route::post('/company/{company}/toggle-status', [CompanyController::class, 'toggleStatus']);
 
+    //COMPANY
+    Route::group([
+        'prefix' => 'companies',
+        'as' => 'companies.',
+        'middleware' => ['auth', 'role:admin'],
+    ], function () {
+        Route::get('/{id}', [CompanyController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [CompanyController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [CompanyController::class, 'update'])->name('update');
+    });
 
     //TASKS
     Route::group([

@@ -21,7 +21,7 @@
                             <td>{{ $company['email'] }}</td>
                             <td>
                                 @can('view', $company)
-                                    <a href="{{ route('companiesshow.show', $company['id']) }}"
+                                    <a href="{{ route('companies.show', $company['id']) }}"
                                         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">View</a>
                                 @endcan
                                 @can('update', $company)

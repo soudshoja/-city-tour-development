@@ -34,6 +34,15 @@ class JournalEntry extends Model
         'auth_no',
     ];
 
+    protected static function booted()
+    {
+        static::addGlobalScope('company', function ($query) {
+            if (auth()->check() && auth()->user()->company != null) {
+                $query->where('company_id', auth()->user()->company->id);
+            }
+        });
+    }
+
     // Define the relationship to the Invoice model
     public function account()
     {

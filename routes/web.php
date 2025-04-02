@@ -38,7 +38,8 @@ use Google\ApiCore\Testing\ProtobufMessageComparator;
 use App\Http\Controllers\DownloadMediaController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\BankPaymentController;
-
+use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\TransactionController;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -283,6 +284,22 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/payment', [ChatController::class, 'processPayment'])->name('chat.processPayment');
     Route::post('/chat/upload', [ChatController::class, 'handleFileUpload'])->name('chat.handleFileUpload');
 
+    //TRANSACTION
+    Route::group([
+        'prefix' => 'transactions',
+        'as' => 'transactions.',
+    ], function(){
+        Route::get('/',[TransactionController::class, 'index'])->name('index');
+    });
+
+
+    //JOURNAL ENTRY
+    Route::group([
+        'prefix' => 'journal-entries',
+        'as' => 'journal-entries.',
+    ], function(){
+        Route::get('/{transactionId}',[JournalEntryController::class, 'index'])->name('index');
+    });
 });
 
 

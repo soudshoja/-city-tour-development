@@ -16,6 +16,7 @@ use App\Models\Role;
 use App\Models\User;
 use Exception;
 use Carbon\Carbon;
+use Database\Seeders\CoaSeeder;
 use Illuminate\Http\Request;
 
 class AdminUsersController extends Controller
@@ -128,79 +129,87 @@ class AdminUsersController extends Controller
         Log::info('Company created:', ['company_id' => $company->id]);
 
 
-         // Insert to accounts for coa
-         $accounts = [
-            ['name' => 'Assets', 'level' => 1, 'parent' => null],
-            ['name' => 'Liabilities', 'level' => 1, 'parent' => null],
-            ['name' => 'Income', 'level' => 1, 'parent' => null],
-            ['name' => 'Expenses', 'level' => 1, 'parent' => null],
+        // Insert to accounts for coa
+        //  $accounts = [
+        //     ['name' => 'Assets', 'level' => 1, 'parent' => null],
+        //     ['name' => 'Liabilities', 'level' => 1, 'parent' => null],
+        //     ['name' => 'Income', 'level' => 1, 'parent' => null],
+        //     ['name' => 'Expenses', 'level' => 1, 'parent' => null],
 
-            ['name' => 'Current Assets', 'level' => 2, 'parent' => 'Assets'],
-            ['name' => 'Fixed Assets', 'level' => 2, 'parent' => 'Assets'],
-            ['name' => 'Investments', 'level' => 2, 'parent' => 'Assets'],
-            ['name' => 'Deposits', 'level' => 2, 'parent' => 'Assets'],
+        //     ['name' => 'Current Assets', 'level' => 2, 'parent' => 'Assets'],
+        //     ['name' => 'Fixed Assets', 'level' => 2, 'parent' => 'Assets'],
+        //     ['name' => 'Investments', 'level' => 2, 'parent' => 'Assets'],
+        //     ['name' => 'Deposits', 'level' => 2, 'parent' => 'Assets'],
 
-            ['name' => 'Current Liabilities', 'level' => 2, 'parent' => 'Liabilities'],
-            ['name' => 'Long-Term Liabilities', 'level' => 2, 'parent' => 'Liabilities'],
-            ['name' => 'Provisions', 'level' => 2, 'parent' => 'Liabilities'],
+        //     ['name' => 'Current Liabilities', 'level' => 2, 'parent' => 'Liabilities'],
+        //     ['name' => 'Long-Term Liabilities', 'level' => 2, 'parent' => 'Liabilities'],
+        //     ['name' => 'Provisions', 'level' => 2, 'parent' => 'Liabilities'],
 
-            ['name' => 'Operating Income', 'level' => 2, 'parent' => 'Income'],
-            ['name' => 'Non-Operating Income', 'level' => 2, 'parent' => 'Income'],
+        //     ['name' => 'Operating Income', 'level' => 2, 'parent' => 'Income'],
+        //     ['name' => 'Non-Operating Income', 'level' => 2, 'parent' => 'Income'],
 
-            ['name' => 'Fixed Expenses', 'level' => 2, 'parent' => 'Expenses'],
-            ['name' => 'Variable Expenses', 'level' => 2, 'parent' => 'Expenses'],
+        //     ['name' => 'Fixed Expenses', 'level' => 2, 'parent' => 'Expenses'],
+        //     ['name' => 'Variable Expenses', 'level' => 2, 'parent' => 'Expenses'],
 
-            ['name' => 'Cash', 'level' => 3, 'parent' => 'Current Assets'],
-            ['name' => 'Accounts Receivable', 'level' => 3, 'parent' => 'Current Assets'],
-            ['name' => 'Inventory', 'level' => 3, 'parent' => 'Current Assets'],
+        //     ['name' => 'Cash', 'level' => 3, 'parent' => 'Current Assets'],
+        //     ['name' => 'Accounts Receivable', 'level' => 3, 'parent' => 'Current Assets'],
+        //     ['name' => 'Inventory', 'level' => 3, 'parent' => 'Current Assets'],
 
-            ['name' => 'Property, Plant, and Equipment', 'level' => 3, 'parent' => 'Fixed Assets'],
-            ['name' => 'Investments in Subsidiaries', 'level' => 3, 'parent' => 'Investments'],
-            ['name' => 'Long-Term Deposits', 'level' => 3, 'parent' => 'Investments'],
+        //     ['name' => 'Property, Plant, and Equipment', 'level' => 3, 'parent' => 'Fixed Assets'],
+        //     ['name' => 'Investments in Subsidiaries', 'level' => 3, 'parent' => 'Investments'],
+        //     ['name' => 'Long-Term Deposits', 'level' => 3, 'parent' => 'Investments'],
 
-            ['name' => 'Accounts Payable', 'level' => 3, 'parent' => 'Current Liabilities'],
-            ['name' => 'Short-Term Debt', 'level' => 3, 'parent' => 'Current Liabilities'],
+        //     ['name' => 'Accounts Payable', 'level' => 3, 'parent' => 'Current Liabilities'],
+        //     ['name' => 'Short-Term Debt', 'level' => 3, 'parent' => 'Current Liabilities'],
 
-            ['name' => 'Long-Term Debt', 'level' => 3, 'parent' => 'Long-Term Liabilities'],
+        //     ['name' => 'Long-Term Debt', 'level' => 3, 'parent' => 'Long-Term Liabilities'],
 
-            ['name' => 'Income On Sales', 'level' => 3, 'parent' => 'Operating Income'],
+        //     ['name' => 'Income On Sales', 'level' => 3, 'parent' => 'Operating Income'],
 
-            ['name' => 'Salary Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
-            ['name' => 'Rent Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
-            ['name' => 'Depreciation Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
+        //     ['name' => 'Salary Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
+        //     ['name' => 'Rent Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
+        //     ['name' => 'Depreciation Expense', 'level' => 3, 'parent' => 'Fixed Expenses'],
 
-            ['name' => 'Business Trip Expense', 'level' => 3, 'parent' => 'Variable Expenses'],
-            ['name' => 'Agent Sales Commission', 'level' => 3, 'parent' => 'Variable Expenses'],
-            ['name' => 'Sponsorship Fee', 'level' => 3, 'parent' => 'Variable Expenses'],
-            ['name' => 'Legal & Professional Fees', 'level' => 3, 'parent' => 'Variable Expenses'],
-            ['name' => 'Utilities Expense', 'level' => 3, 'parent' => 'Variable Expenses'],
-        ];
+        //     ['name' => 'Business Trip Expense', 'level' => 3, 'parent' => 'Variable Expenses'],
+        //     ['name' => 'Agent Sales Commission', 'level' => 3, 'parent' => 'Variable Expenses'],
+        //     ['name' => 'Sponsorship Fee', 'level' => 3, 'parent' => 'Variable Expenses'],
+        //     ['name' => 'Legal & Professional Fees', 'level' => 3, 'parent' => 'Variable Expenses'],
+        //     ['name' => 'Utilities Expense', 'level' => 3, 'parent' => 'Variable Expenses'],
+        // ];
+
 
         // Store newly inserted IDs
-        $idMapping = [];
+        // $idMapping = [];
 
-        // Insert accounts dynamically
-        foreach ($accounts as $account) {
-            // Determine the parent_id dynamically
-            $parentId = isset($account['parent']) && isset($idMapping[$account['parent']]) 
-            ? $idMapping[$account['parent']]->id 
-            : null;
+        // // Insert accounts dynamically
+        // foreach ($accounts as $account) {
+        //     // Determine the parent_id dynamically
+        //     $parentId = isset($account['parent']) && isset($idMapping[$account['parent']]) 
+        //     ? $idMapping[$account['parent']]->id 
+        //     : null;
 
-            // Insert account
-            $newId = Account::create([
-                'name' => $account['name'],
-                'level' => $account['level'],
-                'actual_balance' => 0,
-                'budget_balance' => 0,
-                'variance' => 0,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-                'company_id' => $company->id,
-                'parent_id' => $parentId,
-            ]);
+        //     // Insert account
+        //     $newId = Account::create([
+        //         'name' => $account['name'],
+        //         'level' => $account['level'],
+        //         'actual_balance' => 0,
+        //         'budget_balance' => 0,
+        //         'variance' => 0,
+        //         'created_at' => Carbon::now(),
+        //         'updated_at' => Carbon::now(),
+        //         'company_id' => $company->id,
+        //         'parent_id' => $parentId,
+        //     ]);
 
-            // Store new ID for future parent_id references
-            $idMapping[$account['name']] = $newId;
+        //     // Store new ID for future parent_id references
+        //     $idMapping[$account['name']] = $newId;
+        // }
+
+        try {
+            CoaSeeder::run($company->id);
+        } catch (Exception $e) {
+            Log::error('Error seeding COA:', ['error' => $e->getMessage()]);
+            return redirect()->route('companies.index')->with('error', 'Error creating COA accounts.');
         }
 
 

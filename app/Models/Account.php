@@ -12,6 +12,7 @@ class Account extends Model
     protected $fillable = [
        'serial_number',
        'account_type',
+       'report_type',
        'name', 
        'level', 
        'actual_balance',
@@ -26,6 +27,11 @@ class Account extends Model
        'supplier_id',
        'reference_id', 
        'code',
+    ];
+
+    public const REPORT_TYPES = [
+        'PROFIT' => 'profit loss',
+        'BALANCE' => 'balance sheet',
     ];
 
      protected static function booted()

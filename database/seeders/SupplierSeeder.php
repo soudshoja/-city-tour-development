@@ -16,10 +16,10 @@ class SupplierSeeder extends Seeder
     {
         $kuwaitId = Country::where('name', 'Kuwait')->first()->id;
 
-        Supplier::firstOrCreate(['name' => 'Amadeus', 'country_id' => $kuwaitId]);
-        Supplier::firstOrCreate(['name' => 'Magic Holiday', 'country_id' => $kuwaitId]);
-        Supplier::firstOrCreate(['name' => 'TBO Holiday', 'country_id' => $kuwaitId]);
-        Supplier::firstOrCreate(['name' => 'DOTW', 'country_id' => $kuwaitId]);
-        Supplier::firstOrCreate(['name' => 'Rate Hawk', 'country_id' => $kuwaitId]);
+        Supplier::updateOrCreate(['name' => 'Amadeus', 'country_id' => $kuwaitId], ['has_hotel' => true, 'has_flight' => true]);
+        Supplier::updateOrCreate(['name' => 'Magic Holiday', 'country_id' => $kuwaitId], [ 'has_hotel' => true]);
+        Supplier::updateOrCreate(['name' => 'TBO Holiday', 'country_id' => $kuwaitId], ['has_hotel' => true]);
+        Supplier::updateOrCreate(['name' => 'DOTW', 'country_id' => $kuwaitId], ['has_hotel' => true]);
+        Supplier::updateOrCreate(['name' => 'Rate Hawk', 'country_id' => $kuwaitId], ['has_hotel' => true]);
     }
 }

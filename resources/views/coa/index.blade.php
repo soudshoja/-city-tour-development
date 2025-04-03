@@ -42,7 +42,9 @@
             'Assets' => '00ab55',
             'Liabilities' => 'ffc107',
             'Income' => '1e40af',
-            'Expenses' => 'AF1740'
+            'Expenses' => 'AF1740',
+            'Equity' => '9744ad' 
+
             ];
             @endphp
 
@@ -61,6 +63,7 @@
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.liabilities')</div>
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.income')</div>
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.expenses')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.equity')</div>
 
     </div>
     <!-- ./accounts view -->

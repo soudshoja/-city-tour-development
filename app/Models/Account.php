@@ -26,7 +26,12 @@ class Account extends Model
        'client_id',
        'supplier_id',
        'reference_id', 
+       'account_type_id',
        'code',
+       'currency',
+       'is_group',
+       'disabled',
+       'balance_must_be'
     ];
 
     public const REPORT_TYPES = [

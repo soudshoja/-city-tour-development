@@ -136,6 +136,10 @@ class CoaSeeder extends Seeder
             ['code' => '5218', 'name' => 'Write Off',                            'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5219', 'name' => 'Exchange Gain/Loss',                   'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5220', 'name' => 'Gain/Loss on Asset Disposal',          'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+
+            ['code' => '5141', 'name' => 'TAP Charges',             'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '5142', 'name' => 'MyFatoorah Charges',      'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            ['code' => '5143', 'name' => 'Hesabe Charges',          'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
         ];
         
 

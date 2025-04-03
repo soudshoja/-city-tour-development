@@ -56,8 +56,10 @@ class CoaController extends Controller
         $liabilities = $this->getLiabilities();
         $incomes = $this->getIncome();
         $expenses = $this->getExpenses();
+        $equities = $this->getEquity();
+    
+        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'equities', 'invoices', 'clients', 'suppliers'));
 
-        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'invoices', 'clients', 'suppliers'));
     }
 
     public function addCategory(Request $request)
@@ -177,9 +179,48 @@ class CoaController extends Controller
                 }
             }
         }
-
+        // dd($liabilities);
         return $liabilities;
     }
+
+    private function getEquity()
+    {
+        // Equity Account
+        $equityId = Account::where('name', 'Equity')->value('id');
+    
+        // Initialize equity collection
+        $equities = collect();
+    
+        if ($equityId) {
+            // Top-level equity accounts
+            $equities = Account::where('parent_id', $equityId)->get();
+            
+            foreach ($equities as $equity) {
+                $equity->level3equity = Account::where('parent_id', $equity->id)->get();
+    
+                foreach ($equity->level3equity as $level3equity) {
+                    // Fetch level 4 for each level 3
+                    $level3equity->level4equity = Account::where('parent_id', $level3equity->id)->get();
+    
+                    foreach ($level3equity->level4equity as $level4equity) {
+                        // Assuming level 4 equity has actual_balance and budget_balance attributes
+                        $actualBalanceEquity = $level4equity->actual_balance; // Adjust if field name differs
+                        $budgetBalanceEquity = $level4equity->budget_balance; // Adjust if field name differs
+    
+                        // Optional: Store the values in an array for later use if needed
+                        $balancesEquity[] = [
+                            'actual_balance' => $actualBalanceEquity,
+                            'budget_balance' => $budgetBalanceEquity,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $equities;
+    }
+    
+
     private function getIncome()
     {
         // Income Account

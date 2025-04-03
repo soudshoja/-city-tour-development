@@ -34,6 +34,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Account;
+use App\Models\JournalEntry;
+use App\Models\Transaction;
+// use Carbon\Carbon;
+
+
 
 
 
@@ -449,6 +455,109 @@ class TaskController extends Controller
 
         try {
             $taskCreated = Task::create($taskData);
+
+// ####################
+
+// Fetch related data
+$agent = $taskCreated->agent;
+$client = $taskCreated->client;
+$supplier = $taskCreated->supplier;
+
+$companyId = $taskCreated->company_id;
+$branchId = 3;
+
+// Find accounts
+// $receivableAccount = Account::where('name', 'like', '%Receivable%')->where('company_id', $companyId)->first();
+// $payableAccount = Account::where('name', 'like', '%Payable%')->where('company_id', $companyId)->first();
+// $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
+// Get Payable account
+$payableAccount = Account::where('name', 'like', '%Payable%')
+    ->where('company_id', $companyId)
+    ->first();
+
+$childPayableAccount = $payableAccount->children()
+    ->where('reference_id', $supplier->id)
+    ->first();
+
+$payableAccountId = $childPayableAccount ? $childPayableAccount->id : $payableAccount->id;
+
+
+// Create transaction
+$transaction = Transaction::create([
+    'entity_id' => $companyId,
+    'entity_type' => 'company',
+    'transaction_type' => 'credit',
+    'amount' => '200',
+    // 'amount' => $taskCreated->invoice_price ?? $taskCreated->total,
+    'date' => Carbon::now(),
+    'description' => 'Task created: ' . $taskCreated->reference,
+    'reference_type' => 'Payment',
+    'task_id' => $taskCreated->id,
+]);
+
+$markup = ($taskCreated->invoice_price ?? $taskCreated->total) - $taskCreated->total;
+
+// Payable
+JournalEntry::create([
+    'transaction_id' => $transaction->id,
+    'company_id' => $companyId,
+    'branch_id' => $branchId,
+    // 'account_id' => $payableAccountId,
+    'account_id' => 233,
+    'invoice_id' => null,
+    'invoiceDetail_id' => null,
+    'task_id' => $taskCreated->id,
+    'transaction_date' => Carbon::now(),
+    'description' => 'Payable to: ' . ($supplier->name ?? 'N/A'),
+    'debit' => $taskCreated->total,
+    'credit' => 0,
+    'balance' => $taskCreated->total,
+    'name' => $supplier->name ?? 'N/A',
+    'type' => 'payable',
+    'type_reference_id' => $supplier->id ?? null,
+]);
+
+// // Receivable
+// JournalEntry::create([
+//     'transaction_id' => $transaction->id,
+//     'company_id' => $companyId,
+//     'branch_id' => $branchId,
+//     'account_id' => $receivableAccount->id,
+//     'invoice_id' => null,
+//     'invoiceDetail_id' => null,
+//     'task_id' => $taskCreated->id,
+//     'transaction_date' => Carbon::now(),
+//     'description' => 'Receivable from: ' . ($client->name ?? 'N/A'),
+//     'debit' => 0,
+//     'credit' => $taskCreated->invoice_price ?? $taskCreated->total,
+//     'balance' => $taskCreated->invoice_price ?? $taskCreated->total,
+//     'name' => $client->name ?? 'N/A',
+//     'type' => 'receivable',
+//     'type_reference_id' => $client->id ?? null,
+// ]);
+
+// // Income (markup)
+// if ($markup > 0) {
+//     JournalEntry::create([
+//         'transaction_id' => $transaction->id,
+//         'company_id' => $companyId,
+//         'branch_id' => $branchId,
+//         'account_id' => $incomeAccount->id,
+//         'invoice_id' => null,
+//         'invoiceDetail_id' => null,
+//         'task_id' => $taskCreated->id,
+//         'transaction_date' => Carbon::now(),
+//         'description' => 'Markup by Agent: ' . ($agent->name ?? 'N/A'),
+//         'debit' => 0,
+//         'credit' => $markup,
+//         'balance' => $markup,
+//         'name' => $agent->name ?? 'N/A',
+//         'type' => 'income',
+//         'type_reference_id' => $agent->id ?? null,
+//     ]);
+// }
+
+// ###################
 
             if (isset($data['task_flight_details'])) {
                 $this->saveFlightDetails($data, $taskCreated->id);

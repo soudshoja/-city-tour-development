@@ -22,7 +22,8 @@ class DatabaseSeeder extends Seeder
             CountrySeeder::class,
             SupplierSeeder::class,
             AgentTypeSeeder::class,
-            SystemExchangeRateSeeder::class
+            SystemExchangeRateSeeder::class,
+            AccountTypeSeeder::class,
         ]);
     }
 }

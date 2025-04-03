@@ -230,6 +230,9 @@
             <menuitem><a href="{{ route('reports.new-report') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Report</a>
             </menuitem>
+            <menuitem><a href="{{ route('transactions.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transaction List</a>
+            </menuitem>
         </menu>
         </menuitem>
 

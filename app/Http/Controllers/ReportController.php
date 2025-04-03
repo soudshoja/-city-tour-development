@@ -241,16 +241,7 @@ class ReportController extends Controller
 
         // $payableQuery = JournalEntry::where('account_id', 50)
         //     ->where('company_id', $companyId);
-        $payableQuery = JournalEntry::where('company_id', $companyId)
-        ->where(function ($query) {
-            $query->where('account_id', 50)
-                  ->orWhereIn('account_id', function ($subquery) {
-                      $subquery->select('id')
-                               ->from('accounts')
-                               ->where('parent_id', 50);
-                  });
-        })
-        ->orderBy('created_at', 'desc'); 
+        $payableQuery = JournalEntry::orderBy('created_at', 'desc'); 
     
     
         // $receivableQuery = JournalEntry::where('account_id', 45)

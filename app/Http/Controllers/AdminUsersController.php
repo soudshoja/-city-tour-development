@@ -16,6 +16,7 @@ use App\Models\Role;
 use App\Models\User;
 use Exception;
 use Carbon\Carbon;
+use Database\Seeders\CoaSeeder;
 use Illuminate\Http\Request;
 
 class AdminUsersController extends Controller
@@ -256,30 +257,37 @@ class AdminUsersController extends Controller
         
 
         // Store newly inserted IDs
-        $idMapping = [];
+        // $idMapping = [];
 
-        // Insert accounts dynamically
-        foreach ($accounts as $account) {
-            // Determine the parent_id dynamically
-            $parentId = isset($account['parent']) && isset($idMapping[$account['parent']]) 
-            ? $idMapping[$account['parent']]->id 
-            : null;
+        // // Insert accounts dynamically
+        // foreach ($accounts as $account) {
+        //     // Determine the parent_id dynamically
+        //     $parentId = isset($account['parent']) && isset($idMapping[$account['parent']]) 
+        //     ? $idMapping[$account['parent']]->id 
+        //     : null;
 
-            // Insert account
-            $newId = Account::create([
-                'name' => $account['name'],
-                'level' => $account['level'],
-                'actual_balance' => 0,
-                'budget_balance' => 0,
-                'variance' => 0,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-                'company_id' => $company->id,
-                'parent_id' => $parentId,
-            ]);
+        //     // Insert account
+        //     $newId = Account::create([
+        //         'name' => $account['name'],
+        //         'level' => $account['level'],
+        //         'actual_balance' => 0,
+        //         'budget_balance' => 0,
+        //         'variance' => 0,
+        //         'created_at' => Carbon::now(),
+        //         'updated_at' => Carbon::now(),
+        //         'company_id' => $company->id,
+        //         'parent_id' => $parentId,
+        //     ]);
 
-            // Store new ID for future parent_id references
-            $idMapping[$account['name']] = $newId;
+        //     // Store new ID for future parent_id references
+        //     $idMapping[$account['name']] = $newId;
+        // }
+
+        try {
+            CoaSeeder::run($company->id);
+        } catch (Exception $e) {
+            Log::error('Error seeding COA:', ['error' => $e->getMessage()]);
+            return redirect()->route('companies.index')->with('error', 'Error creating COA accounts.');
         }
 
 

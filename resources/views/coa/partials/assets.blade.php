@@ -40,8 +40,6 @@
   <div id="AssetsDetails" class="rounded-lg shadow-sm" x-data="assetManager()">
       <div>
           <ul class="w-full">
-              
-              <!-- Level 2 - Top-Level Assets as Tabs -->
               @foreach ($assets->childAccounts as $asset)
               @include('coa.partials.asset-item', ['account' => $asset])
               @endforeach

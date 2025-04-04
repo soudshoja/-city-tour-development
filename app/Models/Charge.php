@@ -17,6 +17,8 @@ class Charge extends Model
         'company_id',
     ];
 
+    public const TAP_CHARGES = 0.15;
+
     public function getAmountAttribute($value)
     {
         return number_format($value, 2);

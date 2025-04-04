@@ -53,6 +53,8 @@ class BankPaymentController extends Controller
             ->pluck('id');
             $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
+            $lastLevelAccounts = Account::doesntHave('children')->get();
+
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
             ->pluck('id');
             $suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
@@ -69,6 +71,8 @@ class BankPaymentController extends Controller
             ->pluck('id');
             $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
+            $lastLevelAccounts = Account::doesntHave('children')->get();
+
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
             ->pluck('id');
             $suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
@@ -78,7 +82,7 @@ class BankPaymentController extends Controller
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives'));
+        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts'));
 
     }
 

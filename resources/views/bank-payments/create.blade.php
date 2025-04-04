@@ -268,7 +268,7 @@
     </div>
     <script>
         const suppliers = @json($suppliers);
-        const accpayreceives = @json($accpayreceives);
+        const lastLevelAccounts = @json($lastLevelAccounts);
 
         document.addEventListener("DOMContentLoaded", function() {
             const paymentTable = document.getElementById("paymentTable");
@@ -391,16 +391,16 @@
                             oninput="updateField(${index}, 'ac_code', this.value); selectedAccName(this, ${index});">
                         
                         <datalist id="accountList_${index}">
-                            ${accpayreceives.map(accpayreceive => 
+                            ${lastLevelAccounts.map(accpayreceive => 
                                 `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                    </option>`
+                                                                                                                                                                                                                                            [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                        </option>`
                             ).join('')}
                         </datalist>
 
                     <small id="selectedAccName_${index}" class="text-muted">
                         ${(() => {
-                            let acc = accpayreceives.find(acc => acc.id == item.ac_code);
+                            let acc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
                             return acc ? `[${acc.id}] ${acc.name}` : '';
                         })()}
                     </small>

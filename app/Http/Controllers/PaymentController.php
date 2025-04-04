@@ -14,6 +14,7 @@ use App\Models\Supplier;
 use App\Models\Client;
 use App\Models\Agent;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Account;
@@ -270,7 +271,7 @@ class PaymentController extends Controller
             ->where('invoice_number', $invoiceNumber)
             ->get();
 
-        $receivableAccount = Account::where('name', 'like', '%Receivable%')
+        $receivableAccount = Account::where('name', 'like', '%Accounts Receivable – Clients%')
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
@@ -281,17 +282,29 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-
-
-        $tapAccount = Account::where('name', 'Tap Charges') // or bank account
+        $tapAccount = Account::where('name', 'TAP Charges') // or bank account
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
+
+        $user = $invoice->agent->branch->company->user_id;
+
+        $userRecord = User::where('id', $user)->first();
+        $accBankId = $userRecord->acc_bank_id;
+        //dd($user);
+
+        $bankAccountAccRecord = Account::where('id', $accBankId)
+            ->where('company_id', $invoice->agent->branch->company->id)
+            ->first();
+
+        //dd($bankAccountAccRecord);
 
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found.');
         }
         // dd($invoiceDetails);
+
+        $x = 1;
         if (!empty($invoiceDetails)) {
             // dd($invoiceDetails);
             foreach ($invoiceDetails as $invoiceDetail) {
@@ -306,10 +319,9 @@ class PaymentController extends Controller
                         'entity_id' =>  $invoice->agent->branch->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
-                        //'amount'=> $invoiceDetail['task_price'],
                         'amount'=> $totalPaidAmount,
                         'date'=> Carbon::now(),
-                        'description'=> 'pay to Invoice:' . $invoiceNumber,
+                        'description'=> 'Pay to Invoice:' . $invoiceNumber,
                         'invoice_id'=> $invoice->id,
                         'reference_type' =>'Invoice', 
                     ]);
@@ -319,7 +331,7 @@ class PaymentController extends Controller
                     $payment->account_id = $receivableAccount->id;
                     $payment->save();
 
-                    // Try to create receivable account
+                    // Try to create receivable account (OK)
                     JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'branch_id' => $invoice->agent->branch->id,
@@ -338,32 +350,32 @@ class PaymentController extends Controller
 
 
                     // Update Cash/Bank Account
-                    if ($bankAccount) {
+                    if ($bankAccountAccRecord) {
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
-                            'account_id' =>  $bankAccount->id,
+                            'account_id' =>  $bankAccountAccRecord->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment transfered to: ' . $bankAccount->name,
-                            'debit' => $totalPaidAmount,
+                            'description' => 'Payment transfered to: ' . $bankAccountAccRecord->name,
+                            'debit' => $totalPaidAmount-0.15,
                             'credit' =>0,
-                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
-                            'name' =>  $bankAccount->name,
+                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
+                            'name' =>  $bankAccountAccRecord->name,
                             'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,
-                            'type_reference_id' => $bankAccount->id
+                            'type_reference_id' => $bankAccountAccRecord->id
                         ]);
 
-                        $bankAccount->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
-                        $bankAccount->save();
+                        $bankAccountAccRecord->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
+                        $bankAccountAccRecord->save();
                     }
 
                     if ($tapAccount) {
                         JournalEntry::create([
-                            'transaction_id' => $payment->id,
+                            'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
                             'account_id' =>  $tapAccount->id,
@@ -372,15 +384,15 @@ class PaymentController extends Controller
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment Charged For:'. $tapAccount->name,
-                            'debit' => 0,
-                            'credit' => 0.35,
-                            'balance' => $tapAccount->actual_balance += 0.35,
+                            'debit' => 0.15,
+                            'credit' => 0,
+                            'balance' => $tapAccount->actual_balance += 0.15,
                             'name' =>  $tapAccount->name,
                             'type' => 'charges',
                             'type_reference_id' => $tapAccount->id
                         ]);
 
-                        $tapAccount->actual_balance += 0.35; // Add to expenses account
+                        $tapAccount->actual_balance += 0.15; // Add to expenses account
                         $tapAccount->save();
                     }
 
@@ -393,6 +405,8 @@ class PaymentController extends Controller
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                     return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
                 }
+
+                $x = $x + 1;
             }
         }
 

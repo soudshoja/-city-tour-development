@@ -20,6 +20,7 @@ use App\Models\Invoice;
 use App\Models\Account;
 use App\Models\Payment;
 use App\Models\Transaction;
+use App\Models\Charge;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Redirect;
@@ -286,7 +287,6 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-
         $user = $invoice->agent->branch->company->user_id;
 
         $userRecord = User::where('id', $user)->first();
@@ -304,8 +304,10 @@ class PaymentController extends Controller
         }
         // dd($invoiceDetails);
 
-        $x = 1;
         if (!empty($invoiceDetails)) {
+
+            $defaultTapFee = Charge::TAP_CHARGES;
+
             // dd($invoiceDetails);
             foreach ($invoiceDetails as $invoiceDetail) {
                 try {
@@ -316,6 +318,7 @@ class PaymentController extends Controller
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
                     // Create a transaction record first
                     $transaction = Transaction::create([
+                        'branch_id' =>  $invoice->agent->branch->id,
                         'entity_id' =>  $invoice->agent->branch->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
@@ -360,7 +363,7 @@ class PaymentController extends Controller
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment transfered to: ' . $bankAccountAccRecord->name,
-                            'debit' => $totalPaidAmount-0.15,
+                            'debit' => $totalPaidAmount-$defaultTapFee,
                             'credit' =>0,
                             'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
                             'name' =>  $bankAccountAccRecord->name,
@@ -384,15 +387,15 @@ class PaymentController extends Controller
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment Charged For:'. $tapAccount->name,
-                            'debit' => 0.15,
+                            'debit' => $defaultTapFee,
                             'credit' => 0,
-                            'balance' => $tapAccount->actual_balance += 0.15,
+                            'balance' => $tapAccount->actual_balance += $defaultTapFee,
                             'name' =>  $tapAccount->name,
                             'type' => 'charges',
                             'type_reference_id' => $tapAccount->id
                         ]);
 
-                        $tapAccount->actual_balance += 0.15; // Add to expenses account
+                        $tapAccount->actual_balance += $defaultTapFee; // Add to expenses account
                         $tapAccount->save();
                     }
 
@@ -405,8 +408,6 @@ class PaymentController extends Controller
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                     return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
                 }
-
-                $x = $x + 1;
             }
         }
 

@@ -64,10 +64,10 @@ class ProfileController extends Controller
             ->exists();
 
         // If the account does not exist, return an error message
-        if (!$accountExists) {
-            return redirect()->route('profile.edit')
-                ->withErrors(['acc_bank_id' => 'The selected bank account is invalid or does not belong to your company.']);
-        }
+        // if (!$accountExists) {
+        //     return redirect()->route('profile.edit')
+        //         ->withErrors(['acc_bank_id' => 'The selected bank account is invalid or does not belong to your company.']);
+        // }
 
         if ($request->has('acc_bank_id')) {
             $user->acc_bank_id = $request->input('acc_bank_id');

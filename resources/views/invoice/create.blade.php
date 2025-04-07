@@ -2607,12 +2607,12 @@
                 isSaved = true; // Mark as saved after generating
                 updateButtonState();
 
-                coaActivites(items, subTotal);
+                // coaActivities(items, subTotal);
 
                 setTimeout(() => {
                     checkInvoiceId();
                     // Show COA activities container
-                    document.getElementById("coa-activities-container").style.display = "block";
+                    // document.getElementById("coa-activities-container").style.display = "block";
                 }, 1000);
 
             } catch (error) {
@@ -2636,8 +2636,9 @@
         };
 
 
-        function coaActivites(items, subTotal) {
-            const supplierTotals = new Map(); // To track cumulative amounts for each supplier
+        function coaActivities(items, subTotal) { // FUNCTION CLOSED/NOT USED
+
+        //  const supplierTotals = new Map(); // To track cumulative amounts for each supplier
             let cumulativeMarkup = 0; // Total markup income
 
             const clientNameInput = document.getElementById("receiverName");

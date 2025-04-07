@@ -289,7 +289,6 @@ class PaymentController extends Controller
 
         $chargeRecord = Charge::where('name', 'LIKE', $paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
-            ->where('branch_id', $invoice->agent->branch->id)
             ->select('amount', 'acc_bank_id', 'acc_fee_id')
             ->first(); 
 
@@ -305,13 +304,15 @@ class PaymentController extends Controller
             $tapAccount = Account::where('id', $coaFeeIdRec)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
+
+           // dd($coaBankIdRec,$coaFeeIdRec);
         }
 
 
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found.');
         }
-        // dd($invoiceDetails);
+        //dd($invoiceDetails);
 
         if (!empty($invoiceDetails)) {
 
@@ -336,6 +337,7 @@ class PaymentController extends Controller
                         'reference_type' =>'Invoice', 
                     ]);
 
+                    
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
                     $payment->account_id = $receivableAccount->id;
@@ -348,7 +350,7 @@ class PaymentController extends Controller
                         'company_id' => $invoice->agent->branch->company->id,
                         'invoice_id' =>  $invoice->id,
                         'account_id' =>  $receivableAccount->id,
-                        'invoiceDetail_id' =>  $invoiceDetail->id,
+                        'invoice_detail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
                         'description' => 'Payment received from: ' . $client->name,
                         'debit' => 0,
@@ -356,9 +358,11 @@ class PaymentController extends Controller
                         'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
                         'name' =>  $client->name,
                         'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $receivableAccount->id
                     ]);
 
-
+                    
                     // Create record to payment_gateway assets coa account (OK)
                     if ($bankAccountAccRecord) {
                         JournalEntry::create([
@@ -381,9 +385,13 @@ class PaymentController extends Controller
 
                         $bankAccountAccRecord->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
                         $bankAccountAccRecord->save();
+
+                        
                     }
                     
                     // Create record to payment_gateway expense coa account (OK)
+                    $tapAccount->actual_balance += $defaultPaymentGatewayFee;
+
                     if ($tapAccount) {
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
@@ -397,7 +405,7 @@ class PaymentController extends Controller
                             'description' => 'Payment gateway charged by:'. $tapAccount->name,
                             'debit' => $defaultPaymentGatewayFee,
                             'credit' => 0,
-                            'balance' => $tapAccount->actual_balance += $defaultPaymentGatewayFee,
+                            'balance' => $tapAccount->actual_balance,
                             'name' =>  $tapAccount->name,
                             'type' => 'charges',
                             'type_reference_id' => $tapAccount->id
@@ -405,11 +413,14 @@ class PaymentController extends Controller
 
                         $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
                         $tapAccount->save();
+
                     }
 
 
                     $selectedtask->status = 'Completed';
                     $selectedtask->save();
+
+                    //dd($e->getMessage());
 
                 } catch (Exception $e) {
                     // Log the error if something goes wrong with a specific task

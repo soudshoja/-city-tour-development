@@ -178,6 +178,7 @@ class PaymentController extends Controller
             'metadata' => [
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
+                'payment_gateway' => $payment->payment_method,
                 'invoice_partial_id' => json_encode($data['invoice_partial_id']),
             ],
             'redirect' => [
@@ -221,7 +222,7 @@ class PaymentController extends Controller
         $tap = new Tap();
 
         $tap_id = $request->tap_id;
-
+        
         $response = $tap->getCharge($tap_id);
 
         if (isset($response['errors'])) {
@@ -254,8 +255,11 @@ class PaymentController extends Controller
         $totalAmount = $response['amount'];
         $paymentId = $response['metadata']['payment_id'];
         $invoiceNumber = $response['metadata']['invoice_number'];
+        $paymentGateway = $response['metadata']['payment_gateway'];
        // $invoicePartialIds = $response['metadata']['invoice_partial_id'];
         $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'], true);
+        
+        //dd($paymentGateway);
 
         $this->storeNotification([
             'user_id' => Auth::id(),
@@ -283,21 +287,26 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-        $tapAccount = Account::where('name', 'TAP Charges') // or bank account
+        $chargeRecord = Charge::where('name', 'LIKE', $paymentGateway)
+            ->where('company_id', $invoice->agent->branch->company->id)
+            ->where('branch_id', $invoice->agent->branch->id)
+            ->select('amount', 'acc_bank_id', 'acc_fee_id')
+            ->first(); 
+
+        if ($chargeRecord) {
+            $defaultPaymentGatewayFee = $chargeRecord->amount;
+            $coaBankIdRec = $chargeRecord->acc_bank_id;
+            $coaFeeIdRec = $chargeRecord->acc_fee_id;
+
+            $bankAccountAccRecord = Account::where('id', $coaBankIdRec)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-        $user = $invoice->agent->branch->company->user_id;
-
-        $userRecord = User::where('id', $user)->first();
-        $accBankId = $userRecord->acc_bank_id;
-        //dd($user);
-
-        $bankAccountAccRecord = Account::where('id', $accBankId)
+            $tapAccount = Account::where('id', $coaFeeIdRec)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
+        }
 
-        //dd($bankAccountAccRecord);
 
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found.');
@@ -305,8 +314,6 @@ class PaymentController extends Controller
         // dd($invoiceDetails);
 
         if (!empty($invoiceDetails)) {
-
-            $defaultTapFee = Charge::TAP_CHARGES;
 
             // dd($invoiceDetails);
             foreach ($invoiceDetails as $invoiceDetail) {
@@ -334,7 +341,7 @@ class PaymentController extends Controller
                     $payment->account_id = $receivableAccount->id;
                     $payment->save();
 
-                    // Try to create receivable account (OK)
+                    // Create record to receivable account (OK)
                     JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'branch_id' => $invoice->agent->branch->id,
@@ -352,7 +359,7 @@ class PaymentController extends Controller
                     ]);
 
 
-                    // Update Cash/Bank Account
+                    // Create record to payment_gateway assets coa account (OK)
                     if ($bankAccountAccRecord) {
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
@@ -363,7 +370,7 @@ class PaymentController extends Controller
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
                             'description' => 'Payment transfered to: ' . $bankAccountAccRecord->name,
-                            'debit' => $totalPaidAmount-$defaultTapFee,
+                            'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
                             'credit' =>0,
                             'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
                             'name' =>  $bankAccountAccRecord->name,
@@ -375,7 +382,8 @@ class PaymentController extends Controller
                         $bankAccountAccRecord->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
                         $bankAccountAccRecord->save();
                     }
-
+                    
+                    // Create record to payment_gateway expense coa account (OK)
                     if ($tapAccount) {
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
@@ -386,16 +394,16 @@ class PaymentController extends Controller
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment Charged For:'. $tapAccount->name,
-                            'debit' => $defaultTapFee,
+                            'description' => 'Payment gateway charged by:'. $tapAccount->name,
+                            'debit' => $defaultPaymentGatewayFee,
                             'credit' => 0,
-                            'balance' => $tapAccount->actual_balance += $defaultTapFee,
+                            'balance' => $tapAccount->actual_balance += $defaultPaymentGatewayFee,
                             'name' =>  $tapAccount->name,
                             'type' => 'charges',
                             'type_reference_id' => $tapAccount->id
                         ]);
 
-                        $tapAccount->actual_balance += $defaultTapFee; // Add to expenses account
+                        $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
                         $tapAccount->save();
                     }
 

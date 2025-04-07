@@ -73,9 +73,33 @@ class SupplierCompanyController extends Controller
                     ]);
                 }
 
-                try {
-                    $accountPayable = Account::where('name', 'Accounts Payable')->first();
+                if(!$supplier){
+                    return redirect()->back()->with('error', 'Supplier credentials not found.');
+                }
 
+                if(!$company){
+                    return redirect()->back()->with('error', 'Company credentials not found.');
+                }
+
+                $accountPayable = Account::where('name', 'Suppliers (Flights)')->first();
+                
+                if(!$accountPayable){
+                    return redirect()->back()->with('error', 'Account Payable not found.');
+                }
+
+                try {
+
+                   $supplier_account_id = SupplierCompany::firstOrCreate([
+                        'supplier_id' => $supplier->id,
+                        'company_id' => $company->id,
+                        // 'account_id' => $account->id
+                    ]);
+                } catch (Exception $e) {
+                    logger('Created Supplier Company Error: ' . $e->getMessage());
+                    return redirect()->back()->with('error', 'Supplier credentials not found.');
+                }
+
+                try{
                     $account = Account::create([
                         'name' => $supplier->name,
                         'level' => 4,
@@ -85,17 +109,16 @@ class SupplierCompanyController extends Controller
                         'company_id' => $company->id,
                         'parent_id' => $accountPayable->id,
                         'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
+                        'supplier_id' => $supplier->id
                     ]);
 
-                    SupplierCompany::firstOrCreate([
-                        'supplier_id' => $supplier->id,
-                        'company_id' => $company->id,
-                        'account_id' => $account->id
-                    ]);
-                } catch (Exception $e) {
-                    logger('Created Supplier Company Error: ' . $e->getMessage());
+                } catch(Exception $e) {
+                    logger('Created Supplier Company Account Error: ' . $e->getMessage());
                     return redirect()->back()->with('error', 'Supplier credentials not found.');
                 }
+
+               
+
             }
 
             return redirect()->back()->with('success', 'Supplier activated successfully.');
@@ -103,6 +126,12 @@ class SupplierCompanyController extends Controller
 
 
         $accountPayable = Account::where('name', 'Accounts Payable')->first();
+
+        $supplier_account_id = SupplierCompany::firstOrCreate([
+            'supplier_id' => $supplier->id,
+            'company_id' => $company->id,
+            // 'account_id' => $account->id
+        ]);
 
         $account = Account::create([
             'name' => $supplier->name,
@@ -113,13 +142,11 @@ class SupplierCompanyController extends Controller
             'company_id' => $company->id,
             'parent_id' => $accountPayable->id,
             'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
+            'supplier_id' => $supplier->id
+
         ]);
 
-        SupplierCompany::firstOrCreate([
-            'supplier_id' => $supplier->id,
-            'company_id' => $company->id,
-            'account_id' => $account->id
-        ]);
+
 
         return redirect()->back()->with('success', 'Supplier activated successfully.');
     }
@@ -151,7 +178,7 @@ class SupplierCompanyController extends Controller
             SupplierCompany::firstOrCreate([
                 'supplier_id' => $supplier->id,
                 'company_id' => $companyId,
-                'account_id' => $account->id
+                // 'account_id' => $account->id
             ]);
         } catch (Exception $e) {
             logger('Created Supplier Company Error: ' . $e->getMessage());

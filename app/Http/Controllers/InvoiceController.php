@@ -133,7 +133,8 @@ class InvoiceController extends Controller
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
-                return Redirect::route('tasks.index')->with('error', 'Task already invoiced!');
+                return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
+                    
             }
         }
 
@@ -518,21 +519,19 @@ class InvoiceController extends Controller
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
 
-        $receivableAccount = Account::where('name', 'like', '%Receivable%')
-            ->where('company_id', $companyId)
-            ->first();
 
+        if(!$agent || !$companyId || !$branchId) {
 
-        $payableAccount =  Account::where('name', 'like', '%Payable%')
-            ->where('company_id', $companyId)
-            ->first();
+            Log::error('Some of this data is missing', [
+                'agent' => $agent,
+                'companyId' => $companyId,
+                'branchId' => $branchId,
+            ]);
 
-        $incomeAccount =  Account::where('name', 'like', '%Income On Sales%')
-            ->where('company_id', $companyId)
-            ->first();
+            return response()->json('Agent or company not found!', 404);
+        }
 
         try {
-
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'agent_id' => $agentId,
@@ -544,128 +543,251 @@ class InvoiceController extends Controller
                 'invoice_date' => $invdate,
                 'due_date' => $duedate,
             ]);
-
-            if (!empty($tasks)) {
-                foreach ($tasks as $task) {
-                    try {
-
-                        $selectedtask = Task::where('id', operator: $task['id'])->first();
-                        $supplier = Supplier::where('id', operator: $task['supplier_id'])->first();
-                        $client = Client::where('id', operator: $task['client_id'])->first();
-                        $agent = Agent::where('id', operator: $task['agent_id'])->first();
-                        // Create a transaction record first
-
-                        $invoiceDetail =  InvoiceDetail::create([
-                            'invoice_id' => $invoice->id,
-                            'invoice_number' => $invoiceNumber,
-                            'task_id' => $task['id'],
-                            'task_description' => $task['description'],
-                            'task_remark' => $task['remark'] ?? null,
-                            'client_notes' => $task['note'] ?? null,
-                            'task_price' =>  $task['invprice'],
-                            'supplier_price' => $selectedtask->total,
-                            'markup_price' => $task['invprice'] - $selectedtask->total,
-                            'paid' => false,
-                        ]);
-
-                        $transaction = Transaction::create([
-                            'entity_id' => $companyId,
-                            'entity_type' => 'company',
-                            'transaction_type' => 'credit',
-                            'amount' =>  $task['invprice'],
-                            'date' => Carbon::now(),
-                            'description' => 'Invoice:' . $invoiceNumber . ' Generated',
-                            'invoice_id' => $invoice->id,
-                            'reference_type' => 'Invoice',
-                        ]);
-
-
-                        Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
-                        if ($payableAccount) {
-                            $filteredPayableChildAccount = $payableAccount->children()
-                                ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
-                                ->first(); // Get the first matching child account
-                            Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
-                            $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
-                        } else {
-                            $PayablechildAccountId = null; // Handle case when no parent account is found
-                        }
-
-
-                        // Try to create payable account
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'branch_id' => $branchId,
-                            'company_id' => $companyId,
-                            'account_id' =>  $payableAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment: ' . $supplier->name,
-                            'debit' => 0,
-                            'credit' => $selectedtask->total,
-                            'balance' => $selectedtask->total,
-                            'name' => $supplier->name,
-                            'type' => 'payable',
-                        ]);
-
-
-                        // Try to create receivable account
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'branch_id' => $branchId,
-                            'company_id' => $companyId,
-                            'invoice_id' =>  $invoice->id,
-                            'account_id' =>  $receivableAccount->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment received from: ' . $client->name,
-                            'debit' => $task['invprice'],
-                            'credit' => 0,
-                            'balance' => $task['invprice'],
-                            'name' =>  $client->name,
-                            'type' => 'receivable',
-                        ]);
-
-
-
-                        $markup = $task['invprice'] - $selectedtask->total;
-                        // Try to create income
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'branch_id' => $branchId,
-                            'company_id' => $companyId,
-                            'account_id' => $incomeAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Price markup by Agent: ' . $agent->name,
-                            'debit' => 0,
-                            'credit' => $markup,
-                            'balance' => $markup,
-                            'name' =>   $agent->name,
-                            'type' => 'income',
-                        ]);
-
-
-                        $selectedtask->status = 'Assigned';
-                        $selectedtask->save();
-                    } catch (Exception $e) {
-                        Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
-                        return response()->json('Failed to create InvoiceDetails for task: ' . $task['description'], 500);
-                    }
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Invoice created successfully!',
-                'invoiceId' => $invoice->id,
-            ]);
         } catch (Exception $e) {
             Log::error('Failed to create invoice: ' . $e->getMessage());
             return response()->json('Invoice creation failed!', 500);
         }
+
+
+        if (!empty($tasks)) {
+            foreach ($tasks as $task) {
+
+                $selectedtask = Task::where('id', operator: $task['id'])->first();
+                $supplier = Supplier::where('id', operator: $task['supplier_id'])->first();
+                $client = Client::where('id', operator: $task['client_id'])->first();
+                $agent = Agent::where('id', operator: $task['agent_id'])->first();
+
+                if (!$selectedtask || !$supplier || !$client || !$agent) {
+
+                    Log::error('Failed to find task, supplier, client, or agent: ' . $task['description']);
+
+                    return response()->json('Something went wrong', 404);
+                }
+
+                try {
+                    $invoiceDetail =  InvoiceDetail::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoiceNumber,
+                        'task_id' => $task['id'],
+                        'task_description' => $task['description'],
+                        'task_remark' => $task['remark'] ?? null,
+                        'client_notes' => $task['note'] ?? null,
+                        'task_price' =>  $task['invprice'],
+                        'supplier_price' => $selectedtask->total,
+                        'markup_price' => $task['invprice'] - $selectedtask->total,
+                        'paid' => false,
+                    ]);
+                } catch (Exception $e) {
+                    $invoice->delete();
+                    Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                    return response()->json('Something Went Wrong', 500);
+                }
+
+                try {
+                    $transaction = Transaction::create([
+                        'company_id' => $companyId,
+                        'entity_id' => $companyId,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'credit',
+                        'amount' =>  $task['invprice'],
+                        'date' => Carbon::now(),
+                        'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                        'invoice_id' => $invoice->id,
+                        'reference_type' => 'Invoice',
+                    ]);
+                } catch (Exception $e) {
+
+                    $invoiceDetail->delete();
+                    $invoice->delete();
+
+                    Log::error('Failed to create Transactions: ' . $e->getMessage());
+                    return response()->json('Something Went Wrong', 500);
+                }
+
+                // Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
+                // if ($payableAccount) {
+                //     $filteredPayableChildAccount = $payableAccount->children()
+                //         ->where('reference_id', $task['supplier_id']) // Filter by child reference_id
+                //         ->first(); // Get the first matching child account
+                //     Log::info('filteredPayableChildAccount', ['filteredPayableChildAccount' => $filteredPayableChildAccount]);
+                //     $PayablechildAccountId = $filteredPayableChildAccount ? $filteredPayableChildAccount->id : null;
+                // } else {
+                //     $PayablechildAccountId = null; // Handle case when no parent account is found
+                // }
+
+                $accountsToBeUpdate = [];
+
+                $clientAccount = Account::where('name', 'like', '%Client%')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if($clientAccount) {
+                    $clientAccount->description = 'Payment received from: ' . $client->name;
+                    $clientAccount->debit_credit = 'debit';
+                    $clientAccount->amount = $task['invprice'];
+
+                    $accountsToBeUpdate[] = $clientAccount;
+                } 
+
+                if($task['type'] == 'flight'){
+                    $detailsAccount =  Account::where('name', 'like', 'Flight Booking%')
+                        ->where('company_id', $companyId)
+                        ->first();
+                } else {
+                    $detailsAccount =  Account::where('name', 'like', '%Hotel Booking%')
+                        ->where('company_id', $companyId)
+                        ->first();
+                }
+
+                if($detailsAccount){
+                    $detailsAccount->description = 'Payment received for: ' . $task['additional_info'];
+                    $detailsAccount->debit_credit = 'credit';
+                    $detailsAccount->amount = $task['invprice'];
+
+                    $accountsToBeUpdate[] = $detailsAccount;
+
+                }
+
+                $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if($commissionExpenses){
+                    $commissionExpenses->description = 'Commissions Expense (Agents) for: ' . $task['agent']['name'];
+                    $commissionExpenses->debit_credit = 'debit';
+                    $commissionExpenses->amount = 0.15 * $task['invprice'];
+
+                    $accountsToBeUpdate[] = $commissionExpenses;
+                }
+
+
+                $AccruedCommissionsAgent = Account::where('name', 'like', 'Accrued Commissions (Agents)%')
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if($AccruedCommissionsAgent){
+                    $AccruedCommissionsAgent->description = 'Accrued Commissions (Agents) for : ' . $task['agent']['name'];
+                    $AccruedCommissionsAgent->debit_credit = 'credit';
+                    $AccruedCommissionsAgent->amount = 0.15 * $task['invprice'];
+
+                    $accountsToBeUpdate[] = $AccruedCommissionsAgent;
+                }
+
+                if(!$clientAccount || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
+                    $transaction->delete();
+                    $invoiceDetail->delete();
+                    $invoice->delete();
+
+                    Log::error(
+                        'Failed to find account: ' . $task['description'],
+                        [
+                            'clientAccount' => $clientAccount,
+                            'detailsAccount' => $detailsAccount,
+                            'commissionExpenses' => $commissionExpenses,
+                            'AccruedCommissionsAgent' => $AccruedCommissionsAgent,
+                        ]
+                    );
+                    return response()->json('Something went wrong', 404);
+                }
+                try {
+
+                    // Update the accounts in a loop
+                    foreach ($accountsToBeUpdate as $account) {
+
+                        $journalDataCreate = [
+                            'transaction_id' => $transaction->id,
+                            'branch_id' => $branchId,
+                            'company_id' => $companyId,
+                            'account_id' =>  $account->id,
+                            'invoice_id' =>  $invoice->id,
+                            'invoiceDetail_id' =>  $invoiceDetail->id,
+                            'transaction_date' => Carbon::now(),
+                            'description' => $account->description,
+                            'debit' => $account->debit_credit == 'debit' ? $account->amount : 0,
+                            'credit' => $account->debit_credit == 'credit' ? $account->amount : 0,
+                            'balance' => $account->balance,
+                            'name' =>  $account->name,
+                            'type' => $account->debit_credit == 'debit' ? 'receivable' : 'payable',
+                        ];
+
+                        JournalEntry::create($journalDataCreate);
+                    }
+
+                    // JournalEntry::create([
+                    //     'transaction_id' => $transaction->id,
+                    //     'branch_id' => $branchId,
+                    //     'company_id' => $companyId,
+                    //     'account_id' =>  $payableAccount->id,
+                    //     'invoice_id' =>  $invoice->id,
+                    //     'invoiceDetail_id' =>  $invoiceDetail->id,
+                    //     'transaction_date' => Carbon::now(),
+                    //     'description' => 'Payment: ' . $supplier->name,
+                    //     'debit' => 0,
+                    //     'credit' => $selectedtask->total,
+                    //     'balance' => $selectedtask->total,
+                    //     'name' => $supplier->name,
+                    //     'type' => 'payable',
+                    // ]);
+
+
+                    // Try to create receivable account
+                    // JournalEntry::create([
+                    //     'transaction_id' => $transaction->id,
+                    //     'branch_id' => $branchId,
+                    //     'company_id' => $companyId,
+                    //     'invoice_id' =>  $invoice->id,
+                    //     'account_id' =>  $receivableAccount->id,
+                    //     'invoiceDetail_id' =>  $invoiceDetail->id,
+                    //     'transaction_date' => Carbon::now(),
+                    //     'description' => 'Payment received from: ' . $client->name,
+                    //     'debit' => $task['invprice'],
+                    //     'credit' => 0,
+                    //     'balance' => $task['invprice'],
+                    //     'name' =>  $client->name,
+                    //     'type' => 'receivable',
+                    // ]);
+
+
+
+                    // $markup = $task['invprice'] - $selectedtask->total;
+                    // Try to create income
+                    // JournalEntry::create([
+                    //     'transaction_id' => $transaction->id,
+                    //     'branch_id' => $branchId,
+                    //     'company_id' => $companyId,
+                    //     'account_id' => $incomeAccount->id,
+                    //     'invoice_id' =>  $invoice->id,
+                    //     'invoiceDetail_id' =>  $invoiceDetail->id,
+                    //     'transaction_date' => Carbon::now(),
+                    //     'description' => 'Price markup by Agent: ' . $agent->name,
+                    //     'debit' => 0,
+                    //     'credit' => $markup,
+                    //     'balance' => $markup,
+                    //     'name' =>   $agent->name,
+                    //     'type' => 'income',
+                    // ]);
+
+
+                    // $selectedtask->status = 'Assigned';
+                    // $selectedtask->save();
+                    
+
+                } catch (Exception $e) {
+                    $transaction->delete();
+                    $invoiceDetail->delete();
+                    $invoice->delete();
+
+                    Log::error('Failed to Journal Entry: ' . $e->getMessage());
+                    return response()->json('Something Went Wrong', 500);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invoice created successfully!',
+            'invoiceId' => $invoice->id,
+        ]);
     }
 
 

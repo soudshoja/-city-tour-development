@@ -661,12 +661,12 @@ class InvoiceController extends Controller
                 }
 
 
-                $AccruedCommissionsAgent = Account::where('name', 'like', 'Accrued Commissions (Agents)%')
+                $AccruedCommissionsAgent = Account::where('name', 'like', 'Commissions (Agents)%')
                     ->where('company_id', $companyId)
                     ->first();
 
                 if($AccruedCommissionsAgent){
-                    $AccruedCommissionsAgent->description = 'Accrued Commissions (Agents) for : ' . $task['agent']['name'];
+                    $AccruedCommissionsAgent->description = 'Commissions (Agents) for : ' . $task['agent']['name'];
                     $AccruedCommissionsAgent->debit_credit = 'credit';
                     $AccruedCommissionsAgent->amount = 0.15 * $task['invprice'];
 

@@ -8,8 +8,6 @@
                 {{ __("Update your account's profile information and email address.") }}
             </p>
         </div>
-
-        <x-primary-button>{{ __('Save') }}</x-primary-button>
     </header>
 
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
@@ -26,7 +24,7 @@
                 required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
-        <div>
+        <div class="mt-4">
             <x-input-label for="email" :value="__('Email')" />
             <x-text-input readonly id="email" name="email" type="email" class="mt-1 block w-full"
                 :value="old('email', $user->email)" required autocomplete="username" />
@@ -52,8 +50,41 @@
             @endif
         </div>
 
+        @php
+            $selectedBank = $bankAccounts->firstWhere('id', (int) old('acc_bank_id', $user->acc_bank_id));
+        @endphp
+
+
+        <div class="mt-4">
+            <x-input-label for="acc_bank_name" :value="__('Default Bank Account')" />
+
+            <input id="acc_bank_name" name="acc_bank_name" list="bank_accounts"
+                class="mt-1 block w-full h-11 rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 px-3"
+                value="{{ old('acc_bank_name', $selectedBank?->name) }}" required autocomplete="off" />
+
+            <datalist id="bank_accounts">
+                @foreach ($bankAccounts as $account)
+                    <option data-id="{{ $account->id }}" value="{{ $account->name }}">{{ $account->name }}</option>
+                @endforeach
+            </datalist>
+
+            <x-text-input id="acc_bank_id_hidden" name="acc_bank_id" type="hidden" class="mt-1 block w-full"
+                value="{{ old('acc_bank_id', auth()->user()->acc_bank_id) }}" />
+
+            <x-input-error class="mt-2" :messages="$errors->get('acc_bank_id')" />
+            <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">Please define the bank account via
+
+                <a href='/coa'><span
+                        class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                        {{ __('here.') }}
+                    </span></a>
+            </p>
+
+        </div>
+
+
         {{-- @if ($user->is_admin) --}}
-        <div>
+        <div class="mt-4">
             <x-input-label for="role" :value="__('Role')" />
             <x-text-input readonly id="role" name="role" type="text" class="mt-1 block w-full"
                 :value="old('role', ucfirst($user->role->name) ?? 'No role assigned')" required autofocus autocomplete="role" />
@@ -61,12 +92,7 @@
         </div>
         {{-- @endif --}}
 
-        @if (session('status') === 'profile-updated')
-            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)"
-                class="text-sm text-gray-600 dark:text-gray-400">{{ __('Saved.') }}</p>
-        @endif
-
-        <div>
+        <div class="mt-4">
             <x-input-label for="created_at" :value="__('Registered Date')" />
             <x-text-input readonly id="created_at" name="created_at" type="text" class="mt-1 block w-full"
                 :value="$user->created_at ? $user->created_at->format('l, F j, Y g:i A') : ''" autofocus />
@@ -74,5 +100,39 @@
 
         </div>
 
+        @if (session('status') === 'profile-updated')
+            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)"
+                class="text-sm text-gray-600 dark:text-gray-400">{{ __('Saved.') }}</p>
+        @endif
+
+        <div class="flex justify-end">
+            <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
+        </div>
     </form>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const nameInput = document.getElementById('acc_bank_name');
+            const hiddenInput = document.getElementById('acc_bank_id_hidden');
+            const options = document.querySelectorAll('#bank_accounts option');
+
+            const updateHidden = () => {
+                const match = Array.from(options).find(opt => opt.value === nameInput.value);
+                hiddenInput.value = match ? match.getAttribute('data-id') : ''; // Update hidden field value
+            };
+
+            nameInput.addEventListener('input', updateHidden); // Update on user input
+            nameInput.addEventListener('change', updateHidden); // Update on selection change
+
+            // Update hidden field before form submit
+            const form = nameInput.closest('form');
+            form.addEventListener('submit', updateHidden);
+        });
+    </script>
+
+
+
+
+
 </section>

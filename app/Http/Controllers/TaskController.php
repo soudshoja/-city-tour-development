@@ -56,9 +56,9 @@ class TaskController extends Controller
         $agents = collect();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
-                        ->withoutGlobalScope('enabled')
-                        ->where('enabled', false)
-                        ->orderBy('id', 'desc');
+            ->withoutGlobalScope('enabled')
+            ->where('enabled', false)
+            ->orderBy('id', 'desc');
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks->orderBy('created_at', 'desc')->get();
@@ -73,51 +73,48 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->where('company_id', $user->company->id)->get();
             $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
-
-        } elseif($user->role_id == Role::BRANCH){
+        } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->get();
             $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
-        
+
             $clients = Client::where('agent_id', $user->agent->id)->get();
             $tasks = $tasks->where('agent_id', $user->agent->id)->get();
             $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
-
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
         $processTask = $tasks->toArray();
-        $processTask = array_map(function($row){
+        $processTask = array_map(function ($row) {
 
             $row = (array) $row;
             $hasNull = false;
 
-            foreach($row as $key => $value){
-                if($value === null){
+            foreach ($row as $key => $value) {
+                if ($value === null) {
                     $hasNull = true;
                     break;
                 }
             }
 
-            if($hasNull){
+            if ($hasNull) {
                 $row['is_complete'] = false;
             } else {
                 $row['is_complete'] = true;
             }
 
             return $row;
-
         }, $processTask);
 
         $taskCount = $tasks->count();
         $types = Task::distinct()->pluck('type');
         $suppliers = Supplier::all();
         $importedTask = Cache::get('imported_task');
-        
-        if($user->hasAnyRole('admin', 'company')){
+
+        if ($user->hasAnyRole('admin', 'company')) {
 
             $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
 
@@ -190,12 +187,12 @@ class TaskController extends Controller
     {
         $task->enabled = $request->is_enabled;
         $task->save();
-    
+
         return response()->json(['success' => true]);
     }
     public function show($id)
     {
-        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel','supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
+        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel', 'supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
 
         if (!$task) {
             return response()->json(['error' => 'Task not found'], 404);
@@ -212,12 +209,12 @@ class TaskController extends Controller
         } else {
             $task['description'] = 'No description';
         }
-        
-        
+
+
         // Return the task data as JSON for the modal to load dynamically
         return response()->json($task, 200);
     }
-    
+
 
     public function edit($id)
     {
@@ -285,7 +282,7 @@ class TaskController extends Controller
         }
         // Excel::import(new TasksImport, $request->file('excel_file'));
 
-        if($response['status'] == 'success'){
+        if ($response['status'] == 'success') {
 
             logger('imported task: ', $response['data']->toArray());
             $existingTask = Cache::get('imported_task');
@@ -321,7 +318,7 @@ class TaskController extends Controller
             $response = $openai->extractHotelData($contents);
         }
 
-        if($response['status'] == 'error') {
+        if ($response['status'] == 'error') {
             return $response;
         }
 
@@ -330,7 +327,7 @@ class TaskController extends Controller
 
     public function exportCsv()
     {
-        
+
         // Fetch all agents data
         $tasks = Task::with('agent')->get();
 
@@ -401,9 +398,9 @@ class TaskController extends Controller
                 'message' => 'User not authorized to create task',
             ];
         }
-        $supplier = Supplier::where('name','like',$task['supplier_name'])->first();
-        
-        if(!$supplier) return redirect()->back()->with('errors', 'Supplier not found');
+        $supplier = Supplier::where('name', 'like', $task['supplier_name'])->first();
+
+        if (!$supplier) return redirect()->back()->with('errors', 'Supplier not found');
 
         $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
             Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first()
@@ -411,23 +408,9 @@ class TaskController extends Controller
 
         $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
 
-        // if ($task['supplier_name'] === null) {
-        //     return [
-        //         'status' => 'error',
-        //         'message' => 'Supplier name is required',
-        //     ];
-        // }
-       
-        // $supplier = Supplier::where('name', 'like', '%' . $task['supplier_name'] . '%')->first();
-
-        // if (!$supplier) {
-        //     return [
-        //         'status' => 'error',
-        //         'message' => 'Supplier not found , the supplier name is ' . $task['supplier_name'] . '. Please create the supplier first',
-        //     ];
-        // }
         logger('tasks: ', $task);
-        if($agent){
+
+        if ($agent) {
             logger('agent: ', $agent->toArray());
         } else {
             logger('agent dont exist');
@@ -444,7 +427,7 @@ class TaskController extends Controller
             'total' => isset($task['total']) ? $task['total'] : null,
             'tax' => isset($task['tax']) ? $task['tax'] : null,
             'reference' => $task['reference'] ?? null,
-            'type' => $task['type'] ? strtoupper($task['type']) : null,
+            'type' => $task['type'] ? strtolower($task['type']) : null,
             'agent_id' => $agent->id ?? null,
             'client_id' => $client->id ?? null,
             'company_id' => $companyId,
@@ -456,118 +439,118 @@ class TaskController extends Controller
         try {
             $taskCreated = Task::create($taskData);
 
-// ####################
+            // ####################
 
-// Fetch related data
-$agent = $taskCreated->agent;
-$client = $taskCreated->client;
-$supplier = $taskCreated->supplier;
+            // Fetch related data
+            $agent = $taskCreated->agent;
+            $client = $taskCreated->client;
+            $supplier = $taskCreated->supplier;
 
-$companyId = $taskCreated->company_id;
-$branchId = 3;
+            $companyId = $taskCreated->company_id;
+            $branchId = 3;
 
-// Find accounts
-$receivableAccount = Account::where('name', 'like', '%Flights Cost%')->where('company_id', $companyId)->first();
-// $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
+            // Find accounts
+            $receivableAccount = Account::where('name', 'like', '%Flights Cost%')->where('company_id', $companyId)->first();
+            // $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
 
-$supplierAccount = Account::where('supplier_id', $supplier->id)
-    ->where('company_id', $companyId)
-    ->first();
+            $supplierAccount = Account::where('supplier_id', $supplier->id)
+                ->where('company_id', $companyId)
+                ->first();
 
-// Fallback to general Accounts Payable if not found
-$payableFallback = Account::where('name', 'Accounts Payable')
-    ->where('company_id', $companyId)
-    ->first();
+            
+            $payableFallback = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->first();
 
-// Check if supplier account exists
-if ($supplierAccount) {
-    $payableAccountId = $supplierAccount->id;
-} elseif ($payableFallback) {
-    $payableAccountId = $payableFallback->id;
-} else {
-    throw new \Exception('No valid payable account found.');
-}
+            
+            if ($supplierAccount) {
+                $payableAccountId = $supplierAccount->id;
+            } elseif ($payableFallback) {
+                $payableAccountId = $payableFallback->id;
+            } else {
+                throw new \Exception('No valid payable account found.');
+            }
 
-// Log chosen account clearly
-Log::info("Payable account selected: " . $payableAccountId . " for Supplier ID: " . $supplier->id);
+            // Log chosen account clearly
+            Log::info("Payable account selected: " . $payableAccountId . " for Supplier ID: " . $supplier->id);
 
 
 
-// Create transaction
-$transaction = Transaction::create([
-    'entity_id' => $companyId,
-    'entity_type' => 'company',
-    'transaction_type' => 'credit',
-    'amount' => '200',
-    // 'amount' => $taskCreated->invoice_price ?? $taskCreated->total,
-    'date' => Carbon::now(),
-    'description' => 'Task created: ' . $taskCreated->reference,
-    'reference_type' => 'Payment',
-    'task_id' => $taskCreated->id,
-]);
+            // Create transaction
+            $transaction = Transaction::create([
+                'entity_id' => $companyId,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' => '200',
+                // 'amount' => $taskCreated->invoice_price ?? $taskCreated->total,
+                'date' => Carbon::now(),
+                'description' => 'Task created: ' . $taskCreated->reference,
+                'reference_type' => 'Payment',
+                'task_id' => $taskCreated->id,
+            ]);
 
-$markup = ($taskCreated->invoice_price ?? $taskCreated->total) - $taskCreated->total;
+            $markup = ($taskCreated->invoice_price ?? $taskCreated->total) - $taskCreated->total;
 
-// Payable
-JournalEntry::create([
-    'transaction_id' => $transaction->id,
-    'company_id' => $companyId,
-    'branch_id' => $branchId,
-    'account_id' => $payableAccountId, // This will now be correct
-    'invoice_id' => null,
-    'invoice_detail_id' => null,
-    'task_id' => $taskCreated->id,
-    'transaction_date' => Carbon::now(),
-    'description' => 'Records Payable to: ' . $supplier->name,
-    'debit' => 0,
-    'credit' => $taskCreated->total,
-    'balance' => $taskCreated->total,
-    'name' => $supplier->name,
-    'type' => 'payable',
-    'type_reference_id' => $supplier->id,
-]);
+            // Payable
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'account_id' => $payableAccountId, // This will now be correct
+                'invoice_id' => null,
+                'invoice_detail_id' => null,
+                'task_id' => $taskCreated->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Records Payable to: ' . $supplier->name,
+                'debit' => 0,
+                'credit' => $taskCreated->total,
+                'balance' => $taskCreated->total,
+                'name' => $supplier->name,
+                'type' => 'payable',
+                'type_reference_id' => $supplier->id,
+            ]);
 
-// Receivable
-JournalEntry::create([
-    'transaction_id' => $transaction->id,
-    'company_id' => $companyId,
-    'branch_id' => $branchId,
-    'account_id' => $receivableAccount->id,
-    'invoice_id' => null,
-    'invoiceDetail_id' => null,
-    'task_id' => $taskCreated->id,
-    'transaction_date' => Carbon::now(),
-    'description' => 'Records Direct Expense',
-    'debit' => $taskCreated->invoice_price ?? $taskCreated->total,
-    'credit' => 0,
-    'balance' => $taskCreated->invoice_price ?? $taskCreated->total,
-    'name' => $client->name ?? 'N/A',
-    'type' => 'receivable',
-    'type_reference_id' => $client->id ?? null,
-]);
+            // Receivable
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'account_id' => $receivableAccount->id,
+                'invoice_id' => null,
+                'invoiceDetail_id' => null,
+                'task_id' => $taskCreated->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Records Direct Expense',
+                'debit' => $taskCreated->invoice_price ?? $taskCreated->total,
+                'credit' => 0,
+                'balance' => $taskCreated->invoice_price ?? $taskCreated->total,
+                'name' => $client->name ?? 'N/A',
+                'type' => 'receivable',
+                'type_reference_id' => $client->id ?? null,
+            ]);
 
-// // Income (markup)
-// if ($markup > 0) {
-//     JournalEntry::create([
-//         'transaction_id' => $transaction->id,
-//         'company_id' => $companyId,
-//         'branch_id' => $branchId,
-//         'account_id' => $incomeAccount->id,
-//         'invoice_id' => null,
-//         'invoiceDetail_id' => null,
-//         'task_id' => $taskCreated->id,
-//         'transaction_date' => Carbon::now(),
-//         'description' => 'Markup by Agent: ' . ($agent->name ?? 'N/A'),
-//         'debit' => 0,
-//         'credit' => $markup,
-//         'balance' => $markup,
-//         'name' => $agent->name ?? 'N/A',
-//         'type' => 'income',
-//         'type_reference_id' => $agent->id ?? null,
-//     ]);
-// }
+            // // Income (markup)
+            // if ($markup > 0) {
+            //     JournalEntry::create([
+            //         'transaction_id' => $transaction->id,
+            //         'company_id' => $companyId,
+            //         'branch_id' => $branchId,
+            //         'account_id' => $incomeAccount->id,
+            //         'invoice_id' => null,
+            //         'invoiceDetail_id' => null,
+            //         'task_id' => $taskCreated->id,
+            //         'transaction_date' => Carbon::now(),
+            //         'description' => 'Markup by Agent: ' . ($agent->name ?? 'N/A'),
+            //         'debit' => 0,
+            //         'credit' => $markup,
+            //         'balance' => $markup,
+            //         'name' => $agent->name ?? 'N/A',
+            //         'type' => 'income',
+            //         'type_reference_id' => $agent->id ?? null,
+            //     ]);
+            // }
 
-// ###################
+            // ###################
 
             if (isset($data['task_flight_details'])) {
                 $this->saveFlightDetails($data, $taskCreated->id);
@@ -690,14 +673,14 @@ JournalEntry::create([
             ->withoutGlobalScope('enabled')
             ->where('enabled', false)
             ->orderBy('id', 'desc');
-        
+
         $user = Auth::user();
 
         if ($user->role_id == Role::COMPANY) {
             $queueTasks = $queueTasks->get();
         } else if ($user->role_id == Role::BRANCH) {
-            $queueTasks = $queueTasks->where('agent_id' , $user->branch->agents->pluck('id'))->get();
-        }  else if($user->role_id == Role::AGENT){
+            $queueTasks = $queueTasks->where('agent_id', $user->branch->agents->pluck('id'))->get();
+        } else if ($user->role_id == Role::AGENT) {
             $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
@@ -709,8 +692,8 @@ JournalEntry::create([
     public function supplierTask($id)
     {
         $user = Auth::user();
-    
-        if(!$user->role_id == Role::COMPANY){
+
+        if (!$user->role_id == Role::COMPANY) {
             return redirect()->back()->with('error', 'User is not a company');
         }
 
@@ -719,42 +702,42 @@ JournalEntry::create([
         $companyId = $user->company->id;
 
 
-        if(!$supplier){
+        if (!$supplier) {
             return redirect()->back()->with('error', 'Does not have task from supplier');
         }
 
-        if($supplier->name == 'Magic Holiday'){
+        if ($supplier->name == 'Magic Holiday') {
 
             $response = $supplierController->getMagicHoliday();
-            
+
             $data = json_decode($response->getContent(), true);
 
             Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
 
-            if(isset($data['error'])){
+            if (isset($data['error'])) {
                 Log::channel('magic_holidays')->error('Error getting task from supplier: ' . $data['error']);
                 return redirect()->back()->with('error', 'Something went wrong');
             }
 
-            if(isset($data['status']) && $data['status'] == 'error'){
+            if (isset($data['status']) && $data['status'] == 'error') {
                 Log::channel('magic_holidays')->error('Error getting task from supplier: ' . $data['detail']);
                 return redirect()->back()->with('error', 'Something went wrong');
             }
-            
+
             $data = $data['data'];
 
             if (isset($data['_embedded'])) { // Check if it's a list
                 foreach ($data['_embedded']['reservation'] as $reservation) {
-                   $response = $this->processSingleReservation($reservation, null,$companyId);
+                    $response = $this->processSingleReservation($reservation, null, $companyId);
 
-                     if($response['status'] == 'error'){
-                          return redirect()->back()->with('error', $response['message']);
-                     }
+                    if ($response['status'] == 'error') {
+                        return redirect()->back()->with('error', $response['message']);
+                    }
                 }
             } else {
-                $response = $this->processSingleReservation($data, null ,$companyId);
+                $response = $this->processSingleReservation($data, null, $companyId);
 
-                if($response['status'] == 'error'){
+                if ($response['status'] == 'error') {
                     return redirect()->back()->with('error', $response['message']);
                 }
             }
@@ -789,7 +772,7 @@ JournalEntry::create([
         $supplierId = Supplier::where('name', 'Magic Holiday')->first()->id;
         $passengers = $reservation['service']['passengers'] ?? null;
 
-        if(!$supplierId){
+        if (!$supplierId) {
             Log::channel('magic_holidays')->error('Supplier not found: Magic Holiday');
             return [
                 'status' => 'error',
@@ -836,18 +819,18 @@ JournalEntry::create([
 
             //no duplication for same reference number with same room id
             $existingTask = Task::where('reference', $reservation['id'])
-                    ->orderBy('id', 'desc')
-                    ->where('supplier_id', $supplierId)
-                    ->withoutGlobalScope('enabled')->first();
+                ->orderBy('id', 'desc')
+                ->where('supplier_id', $supplierId)
+                ->withoutGlobalScope('enabled')->first();
 
-            if($existingTask){
+            if ($existingTask) {
                 $existingTaskHotelDetail = TaskHotelDetail::where('task_id', $existingTask->id)->first();
-                if($existingTaskHotelDetail){
-                    if($existingTaskHotelDetail->room_reference == $room['id']){
-                        Log::channel('magic_holidays')->warning('Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ', Reservation: ' . ($reservation['id'] ?? 'Unknown').' by'.$existingTask->agent->name);
+                if ($existingTaskHotelDetail) {
+                    if ($existingTaskHotelDetail->room_reference == $room['id']) {
+                        Log::channel('magic_holidays')->warning('Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ', Reservation: ' . ($reservation['id'] ?? 'Unknown') . ' by' . $existingTask->agent->name);
                         return [
                             'status' => 'error',
-                            'message' => 'Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ' by '.$existingTask->agent->name,
+                            'message' => 'Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ' by ' . $existingTask->agent->name,
                         ];
                     }
                 }
@@ -887,8 +870,6 @@ JournalEntry::create([
             Log::channel('magic_holidays')->info('Creating Task Initiate');
             try {
                 $task = Task::create($taskData);
-
-
             } catch (Exception $e) {
                 Log::channel('magic_holidays')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
                     'reservation' => $reservation,
@@ -904,7 +885,7 @@ JournalEntry::create([
             Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'));
 
 
-            try{
+            try {
                 $taskHotelDetail = TaskHotelDetail::create([
                     'task_id' => $task->id,
                     'hotel_id' => $hotelDB->id,
@@ -922,7 +903,7 @@ JournalEntry::create([
                     'is_refundable' => strpos(strtolower($room['info'] ?? ''), 'non-refundable') === false,
                     'supplements' => null,
                 ]);
-            }catch(Exception $e){
+            } catch (Exception $e) {
                 $task->delete();
 
                 Log::channel('magic_holidays')->error('Error creating hotel details: ' . $e->getMessage(), [
@@ -939,10 +920,10 @@ JournalEntry::create([
             $adultCount = 0;
             $childCount = 0;
 
-            foreach($room['passengers'] as $passengerId){
+            foreach ($room['passengers'] as $passengerId) {
                 $passenger = collect($passengers)->where('paxId', $passengerId)->first();
 
-                if(!$passenger){
+                if (!$passenger) {
                     continue;
                 }
 
@@ -1006,26 +987,26 @@ JournalEntry::create([
             $companyId = $user->company->id;
         } elseif ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company->id;
-        } elseif ($user->role_id == Role::AGENT){
+        } elseif ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company->id;
         } else {
             return redirect()->back()->with('error', 'User not authorized to create task');
         }
 
-        if(!$agent){
+        if (!$agent) {
             return redirect()->back()->with('error', 'Agent not found');
         }
 
         $supplier = Supplier::findOrFail($request->supplier_id);
         $supplierController = new SupplierController();
 
-       switch ($supplier->name) {
-           case 'Magic Holiday':
+        switch ($supplier->name) {
+            case 'Magic Holiday':
                 $response = $supplierController->getMagicHoliday($request->supplier_ref);
                 $response = json_decode($response->getContent(), true);
 
                 Log::channel('magic_holidays')->info('Magic Holiday response: ', $response);
-                
+
                 if (isset($response['status']) && $response['status'] == 'error') {
                     return redirect()->back()->with('error', $response['message']);
                 }
@@ -1033,8 +1014,8 @@ JournalEntry::create([
 
                 if (isset($data['_embedded'])) { // Check if it's a list
                     foreach ($data['_embedded']['reservation'] as $reservation) {
-                        $response = $this->processSingleReservation($reservation, $agent->id,$companyId);
-                       
+                        $response = $this->processSingleReservation($reservation, $agent->id, $companyId);
+
                         if ($response['status'] == 'error') {
                             return redirect()->back()->with('error', $response['message']);
                         }
@@ -1042,21 +1023,20 @@ JournalEntry::create([
                         $supplierController->magicReserveWebhook($reservation['id']);
                     }
                 } else {
-                    
+
                     $response = $this->processSingleReservation($data, $agent->id, $companyId);
-                    
+
                     if ($response['status'] == 'error') {
                         return redirect()->back()->with('error', $response['message']);
                     }
 
-                   $supplierController->magicReserveWebhook($data['id']);
+                    $supplierController->magicReserveWebhook($data['id']);
                 }
 
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
-           default:
-               return redirect()->back()->with('error', 'Cannot Get Task From Supplier');
-       }
-
+            default:
+                return redirect()->back()->with('error', 'Cannot Get Task From Supplier');
+        }
     }
 
     public function getTboTask($companyId)
@@ -1078,7 +1058,7 @@ JournalEntry::create([
 
 
         logger('TBO Task: ', $bookingDetailsToday);
-        
+
         foreach ($bookingDetailsToday as $booking) {
             // $agent = Agent::where('tbo_reference', $booking['ClientReferenceNumber'])->first();
 
@@ -1090,9 +1070,9 @@ JournalEntry::create([
             $supplier = Supplier::where('name', 'TBO Holiday')->first();
 
             $existingTask = Task::where(['reference' => $booking['ConfirmationNo'], 'supplier_id' => $supplier->id])
-                     ->withoutGlobalScope('enabled')->first();
+                ->withoutGlobalScope('enabled')->first();
 
-            if($existingTask){
+            if ($existingTask) {
                 logger('TBO Task Error: Task already exists');
                 return redirect()->back()->with('error', 'Task ' . $existingTask->reference . ' already exists');
             }
@@ -1176,7 +1156,7 @@ JournalEntry::create([
                     logger('TBO Task Error: ' . $e->getMessage());
                     return redirect()->back()->with('error', 'Task failed to create');
                 }
-                
+
                 try {
                     $hotelRating = 0.0;
 
@@ -1227,7 +1207,7 @@ JournalEntry::create([
         }
 
         logger('TBO task is done');
-        
+
         return redirect()->back()->with('success', 'TBO task received successfully');
     }
 
@@ -1235,7 +1215,7 @@ JournalEntry::create([
     {
         $task = Task::with('flightDetails', 'flightDetails.countryFrom', 'flightDetails.countryTo')->findOrFail($taskId);
         $flight = $task->flightDetails;
-        
+
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
@@ -1251,7 +1231,7 @@ JournalEntry::create([
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-        
+
         $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight', 'companyLogoSrc'));
 
         return $pdf->download('flight.pdf');
@@ -1261,12 +1241,12 @@ JournalEntry::create([
     {
         $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country')->findOrFail($taskId);
         $hotelDetails = $task->hotelDetails;
- 
+
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;      
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
 
-        return view('tasks.pdfView.hotel-view', compact('task','hotelDetails', 'companyLogoSrc'));
+        return view('tasks.pdfView.hotel-view', compact('task', 'hotelDetails', 'companyLogoSrc'));
     }
 
 
@@ -1278,10 +1258,9 @@ JournalEntry::create([
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-        
+
         $pdf = Pdf::loadView('tasks.pdf.hotel', compact('task', 'hotelDetails', 'companyLogoSrc'));
 
         return $pdf->download('hotel.pdf');
     }
-
 }

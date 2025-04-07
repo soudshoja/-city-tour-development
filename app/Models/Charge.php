@@ -15,9 +15,10 @@ class Charge extends Model
         'description',
         'amount',
         'company_id',
+        'branch_id',
+        'acc_bank_id',
+        'acc_fee_id',
     ];
-
-    public const TAP_CHARGES = 0.15;
 
     public function getAmountAttribute($value)
     {
@@ -33,4 +34,10 @@ class Charge extends Model
     {
         return $this->belongsTo(Company::class, 'company_id');
     } 
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    } 
+
 }

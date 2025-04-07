@@ -17,21 +17,24 @@
             <table>
                 <thead>
                     <tr>
+                        <th>Transaction ID</th>
+                        <th>Date/Time</th>
                         <th>Description</th>
                         <th>Account</th>
                         <th>Debit</th>
                         <th>Credit</th>
-                        <th>Date</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($journalEntries as $entry)
                     <tr>
+                        <td class="text-center">{{ $entry->transaction_id }}</td>    
+                        <td class="text-center">{{ $entry->created_at }}</td>    
                         <td class="text-center">{{ $entry->description }}</td>
                         <td class="text-center">{{ $entry->account->name }}</td>
                         <td class="text-center">{{ $entry->debit }}</td>
                         <td class="text-center">{{ $entry->credit }}</td>
-                        <td class="text-center">{{ $entry->created_at }}</td>
+                        
                     </tr>
                     @endforeach
                 </tbody>

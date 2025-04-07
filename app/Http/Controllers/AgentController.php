@@ -192,7 +192,6 @@ class AgentController extends Controller
             $agent = Agent::create([
                 'user_id' => $user->id,
                 'branch_id' => $request->branch_id,
-                'account_id' => $request->account_id,
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone_number' => $request->dial_code . $request->phone,

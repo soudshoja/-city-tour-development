@@ -72,9 +72,9 @@ class ChargeController extends Controller
         ->get();  // get() will return a collection
     
         // Ensure that the COA collections are not empty
-        if ($coaPaymentGateway->isEmpty() || $coaPaymentGatewayBankAcc->isEmpty() || $coaBankAccount->isEmpty()) {
-            return redirect()->route('charges.index')->with('error', 'Some required COA records are missing.');
-        }
+        // if ($coaPaymentGateway->isEmpty() || $coaPaymentGatewayBankAcc->isEmpty() || $coaBankAccount->isEmpty()) {
+        //     return redirect()->route('charges.index')->with('error', 'Some required COA records are missing.');
+        // }
         //dd($coaPaymentGateway,$coaPaymentGatewayBankAcc,$coaBankAccount);
         return view('charges.create', compact('coaPaymentGateway', 'coaPaymentGatewayBankAcc', 'coaBankAccount'));
     }

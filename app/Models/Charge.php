@@ -18,6 +18,7 @@ class Charge extends Model
         'branch_id',
         'acc_bank_id',
         'acc_fee_id',
+        'acc_fee_bank_id',
     ];
 
     public function getAmountAttribute($value)
@@ -39,5 +40,21 @@ class Charge extends Model
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     } 
+
+    public function accFee()
+    {
+        return $this->belongsTo(Account::class, 'acc_fee_id');
+    }
+    
+    public function accBank()
+    {
+        return $this->belongsTo(Account::class, 'acc_bank_id');
+    }
+
+    public function accBankFee()
+    {
+        return $this->belongsTo(Account::class, 'acc_fee_bank_id');
+    }
+
 
 }

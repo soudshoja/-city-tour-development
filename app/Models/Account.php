@@ -83,6 +83,11 @@ class Account extends Model
         return $this->hasMany(JournalEntry::class, 'account_id');
     }
 
+    public function root()
+    {
+        return $this->belongsTo(Account::class, 'root_id');
+    }
+
     public function calculateSupplierBalances()
     {
         // Fetch all general ledger entries for this account

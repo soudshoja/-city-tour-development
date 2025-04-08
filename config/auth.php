@@ -121,5 +121,8 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
     'admin_password' => env('AUTH_ADMIN_PASSWORD', 'admin'),
+    'company_password' => env('AUTH_COMPANY_PASSWORD', 'Alphia1234'),
+    'branch_password' => env('AUTH_BRANCH_PASSWORD', 'Alphia1234'),
+    'agent_password' => env('AUTH_AGENT_PASSWORD', 'Alphia1234'),
 
 ];

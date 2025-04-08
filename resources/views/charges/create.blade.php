@@ -45,7 +45,7 @@
                             <label for="acc_fee_name" class="block text-gray-700 font-semibold mb-2">COA (Expenses) for
                                 Payment Gateway Fee</label>
                             <input list="paymentGatewayOptions" type="text" name="acc_fee_name" id="acc_fee_name"
-                                value="{{ old('acc_fee_name') }}" required
+                                value="{{ old('acc_fee_name') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 
                             <datalist id="paymentGatewayOptions">
@@ -70,7 +70,7 @@
                                 for
                                 Bank Account for the selected Payment Gateway</label>
                             <input list="paymentGatewayBankAccOptions" type="text" name="acc_bank_fee_name"
-                                id="acc_bank_fee_name" value="{{ old('acc_bank_fee_name') }}" required
+                                id="acc_bank_fee_name" value="{{ old('acc_bank_fee_name') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 
                             <datalist id="paymentGatewayBankAccOptions">
@@ -94,7 +94,7 @@
                             <label for="acc_bank_name" class="block text-gray-700 font-semibold mb-2">COA (Assets) for
                                 Debited Bank Account</label>
                             <input list="bankAccountOptions" type="text" name="acc_bank_name" id="acc_bank_name"
-                                value="{{ old('acc_bank_name') }}" required
+                                value="{{ old('acc_bank_name') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 
                             <datalist id="bankAccountOptions">

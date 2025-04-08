@@ -15,8 +15,9 @@
                 <thead>
                     <tr>
                         <th>Transaction ID</th>
-                        <th>Type</th>
-                        <th>Amount</th>
+                        <th>Description</th>
+                        <!-- <th>Type</th> -->
+                        <!-- <th>Amount</th> -->
                         <th>Date</th>
                         <th>Action</th>
                     </tr>
@@ -25,8 +26,9 @@
                     @foreach($transactions as $transaction)
                     <tr>
                         <td class="text-center">{{ $transaction->id }}</td>
-                        <td class="text-center">{{ $transaction->transaction_type }}</td>
-                        <td class="text-center">{{ $transaction->amount }}</td>
+                        <td class="text-center">{{ $transaction->description }}</td>
+                        <!-- <td class="text-center">{{ $transaction->transaction_type }}</td> -->
+                        <!-- <td class="text-center">{{ $transaction->amount }}</td> -->
                         <td class="text-center">{{ $transaction->created_at }}</td>
                         <td>
                             <a href="{{ route('journal-entries.index', $transaction->id) }}" class="text-blue-500 hover:underline">

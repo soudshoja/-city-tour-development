@@ -217,7 +217,7 @@ class PaymentController extends Controller
     }
 
     public function process(Request $request)
-    {
+    {   //dd($request);
         Log::info('process:', ['process' => $request]);
         $tap = new Tap();
 
@@ -289,13 +289,14 @@ class PaymentController extends Controller
 
         $chargeRecord = Charge::where('name', 'LIKE', $paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
-            ->select('amount', 'acc_bank_id', 'acc_fee_id')
+            ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
             ->first(); 
 
         if ($chargeRecord) {
             $defaultPaymentGatewayFee = $chargeRecord->amount;
-            $coaBankIdRec = $chargeRecord->acc_bank_id;
-            $coaFeeIdRec = $chargeRecord->acc_fee_id;
+            $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
+            $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
+            $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
 
             $bankAccountAccRecord = Account::where('id', $coaBankIdRec)
             ->where('company_id', $invoice->agent->branch->company->id)
@@ -305,7 +306,11 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-           // dd($coaBankIdRec,$coaFeeIdRec);
+            $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
+            ->where('company_id', $invoice->agent->branch->company->id)
+            ->first();
+
+            //dd($bankAccountAccRecord->id,$tapAccount->id,$bankPaymentFee->id);
         }
 
 
@@ -325,8 +330,10 @@ class PaymentController extends Controller
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
                     // Create a transaction record first
+
                     $transaction = Transaction::create([
                         'branch_id' =>  $invoice->agent->branch->id,
+                        'company_id' =>  $invoice->agent->branch->company->id,
                         'entity_id' =>  $invoice->agent->branch->company->id,
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
@@ -336,12 +343,14 @@ class PaymentController extends Controller
                         'invoice_id'=> $invoice->id,
                         'reference_type' =>'Invoice', 
                     ]);
-
                     
+
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
                     $payment->account_id = $receivableAccount->id;
                     $payment->save();
+
+                    
 
                     // Create record to receivable account (OK)
                     JournalEntry::create([
@@ -369,7 +378,7 @@ class PaymentController extends Controller
                             'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
-                            'account_id' =>  $bankAccountAccRecord->id,
+                            'account_id' =>  $bankPaymentFee->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
@@ -388,6 +397,7 @@ class PaymentController extends Controller
 
                         
                     }
+                    //dd($transaction->id,$bankAccountAccRecord);
                     
                     // Create record to payment_gateway expense coa account (OK)
                     $tapAccount->actual_balance += $defaultPaymentGatewayFee;

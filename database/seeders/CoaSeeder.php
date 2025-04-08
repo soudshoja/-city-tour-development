@@ -27,7 +27,6 @@ class CoaSeeder extends Seeder
             
             ['code' => '1200', 'name' => 'Bank Accounts',                'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1201', 'name' => 'Maybank',                      'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '1203', 'name' => 'Banktest',                     'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1204', 'name' => 'RHB',                          'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1300', 'name'  => 'Payment Gateway',             'level' => 2, 'parent' => 'Assets','account_type'         => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
            
@@ -71,7 +70,6 @@ class CoaSeeder extends Seeder
             ['code' => '2120', 'name' => 'Suppliers (Flights)', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             ['code' => '2130', 'name' => 'Suppliers (Hotels)',  'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2150', 'name' => 'Magic Holiday',               'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
         
             ['code' => '2200', 'name' => 'Accrued Expenses',            'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2210', 'name' => 'Commissions (Agents)','level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

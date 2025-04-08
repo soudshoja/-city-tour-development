@@ -10,7 +10,9 @@ return new class extends Migration
     {
         Schema::table('tasks', function (Blueprint $table) {
 
-            $table->unique(['supplier_id', 'reference', 'company_id'])->change();
+            $table->unique(['supplier_id', 'reference', 'company_id']);
+
+            $table->dropUnique(['supplier_id', 'reference']);
         });
     }
 
@@ -18,7 +20,9 @@ return new class extends Migration
     {
         Schema::table('tasks', function (Blueprint $table) {
             
-            $table->unique(['supplier_id', 'reference'])->change();
+            $table->unique(['supplier_id', 'reference']);
+
+            $table->dropUnique(['supplier_id', 'reference', 'company_id']);
         });
     }
 };

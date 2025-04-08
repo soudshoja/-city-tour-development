@@ -144,7 +144,6 @@ class AdminUsersController extends Controller
             
             ['code' => '1200', 'name' => 'Bank Accounts',                'level' => 2, 'parent' => 'Assets'],
             ['code' => '1201', 'name' => 'Maybank',                      'level' => 3, 'parent' => 'Bank Accounts'],
-            ['code' => '1203', 'name' => 'Banktest',                     'level' => 3, 'parent' => 'Bank Accounts'],
             ['code' => '1204', 'name' => 'RHB',                          'level' => 3, 'parent' => 'Bank Accounts'],
         
             ['code' => '1300', 'name' => 'Accounts Receivable',          'level' => 2, 'parent' => 'Assets'],

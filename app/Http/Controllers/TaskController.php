@@ -447,7 +447,7 @@ class TaskController extends Controller
             $supplier = $taskCreated->supplier;
 
             $companyId = $taskCreated->company_id;
-            $branchId = 3;
+            $branchId = $user->branch->id ?? $user->agent->branch_id ?? null;
 
             // Find accounts
             $receivableAccount = Account::where('name', 'like', '%Flights Cost%')->where('company_id', $companyId)->first();

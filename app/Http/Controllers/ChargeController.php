@@ -98,25 +98,31 @@ class ChargeController extends Controller
                 'type' => $request->get('type'),
                 'amount' => $request->get('amount'),
                 'acc_bank_id' => $request->get('acc_bank_id'),
-                'acc_fee_id' => $request->get('acc_fee_id'),
-                'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
                 'company_id' => Auth::user()->company->id, 
                 'branch_id' => Auth::user()->branch->id, 
             ]);
     
             // Fetch the COA for Payment Gateway Fee
-            $coaPaymentGateway = Account::whereHas('parent', function ($query) {
-                $query->where('name', 'Payment Gateway Charges');
-            })
+            // $coaPaymentGateway = Account::whereHas('parent', function ($query) {
+            //     $query->where('name', 'Payment Gateway Charges');
+            // })
+            // ->where('company_id', Auth::user()->company->id)
+            // ->first();  // Use first() to get a single model, not a collection
+
+            $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
             ->where('company_id', Auth::user()->company->id)
             ->first();  // Use first() to get a single model, not a collection
     
             // Fetch COA for Payment Gateway (Assets)
-            $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
-                $query->where('name', 'Payment Gateway');
-            })
+            $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')
             ->where('company_id', Auth::user()->company->id)
             ->first();  // Use first() to get a single model, not a collection
+
+            // $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
+            //     $query->where('name', 'Payment Gateway');
+            // })
+            // ->where('company_id', Auth::user()->company->id)
+            // ->first();  // Use first() to get a single model, not a collection
     
             // Fetch COA for Bank Account
             $coaBankAccount = Account::whereHas('parent', function ($query) {
@@ -126,29 +132,30 @@ class ChargeController extends Controller
             ->first();  // Use first() to get a single model, not a collection
     
             // Ensure that COA accounts are found before trying to access their ids
-            if (!$coaPaymentGateway || !$coaPaymentGatewayBankAcc || !$coaBankAccount) {
-                throw new Exception('Required COA records not found.');
-            }
+            // if (!$coaPaymentGateway || !$coaPaymentGatewayBankAcc || !$coaBankAccount) {
+            //     throw new Exception('Required COA records not found.');
+            // }
     
             // Create Account for Payment Gateway Fee (if it doesn't exist)
-            $newAccountFee = Account::create([
-                'name' => $request->name,
-                'parent_id' => $coaPaymentGateway->id,  // Use the id of the fetched model
-                'company_id' => Auth::user()->company->id,
-                'branch_id' => Auth::user()->branch_id, 
-                'account_type' => 'expense', 
-                'report_type' => 'profit loss', 
-                'level' => 4, 
-                'is_group' => 0, 
-                'disabled' => 0, 
-                'actual_balance' => 0.00, 
-                'budget_balance' => 0.00, 
-                'variance' => 0.00,
-                'currency' => 'KWD', // Define currency
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-    
+            // $newAccountFee = Account::create([
+            //     'name' => $request->name,
+            //     'parent_id' => $coaPaymentGateway->id,  // Use the id of the fetched model
+            //     'company_id' => Auth::user()->company->id,
+            //     'branch_id' => Auth::user()->branch_id, 
+            //     'account_type' => 'expense', 
+            //     'report_type' => 'profit loss', 
+            //     'level' => 4, 
+            //     'is_group' => 0, 
+            //     'disabled' => 0, 
+            //     'actual_balance' => 0.00, 
+            //     'budget_balance' => 0.00, 
+            //     'variance' => 0.00,
+            //     'currency' => 'KWD', // Define currency
+            //     'created_at' => now(),
+            //     'updated_at' => now(),
+            // ]);
+            
+            //dd($coaPaymentGatewayBankAcc->id);
             // Create Account for Payment Gateway Bank Fee (if it doesn't exist)
             $newAccountBankFee = Account::create([
                 'name' => $request->name,
@@ -168,24 +175,24 @@ class ChargeController extends Controller
                 'updated_at' => now(),
             ]);
     
-            // Create Account for Bank Account (if it doesn't exist)
-            $newAccountBank = Account::create([
-                'name' => $request->name,
-                'parent_id' => $coaBankAccount->id,  // Use the id of the fetched model
-                'company_id' => Auth::user()->company->id,
-                'branch_id' => Auth::user()->branch_id, 
-                'account_type' => 'asset', 
-                'report_type' => 'balance sheet', 
-                'level' => 4, 
-                'is_group' => 0, 
-                'disabled' => 0, 
-                'actual_balance' => 0.00, 
-                'budget_balance' => 0.00, 
-                'variance' => 0.00,
-                'currency' => 'KWD', // Define currency
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // // Create Account for Bank Account (if it doesn't exist)
+            // $newAccountBank = Account::create([
+            //     'name' => $request->name,
+            //     'parent_id' => $coaBankAccount->id,  // Use the id of the fetched model
+            //     'company_id' => Auth::user()->company->id,
+            //     'branch_id' => Auth::user()->branch_id, 
+            //     'account_type' => 'asset', 
+            //     'report_type' => 'balance sheet', 
+            //     'level' => 4, 
+            //     'is_group' => 0, 
+            //     'disabled' => 0, 
+            //     'actual_balance' => 0.00, 
+            //     'budget_balance' => 0.00, 
+            //     'variance' => 0.00,
+            //     'currency' => 'KWD', // Define currency
+            //     'created_at' => now(),
+            //     'updated_at' => now(),
+            // ]);
     
             // Commit the transaction
             DB::commit();
@@ -197,10 +204,9 @@ class ChargeController extends Controller
         }
     }
     
-
     public function edit($id)
     {   
-        //dd($id);
+        // Fetch the charge
         $charge = Charge::findOrFail($id);
     
         // Optional: Authorization check
@@ -211,113 +217,259 @@ class ChargeController extends Controller
         if (Auth::user()->role == 'branch' && $charge->branch_id != Auth::user()->branch->id) {
             abort(403, 'Unauthorized');
         }
-
-        //$accountsDebug = Account::whereDoesntHave('children')->get();
-        //dd($accountsDebug->pluck('name', 'id'));
-
-        // Fetch COA for Payment Gateway Fee (Expenses)
-        $coaPaymentGateway = Account::whereHas('parent', function ($query) {
-            $query->where('name', 'Payment Gateway Charges');
-        })
+    
+        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
         ->where('company_id', Auth::user()->company->id)
-        ->whereDoesntHave('children')
-        ->get();
-
-        //dd($coaPaymentGateway->name);
-
-        // Fetch COA for Payment Gateway (Assets)
+        ->first();  // Returns a single model or null
+        
         $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
             $query->where('name', 'Payment Gateway');
         })
         ->where('company_id', Auth::user()->company->id)
         ->whereDoesntHave('children')
-        ->get();
-
-        //dd($coaPaymentGatewayBankAcc->name);
-                
-
-        // Fetch COA for Bank Account (Assets)
+        ->get();  // Returns a collection
+        
         $coaBankAccount = Account::whereHas('parent', function ($query) {
             $query->where('name', 'Bank Accounts');
         })
         ->where('company_id', Auth::user()->company->id)
         ->whereDoesntHave('children')
-        ->get();
-
-        //dd($coaBankAccount->name);
+        ->get();  // Returns a collection
         
-
-        //dd($charge->acc_fee_id,$charge->acc_bank_id,$charge->acc_fee_bank_id);
-        $accFee = Account::find($charge->acc_fee_id);
-        $accBank = Account::find($charge->acc_bank_id);
-        $accBankFee = Account::find($charge->acc_fee_bank_id);
-        
-        return view('charges.edit', compact('charge','coaPaymentGateway','coaPaymentGatewayBankAcc','coaBankAccount', 'accFee', 'accBank', 'accBankFee'));
+        // Now handle the checks based on collection or single model
+    
     }
+
+    
+    // public function edit($id)
+    // {   
+    //     //dd($id);
+    //     $charge = Charge::findOrFail($id);
+    
+    //     // Optional: Authorization check
+    //     if (Auth::user()->role == 'company' && $charge->company_id != Auth::user()->company->id) {
+    //         abort(403, 'Unauthorized');
+    //     }
+    
+    //     if (Auth::user()->role == 'branch' && $charge->branch_id != Auth::user()->branch->id) {
+    //         abort(403, 'Unauthorized');
+    //     }
+
+    //     //$accountsDebug = Account::whereDoesntHave('children')->get();
+    //     //dd($accountsDebug->pluck('name', 'id'));
+
+    //     // Fetch COA for Payment Gateway Fee (Expenses)
+    //     // $coaPaymentGateway = Account::whereHas('parent', function ($query) {
+    //     //     $query->where('name', 'Payment Gateway Charges');
+    //     // })
+    //     // ->where('company_id', Auth::user()->company->id)
+    //     // ->whereDoesntHave('children')
+    //     // ->get();
+
+    //     $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
+    //     ->where('company_id', Auth::user()->company->id)
+    //     ->first();  // Use first() to get a single model, not a collection
+
+    //     //dd($coaPaymentGateway->name);
+
+    //     // Fetch COA for Payment Gateway (Assets)
+    //     $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
+    //         $query->where('name', 'Payment Gateway');
+    //     })
+    //     ->where('company_id', Auth::user()->company->id)
+    //     ->whereDoesntHave('children')
+    //     ->get();
+
+    //     //dd($coaPaymentGatewayBankAcc->name);
+                
+
+    //     // Fetch COA for Bank Account (Assets)
+    //     $coaBankAccount = Account::whereHas('parent', function ($query) {
+    //         $query->where('name', 'Bank Accounts');
+    //     })
+    //     ->where('company_id', Auth::user()->company->id)
+    //     ->whereDoesntHave('children')
+    //     ->get();
+
+    //     dd($coaPaymentGateway->name,$coaPaymentGatewayBankAcc->name,$coaBankAccount->name);
+        
+
+    //     //dd($charge->acc_fee_id,$charge->acc_bank_id,$charge->acc_fee_bank_id);
+    //     $accFee = Account::find($charge->acc_fee_id);
+    //     $accBank = Account::find($charge->acc_bank_id);
+    //     $accBankFee = Account::find($charge->acc_fee_bank_id);
+        
+    //     return view('charges.edit', compact('charge','coaPaymentGateway','coaPaymentGatewayBankAcc','coaBankAccount', 'accFee', 'accBank', 'accBankFee'));
+    // }
     
 
-    public function update(Request $request, $id)
-    {   
-        //dd($request);
-        // Fetch COA for Payment Gateway Fee (Expenses)
-        $coaPaymentGateway = Account::whereHas('parent', function ($query) {
-            $query->where('name', 'Payment Gateway Charges');
-        })
-        ->where('company_id', Auth::user()->company->id)
-        ->whereDoesntHave('children')
-        ->get();
+    // public function update(Request $request, $id)
+    // {   
+    //     //dd($request);
+    //     // Fetch COA for Payment Gateway Fee (Expenses)
+    //     // $coaPaymentGateway = Account::whereHas('parent', function ($query) {
+    //     //     $query->where('name', 'Payment Gateway Charges');
+    //     // })
+    //     // ->where('company_id', Auth::user()->company->id)
+    //     // ->whereDoesntHave('children')
+    //     // ->get();
 
-        // Fetch COA for Payment Gateway (Assets)
-        $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
-            $query->where('name', 'Payment Gateway');
-        })
-        ->where('company_id', Auth::user()->company->id)
-        ->whereDoesntHave('children')
-        ->get();
+    //     $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
+    //     ->where('company_id', Auth::user()->company->id)
+    //     ->first();  // Use first() to get a single model, not a collection
+        
+    //     // Fetch COA for Payment Gateway (Assets)
+    //     $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
+    //         $query->where('name', 'Payment Gateway');
+    //     })
+    //     ->where('company_id', Auth::user()->company->id)
+    //     ->whereDoesntHave('children')
+    //     ->get();
                 
 
-        // Fetch COA for Bank Account (Assets)
-        $coaBankAccount = Account::whereHas('parent', function ($query) {
-            $query->where('name', 'Bank Accounts');
-        })
-        ->where('company_id', Auth::user()->company->id)
-        ->whereDoesntHave('children')
-        ->get();
+    //     // Fetch COA for Bank Account (Assets)
+    //     $coaBankAccount = Account::whereHas('parent', function ($query) {
+    //         $query->where('name', 'Bank Accounts');
+    //     })
+    //     ->where('company_id', Auth::user()->company->id)
+    //     ->whereDoesntHave('children')
+    //     ->get();
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:255',
-            'type' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
-            'acc_bank_id' => 'required|exists:accounts,id',
-            'acc_fee_id' => 'required|exists:accounts,id',
-            'acc_fee_bank_id' => 'required|exists:accounts,id',
-        ], [
-            'acc_bank_id.required' => 'The selected account code for COA for Bank Account is required.',
-            'acc_fee_id.required' => 'The selected account code for COA Payment Gateway Fee is required.',
-            'acc_fee_bank_id.required' => 'The selected account code for COA for Bank Account is required.',
-            'acc_bank_id.exists' => 'The selected account code for COA for Bank Account does not exist.',
-            'acc_fee_id.exists' => 'The selected account code for COA Payment Gateway Fee does not exist.',
-            'acc_fee_bank_id.exists' => 'The selected account code for COA Bank Account does not exist.',
+    //     $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'description' => 'nullable|string|max:255',
+    //         'type' => 'required|string|max:255',
+    //         'amount' => 'required|numeric|min:0.01',
+    //     ]);
+
+    //     try {
+    //         DB::beginTransaction();
+    //         $charge = Charge::findOrFail($id);
+    //         $charge->update([
+    //             'name' => $request->get('name'),
+    //             'amount' => $request->get('amount'),
+    //             'type' => $request->get('type'),
+    //             'description' => $request->get('description'),
+    //             'acc_bank_id' => $request->get('acc_bank_id'),
+    //             'acc_fee_id' => $request->get('acc_fee_id'),
+    //             'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
+    //         ]);
+
+    //         // Ensure the account exists or create a new one
+    //         $newAccountFee = $coaPaymentGateway ? $coaPaymentGateway : Account::create([
+    //             'name' => $request->name,
+    //             'parent_id' => $coaPaymentGateway->id,  // Set parent_id to Payment Gateway Charges
+    //             'company_id' => Auth::user()->company->id,
+    //             'branch_id' => Auth::user()->branch_id,
+    //             'account_type' => 'expense',
+    //             'report_type' => 'profit loss',
+    //             'level' => 4,
+    //             'is_group' => 0,
+    //             'disabled' => 0,
+    //             'actual_balance' => 0.00,
+    //             'budget_balance' => 0.00,
+    //             'variance' => 0.00,
+    //             'currency' => 'KWD',
+    //         ]);
+
+    //         $newAccountBankFee = $coaPaymentGatewayBankAcc ? $coaPaymentGatewayBankAcc : Account::create([
+    //             'name' => $request->name,
+    //             'parent_id' => $coaPaymentGatewayBankAcc->id,
+    //             'company_id' => Auth::user()->company->id,
+    //             'branch_id' => Auth::user()->branch_id,
+    //             'account_type' => 'asset',
+    //             'report_type' => 'balance sheet',
+    //             'level' => 4,
+    //             'is_group' => 0,
+    //             'disabled' => 0,
+    //             'actual_balance' => 0.00,
+    //             'budget_balance' => 0.00,
+    //             'variance' => 0.00,
+    //             'currency' => 'KWD',
+    //         ]);
+
+    //         $newAccountBank = $coaBankAccount ? $coaBankAccount : Account::create([
+    //             'name' => $request->name,
+    //             'parent_id' => $coaBankAccount->id,
+    //             'company_id' => Auth::user()->company->id,
+    //             'branch_id' => Auth::user()->branch_id,
+    //             'account_type' => 'asset',
+    //             'report_type' => 'balance sheet',
+    //             'level' => 4,
+    //             'is_group' => 0,
+    //             'disabled' => 0,
+    //             'actual_balance' => 0.00,
+    //             'budget_balance' => 0.00,
+    //             'variance' => 0.00,
+    //             'currency' => 'KWD',
+    //         ]);
+
+    //         // Commit the transaction
+    //         DB::commit();
+
+
+    //         // Redirect to the clients list with a success message
+    //         return redirect()->route('charges.index')->with('success', 'Charges updated successfully!');
+    //     } catch (Exception $e) {
+
+    //         DB::rollBack();
+
+    //         return redirect()->back()->withInput()->with('error', $e->getMessage());
+    //     }
+    // }
+
+
+    public function update(Request $request, $id)
+{   
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string|max:255',
+        'type' => 'required|string|max:255',
+        'amount' => 'required|numeric|min:0.01',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        // Fetch the charge to update
+        $charge = Charge::findOrFail($id);
+
+        // Update charge fields
+        $charge->update([
+            'name' => $request->get('name'),
+            'amount' => $request->get('amount'),
+            'type' => $request->get('type'),
+            'description' => $request->get('description'),
+            'acc_bank_id' => $request->get('acc_bank_id'),
+            'acc_fee_id' => $request->get('acc_fee_id'),
+            'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
         ]);
 
-        try {
-            DB::beginTransaction();
-            $charge = Charge::findOrFail($id);
-            $charge->update([
-                'name' => $request->get('name'),
-                'amount' => $request->get('amount'),
-                'type' => $request->get('type'),
-                'description' => $request->get('description'),
-                'acc_bank_id' => $request->get('acc_bank_id'),
-                'acc_fee_id' => $request->get('acc_fee_id'),
-                'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
-            ]);
 
-            // Ensure the account exists or create a new one
-            $newAccountFee = $coaPaymentGateway ? $coaPaymentGateway : Account::create([
+        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
+            ->where('company_id', Auth::user()->company->id)
+            ->get();  
+            
+        $coaPaymentGatewayBankAcc = Account::whereHas('parent', function ($query) {
+                $query->where('name', 'Payment Gateway');
+            })
+            ->where('company_id', Auth::user()->company->id)
+            ->whereDoesntHave('children')
+            ->get();  // Returns a collection
+            
+        $coaBankAccount = Account::whereHas('parent', function ($query) {
+                $query->where('name', 'Bank Accounts');
+            })
+            ->where('company_id', Auth::user()->company->id)
+            ->whereDoesntHave('children')
+            ->get();  // Returns a collection
+
+        // Payment Gateway Fee Account
+        if (!$coaPaymentGateway) {
+            // Create new account if not found
+            $coaPaymentGateway = Account::create([
                 'name' => $request->name,
-                'parent_id' => $coaPaymentGateway->id,  // Set parent_id to Payment Gateway Charges
+                'parent_id' => $coaPaymentGateway->id,
                 'company_id' => Auth::user()->company->id,
                 'branch_id' => Auth::user()->branch_id,
                 'account_type' => 'expense',
@@ -330,52 +482,58 @@ class ChargeController extends Controller
                 'variance' => 0.00,
                 'currency' => 'KWD',
             ]);
-
-            $newAccountBankFee = $coaPaymentGatewayBankAcc ? $coaPaymentGatewayBankAcc : Account::create([
-                'name' => $request->name,
-                'parent_id' => $coaPaymentGatewayBankAcc->id,
-                'company_id' => Auth::user()->company->id,
-                'branch_id' => Auth::user()->branch_id,
-                'account_type' => 'asset',
-                'report_type' => 'balance sheet',
-                'level' => 4,
-                'is_group' => 0,
-                'disabled' => 0,
-                'actual_balance' => 0.00,
-                'budget_balance' => 0.00,
-                'variance' => 0.00,
-                'currency' => 'KWD',
-            ]);
-
-            $newAccountBank = $coaBankAccount ? $coaBankAccount : Account::create([
-                'name' => $request->name,
-                'parent_id' => $coaBankAccount->id,
-                'company_id' => Auth::user()->company->id,
-                'branch_id' => Auth::user()->branch_id,
-                'account_type' => 'asset',
-                'report_type' => 'balance sheet',
-                'level' => 4,
-                'is_group' => 0,
-                'disabled' => 0,
-                'actual_balance' => 0.00,
-                'budget_balance' => 0.00,
-                'variance' => 0.00,
-                'currency' => 'KWD',
-            ]);
-
-            // Commit the transaction
-            DB::commit();
-
-
-            // Redirect to the clients list with a success message
-            return redirect()->route('charges.index')->with('success', 'Charges updated successfully!');
-        } catch (Exception $e) {
-
-            DB::rollBack();
-
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
+
+        // Payment Gateway Bank Account
+        if (!$coaPaymentGatewayBankAcc) {
+            // Create new account if collection is empty
+            $coaPaymentGatewayBankAcc = Account::create([
+                'name' => $request->name,
+                'parent_id' => $coaPaymentGatewayBankAcc->first()->id,  // Use the first item in the collection
+                'company_id' => Auth::user()->company->id,
+                'branch_id' => Auth::user()->branch_id,
+                'account_type' => 'asset',
+                'report_type' => 'balance sheet',
+                'level' => 4,
+                'is_group' => 0,
+                'disabled' => 0,
+                'actual_balance' => 0.00,
+                'budget_balance' => 0.00,
+                'variance' => 0.00,
+                'currency' => 'KWD',
+            ]);
+        }
+
+        // Bank Account
+        if (!$coaBankAccount) {
+            // Create new account if collection is empty
+            $coaBankAccount = Account::create([
+                'name' => $request->name,
+                'parent_id' => $coaBankAccount->first()->id,  // Use the first item in the collection
+                'company_id' => Auth::user()->company->id,
+                'branch_id' => Auth::user()->branch_id,
+                'account_type' => 'asset',
+                'report_type' => 'balance sheet',
+                'level' => 4,
+                'is_group' => 0,
+                'disabled' => 0,
+                'actual_balance' => 0.00,
+                'budget_balance' => 0.00,
+                'variance' => 0.00,
+                'currency' => 'KWD',
+            ]);
+        }
+
+        // Commit the transaction
+        DB::commit();
+
+        return redirect()->route('charges.index')->with('success', 'Charges updated successfully!');
+    } catch (Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->withInput()->with('error', $e->getMessage());
     }
+}
+
 
     public function destroy()
     {

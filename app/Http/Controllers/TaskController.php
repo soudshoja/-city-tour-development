@@ -458,7 +458,7 @@ class TaskController extends Controller
                 ->first();
 
             
-            $payableFallback = Account::where('name', 'Accounts Payable')
+            $payableFallback = Account::where('name', 'Suppliers (Flights)')
                 ->where('company_id', $companyId)
                 ->first();
 

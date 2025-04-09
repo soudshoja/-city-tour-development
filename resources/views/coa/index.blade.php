@@ -65,10 +65,10 @@
     <!-- accounts view -->
     <div class="rounded-lg w-full">
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.assets')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.liabilities')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.income')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.expenses')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.equity')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-liabilities')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-income')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-expenses')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-equity')</div>
 
     </div>
     <!-- ./accounts view -->
@@ -83,6 +83,56 @@
 
 
     <script>
+      const branches = JSON.parse(document.getElementById('coa-container').getAttribute('data-branches'));
+      const agents = JSON.parse(document.getElementById('coa-container').getAttribute('data-agents'));
+      const clients = JSON.parse(document.getElementById('coa-container').getAttribute('data-clients'));
+
+      const entitySelects = document.querySelectorAll('.entitySelect');
+
+      function handleEntityChange(event) {
+        console.log('Entity changed:', event.target.value);
+          const entitySelect = event.target;
+          const level = entitySelect.dataset.level;
+          const accountId = entitySelect.dataset.accountId;
+          const selectedValue = entitySelect.value;
+
+          const entityContainer = document.getElementById(`entity-container-${accountId}`);
+          entityContainer.innerHTML = ''; // Clear previous content
+
+          if (!selectedValue) return;
+
+          const label = document.createElement('label');
+          label.classList.add('block', 'text-sm', 'font-medium', 'mb-1');
+          label.innerHTML = `${selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1)} Name<span class="text-red-500"> *</span>`;
+          entityContainer.appendChild(label);
+
+          let selectOptions = [];
+          if (selectedValue === 'agent') selectOptions = agents;
+          else if (selectedValue === 'client') selectOptions = clients;
+          else if (selectedValue === 'branch') selectOptions = branches;
+
+          if (selectOptions.length > 0) {
+              const select = createSelectElement(
+                  [{
+                      id: '',
+                      name: `Select ${selectedValue}`
+                  }, ...selectOptions], {
+                      name: selectedValue,
+                      id: selectedValue,
+                      required: 'required',
+                      autocomplete: 'off'
+                  },
+                  ['w-full', 'border', 'rounded', 'text-sm', 'px-3', 'py-2', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-300']
+              );
+              entityContainer.appendChild(select);
+          }
+      }
+
+      // Attach change event listeners to entity selects
+      console.log(entitySelects);
+      entitySelects.forEach(entitySelect => {
+          entitySelect.addEventListener('change', handleEntityChange);
+      });
         const toggleBtn = document.getElementById('toggleBtn');
         const contentBox = document.getElementById('contentBox');
 

@@ -1,12 +1,19 @@
-<!-- filepath: resources/views/coa/partials/asset-item.blade.php -->
 <li x-data="{ open: false , showAddCategoryForm: false}"
     class="relative w-full flex flex-col"
     :class="{ 'pointer-events-none: showAddCategoryForm }">
     <a href="javascript:;"
-        class="flex items-center px-4 py-2 w-full hover:text-[#508D4E] transition-all"
+        class="flex justify-between py-2 w-full hover:text-[#508D4E] transition-all border-b border-b-[#E5E7EB] dark:border-b-[#374151] dark:hover:text-[#00ab55] dark:text-white"
         @click="if (!showAddCategoryForm) open = !open">
-        <span class="flex-1">{{ $account->name }}</span>
-        <div class="flex items-center gap-2">
+        <span class="px-2">{{ $account->name }}</span>
+        <div class="flex justify-start w-120">
+            <div class="p-2 min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
+                {{ $account->code }}
+            </div>
+        </div>
+        <div class="p-2  min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
+            {{ $account->balance }}
+        </div>
+        <div class="px-2 flex items-center gap-2">
             <svg x-show="!open" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -37,7 +44,7 @@
                 <button @click="showAddCategoryForm = false" class="absolute top-3 right-3 text-2xl text-gray-700 hover:text-black">
                     &times;
                 </button>
-                <h2 class="text-xl font-semibold mb-3">New Asset</h2>
+                <h2 class="text-xl font-semibold mb-3">New Account</h2>
                 <hr class="mb-3">
                 <form action="{{ route('coa.addCategory') }}" method="POST">
                     @csrf
@@ -95,7 +102,7 @@
     <ul x-show="open" class="ml-6 space-y-2">
         @if($account->childAccounts && $account->childAccounts->isNotEmpty())
         @foreach ($account->childAccounts as $childAccount)
-        @include('coa.partials.asset-item', ['account' => $childAccount])
+        @include('coa.partials.child-account', ['account' => $childAccount])
         @endforeach
         @else
         <p class="text-red-400">No child accounts available.</p>

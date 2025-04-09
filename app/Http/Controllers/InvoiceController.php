@@ -586,6 +586,7 @@ class InvoiceController extends Controller
                 try {
                     $transaction = Transaction::create([
                         'company_id' => $companyId,
+                        'branch_id' => $branchId,
                         'entity_id' => $companyId,
                         'entity_type' => 'company',
                         'transaction_type' => 'credit',

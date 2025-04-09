@@ -27,15 +27,17 @@
                     <!-- Type -->
                     <div>
                         <label for="type" class="block text-gray-700 font-semibold mb-2">Type</label>
-                        <input type="text" name="type" id="type" value="{{ old('type') }}" required
+                        <select name="type" id="type" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="Payment Gateway" selected>Payment Gateway</option>
+                        </select>
                     </div>
 
                     <!-- Amount -->
                     <div>
                         <label for="amount" class="block text-gray-700 font-semibold mb-2">Amount (KWD)</label>
-                        <input type="number" step="0.01" default="0.10" name="amount" id="amount"
-                            value="{{ old('amount') }}" required
+                        <input type="number" step="0.01" name="amount" id="amount"
+                            value="{{ old('amount', '0.25') }}" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
 
@@ -120,7 +122,12 @@
                 <input type="hidden" name="acc_bank_id" id="acc_bank_id" value="{{ old('acc_bank_id') }}">
                 <input type="hidden" name="acc_fee_bank_id" id="acc_fee_bank_id" value="{{ old('acc_fee_bank_id') }}">
                 <!-- Submit Button -->
-                <div class="mt-4">
+                <div class="mt-4 flex space-x-4">
+                    <a href="{{ route('charges.index') }}"
+                        class="w-full text-center px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-lg focus:outline-none focus:ring focus:ring-gray-100 focus:border-gray-300">
+                        Cancel
+                    </a>
+
                     <button type="submit"
                         class="w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                         Create Charge

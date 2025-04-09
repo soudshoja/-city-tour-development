@@ -28,8 +28,13 @@
                     <!-- Type -->
                     <div>
                         <label for="type" class="block text-gray-700 font-semibold mb-2">Type</label>
-                        <input type="text" name="type" id="type" value="{{ $charge->type }}" required
+
+                        <select name="type" id="type" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="Payment Gateway"
+                                {{ old('type', $charge->type ?? '') == 'Payment Gateway' ? 'selected' : '' }}>Payment
+                                Gateway</option>
+                        </select>
                     </div>
 
                     <!-- Amount -->
@@ -39,113 +44,97 @@
                             min="0.01" step="0.01"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
-                    <!-- COA for Payment Gateway Fee -->
-                    @if ($coaPaymentGateway->isNotEmpty())
-                        <div>
-                            <label for="acc_fee_name" class="block text-gray-700 font-semibold mb-2">
-                                COA (Expenses) for Payment Gateway
-                                Fee
-                            </label>
-                            <input list="paymentGatewayOptions" type="text" name="acc_fee_name" id="acc_fee_name"
-                                value="{{ old('acc_fee_name', isset($accFee) && $accFee ? $accFee->name : '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 
-                            <datalist id="paymentGatewayOptions">
-                                @foreach ($coaPaymentGateway as $account)
-                                    @if ($account && is_object($account))
-                                        <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
-                                    @endif
-                                @endforeach
+                    {{-- <div>
+                        <label for="acc_fee_name" class="block text-gray-700 font-semibold mb-2">
+                            COA (Expenses) for Payment Gateway
+                            Fee
+                        </label>
+                        <input list="paymentGatewayOptions" type="text" name="acc_fee_name" id="acc_fee_name"
+                            value="{{ old('acc_fee_name', isset($accFee) && $accFee ? $accFee->name : '') }}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 
-                            </datalist>
-
-                            <!-- Show a message if no options are available -->
-                            @if ($coaPaymentGateway->isEmpty())
-                                <div class="mt-2 text-sm text-red-500">
-                                    No available records found. Please add via COA page.
-                                </div>
-                            @endif
-                        </div>
-
-
-                        <!-- Hidden input field to store the ID of the selected COA for Payment Gateway Fee -->
-                        <input type="hidden" name="acc_fee_id" id="acc_fee_id"
-                            value="{{ old('acc_fee_id', $charge->acc_fee_id ?? '') }}">
-
-                    @endif
-
-                    <!-- COA for Bank Account -->
-                    @if ($coaPaymentGatewayBankAcc->isNotEmpty())
-                        <div>
-                            <label for="acc_bank_fee_name" class="block text-gray-700 font-semibold mb-2">
-                                COA (Assets) for Bank Account for the selected Payment Gateway
-                            </label>
-                            <input list="paymentGatewayBankAccOptions" type="text" name="acc_bank_fee_name"
-                                id="acc_bank_fee_name"
-                                value="{{ old('acc_bank_fee_name', isset($accBankFee) && $accBankFee ? $accBankFee->name : '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
-
-                            <datalist id="paymentGatewayBankAccOptions">
-                                @foreach ($coaPaymentGatewayBankAcc as $account)
+                        <datalist id="paymentGatewayOptions">
+                            @foreach ($coaPaymentGateway as $account)
+                                @if ($account && is_object($account))
                                     <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
-                                @endforeach
-                            </datalist>
+                                @endif
+                            @endforeach
 
-                            <!-- Show a message if no options are available -->
-                            @if ($coaPaymentGatewayBankAcc->isEmpty())
-                                <div class="mt-2 text-sm text-red-500">
-                                    No available records found. Please add via COA page.
-                                </div>
-                            @endif
-                        </div>
+                        </datalist>
 
-
-                        <!-- Hidden input field to store the ID of the selected COA for Bank Account -->
-                        <input type="hidden" name="acc_fee_bank_id" id="acc_fee_bank_id"
-                            value="{{ old('acc_fee_bank_id', $charge->acc_fee_bank_id ?? '') }}">
-                    @endif
+                        <!-- Show a message if no options are available -->
+                        @if ($coaPaymentGateway->isEmpty())
+                            <div class="mt-2 text-sm text-red-500">
+                                No available records found. Please add via COA page.
+                            </div>
+                        @endif
+                    </div> --}}
 
 
+                    <!-- Hidden input field to store the ID of the selected COA for Payment Gateway Fee -->
+                    <input type="hidden" name="acc_fee_id" id="acc_fee_id"
+                        value="{{ old('acc_fee_id', $charge->acc_fee_id ?? '') }}">
 
-                    <!-- COA for Bank Fee -->
-                    @if ($coaBankAccount->isNotEmpty())
-                        <div>
-                            <label for="acc_bank_name" class="block text-gray-700 font-semibold mb-2">COA (Assets) for
-                                Debited
-                                Bank
-                                Account</label>
-                            <input list="bankAccountOptions" type="text" name="acc_bank_name" id="acc_bank_name"
-                                value="{{ old('acc_bank_name', isset($accBank) && $accBank ? $accBank->name : '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 
-                            <datalist id="bankAccountOptions">
-                                @foreach ($coaBankAccount as $account)
-                                    <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
-                                @endforeach
-                            </datalist>
 
-                            @if ($coaBankAccount->isEmpty())
-                                <div class="mt-2 text-sm text-red-500">
-                                    No available records found. Please add via COA page.
-                                </div>
-                            @endif
-                        </div>
+                    <div>
+                        <label for="acc_bank_fee_name" class="block text-gray-700 font-semibold mb-2">
+                            COA (Assets) for selected Payment Gateway
+                        </label>
+                        <input type="text" name="acc_bank_fee_name" id="acc_bank_fee_name"
+                            value="{{ old('acc_bank_fee_name', isset($accBankFee) && $accBankFee ? $accBankFee->name : '') }}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                            readonly>
+                    </div>
 
-                        <!-- Hidden input field for COA Bank Fee ID -->
-                        <input type="hidden" name="acc_bank_id" id="acc_bank_id"
-                            value="{{ old('acc_bank_id', $charge->acc_bank_id ?? '') }}">
-                    @endif
 
+                    <!-- Hidden input field to store the ID of the selected COA for Bank Account -->
+                    <input type="hidden" name="acc_fee_bank_id" id="acc_fee_bank_id"
+                        value="{{ old('acc_fee_bank_id', $charge->acc_fee_bank_id ?? '') }}">
+
+
+                    <div>
+                        <label for="acc_bank_name" class="block text-gray-700 font-semibold mb-2">COA (Assets) for
+                            Debited
+                            Bank
+                            Account</label>
+                        <input list="bankAccountOptions" type="text" name="acc_bank_name" id="acc_bank_name"
+                            value="{{ old('acc_bank_name', isset($accBank) && $accBank ? $accBank->name : '') }}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+
+                        <datalist id="bankAccountOptions">
+                            @foreach ($coaBankAccount as $account)
+                                <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
+                            @endforeach
+                        </datalist>
+
+                        @if ($coaBankAccount->isEmpty())
+                            <div class="mt-2 text-sm text-red-500">
+                                No available records found. Please add via COA page.
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Hidden input field for COA Bank Fee ID -->
+                    <input type="hidden" name="acc_bank_id" id="acc_bank_id"
+                        value="{{ old('acc_bank_id', $charge->acc_bank_id ?? '') }}">
 
                 </div>
 
                 <!-- Submit Button -->
-                <div class="text-right">
+                <div class="mt-4 flex space-x-4">
+                    <a href="{{ route('charges.index') }}"
+                        class="w-full text-center px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-lg focus:outline-none focus:ring focus:ring-gray-100 focus:border-gray-300">
+                        Cancel
+                    </a>
+
                     <button type="submit"
-                        class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        class="w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                         Update Charge
                     </button>
                 </div>
+
             </form>
 
         </div>

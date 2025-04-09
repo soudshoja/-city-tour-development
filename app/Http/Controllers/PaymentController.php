@@ -322,15 +322,22 @@ class PaymentController extends Controller
         if (!empty($invoiceDetails)) {
 
             // dd($invoiceDetails);
-            foreach ($invoiceDetails as $invoiceDetail) {
+            //foreach ($invoiceDetails as $invoiceDetail) {
                 try {
+
+                    $invoiceDetail = $invoiceDetails->first();
+
+                    // Check if there's at least one invoice detail to process
+                    if (!$invoiceDetail) {
+                        return response()->json(['error' => 'No invoice details found'], 400);
+                    }
 
                     $selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
                     $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
-                    // Create a transaction record first
 
+                    // Create a transaction record first
                     $transaction = Transaction::create([
                         'branch_id' =>  $invoice->agent->branch->id,
                         'company_id' =>  $invoice->agent->branch->company->id,
@@ -344,14 +351,12 @@ class PaymentController extends Controller
                         'reference_type' =>'Invoice', 
                     ]);
                     
-
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
                     $payment->completed = '0';
                     $payment->account_id = $receivableAccount->id;
                     $payment->save();
 
-                    
 
                     // Create record to receivable account (OK)
                     JournalEntry::create([
@@ -438,7 +443,7 @@ class PaymentController extends Controller
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                     return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
                 }
-            }
+            //}
         }
 
 

@@ -81,21 +81,16 @@ class ChargeController extends Controller
     public function store(Request $request)
     {   
         // Fetch COA for Payment Gateway Fee (Expenses)   
-        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges') // or bank account
-        ->where('company_id', Auth::user()->company->id)
-        ->first();
+        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first();
 
         // Fetch COA for Payment Gateway (Assets)
-        $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')
-        ->where('company_id', Auth::user()->company->id)
-        ->first();  // Use first() to get a single model, not a collection
+        $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first();  
 
         // Fetch COA for Bank Account
         $coaBankAccount = Account::whereHas('parent', function ($query) {
             $query->where('name', 'Bank Accounts');
         })
-        ->where('company_id', Auth::user()->company->id)
-        ->first();  // Use first() to get a single model, not a collection
+        ->first();  
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -103,6 +98,9 @@ class ChargeController extends Controller
             'type' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0.01',
         ]);
+
+        // Fetch COA for Payment Gateway (Assets)
+        $coaRootIdAssets = Account::where('name', 'Assets')->first();  
     
         try {
             DB::beginTransaction();
@@ -114,6 +112,8 @@ class ChargeController extends Controller
                 'parent_id' => $coaPaymentGatewayBankAcc->id,  // Use the id of the fetched model
                 'company_id' => Auth::user()->company->id,
                 'branch_id' => Auth::user()->branch_id, 
+                'root_id' => $coaRootIdAssets->id, 
+                'code' => '1213', 
                 'account_type' => 'asset', 
                 'report_type' => 'balance sheet', 
                 'level' => 4, 

@@ -86,7 +86,6 @@
                                 <tr>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Transaction Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Reference Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
@@ -106,13 +105,10 @@
                                         @endphp
                                         <tr>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->date }}
+                                                {{ \Carbon\Carbon::parse($bankpayment->date)->format('Y-m-d') }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->description }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->amount }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->transaction_type }}

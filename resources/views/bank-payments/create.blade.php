@@ -393,8 +393,8 @@
                         <datalist id="accountList_${index}">
                             ${lastLevelAccounts.map(accpayreceive => 
                                 `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                            [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                        </option>`
+                                                                                                                                                                                                                                                    [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                                </option>`
                             ).join('')}
                         </datalist>
 

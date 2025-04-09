@@ -26,8 +26,8 @@ class CoaSeeder extends Seeder
             ['code' => '1110', 'name' => 'Petty Cash',                   'level' => 3, 'parent' => 'Cash In Hand', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             
             ['code' => '1200', 'name' => 'Bank Accounts',                'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '1201', 'name' => 'Maybank',                      'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '1204', 'name' => 'RHB',                          'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1201', 'name' => 'Kuwait International Bank',                      'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1204', 'name' => 'Ahli United Bank Kuwait',                          'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1300', 'name'  => 'Payment Gateway',             'level' => 2, 'parent' => 'Assets','account_type'         => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
            
             ['code' => '1350', 'name' => 'Accounts Receivable',          'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

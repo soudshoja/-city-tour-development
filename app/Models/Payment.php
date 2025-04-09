@@ -30,6 +30,7 @@ class Payment extends Model
         'tax',
         'discount',
         'shipping',
+        'completed',
     ];
     public function client()
     {

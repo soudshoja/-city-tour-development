@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // Run the email processing command every 10 minutes
         $schedule->command('emails:process')->everyTenMinutes();
+        $schedule->command('app:payment-release-to-company-bankacc-process')->dailyAt('0:00');
     }
 
     /**

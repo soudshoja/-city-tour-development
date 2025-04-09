@@ -37,11 +37,11 @@
 
   </div>
 
-  <div id="AssetsDetails" class="rounded-lg shadow-sm" x-data="assetManager()">
+  <div id="AssetsDetails" class="rounded-lg shadow-sm">
       <div>
           <ul class="w-full">
               @foreach ($assets->childAccounts as $asset)
-              @include('coa.partials.asset-item', ['account' => $asset])
+              @include('coa.partials.child-account', ['account' => $asset, 'color' => 'green'])
               @endforeach
           </ul>
       </div>
@@ -49,165 +49,80 @@
 
   <!-- <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script> -->
   <script>
-      document.addEventListener('alpine:init', () => {
-          Alpine.data('assetManager', () => ({
-              showAddCategoryForm: false,
-              newCategoryName: '',
-              newCategoryCode: '', // Add this line
-              newCategoryType: '',
-              newCategoryEntity: '',
-              newCategoryLevel: '',
-              newCategoryParentId: '',
-              variance: '',
-              budgetBalance: '',
-              actualBalance: '',
-              errors: {},
 
-              resetForm() {
-                  this.newCategoryName = '';
-                  this.newCategoryCode = '';
-                  this.newCategoryType = '';
-                  this.newCategoryEntity = '';
-                  this.errors = {};
-              },
-
-              openLevels: {},
-              assets: @json($assets), // Initialize the assets array with the existing assets
-              addCategory() {
-                  if (this.newCategoryName.trim() === '' || this.newCategoryCode.trim() === '') {
-                      alert('Category name and code cannot be empty');
-                      return;
-                  }
-                  //   console.log(this.newCategoryLevel);
-
-                  fetch('/addCategory', {
-                          method: 'POST',
-                          headers: {
-                              'Content-Type': 'application/json',
-                              'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                          },
-                          body: JSON.stringify({
-                              name: this.newCategoryName,
-                              code: this.newCategoryCode,
-                              level: this.newCategoryLevel + 1,
-                              parent_id: this.newCategoryParentId,
-                              variance: this.variance,
-                              budget_balance: this.budgetBalance,
-                              actual_balance: this.actualBalance,
-                          })
-                      })
-                      .then(response => response.json())
-                      .then(data => {
-                          if (data.success) {
-                              // Add the new category to the list without reloading the page
-                              this.assets.push({
-                                  id: data.id,
-                                  name: this.newCategoryName,
-                                  code: this.newCategoryCode,
-                                  level: this.newCategoryLevel,
-                                  parent_id: this.newCategoryParentId,
-                                  variance: this.variance,
-                                  level3assets: [] // Initialize with an empty array for level 3 assets
-                              });
-                              this.newCategoryName;
-                              this.newCategoryCode;
-                              this.newCategoryLevel;
-                              this.newCategoryParentId;
-                              this.variance;
-                              this.budgetBalance; // Reset budgetBalance
-                              this.actualBalance; // Reset actualBalance
-                              this.showAddCategoryForm = false;
-                          } else {
-                              alert('Failed to add category');
-                          }
-                      })
-                      .catch(error => {
-                          console.error('Error:', error);
-                      }).finally(() => {
-                          console.log('Add category request completed');
-                          window.location.reload();
-                      });
-
-              }
-          }));
-      });
-  </script>
-  <script>
-      // open and close assets details function
-      const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
       const contentAssetsDiv = document.getElementById('AssetsDetails');
-      //   console.log(AssetsToggleButton);
-      // Initially hide the content div
+      const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
+
       contentAssetsDiv.style.display = 'none';
-
-      // Add click event listener to the button
-      AssetsToggleButton.forEach(function(button) {
-          //   console.log(button);
-          button.addEventListener('click', function() {
-              // Toggle the content div visibility
-              if (contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '') {
-                  contentAssetsDiv.style.display = 'block'; // Show the content
-              } else {
-                  contentAssetsDiv.style.display = 'none'; // Hide the content
-              }
-          });
-      });
-
-
-
-
-      // update code function
-
-      function checkEnter(event, assetId, value) {
-          if (event.key === 'Enter') {
-              event.preventDefault(); // Prevent form submission if it's in a form
-              saveCode(assetId, value);
-          }
+      // Utility function to create a select element
+      function createSelectElement(options, attributes, classes) {
+          const select = document.createElement('select');
+          Object.keys(attributes).forEach(attr => select.setAttribute(attr, attributes[attr]));
+          classes.forEach(cls => select.classList.add(cls));
+          select.innerHTML = options.map(option => `<option value="${option.id}">${option.name}</option>`).join('');
+          return select;
       }
 
-      function saveCode(assetId, value) {
+      // Handle entity selection change
+
+      // Toggle assets visibility
+      function toggleAssetsVisibility() {
+          contentAssetsDiv.style.display = contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '' ? 'block' : 'none';
+      }
+
+      AssetsToggleButton.forEach(button => {
+          button.addEventListener('click', toggleAssetsVisibility);
+      });
+
+      // Save code function
+      async function saveCode(assetId, value) {
           if (value.trim() === '') {
               showMessage('Code cannot be empty!');
-              return; // Prevent saving if the input is empty
+              return;
           }
 
-          // Make an AJAX request to save the new code
-          fetch(`/updateCode/${assetId}`, { // Update with your save route
+          try {
+              const response = await fetch(`/updateCode/${assetId}`, {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/json',
-                      'X-CSRF-TOKEN': '{{ csrf_token() }}' // Include CSRF token for security
+                      'X-CSRF-TOKEN': '{{ csrf_token() }}'
                   },
                   body: JSON.stringify({
                       code: value
                   })
-              })
-              .then(response => {
-                  if (!response.ok) {
-                      throw new Error('Network response was not ok');
-                  }
-                  return response.json();
-              })
-              .then(data => {
-                  showMessage(data.message);
-              })
-              .catch(error => {
-                  console.error('There was a problem with the fetch operation:', error);
               });
+
+              if (!response.ok) throw new Error('Network response was not ok');
+              const data = await response.json();
+              showMessage(data.message);
+          } catch (error) {
+              console.error('There was a problem with the fetch operation:', error);
+          }
       }
 
+      // Show message function
       function showMessage(message) {
           const messageArea = document.getElementById('message-area');
           const messageDiv = document.getElementById('message');
 
-          messageDiv.innerText = message; // Set the message text
-          messageArea.classList.remove('hidden'); // Make the message area visible
+          messageDiv.innerText = message;
+          messageArea.classList.remove('hidden');
 
-          // Optionally, set a timeout to hide the message after a few seconds
           setTimeout(() => {
               messageArea.classList.add('hidden');
-          }, 3000); // Adjust the duration as needed (3000ms = 3 seconds)
+          }, 3000);
       }
+
+      // Handle Enter key for saving code
+      document.addEventListener('keydown', event => {
+          if (event.target.matches('.code-input') && event.key === 'Enter') {
+              event.preventDefault();
+              const assetId = event.target.dataset.assetId;
+              const value = event.target.value;
+              saveCode(assetId, value);
+          }
+      });
   </script>
 
   <style>

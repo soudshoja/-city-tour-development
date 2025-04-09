@@ -165,7 +165,7 @@ class CoaSeeder extends Seeder
                 'client_id' => null,
                 'supplier_id' => null,
                 'reference_id' => null,
-                'code' => null,
+                'code' => $account['code'],
             ]);
 
             $parentMap[$account['name']] = $newAccount->id;

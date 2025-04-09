@@ -271,20 +271,16 @@ class ReportController extends Controller
                 }
         }
 
-        // Get individual transactions (for the detailed view)
-        $payableTransactions = $payableQuery
-            ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
-                return $query->whereBetween('transaction_date', [$startDate, $endDate]);
-            })
-            ->orderBy('transaction_date')
-            ->get();
+        if ($startDate && $endDate) {
+            $payableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
+            $receivableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
+        }
 
-        $receivableTransactions = $receivableQuery
-            ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
-                return $query->whereBetween('transaction_date', [$startDate, $endDate]);
-            })
-            ->orderBy('transaction_date')
-            ->get();
+        // Get payable transactions (for the detailed view)
+        $payableTransactions = $payableQuery->get();
+
+        // Get receivable transactions (for the detailed view)
+        $receivableTransactions = $receivableQuery->get();
 
         $receivableBalance = $receivableTransactions->sum('debit') - $receivableTransactions->sum('credit');
         $payableBalance = $payableTransactions->sum('credit') - $payableTransactions->sum('debit');

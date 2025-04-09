@@ -67,8 +67,9 @@ class WhatsappController extends Controller
         $bodies = [
             $invoiceNumber,
             $agent->name,
-            $agent->company->name,
+            $agent->company->name ?? 'N/A', // Use a fallback value if company is null
         ];
+        
         foreach ($bodies as $body) {
             $reqBody['template']['components'][1]['parameters'][] = [
                 "type" => "text",
@@ -165,63 +166,75 @@ class WhatsappController extends Controller
     }
 
     public function sendMessagepdf(Request $request)
-    {      
-  
-       $client = json_decode($request->client);
-       $agent = Agent::find($client->agent_id);
-       $invoiceNumber = $request->invoiceNumber;
+{      
+    $client = json_decode($request->client);
+    $agent = Agent::find($client->agent_id);
+    $invoiceNumber = $request->invoiceNumber;
+    $client = Client::findOrFail($client->id); 
+    $agent = Agent::find($client->agent_id);
 
-        $client = Client::findOrFail($client->id); // Fetch client using ID
+    $header = "Your Invoice Is Ready!";
+    $link1 = "$invoiceNumber/pdf";
+    $link2 = "$invoiceNumber/pdf";
 
-        $agent = Agent::find($client->agent_id);
-
-
-        $header = "Your Invoice Is Ready!";
-
-        $link = "invoice/$invoiceNumber/pdf";
-        $reqBody = [
-            "messaging_product" => "whatsapp",
-            "to" => $client->phone,
-            "type" => "template",
-            "template" => [
-                "name" => "alphia_payment_done",
-                "language" => ["code" => "en_US"],
-                "components" => [
-                    [
-                        "type" => "header",
-                        "parameters" => [["type" => "text", "text" => $client->name]]
-                    ],
-                    ["type" => "body", "parameters" => []],
-                    [
-                        "type" => "button",
-                        "sub_type" => "url",
-                        "index" => 0,
-                        "parameters" => [["type" => "text", "text" => $link]]
+    $reqBody = [
+        "messaging_product" => "whatsapp",
+        "to" => preg_replace('/[^0-9]/', '', $client->phone), // Ensure correct format
+        "type" => "template",
+        "template" => [
+            "name" => "payment_complete",
+            "language" => ["code" => "en_US"],
+            "components" => [
+                [
+                    "type" => "body",
+                    "parameters" => [
+                        ["type" => "text", "text" => $client->name],
+                        ["type" => "text", "text" => $client->name]
                     ]
+                ],
+                [
+                    "type" => "button",
+                    "sub_type" => "url",
+                    "index" => 0,
+                    "parameters" => [["type" => "text", "text" => $link1]]
+                ],
+                [
+                    "type" => "button",
+                    "sub_type" => "url",
+                    "index" => 1,
+                    "parameters" => [["type" => "text", "text" => $link2]]
                 ]
             ]
-        ];
+        ]
+    ];
 
-        $bodies = [$invoiceNumber, $agent->name, $agent->company->name];
-        foreach ($bodies as $body) {
-            $reqBody['template']['components'][1]['parameters'][] = ["type" => "text", "text" => $body];
-        }
-
-        logger($reqBody);
-        $response = $this->postRequest(
-            config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages',
-            ['Authorization: Bearer ' . config('services.whatsapp.token'), 'Content-Type: application/json'],
-            json_encode($reqBody),
-        );
-
-        logger($response);
-
-        if (!isset($response['messages'][0]['message_status'])) {
-            return Redirect::back()->with('error', 'Failed to send message');
-        }
-
-        return response()->json(['message' => 'PDF sent successfully']);
+    // ✅ Append extra body parameters correctly
+    $bodies = [$invoiceNumber, $agent->name, $agent->company->name];
+    foreach ($bodies as $body) {
+        $reqBody['template']['components'][0]['parameters'][] = ["type" => "text", "text" => $body];
     }
+
+    // ✅ Log final request body & URL
+    logger("Final Request Body: " . json_encode($reqBody));
+    logger("Sending to URL: " . config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages');
+
+    // ✅ Make the API request
+    $response = $this->postRequest(
+        config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages',
+        ['Authorization: Bearer ' . config('services.whatsapp.token'), 'Content-Type: application/json'],
+        json_encode($reqBody),
+    );
+
+    logger("WhatsApp API Response: " . json_encode($response));
+
+    // ✅ Handle API response correctly
+    if (!isset($response['messages'][0]['message_status'])) {
+        return Redirect::back()->with('error', 'Failed to send message');
+    }
+
+    return response()->json(['message' => 'PDF sent successfully']);
+}
+
     // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
     private $VERIFY_TOKEN = 'd41d8cd98f00b204e9800998ecf8427e';

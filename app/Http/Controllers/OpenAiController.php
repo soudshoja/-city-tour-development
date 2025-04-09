@@ -265,7 +265,7 @@ class OpenAiController extends Controller
             - `status`: Current status of the task. whether it's completed, hold or confirmed or any other status.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
-            - `total`: Total amount for the task in float type.
+            - `total`: Total amount for the task in float type. this column is mandatory, please make sure to find the total amount in the pdf., if it is not available, set it to 0.
             - `tax`: Total tax amount in float type.
             - `reference`: Reference code for the task.
             - `type`: Type of task (e.g., flight).

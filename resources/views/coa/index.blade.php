@@ -1,6 +1,11 @@
 <x-app-layout>
     <!-- page title -->
-    <div class="flex justify-between items-center gap-5 my-3 ">
+    <div 
+        id="coa-container" 
+        data-branches = "{{ $branches }}"
+        data-agents = "{{ $agents }}"
+        data-clients = "{{ $clients }}"
+        class="flex justify-between items-center gap-5 my-3 ">
 
 
         <div class="flex items-center gap-5 ">
@@ -80,6 +85,7 @@
     <script>
         const toggleBtn = document.getElementById('toggleBtn');
         const contentBox = document.getElementById('contentBox');
+
 
         toggleBtn.addEventListener('click', () => {
             contentBox.classList.toggle('AddNewSamePageVisible');

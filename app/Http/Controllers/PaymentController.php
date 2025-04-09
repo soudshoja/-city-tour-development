@@ -374,27 +374,27 @@ class PaymentController extends Controller
 
                     
                     // Create record to payment_gateway assets coa account (OK)
-                    if ($bankAccountAccRecord) {
+                    if ($bankPaymentFee) {
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
-                            'account_id' =>  $bankAccountAccRecord->id,
+                            'account_id' =>  $bankPaymentFee->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment transfered to: ' . $bankAccountAccRecord->name,
+                            'description' => 'Payment transfered to: ' . $bankPaymentFee->name,
                             'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
                             'credit' =>0,
                             'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
-                            'name' =>  $bankAccountAccRecord->name,
+                            'name' =>  $bankPaymentFee->name,
                             'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,
-                            'type_reference_id' => $bankAccountAccRecord->id
+                            'type_reference_id' => $bankPaymentFee->id
                         ]);
 
-                        $bankAccountAccRecord->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
-                        $bankAccountAccRecord->save();
+                        $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
+                        $bankPaymentFee->save();
 
                         
                     }
@@ -413,7 +413,7 @@ class PaymentController extends Controller
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'voucher_number' => $payment->voucher_number,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment gateway charged by:'. $tapAccount->name,
+                            'description' => 'Payment gateway charged by: '. $tapAccount->name,
                             'debit' => $defaultPaymentGatewayFee,
                             'credit' => 0,
                             'balance' => $tapAccount->actual_balance,

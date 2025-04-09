@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Account;
 use App\Models\JournalEntry;
+use App\Models\SupplierCompany;
 use App\Models\Transaction;
 // use Carbon\Carbon;
 
@@ -111,7 +112,10 @@ class TaskController extends Controller
 
         $taskCount = $tasks->count();
         $types = Task::distinct()->pluck('type');
-        $suppliers = Supplier::all();
+        $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+            $query->where('company_id', $user->company->id);
+        })->get();
+
         $importedTask = Cache::get('imported_task');
 
         if ($user->hasAnyRole('admin', 'company')) {
@@ -453,11 +457,24 @@ class TaskController extends Controller
             $receivableAccount = Account::where('name', 'like', '%Flights Cost%')->where('company_id', $companyId)->first();
             // $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
 
-            $supplierAccount = Account::where('supplier_id', $supplier->id)
+            $supplierCompany = SupplierCompany::with('account')->where('supplier_id', $supplier->id)
                 ->where('company_id', $companyId)
                 ->first();
 
-            
+            if (!$supplierCompany) {
+                $taskCreated->delete();
+                Log::info('Supplier not activated: ' . $supplier->name);
+                throw new Exception('Supplier not activated');
+            }
+
+            if(!$supplierCompany->account) {
+                $taskCreated->delete();
+                Log::info('Supplier account not found: ' . $supplier->name);
+                throw new Exception('Supplier account not found');
+            }
+
+            $supplierAccount = $supplierCompany->account;
+
             $payableFallback = Account::where('name', 'Accounts Payable')
                 ->where('company_id', $companyId)
                 ->first();
@@ -468,7 +485,7 @@ class TaskController extends Controller
             } elseif ($payableFallback) {
                 $payableAccountId = $payableFallback->id;
             } else {
-                throw new \Exception('No valid payable account found.');
+                throw new Exception('No valid payable account found.');
             }
 
             // Log chosen account clearly
@@ -560,7 +577,15 @@ class TaskController extends Controller
                 $this->saveHotelDetails($data, $taskCreated->id);
             }
         } catch (Exception $e) {
-            throw $e;
+            logger('Task creation error: ' . $e->getMessage());
+            if (isset($taskCreated)) {
+                $taskCreated->delete();
+            }
+
+            return [
+                'status' => 'error',
+                'message' => 'Task creation failed: ' . $e->getMessage(),
+            ];
         }
 
         logger('Task created: ', $taskCreated->toArray());
@@ -938,7 +963,7 @@ class TaskController extends Controller
             }
 
             try {
-                Room::create([
+                $room = Room::create([
                     'task_hotel_details_id' => $taskHotelDetail->id,
                     'name' => $room['name'] ?? null,
                     'reference' => (string)$room['id'] ?? null,
@@ -964,6 +989,127 @@ class TaskController extends Controller
                 'reservation' => $reservation,
                 'room' => $room,
             ]);
+
+            $agent = $task->agent;
+            $client = $task->client;
+            $supplier = $task->supplier;
+
+            $companyId = $task->company_id;
+            $branchId = auth()->user()->branch->id ?? auth()->user()->agent->branch_id ?? null;
+
+            $receivableAccount = Account::where('name', 'like', '%Hotel Cost%')->where('company_id', $companyId)->first();
+            // $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
+
+            $supplierCompany = SupplierCompany::with('account')
+                ->where('supplier_id', $supplier->id)
+                ->where('company_id', $companyId)
+                ->first();
+
+            if (!$supplierCompany) {
+                $task->delete();
+                $taskHotelDetail->delete();
+
+                Log::info('Supplier not activated: ' . $supplier->name);
+                throw new Exception('Supplier not activated');
+            }
+
+            if(!$supplierCompany->account) {
+                $task->delete();
+                $taskHotelDetail->delete();
+                $room->delete();
+
+                Log::info('Supplier account not found: ' . $supplier->name);
+                throw new Exception('Supplier account not found');
+            }
+
+            $supplierAccount = $supplierCompany->account;
+
+            $payableFallback = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->first();
+
+            
+            if ($supplierAccount) {
+                $payableAccountId = $supplierAccount->id;
+            } elseif ($payableFallback) {
+                $payableAccountId = $payableFallback->id;
+            } else {
+                $task->delete();
+                $taskHotelDetail->delete();
+                $room->delete();
+
+                throw new Exception('No valid payable account found.');
+            }
+
+            Log::info("Payable account selected: " . $payableAccountId . " for Supplier ID: " . $supplier->id);
+
+            $transaction = Transaction::create([
+                'entity_id' => $companyId,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' => '200',
+                // 'amount' => $taskCreated->invoice_price ?? $taskCreated->total,
+                'date' => Carbon::now(),
+                'description' => 'Task created: ' . $task->reference,
+                'reference_type' => 'Payment',
+                'task_id' => $task->id,
+            ]);
+
+            $markup = ($taskCreated->invoice_price ?? $task->total) - $task->total;
+
+            try{
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $companyId,
+                    'branch_id' => $branchId,
+                    'account_id' => $payableAccountId, // This will now be correct
+                    'invoice_id' => null,
+                    'invoice_detail_id' => null,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Records Payable to: ' . $supplier->name,
+                    'debit' => 0,
+                    'credit' => $task->total,
+                    'balance' => $task->total,
+                    'name' => $supplier->name,
+                    'type' => 'payable',
+                    'type_reference_id' => $supplier->id,
+                ]);
+    
+                // Receivable
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $companyId,
+                    'branch_id' => $branchId,
+                    'account_id' => $receivableAccount->id,
+                    'invoice_id' => null,
+                    'invoiceDetail_id' => null,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Records Direct Expense',
+                    'debit' => $taskCreated->invoice_price ?? $task->total,
+                    'credit' => 0,
+                    'balance' => $taskCreated->invoice_price ?? $task->total,
+                    'name' => $client->name ?? 'N/A',
+                    'type' => 'receivable',
+                    'type_reference_id' => $client->id ?? null,
+                ]);
+
+            } catch (Exception $e) {
+                $task->delete();
+                $taskHotelDetail->delete();
+                $room->delete();
+
+                Log::channel('magic_holidays')->error('Error creating journal entry: ' . $e->getMessage(), [
+                    'reservation' => $reservation,
+                    'room' => $room,
+                ]);
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Error creating journal entry: ' . $e->getMessage(),
+                ];
+            }
 
             return [
                 'status' => 'success',

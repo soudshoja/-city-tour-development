@@ -2,18 +2,25 @@
 
 namespace Database\Seeders;
 
+use App\Http\Controllers\SupplierCompanyController;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentType;
 use App\Models\Branch;
+use App\Models\Charge;
 use App\Models\Client;
 use App\Models\Company;
 use App\Models\Country;
+use App\Models\Permission;
 use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\SupplierCompany;
 use App\Models\User;
 use Exception;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -58,6 +65,13 @@ class EntitySeeder extends Seeder
 
         $user->assignRole($role);
 
+        $permissionAvailable = Permission::all();
+
+        foreach($permissionAvailable as $permission) {
+            $role->givePermissionTo($permission);
+        }
+
+        $userCompany = $user;
         try {
             CoaSeeder::run($company->id);
         } catch (Exception $e) {
@@ -67,8 +81,8 @@ class EntitySeeder extends Seeder
 
         $coa = new Account();
        
-        $name = 'Branch 1';
-        $email = 'branch1@citytravelers.co';
+        $name = 'City Travelers HQ';
+        $email = 'hq@citytravelers.co';
 
         try {
             $branch = Branch::firstOrCreate([
@@ -179,21 +193,132 @@ class EntitySeeder extends Seeder
         ]);
 
 
-        $name = 'ahmed ali';
-        $email = 'ahmedali@gmail.com';
+        // $name = 'ahmed ali';
+        // $email = 'ahmedali@gmail.com';
 
-        Client::firstOrCreate([
-            'name' => $name,
-            'email' => $email,
-        ], [
-            'agent_id' => $agent->id,
-            'phone' => '+60 0193058463',
-            'address' => 'Kuwait City',
-            'passport_no' => null,
-            'status' => 'active',
-            'civil_no' => null,
-            'date_of_birth' => date('Y-m-d', strtotime('1990-01-01')),
-        ]);
+        // Client::firstOrCreate([
+        //     'name' => $name,
+        //     'email' => $email,
+        // ], [
+        //     'agent_id' => $agent->id,
+        //     'phone' => '+60 0193058463',
+        //     'address' => 'Kuwait City',
+        //     'passport_no' => null,
+        //     'status' => 'active',
+        //     'civil_no' => null,
+        //     'date_of_birth' => date('Y-m-d', strtotime('1990-01-01')),
+        // ]);
+
+        $suppliers = Supplier::all();
+
+        $supplierCompanyController = new SupplierCompanyController();
+        foreach($suppliers as $supplier) {
+            if(!($supplier->name == 'Amadeus' || $supplier->name == 'Magic Holiday' || $supplier->name == 'TBO Holiday')) {
+                continue;
+            }
+            $accountPayable = Account::where('name', 'Accounts Payable')->first();
+
+            if (!$accountPayable) {
+                throw new Exception("Account Payable group 'Accounts Payable' not found.");
+            }
+
+            try {
+                $account = Account::create([
+                    'name' => $supplier->name,
+                    'level' => 4,
+                    'actual_balance' => 0,
+                    'budget_balance' => 0,
+                    'variance' => 0,
+                    'company_id' => $company->id,
+                    'parent_id' => $accountPayable->id,
+                    'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children()->count() + 1, 3, '0', STR_PAD_LEFT),
+                ]);
+            } catch (Exception $e) {
+                logger('Created Supplier Company Account Error: ' . $e->getMessage());
+                throw new Exception('Failed to create supplier account.');
+            }
+
+            try {
+                SupplierCompany::firstOrCreate([
+                    'supplier_id' => $supplier->id,
+                    'company_id' => $company->id,
+                    'account_id' => $account->id,
+                ]);
+            } catch (Exception $e) {
+                $account->delete();
+                logger('Created Supplier Company Error: ' . $e->getMessage());
+                throw new Exception('Failed to create supplier-company relation.');
+            }  
+        }
+
+
+        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
+        ->where('company_id', $userCompany->company->id)
+        ->first();
+
+        $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')
+        ->where('company_id', $userCompany->company->id)
+        ->first(); 
+
+        $coaBankAccount = Account::whereHas('parent', function ($query) {
+            $query->where('name', 'Bank Accounts');
+        })
+        ->where('company_id', $userCompany->company->id)
+        ->first();  // Use first() to get a single model, not a collection
+
+    
+        try {
+            DB::beginTransaction();
+            $paymentGatewayName = 'Tap'; 
+
+            $asset = Account::where('name', 'Assets')->first();
+
+            // Create Account for Payment Gateway Bank Fee (if it doesn't exist)
+            $newAccountBankFee = Account::create([
+                'name' =>   $paymentGatewayName,
+                'code' => '1310',
+                'root_id' => $asset->id, 
+                'parent_id' => $coaPaymentGatewayBankAcc->id,  // Use the id of the fetched model
+                'company_id' => $userCompany->company->id,
+                'branch_id' => $userCompany->branch_id, 
+                'account_type' => 'asset', 
+                'report_type' => 'balance sheet', 
+                'level' => 4, 
+                'is_group' => 0, 
+                'disabled' => 0, 
+                'actual_balance' => 0.00, 
+                'budget_balance' => 0.00, 
+                'variance' => 0.00,
+                'currency' => 'KWD', // Define currency
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $kuwaitBankAccount = Account::where('name', 'Kuwait International Bank')->first();
+            
+            if (!$kuwaitBankAccount) {
+                throw new Exception("Kuwait International Bank account not found.");
+            }
+
+            $charge = Charge::create([
+                'name' => $paymentGatewayName,
+                'description' => 'Payment Gateway Fee',
+                'type' => 'Payment Gateway',
+                'amount' => 0.25,
+                'acc_fee_id' => $coaPaymentGateway->id,
+                'acc_bank_id' => $kuwaitBankAccount->id,
+                'acc_fee_bank_id' => $newAccountBankFee->id, 
+                'company_id' => $userCompany->company->id, 
+                'branch_id' => $userCompany->branch->id, 
+            ]);
+    
+            // Commit the transaction
+            DB::commit();
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
 
     }
 }

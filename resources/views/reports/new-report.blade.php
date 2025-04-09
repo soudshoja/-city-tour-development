@@ -134,18 +134,6 @@
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     <p>{{ $transaction->description }}</p>
-                                    <p><small>Ref:
-                                            {{ $transaction->invoice->invoice_number }}
-                                            @if ($transaction->invoice && $transaction->invoice->invoice_number)
-                                                <a target="_blank"
-                                                    href="{{ route('invoice.show', ['invoiceNumber' => $transaction->invoice->invoice_number]) }}"
-                                                    class="text-blue-500 ml-0">
-                                                    🔍
-                                                </a>
-                                            @endif
-
-                                        </small>
-                                    </p>
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}</td>

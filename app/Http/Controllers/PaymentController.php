@@ -347,6 +347,7 @@ class PaymentController extends Controller
 
                     $payment = Payment::find($paymentId);
                     $payment->status = 'completed';
+                    $payment->completed = '0';
                     $payment->account_id = $receivableAccount->id;
                     $payment->save();
 
@@ -378,7 +379,7 @@ class PaymentController extends Controller
                             'transaction_id' => $transaction->id,
                             'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
-                            'account_id' =>  $bankPaymentFee->id,
+                            'account_id' =>  $bankAccountAccRecord->id,
                             'invoice_id' =>  $invoice->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),

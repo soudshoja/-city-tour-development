@@ -71,18 +71,38 @@
                         <div class="mb-6 w-full lg:w-1/2">
                             <div class="mt-6 space-y-1 text-gray-800 dark:text-gray-400">
                                 <x-application-logo class="custom-logo-size" />
-                                <h3>CITY TRAVELERS</h3>
-                                <p>AL AHMADI - KUWAIT</p>
-                                <p>ALSALEM ALSEBAH ST.</p>
-                                <p>ABU HALI - BLOCK 3</p>
-                                <p>citytravelers@agency.co</p>
-                                <p>+965 22210017</p>
+                                @if ($companies)
+                                    <div class="pl-2">
+                                        <h3>{{ $companies->name }}</h3>
+                                        <p>{!! nl2br(e($companies->address)) !!}</p>
+                                        <p>{{ $companies->email }}</p>
+                                        <p>{{ $companies->phone }}</p>
+                                    </div>
+                                @else
+                                    <div class="custom-select w-full border rounded-lg mt-4">
+                                        <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select
+                                            Company
+                                        </div>
+                                        <div
+                                            class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                            @foreach ($companies as $company)
+                                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                                    data-value="{{ $company->id }}">
+                                                    {{ $company->name }}
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                    </div>
+
+                                @endif
+                                <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
                             </div>
                         </div>
 
                         <div class="w-full lg:w-1/2 lg:max-w-fit mt-20">
                             <div class="flex items-center gap-x-4">
-                                <label for="bankpaymentref" class="mb-0 flex-1">Payment Ref <span
+                                <label for="bankpaymentref" class="mb-0 flex-1">Ref <span
                                         class="text-red-500">*</span></label>
                                 <input required readonly id="bankpaymentref"
                                     value="{{ old('bankpaymentref', $bankPayment->reference_number) }}" type="text"
@@ -444,8 +464,8 @@
                         <datalist id="accountList_${index}">
                             ${accpayreceives.map(accpayreceive => 
                                 `<option value="${accpayreceive.id}" ${item.account_id == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </option>`
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </option>`
                             ).join('')}
                         </datalist>
 

@@ -26,11 +26,13 @@ class BankPaymentController extends Controller
         }elseif ($user->role_id == Role::COMPANY) {
             $bankPayments = Transaction::where('entity_id', $companyId)
             ->where('reference_type', 'Payment')
+            ->whereNotNull('name')
             ->latest()
             ->paginate(10);
-
+        
             $totalRecords = Transaction::where('entity_id', $companyId)
             ->where('reference_type', 'Payment')
+            ->whereNotNull('name')
             ->count();
 
         }else{
@@ -71,7 +73,9 @@ class BankPaymentController extends Controller
             ->pluck('id');
             $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
-            $lastLevelAccounts = Account::doesntHave('children')->get();
+            $lastLevelAccounts = Account::doesntHave('children')
+            ->where('company_id', $user->company->id)
+            ->get();
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
             ->pluck('id');
@@ -118,13 +122,13 @@ class BankPaymentController extends Controller
             'remarks_fl' => 'nullable|string',
             'account_id' => 'nullable|exists:accounts,id',
             'items' => 'required|array|min:1',
-            'items.*.ac_code' => ['required', 'exists:accounts,id'],
-            'items.*.remarks' => 'required|string',
-            'items.*.currency' => 'required|string',
-            'items.*.exchange_rate' => 'required|numeric',
-            'items.*.amount' => 'required|numeric',
-            'items.*.debit' => 'required|numeric',
-            'items.*.credit' => 'required|numeric',
+            'items.*.ac_code' => ['nullable', 'exists:accounts,id'],
+            'items.*.remarks' => 'nullable|string',
+            'items.*.currency' => 'nullable|string',
+            'items.*.exchange_rate' => 'nullable|numeric',
+            'items.*.amount' => 'nullable|numeric',
+            'items.*.debit' => 'nullable|numeric',
+            'items.*.credit' => 'nullable|numeric',
             'items.*.cheque_no' => 'nullable|string',
             'items.*.cheque_date' => 'nullable|date',
             'items.*.bank_name' => 'nullable|string',
@@ -140,11 +144,12 @@ class BankPaymentController extends Controller
 
             // Create Transaction Record
             $transaction = Transaction::create([
-                'entity_id' => $request->company_id,
+                'entity_id' => $request->company_id ?? auth()->user()->company->id,
                 'entity_type' => 'company',
-                'branch_id' => $request->branch_id,
+                'company_id' => $request->company_id ?? auth()->user()->company->id,
+                'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                 'transaction_type' => 'debit',
-                'amount' => array_sum(array_column($request->items, 'amount')),
+                'amount' => ($item['credit'] ?? 0) - ($item['debit'] ?? 0),
                 'date' => $request->docdate,
                 'description' => $request->remarks_create,
                 'reference_type' => 'Payment',
@@ -159,10 +164,10 @@ class BankPaymentController extends Controller
             // Store General Ledger Entries
             foreach ($request->items as $item) {
                 JournalEntry::create([
-                    'transaction_date' => $request->docdate,
+                    'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                     'account_id' => $item['ac_code'],
-                    'company_id' => $request->company_id,
-                    'branch_id' => $item['branch'] ?? 0,
+                    'company_id' => $request->company_id ?? auth()->user()->company->id,
+                    'branch_id' => $item['branch'] ?? auth()->user()->branch->id,
                     'transaction_id' => $transaction->id,
                     'description' => $item['remarks'] ?? '',
                     'debit' => $item['debit'] ?? 0,
@@ -175,14 +180,14 @@ class BankPaymentController extends Controller
                     'exchange_rate' => $item['exchange_rate'] ?? 0,
                     'amount' => $item['amount'] ?? 0,
                     'cheque_no' => $item['cheque_no'] ?? '',
-                    'cheque_date' => $item['cheque_date'] ?? '',
+                    'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s'): null,
                     'bank_info' => $item['bank_name'] ?? '',
                     'auth_no' => $item['auth_no'] ?? '',
                 ]);
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Bank Payment Successfully Recorded.');
+            return redirect()->back()->with('success', 'Payment Voucher Successfully Recorded.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -244,7 +249,7 @@ class BankPaymentController extends Controller
         // $suppliers = $this->getSupplierAccounts();
         // $JournalEntrys = JournalEntry::where('transaction_id', $bankPayment->id)->get();
 
-        return view('bank-payments.edit', compact('bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
+        return view('bank-payments.edit', compact('companies','bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
     
 
     }

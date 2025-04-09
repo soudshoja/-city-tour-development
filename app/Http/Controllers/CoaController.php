@@ -11,6 +11,7 @@ use App\Models\Agent;
 use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Account;
+use App\Models\Branch;
 use App\Models\CoaCategory;
 use App\Models\Supplier;
 use App\Models\JournalEntry;
@@ -36,7 +37,9 @@ class CoaController extends Controller
         }
 
         // Fetch all agents related to the company
-        $agents = Agent::where('company_id', $company->id)->get();
+        $agents = $company->agents()
+            ->with('branch')
+            ->get();
         $agentIds = $agents->pluck('id')->toArray();
 
         // Fetch invoices and clients related to the agents
@@ -51,6 +54,8 @@ class CoaController extends Controller
         // Fetch all suppliers
         $suppliers = Supplier::all();
 
+        $branches = Branch::where('company_id', $company->id)->get();
+
         // Get  data from the privates function
         $assets = $this->getAssets();
         $liabilities = $this->getLiabilities();
@@ -58,7 +63,7 @@ class CoaController extends Controller
         $expenses = $this->getExpenses();
         $equities = $this->getEquity();
     
-        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'equities', 'invoices', 'clients', 'suppliers'));
+        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'equities', 'invoices', 'clients', 'suppliers', 'branches', 'agents'));
 
     }
 
@@ -71,12 +76,17 @@ class CoaController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255',
-            'account_type' => 'required|string|max:255',
             'level' => 'required|integer',
-            'budget_balance' => 'required|numeric',
-            'actual_balance' => 'required|numeric',
+            'root_id' => 'required|integer',
             'parent_id' => 'required|integer',
-            'variance' => 'required|numeric',
+            'entity' => 'nullable| enum: client, agent, branch',
+            'client' => 'required_if:entity,client|integer',
+            'agent' => 'required_if:entity,agent|integer',
+            'branch' => 'required_if:entity,branch|integer',
+            // 'account_type' => 'required|string|max:255',
+            // 'budget_balance' => 'required|numeric',
+            // 'actual_balance' => 'required|numeric',
+            // 'variance' => 'required|numeric',
         ]);
 
         try {
@@ -85,10 +95,12 @@ class CoaController extends Controller
             $category->code = $request->code;
             $category->level = $request->level;
             $category->parent_id = $request->parent_id;
-            $category->variance = $request->variance;
-            $category->budget_balance = $request->budget_balance;
-            $category->actual_balance = $request->actual_balance;
+            $category->variance = 0;
+            $category->budget_balance = 0;
+            $category->actual_balance = 0;
             $category->company_id = auth()->user()->company->id;
+            $category->root_id  = $request->root_id;
+
             $category->save();
 
             return response()->json(['success' => true, 'id' => $category->id]);

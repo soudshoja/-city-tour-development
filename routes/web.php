@@ -223,7 +223,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/submit-voucher', [CoaController::class, 'submitVoucher']);
     Route::get('/coa/transactions', [CoaController::class, 'transaction'])->name('coa.transaction');
 
-    Route::post('/addCategory', [CoaController::class, 'addCategory']);
+    Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('coa.addCategory');
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');

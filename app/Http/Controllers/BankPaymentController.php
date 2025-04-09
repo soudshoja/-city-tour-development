@@ -221,7 +221,8 @@ class BankPaymentController extends Controller
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
             ->pluck('id');
-            $suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
+            //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
+            $suppliers = Account::doesntHave('children')->get();
 
             
         }elseif ($user->role_id == Role::COMPANY) {
@@ -237,8 +238,10 @@ class BankPaymentController extends Controller
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
             ->pluck('id');
-            $suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
-
+            //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
+            $suppliers = Account::doesntHave('children')
+            ->where('company_id', $user->company->id)
+            ->get();
 
         }else{
             return redirect()->route('dashboard')->with('error', 'Page not found.');

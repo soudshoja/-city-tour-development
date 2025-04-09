@@ -78,7 +78,7 @@ class Account extends Model
     //     return $this->hasOne(Agent::class, 'account_id');
     // }
 
-    public function JournalEntrys()
+    public function journalEntries()
     {
         return $this->hasMany(JournalEntry::class, 'account_id');
     }

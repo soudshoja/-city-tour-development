@@ -647,6 +647,7 @@ class InvoiceController extends Controller
                     $accountsToBeUpdate[] = $detailsAccount;
 
                 }
+                $commissionCalculate = 0.15 * ($task['invprice'] - $selectedtask->total);
 
                 $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
                     ->where('company_id', $companyId)
@@ -655,7 +656,7 @@ class InvoiceController extends Controller
                 if($commissionExpenses){
                     $commissionExpenses->description = 'Commissions Expense (Agents) for: ' . $task['agent']['name'];
                     $commissionExpenses->debit_credit = 'debit';
-                    $commissionExpenses->amount = 0.15 * $task['invprice'];
+                    $commissionExpenses->amount = $commissionCalculate;
 
                     $accountsToBeUpdate[] = $commissionExpenses;
                 }
@@ -668,7 +669,7 @@ class InvoiceController extends Controller
                 if($AccruedCommissionsAgent){
                     $AccruedCommissionsAgent->description = 'Commissions (Agents) for : ' . $task['agent']['name'];
                     $AccruedCommissionsAgent->debit_credit = 'credit';
-                    $AccruedCommissionsAgent->amount = 0.15 * $task['invprice'];
+                    $AccruedCommissionsAgent->amount = $commissionCalculate;
 
                     $accountsToBeUpdate[] = $AccruedCommissionsAgent;
                 }

@@ -41,7 +41,7 @@
       <div>
           <ul class="w-full">
               @foreach ($assets->childAccounts as $asset)
-              @include('coa.partials.asset-item', ['account' => $asset])
+              @include('coa.partials.child-account', ['account' => $asset, 'color' => 'green'])
               @endforeach
           </ul>
       </div>
@@ -49,126 +49,79 @@
 
   <!-- <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script> -->
   <script>
-      document.addEventListener('DOMContentLoaded', () => {
-          const branches = JSON.parse(document.getElementById('coa-container').getAttribute('data-branches'));
-          const agents = JSON.parse(document.getElementById('coa-container').getAttribute('data-agents'));
-          const clients = JSON.parse(document.getElementById('coa-container').getAttribute('data-clients'));
 
-          const entitySelects = document.querySelectorAll('.entitySelect');
-          const contentAssetsDiv = document.getElementById('AssetsDetails');
-          const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
+      const contentAssetsDiv = document.getElementById('AssetsDetails');
+      const AssetsToggleButton = document.querySelectorAll('.AssetsToggleButton');
 
-          // Utility function to create a select element
-          function createSelectElement(options, attributes, classes) {
-              const select = document.createElement('select');
-              Object.keys(attributes).forEach(attr => select.setAttribute(attr, attributes[attr]));
-              classes.forEach(cls => select.classList.add(cls));
-              select.innerHTML = options.map(option => `<option value="${option.id}">${option.name}</option>`).join('');
-              return select;
+      contentAssetsDiv.style.display = 'none';
+      // Utility function to create a select element
+      function createSelectElement(options, attributes, classes) {
+          const select = document.createElement('select');
+          Object.keys(attributes).forEach(attr => select.setAttribute(attr, attributes[attr]));
+          classes.forEach(cls => select.classList.add(cls));
+          select.innerHTML = options.map(option => `<option value="${option.id}">${option.name}</option>`).join('');
+          return select;
+      }
+
+      // Handle entity selection change
+
+      // Toggle assets visibility
+      function toggleAssetsVisibility() {
+          contentAssetsDiv.style.display = contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '' ? 'block' : 'none';
+      }
+
+      AssetsToggleButton.forEach(button => {
+          button.addEventListener('click', toggleAssetsVisibility);
+      });
+
+      // Save code function
+      async function saveCode(assetId, value) {
+          if (value.trim() === '') {
+              showMessage('Code cannot be empty!');
+              return;
           }
 
-          // Handle entity selection change
-          function handleEntityChange(event) {
-              const entitySelect = event.target;
-              const level = entitySelect.dataset.level;
-              const accountId = entitySelect.dataset.accountId;
-              const selectedValue = entitySelect.value;
+          try {
+              const response = await fetch(`/updateCode/${assetId}`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                  },
+                  body: JSON.stringify({
+                      code: value
+                  })
+              });
 
-              const entityContainer = document.getElementById(`entity-container-${accountId}`);
-              entityContainer.innerHTML = ''; // Clear previous content
-
-              if (!selectedValue) return;
-
-              const label = document.createElement('label');
-              label.classList.add('block', 'text-sm', 'font-medium', 'mb-1');
-              label.innerHTML = `${selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1)} Name<span class="text-red-500"> *</span>`;
-              entityContainer.appendChild(label);
-
-              let selectOptions = [];
-              if (selectedValue === 'agent') selectOptions = agents;
-              else if (selectedValue === 'client') selectOptions = clients;
-              else if (selectedValue === 'branch') selectOptions = branches;
-
-              if (selectOptions.length > 0) {
-                  const select = createSelectElement(
-                      [{
-                          id: '',
-                          name: `Select ${selectedValue}`
-                      }, ...selectOptions], {
-                          name: selectedValue,
-                          id: selectedValue,
-                          required: 'required',
-                          autocomplete: 'off'
-                      },
-                      ['w-full', 'border', 'rounded', 'text-sm', 'px-3', 'py-2', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-300']
-                  );
-                  entityContainer.appendChild(select);
-              }
+              if (!response.ok) throw new Error('Network response was not ok');
+              const data = await response.json();
+              showMessage(data.message);
+          } catch (error) {
+              console.error('There was a problem with the fetch operation:', error);
           }
+      }
 
-          // Attach change event listeners to entity selects
-          entitySelects.forEach(entitySelect => {
-              entitySelect.addEventListener('change', handleEntityChange);
-          });
+      // Show message function
+      function showMessage(message) {
+          const messageArea = document.getElementById('message-area');
+          const messageDiv = document.getElementById('message');
 
-          // Toggle assets visibility
-          function toggleAssetsVisibility() {
-              contentAssetsDiv.style.display = contentAssetsDiv.style.display === 'none' || contentAssetsDiv.style.display === '' ? 'block' : 'none';
+          messageDiv.innerText = message;
+          messageArea.classList.remove('hidden');
+
+          setTimeout(() => {
+              messageArea.classList.add('hidden');
+          }, 3000);
+      }
+
+      // Handle Enter key for saving code
+      document.addEventListener('keydown', event => {
+          if (event.target.matches('.code-input') && event.key === 'Enter') {
+              event.preventDefault();
+              const assetId = event.target.dataset.assetId;
+              const value = event.target.value;
+              saveCode(assetId, value);
           }
-
-          AssetsToggleButton.forEach(button => {
-              button.addEventListener('click', toggleAssetsVisibility);
-          });
-
-          // Save code function
-          async function saveCode(assetId, value) {
-              if (value.trim() === '') {
-                  showMessage('Code cannot be empty!');
-                  return;
-              }
-
-              try {
-                  const response = await fetch(`/updateCode/${assetId}`, {
-                      method: 'POST',
-                      headers: {
-                          'Content-Type': 'application/json',
-                          'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                      },
-                      body: JSON.stringify({
-                          code: value
-                      })
-                  });
-
-                  if (!response.ok) throw new Error('Network response was not ok');
-                  const data = await response.json();
-                  showMessage(data.message);
-              } catch (error) {
-                  console.error('There was a problem with the fetch operation:', error);
-              }
-          }
-
-          // Show message function
-          function showMessage(message) {
-              const messageArea = document.getElementById('message-area');
-              const messageDiv = document.getElementById('message');
-
-              messageDiv.innerText = message;
-              messageArea.classList.remove('hidden');
-
-              setTimeout(() => {
-                  messageArea.classList.add('hidden');
-              }, 3000);
-          }
-
-          // Handle Enter key for saving code
-          document.addEventListener('keydown', event => {
-              if (event.target.matches('.code-input') && event.key === 'Enter') {
-                  event.preventDefault();
-                  const assetId = event.target.dataset.assetId;
-                  const value = event.target.value;
-                  saveCode(assetId, value);
-              }
-          });
       });
   </script>
 

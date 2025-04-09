@@ -150,7 +150,7 @@ class BankPaymentController extends Controller
                 'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                 'transaction_type' => 'debit',
                 'amount' => ($item['credit'] ?? 0) - ($item['debit'] ?? 0),
-                'date' => $request->docdate,
+                'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create,
                 'reference_type' => 'Payment',
                 'invoice_id' => null,
@@ -286,7 +286,7 @@ class BankPaymentController extends Controller
                 'branch_id' => $request->branch_id,
                 'transaction_type' => 'debit',
                 'amount' => collect($request->items)->sum('amount'),
-                'date' => $request->docdate,
+                'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create,
                 'reference_type' => 'Payment',
                 'invoice_id' => null,
@@ -323,7 +323,7 @@ class BankPaymentController extends Controller
             $companyId = $account ? $account->company_id : null; // Ensure company_id exists
 
             JournalEntry::create([
-                'transaction_date' => $request->docdate,
+                'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'account_id' => $item['account_id'],
                 'company_id' => $companyId,
                 'branch_id' => $request->branch_id ?? 0,
@@ -339,7 +339,7 @@ class BankPaymentController extends Controller
                 'exchange_rate' => $item['exchange_rate'],
                 'amount' => $item['amount'],
                 'cheque_no' => $item['cheque_no'] ?? '',
-                'cheque_date' => $item['cheque_date'] ?? '',
+                'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s'): null,
                 'bank_info' => $item['bank_name'] ?? '',
                 'auth_no' => $item['auth_no'] ?? '',
                 'updated_at' => now(),

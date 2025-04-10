@@ -276,9 +276,9 @@ class PaymentController extends Controller
             ->where('invoice_number', $invoiceNumber)
             ->get();
 
-        $receivableAccount = Account::where('name', 'like', '%Accounts Receivable – Clients%')
-            ->where('company_id', $invoice->agent->branch->company->id)
-            ->first();
+        // $receivableAccount = Account::where('name', 'like', '%Accounts Receivable – Clients%')
+        //     ->where('company_id', $invoice->agent->branch->company->id)
+        //     ->first();
 
         Log::info('company_id:', ['company_id' => $invoice->agent->branch->company->id]);
 
@@ -331,12 +331,22 @@ class PaymentController extends Controller
                     if (!$invoiceDetail) {
                         return response()->json(['error' => 'No invoice details found'], 400);
                     }
-
-                    $selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
+                    
+                    $selectedtask = Task::where('id', $invoiceDetail->task_id)->first();
+                    //$selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
                     $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
+                    // $supplier = Supplier::where('id', $selectedtask->supplier_id)->first();
+                    // $client   = Client::where('id', $selectedtask->client_id)->first();
+                    // $agent    = Agent::where('id', $selectedtask->agent_id)->first();
 
+                    $receivableAccount = Account::where('name', 'like', '%' . $client->name . '%')->first();
+                    //dd($receivableAccount, $client->name);
+
+                    if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
+                        return response()->json(['error' => 'Invalid invoice/agent/branch/company structure'], 400);
+                    }
                     // Create a transaction record first
                     $transaction = Transaction::create([
                         'branch_id' =>  $invoice->agent->branch->id,
@@ -352,95 +362,102 @@ class PaymentController extends Controller
                     ]);
                     
                     $payment = Payment::find($paymentId);
-                    $payment->status = 'completed';
-                    $payment->completed = '0';
-                    $payment->account_id = $receivableAccount->id;
-                    $payment->save();
 
-
-                    // Create record to receivable account (OK)
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'branch_id' => $invoice->agent->branch->id,
-                        'company_id' => $invoice->agent->branch->company->id,
-                        'invoice_id' =>  $invoice->id,
-                        'account_id' =>  $receivableAccount->id,
-                        'invoice_detail_id' =>  $invoiceDetail->id,
-                        'transaction_date' => Carbon::now(),
-                        'description' => 'Payment received from: ' . $client->name,
-                        'debit' => 0,
-                        'credit' => $totalPaidAmount,
-                        'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
-                        'name' =>  $client->name,
-                        'type' => 'receivable',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $receivableAccount->id
-                    ]);
-
-                    
-                    // Create record to payment_gateway assets coa account (OK)
-                    if ($bankPaymentFee) {
+                    if (!is_null($receivableAccount) && $receivableAccount->id) {
+                        $payment->status = 'completed';
+                        $payment->completed = '0';
+                        $payment->account_id = $receivableAccount->id;
+                        $payment->save();
+                        
+                        // Create record to receivable account (OK)
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
-                            'company_id' => $invoice->agent->branch->company->id,
                             'branch_id' => $invoice->agent->branch->id,
-                            'account_id' =>  $bankPaymentFee->id,
+                            'company_id' => $invoice->agent->branch->company->id,
                             'invoice_id' =>  $invoice->id,
+                            'account_id' =>  $receivableAccount->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment transfered to: ' . $bankPaymentFee->name,
-                            'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
-                            'credit' =>0,
-                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
-                            'name' =>  $bankPaymentFee->name,
-                            'type' => 'bank',
+                            'description' => 'Payment received from: ' . $client->name,
+                            'debit' => 0,
+                            'credit' => $totalPaidAmount,
+                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
+                            'name' =>  $client->name,
+                            'type' => 'receivable',
                             'voucher_number' => $payment->voucher_number,
-                            'type_reference_id' => $bankPaymentFee->id
+                            'type_reference_id' => $receivableAccount->id
                         ]);
-
-                        $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
-                        $bankPaymentFee->save();
 
                         
+                        // Create record to payment_gateway assets coa account (OK)
+                        if ($bankPaymentFee) {
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'company_id' => $invoice->agent->branch->company->id,
+                                'branch_id' => $invoice->agent->branch->id,
+                                'account_id' =>  $bankPaymentFee->id,
+                                'invoice_id' =>  $invoice->id,
+                                'invoice_detail_id' =>  $invoiceDetail->id,
+                                'transaction_date' => Carbon::now(),
+                                'description' => 'Payment transfered to: ' . $bankPaymentFee->name,
+                                'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
+                                'credit' =>0,
+                                'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
+                                'name' =>  $bankPaymentFee->name,
+                                'type' => 'bank',
+                                'voucher_number' => $payment->voucher_number,
+                                'type_reference_id' => $bankPaymentFee->id
+                            ]);
+
+                            $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
+                            $bankPaymentFee->save();
+
+                            
+                        }
+                        //dd($transaction->id,$bankAccountAccRecord);
+                        
+                        // Create record to payment_gateway expense coa account (OK)
+                        $tapAccount->actual_balance += $defaultPaymentGatewayFee;
+
+                        if ($tapAccount) {
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'company_id' => $invoice->agent->branch->company->id,
+                                'branch_id' => $invoice->agent->branch->id,
+                                'account_id' =>  $tapAccount->id,
+                                'invoice_id' =>  $invoice->id,
+                                'invoice_detail_id' =>  $invoiceDetail->id,
+                                'voucher_number' => $payment->voucher_number,
+                                'transaction_date' => Carbon::now(),
+                                'description' => 'Payment gateway charged by: '. $tapAccount->name,
+                                'debit' => $defaultPaymentGatewayFee,
+                                'credit' => 0,
+                                'balance' => $tapAccount->actual_balance,
+                                'name' =>  $tapAccount->name,
+                                'type' => 'charges',
+                                'type_reference_id' => $tapAccount->id
+                            ]);
+
+                            $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
+                            $tapAccount->save();
+
+                            $selectedtask->status = 'Completed';
+                            $selectedtask->save();
+
+                        }
+                    }else{
+                        return response()->json(['error' => 'No related COA Account exist. Failed to create Invoice for task: ' . $invoiceDetail['task_description']], 500);
+
                     }
-                    //dd($transaction->id,$bankAccountAccRecord);
-                    
-                    // Create record to payment_gateway expense coa account (OK)
-                    $tapAccount->actual_balance += $defaultPaymentGatewayFee;
-
-                    if ($tapAccount) {
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'company_id' => $invoice->agent->branch->company->id,
-                            'branch_id' => $invoice->agent->branch->id,
-                            'account_id' =>  $tapAccount->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoice_detail_id' =>  $invoiceDetail->id,
-                            'voucher_number' => $payment->voucher_number,
-                            'transaction_date' => Carbon::now(),
-                            'description' => 'Payment gateway charged by: '. $tapAccount->name,
-                            'debit' => $defaultPaymentGatewayFee,
-                            'credit' => 0,
-                            'balance' => $tapAccount->actual_balance,
-                            'name' =>  $tapAccount->name,
-                            'type' => 'charges',
-                            'type_reference_id' => $tapAccount->id
-                        ]);
-
-                        $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
-                        $tapAccount->save();
-
-                    }
-
-
-                    $selectedtask->status = 'Completed';
-                    $selectedtask->save();
 
                     //dd($e->getMessage());
 
-                } catch (Exception $e) {
-                    // Log the error if something goes wrong with a specific task
-                    Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+                } catch (\Exception $e) {
+                    Log::error('Failed in invoice processing', [
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                
                     return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
                 }
             //}

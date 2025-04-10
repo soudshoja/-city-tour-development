@@ -137,8 +137,7 @@
                                     <label for="pay_to_payee" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Pay To <span
                                             class="text-red-500">*</span></label>
                                     <input required id="pay_to" type="text" name="pay_to"
-                                        class="form-input flex-1" list="supplierList" placeholder="Enter Payee Name"
-                                        onchange="updateRemarks()" />
+                                        class="form-input flex-1" list="supplierList" placeholder="Enter Payee Name" />
                                     <datalist id="supplierList">
                                         @foreach ($suppliers as $supplier)
                                             <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
@@ -313,7 +312,8 @@
 
             window.updateField = function(index, field, value) {
                 if (["debit", "credit", "amount", "exchange_rate", "balance"].includes(field)) {
-                    items[index][field] = parseFloat(value) || 0;
+                    items[index][field] = parseFloat(value).toFixed(2) || "0.00";
+                    items[index][field] = parseFloat(items[index][field]); // Convert back to number
                 } else {
                     items[index][field] = value;
                 }
@@ -346,17 +346,6 @@
             }
 
             window.selectedAccName = selectedAccName; // Make function globally available
-
-            function updateRemarks() {
-                let payTo = document.getElementById("pay_to").value;
-                let remarksField = document.getElementById("remarks_create");
-
-                if (payTo.trim() !== "") {
-                    remarksField.value = "Payment to " + payTo;
-                } else {
-                    remarksField.value = "";
-                }
-            }
 
             function updateDifference(value) {
                 let differenceElement = document.getElementById("total_difference");
@@ -393,8 +382,8 @@
                         <datalist id="accountList_${index}">
                             ${lastLevelAccounts.map(accpayreceive => 
                                 `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                                    [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                                </option>`
+                                                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                                                    </option>`
                             ).join('')}
                         </datalist>
 
@@ -416,10 +405,10 @@
                             <option ${item.currency === "GBP" ? "selected" : ""}>GBP</option>
                         </select>
                     </td>
-                    <td style="vertical-align: top;"><input required type="number" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" class="form-control form-control-sm" name="items[${index}][amount]" value="${item.amount}" oninput="updateField(${index}, 'amount', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)"></td>
+                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)"></td>
+                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][amount]" value="${item.amount}" oninput="updateField(${index}, 'amount', this.value)"></td>
+                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)"></td>
+                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)"></td>
                     <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][cheque_no]" value="${item.cheque_no}" oninput="updateField(${index}, 'cheque_no', this.value)"></td>
                     <td style="vertical-align: top;"><input type="date" class="form-control form-control-sm" name="items[${index}][cheque_date]" value="${item.cheque_date}" oninput="updateField(${index}, 'cheque_date', this.value)"></td>
                     <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][bank_name]" value="${item.bank_name}" oninput="updateField(${index}, 'bank_name', this.value)"></td>

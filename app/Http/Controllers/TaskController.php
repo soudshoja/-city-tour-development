@@ -793,17 +793,20 @@ class TaskController extends Controller
         }
 
         $cancellationPolicy = json_encode($cancellationPolicy);
+        $supplier = Supplier::where('name', 'Magic Holiday')->first();
 
-        $supplierId = Supplier::where('name', 'Magic Holiday')->first()->id;
-        $passengers = $reservation['service']['passengers'] ?? null;
-
-        if (!$supplierId) {
+        if (!$supplier) {
             Log::channel('magic_holidays')->error('Supplier not found: Magic Holiday');
             return [
                 'status' => 'error',
                 'message' => 'Something Went Wrong',
             ];
         }
+
+        $supplierId = $supplier->id;
+
+        $passengers = $reservation['service']['passengers'] ?? null;
+
 
         $hotelDB = Hotel::where('name', 'like', '%' . $hotel['name'] . '%')->first();
 
@@ -883,12 +886,11 @@ class TaskController extends Controller
                 'voucher_status' => null,
             ];
 
-            // Check if any required field is null
             foreach ($taskData as $key => $value) {
                 if ($value === null) {
                     $enabled = false;
                     Log::channel('magic_holidays')->warning("Missing required field: $key for reservation: " . ($reservation['id'] ?? 'Unknown'));
-                    break; // No need to check other fields
+                    break; 
                 }
             }
             $taskData['enabled'] = $enabled;
@@ -992,13 +994,21 @@ class TaskController extends Controller
 
             $agent = $task->agent;
             $client = $task->client;
-            $supplier = $task->supplier;
 
             $companyId = $task->company_id;
             $branchId = auth()->user()->branch->id ?? auth()->user()->agent->branch_id ?? null;
 
-            $receivableAccount = Account::where('name', 'like', '%Hotel Cost%')->where('company_id', $companyId)->first();
+            $receivableAccount = Account::where('name', 'like', '%Hotels Cost%')->where('company_id', $companyId)->first();
             // $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
+
+            if (!$receivableAccount) {
+                $task->delete();
+                $taskHotelDetail->delete();
+                $room->delete();
+
+                Log::info('Receivable account not found');
+                throw new Exception('Receivable account not found');
+            }
 
             $supplierCompany = SupplierCompany::with('account')
                 ->where('supplier_id', $supplier->id)
@@ -1018,7 +1028,7 @@ class TaskController extends Controller
                 $taskHotelDetail->delete();
                 $room->delete();
 
-                Log::info('Supplier account not found: ' . $supplier->name);
+                Log::info('Supplier account not found: ' . $supplier->name . ' for company: ' . $companyId);
                 throw new Exception('Supplier account not found');
             }
 
@@ -1054,6 +1064,15 @@ class TaskController extends Controller
                 'reference_type' => 'Payment',
                 'task_id' => $task->id,
             ]);
+
+            if(!$transaction) {
+                $task->delete();
+                $taskHotelDetail->delete();
+                $room->delete();
+
+                Log::info('Transaction creation failed');
+                throw new Exception('Transaction creation failed');
+            }
 
             $markup = ($taskCreated->invoice_price ?? $task->total) - $task->total;
 

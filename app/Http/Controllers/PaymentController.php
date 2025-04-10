@@ -115,7 +115,7 @@ class PaymentController extends Controller
         }
 
         $this->storeNotification([
-            'user_id' => Auth::id(),
+            'user_id' => $invoice->agent->id,
             'title' => 'Payment Initiated',
             'message' => 'Payment has been initiated for invoice: ' . $invoiceNumber,
         ]);

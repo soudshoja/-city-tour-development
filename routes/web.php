@@ -300,6 +300,23 @@ Route::middleware(['auth'])->group(function () {
     ], function(){
         Route::get('/{transactionId}',[JournalEntryController::class, 'index'])->name('index');
     });
+
+    Route::group([
+        'prefix' => 'reports',
+        'as' => 'reports.',
+    ], function () {
+        Route::get('/reports', [ReportController::class, 'index'])->name('index');
+        Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('agent');
+        Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('client');
+        Route::get('/reports/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('clientmgmnt');
+        Route::get('/reports/performance', [ReportController::class, 'performance'])->name('performance');
+        Route::get('/reports/summary', [ReportController::class, 'summary'])->name('summary');
+        Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
+        Route::get('/new-report', [ReportController::class, 'accountsPayableReceivableReport'])->name('new-report');
+        Route::get('/payable_supplier',[ReportController::class, 'payableSupplier'])->name('payable-supplier');
+        Route::get('/profit-agent',[ReportController::class, 'profitAgent'])->name('profit-agent');
+    });
+
 });
 
 
@@ -402,7 +419,7 @@ Route::group([
     ], function () {
         Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose');
         Route::get('/process', [PaymentController::class, 'process'])->name('process');
-        Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create');
+        Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
@@ -467,18 +484,8 @@ Route::group([
     Route::post('/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
 });
 
-// REPORTS
-Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-Route::post('/upload-pdf', [TaskController::class, 'uploadPdf']);
 
 
-Route::get('/reports/agent', [ReportController::class, 'agentReport'])->name('reports.agent');
-Route::get('/reports/client', [ReportController::class, 'clientReport'])->name('reports.client');
-Route::get('/reports/clientmgmnt', [ReportController::class, 'clientMgmnt'])->name('reports.clientmgmnt');
-Route::get('/reports/performance', [ReportController::class, 'performance'])->name('reports.performance');
-Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
-Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('reports.accsummary');
-Route::get('/new-report',[ReportController::class, 'accountsPayableReceivableReport'])->name('reports.new-report');
 
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');

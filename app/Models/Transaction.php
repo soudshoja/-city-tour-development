@@ -27,6 +27,15 @@ class Transaction extends Model
     'remarks_fl',
     ];
 
+    // public function getTransactionHashAttribute()
+    // {
+    //     return hash('sha256', $this->id . $this->date . $this->amount);
+    // }
+
+    // public function getReferenceHashAttribute()
+    // {
+    //     return hash('sha256', $this->reference_type . $this->reference_number . $this->date);
+    // }
 
     public function invoice()
     {

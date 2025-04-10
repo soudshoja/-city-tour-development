@@ -190,6 +190,7 @@ class EntitySeeder extends Seeder
             'currency' => 'KWD',
             'is_group' => 0,
             'disabled' => 0,
+            'agent_id' => $agent->id,
         ]);
 
 

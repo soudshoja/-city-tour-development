@@ -145,7 +145,14 @@ class CoaSeeder extends Seeder
 
         $parentMap = [];
         foreach ($accounts as $account) {
-            $parentId = $account['parent'] ? $parentMap[$account['parent']] : null;
+            $parentId = $account['parent'] && isset($parentMap[$account['parent']])
+            ? $parentMap[$account['parent']]->id
+            : null;
+    
+            // Determine root_id
+            $rootId = $parentId
+                ? $parentMap[$account['parent']]->root_id ?? $parentMap[$account['parent']]->id
+                : null;
 
             $newAccount = Account::updateOrCreate([
                 'name' => $account['name'],
@@ -159,7 +166,7 @@ class CoaSeeder extends Seeder
                 'budget_balance' => 0,
                 'variance' => 0,
                 'parent_id' => $parentId,
-                'root_id' => $parentId ? $parentMap[$account['parent']] : null,
+                'root_id' => $rootId,
                 'branch_id' => null,
                 'agent_id' => null,
                 'client_id' => null,
@@ -168,7 +175,7 @@ class CoaSeeder extends Seeder
                 'code' => $account['code'],
             ]);
 
-            $parentMap[$account['name']] = $newAccount->id;
+            $parentMap[$account['name']] = $newAccount;
         }
     }
     

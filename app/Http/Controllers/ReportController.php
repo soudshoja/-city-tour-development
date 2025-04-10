@@ -353,7 +353,7 @@ class ReportController extends Controller
     public function getProfitAgent()
     {
         $companyId = auth()->user()->company->id;
-        $agents= Agent::with('account', 'invoices.invoiceDetails.task')->get();
+        $agents= Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')->get();
 
        $sumProfitAgent = 0;
         foreach ($agents as $agent) {
@@ -392,5 +392,29 @@ class ReportController extends Controller
             'agents' => $profitAgent['agents'],
             'sumProfitAgent' => $profitAgent['sumProfitAgent'],
         ]);
+    }
+
+    public function getTotalReceivable()
+    {
+        $companyId = auth()->user()->company->id;
+        $receivableAccount = Account::where('name', 'Accounts Receivable')->first();
+
+        if (!$receivableAccount) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        }
+
+        $childAccountsReceivable = Account::where('parent_id', $receivableAccount->id)->get();
+
+        foreach ($childAccountsReceivable as $childAccount) {
+            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
+                ->where('company_id', $companyId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $childAccount->journalEntries = $journalEntries;
+
+            $childAccount->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
+        }
+
+        return $childAccountsReceivable;
     }
 }

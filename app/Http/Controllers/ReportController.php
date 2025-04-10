@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Agent;
 use App\Models\Branch;
 use App\Models\JournalEntry;
 use App\Models\Supplier;
@@ -313,6 +314,83 @@ class ReportController extends Controller
             'supplierId' => $supplierId,
             'branches' => $branches,
             'suppliers' => $suppliers,
+        ]);
+    }
+
+    public function getPayableSupplier()
+    {
+        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        $accountPayable = Account::where('name', 'Accounts Payable')->first();
+
+        if (!$accountPayable) {
+            return redirect()->back()->with('error', 'Accounts Payable account not found.');
+        }
+
+        $childAccountsPayable = Account::where('parent_id', $accountPayable->id)->get();
+
+        foreach ($childAccountsPayable as $childAccount) {
+            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
+                ->where('company_id', $companyId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $childAccount->journalEntries = $journalEntries;
+
+            $childAccount->balance = $journalEntries->sum('credit') - $journalEntries->sum('debit');
+        }
+
+        return $childAccountsPayable;
+    }
+
+    public function payableSupplier()
+    {
+        $childAccountsPayable = $this->getPayableSupplier();
+
+        return view('reports.payable-supplier', [
+            'childAccountsPayable' => $childAccountsPayable,
+        ]);
+    }
+
+    public function getProfitAgent()
+    {
+        $companyId = auth()->user()->company->id;
+        $agents= Agent::with('account', 'invoices.invoiceDetails.task')->get();
+
+       $sumProfitAgent = 0;
+        foreach ($agents as $agent) {
+            // $agent->balance = 0;
+            $agent->profit = 0;
+
+            // if ($agent->account) {
+            //     $journalEntries = JournalEntry::where('account_id', $agent->account->id)
+            //         ->where('company_id', $companyId)
+            //         ->orderBy('created_at', 'desc')
+            //         ->get();
+
+            //     $agent->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
+            // }
+
+            foreach ($agent->invoices as $invoice) {
+                foreach ($invoice->invoiceDetails as $invoiceDetail) {
+                    $agent->profit += $invoiceDetail->markup_price;
+                }
+            }
+
+
+            $sumProfitAgent += $agent->profit;
+       }
+       return [
+        'agents' => $agents,
+        'sumProfitAgent' => $sumProfitAgent,
+       ];
+    }
+
+    public function profitAgent()
+    {
+        $profitAgent = $this->getProfitAgent();
+
+        return view('reports.profit-agent', [
+            'agents' => $profitAgent['agents'],
+            'sumProfitAgent' => $profitAgent['sumProfitAgent'],
         ]);
     }
 }

@@ -256,6 +256,7 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
+                @if(!auth())
                 <form action="{{ route('whatsapp.send') }}" method="POST">
                     @csrf
                     <input type="hidden" name="client" value='{{ $invoice->client }}'>
@@ -265,6 +266,7 @@
                         Send Invoice To Client
                     </button>
                 </form>
+                @endif
                 <form id="paymentForm"
                     action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
                     method="POST">

@@ -39,6 +39,18 @@ class DashboardController extends Controller
             
             $dashboardData = $this->companyDashboard();
 
+            $reportController = new ReportController();
+
+            $childAccountsPayable = $reportController->getPayableSupplier();
+
+            $payableSupplier = 0;
+            foreach ($childAccountsPayable as $childAccount) {
+                $payableSupplier+= $childAccount->balance;
+            }
+
+
+            $profitAgentWise = $reportController->getProfitAgent();
+
             $serializedData = [
                 'paidAmounts' => $dashboardData['paidAmounts'],
                 'unpaidAmounts' => $dashboardData['unpaidAmounts'],
@@ -49,6 +61,11 @@ class DashboardController extends Controller
                 'pieChartNumbers' => $dashboardData['branchesSales'],
                 'pieChartLabels' => $dashboardData['branches']->pluck('name'),
                 'pieChartColors' => $this->generateColors($dashboardData['branches']->count()),
+                'payableSupplier' => $payableSupplier,
+                'profitAgentWise' => $profitAgentWise['sumProfitAgent'],
+                'totalReceivable' => 0,
+                'totalBank' => 0,
+                'gatewayReceivable' => 0,
             ];
 
         } elseif (Auth::user()->role_id == Role::AGENT) {

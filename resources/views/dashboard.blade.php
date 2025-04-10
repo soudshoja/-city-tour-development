@@ -64,6 +64,57 @@
                     </div>
                 </div>
                 @endif
+                <div class="p-2 rounded shadow bg-white flex flex-col gap-2">
+                    <a class="p-2 min-w-56 flex justify-between items-center bg-gray-100 rounded" href="{{ route('reports.payable-supplier')}}">
+                        <p>
+                            Payable Supplier:
+                        </p>
+                        <p class="@if($payableSupplier < 0) text-green-500 @else text-red-500 @endif">
+                            {{ $payableSupplier }}
+                        </p>
+                    </a>
+                    <div class="p-2 flex justify-between items-center bg-gray-100 rounded">
+                        <a
+                            class="p-2 min-w-56 flex justify-between items-center bg-gray-100 rounded"
+                            href=" {{ route('reports.profit-agent') }}">
+                            <p>
+                                Profit Agent Wise
+                            </p>
+                            <p class="text-green-500">
+                                {{ $profitAgentWise }}
+                            </p>
+
+                        </a>
+                        <p>
+                        </p>
+                    </div>
+                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
+                        <p>
+                            Total Receivable
+                        </p>
+                    </div>
+                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
+                        <p>
+                            {{ $totalReceivable }}
+                        </p>
+                    </div>
+                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
+                        <p>
+                            Total Bank
+                        </p>
+                        <p>
+                            {{ $totalBank }}
+                        </p>
+                    </div>
+                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
+                        <p>
+                            Gateway Receivable
+                        </p>
+                        <p>
+                            {{ $gatewayReceivable }}
+                        </p>
+                    </div>
+                </div>
                 <div class="p-10 pt-2 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">
                     <h1>
                         {{ $pieChartTitle }}

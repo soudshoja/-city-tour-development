@@ -337,12 +337,47 @@ class PaymentController extends Controller
                     $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
-                    // $supplier = Supplier::where('id', $selectedtask->supplier_id)->first();
-                    // $client   = Client::where('id', $selectedtask->client_id)->first();
-                    // $agent    = Agent::where('id', $selectedtask->agent_id)->first();
 
                     $receivableAccount = Account::where('name', 'like', '%' . $client->name . '%')->first();
                     //dd($receivableAccount, $client->name);
+
+                    if (empty($receivableAccount) || !$receivableAccount->id) {
+
+                        $clientsAccount = Account::where('name', 'like', '%Clients%')
+                            ->whereHas('parent', function($query) {
+                                $query->where('name', 'Accounts Receivable');
+                            })
+                            ->first();
+
+                        $assetsAccount = Account::where('name' , 'Assets')->first();
+
+                        try{
+                            $newAccount = Account::create([
+                                'serial_number' => '1313',
+                                'account_type' => 'receivable',
+                                'name' => $client->name,
+                                'level' => 5,
+                                'actual_balance' => 0,
+                                'budget_balance' => 0,
+                                'variance' => 0,
+                                'parent_id' =>  $clientsAccount->id,
+                                'root_id' => $assetsAccount->id,
+                                'code' => 'CLI-' . rand(1000000, 9999999),
+                                'reference_id' => $client->id,
+                                'company_id' => $invoice->agent->branch->company->id,
+                                'agent_id' => $invoice->agent->id,
+                            ]);
+
+                            $receivableAccountId = $newAccount->id;
+                        } catch(Exception $e){
+                            logger('Failed to create account: ' . $e->getMessage());
+                            return redirect()->back()->with('error', 'Failed to create account');
+                        }
+
+                    }else{
+                        $receivableAccountId = $receivableAccount->id;
+
+                    }
 
                     if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
                         return response()->json(['error' => 'Invalid invoice/agent/branch/company structure'], 400);
@@ -363,92 +398,88 @@ class PaymentController extends Controller
                     
                     $payment = Payment::find($paymentId);
 
-                    if (!is_null($receivableAccount) && $receivableAccount->id) {
-                        $payment->status = 'completed';
-                        $payment->completed = '0';
-                        $payment->account_id = $receivableAccount->id;
-                        $payment->save();
-                        
-                        // Create record to receivable account (OK)
+                    $payment->status = 'completed';
+                    $payment->completed = '0';
+                    $payment->account_id = $receivableAccountId;
+                    $payment->save();
+                    
+                    // Create record to receivable account (OK)
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $invoice->agent->branch->company->id,
+                        'invoice_id' =>  $invoice->id,
+                        'account_id' =>  $receivableAccountId,
+                        'invoice_detail_id' =>  $invoiceDetail->id,
+                        'transaction_date' => Carbon::now(),
+                        'description' => 'Payment received from: ' . $client->name,
+                        'debit' => 0,
+                        'credit' => $totalPaidAmount,
+                        'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
+                        'name' =>  $client->name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $receivableAccountId
+                    ]);
+
+                    
+                    // Create record to payment_gateway assets coa account (OK)
+                    if ($bankPaymentFee) {
                         JournalEntry::create([
                             'transaction_id' => $transaction->id,
-                            'branch_id' => $invoice->agent->branch->id,
                             'company_id' => $invoice->agent->branch->company->id,
+                            'branch_id' => $invoice->agent->branch->id,
+                            'account_id' =>  $bankPaymentFee->id,
                             'invoice_id' =>  $invoice->id,
-                            'account_id' =>  $receivableAccount->id,
                             'invoice_detail_id' =>  $invoiceDetail->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment received from: ' . $client->name,
-                            'debit' => 0,
-                            'credit' => $totalPaidAmount,
-                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
-                            'name' =>  $client->name,
-                            'type' => 'receivable',
+                            'description' => 'Payment transfered to: ' . $bankPaymentFee->name,
+                            'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
+                            'credit' =>0,
+                            'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
+                            'name' =>  $bankPaymentFee->name,
+                            'type' => 'bank',
                             'voucher_number' => $payment->voucher_number,
-                            'type_reference_id' => $receivableAccount->id
+                            'type_reference_id' => $bankPaymentFee->id
                         ]);
 
+                        $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
+                        $bankPaymentFee->save();
+
                         
-                        // Create record to payment_gateway assets coa account (OK)
-                        if ($bankPaymentFee) {
-                            JournalEntry::create([
-                                'transaction_id' => $transaction->id,
-                                'company_id' => $invoice->agent->branch->company->id,
-                                'branch_id' => $invoice->agent->branch->id,
-                                'account_id' =>  $bankPaymentFee->id,
-                                'invoice_id' =>  $invoice->id,
-                                'invoice_detail_id' =>  $invoiceDetail->id,
-                                'transaction_date' => Carbon::now(),
-                                'description' => 'Payment transfered to: ' . $bankPaymentFee->name,
-                                'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
-                                'credit' =>0,
-                                'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
-                                'name' =>  $bankPaymentFee->name,
-                                'type' => 'bank',
-                                'voucher_number' => $payment->voucher_number,
-                                'type_reference_id' => $bankPaymentFee->id
-                            ]);
+                    }
+                    //dd($transaction->id,$bankAccountAccRecord);
+                    
+                    // Create record to payment_gateway expense coa account (OK)
+                    $tapAccount->actual_balance += $defaultPaymentGatewayFee;
 
-                            $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
-                            $bankPaymentFee->save();
+                    if ($tapAccount) {
+                        JournalEntry::create([
+                            'transaction_id' => $transaction->id,
+                            'company_id' => $invoice->agent->branch->company->id,
+                            'branch_id' => $invoice->agent->branch->id,
+                            'account_id' =>  $tapAccount->id,
+                            'invoice_id' =>  $invoice->id,
+                            'invoice_detail_id' =>  $invoiceDetail->id,
+                            'voucher_number' => $payment->voucher_number,
+                            'transaction_date' => Carbon::now(),
+                            'description' => 'Payment gateway charged by: '. $tapAccount->name,
+                            'debit' => $defaultPaymentGatewayFee,
+                            'credit' => 0,
+                            'balance' => $tapAccount->actual_balance,
+                            'name' =>  $tapAccount->name,
+                            'type' => 'charges',
+                            'type_reference_id' => $tapAccount->id
+                        ]);
 
-                            
-                        }
-                        //dd($transaction->id,$bankAccountAccRecord);
-                        
-                        // Create record to payment_gateway expense coa account (OK)
-                        $tapAccount->actual_balance += $defaultPaymentGatewayFee;
+                        $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
+                        $tapAccount->save();
 
-                        if ($tapAccount) {
-                            JournalEntry::create([
-                                'transaction_id' => $transaction->id,
-                                'company_id' => $invoice->agent->branch->company->id,
-                                'branch_id' => $invoice->agent->branch->id,
-                                'account_id' =>  $tapAccount->id,
-                                'invoice_id' =>  $invoice->id,
-                                'invoice_detail_id' =>  $invoiceDetail->id,
-                                'voucher_number' => $payment->voucher_number,
-                                'transaction_date' => Carbon::now(),
-                                'description' => 'Payment gateway charged by: '. $tapAccount->name,
-                                'debit' => $defaultPaymentGatewayFee,
-                                'credit' => 0,
-                                'balance' => $tapAccount->actual_balance,
-                                'name' =>  $tapAccount->name,
-                                'type' => 'charges',
-                                'type_reference_id' => $tapAccount->id
-                            ]);
-
-                            $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
-                            $tapAccount->save();
-
-                            $selectedtask->status = 'Completed';
-                            $selectedtask->save();
-
-                        }
-                    }else{
-                        return response()->json(['error' => 'No related COA Account exist. Failed to create Invoice for task: ' . $invoiceDetail['task_description']], 500);
+                        $selectedtask->status = 'Completed';
+                        $selectedtask->save();
 
                     }
+                    
 
                     //dd($e->getMessage());
 

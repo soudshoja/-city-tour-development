@@ -648,7 +648,8 @@ class InvoiceController extends Controller
                     $accountsToBeUpdate[] = $detailsAccount;
 
                 }
-                $commissionCalculate = 0.15 * ($task['invprice'] - $selectedtask->total);
+                $commissionCalculate = 0.15 * ($task['invprice'] - $selectedtask->total); //only for commission agent, not used now
+                // $commissionCalculate = $task['invprice'] - $selectedtask->total;
 
                 $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
                     ->where('company_id', $companyId)

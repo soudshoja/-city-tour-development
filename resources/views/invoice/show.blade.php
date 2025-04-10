@@ -260,10 +260,10 @@
                     @csrf
                     <input type="hidden" name="client" value='{{ $invoice->client }}'>
                     <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
-                    <button type="submit"
+                    {{-- <button type="submit"
                         class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                         Send Invoice To Client
-                    </button>
+                    </button> --}}
                 </form>
                 <form id="paymentForm"
                     action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"

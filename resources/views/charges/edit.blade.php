@@ -13,8 +13,9 @@
                     <!-- Charge Name -->
                     <div>
                         <label for="name" class="block text-gray-700 font-semibold mb-2">Charge Name</label>
-                        <input type="text" name="name" id="name" value="{{ $charge->name }}" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        <input type="text" name="name" id="name" value="{{ $charge->name }}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                            readonly>
                     </div>
 
                     <!-- Description -->
@@ -45,31 +46,17 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
 
-                    {{-- <div>
+                    <div>
                         <label for="acc_fee_name" class="block text-gray-700 font-semibold mb-2">
                             COA (Expenses) for Payment Gateway
                             Fee
                         </label>
-                        <input list="paymentGatewayOptions" type="text" name="acc_fee_name" id="acc_fee_name"
+                        <input type="text" name="acc_fee_name" id="acc_fee_name"
                             value="{{ old('acc_fee_name', isset($accFee) && $accFee ? $accFee->name : '') }}"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                            readonly>
 
-                        <datalist id="paymentGatewayOptions">
-                            @foreach ($coaPaymentGateway as $account)
-                                @if ($account && is_object($account))
-                                    <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
-                                @endif
-                            @endforeach
-
-                        </datalist>
-
-                        <!-- Show a message if no options are available -->
-                        @if ($coaPaymentGateway->isEmpty())
-                            <div class="mt-2 text-sm text-red-500">
-                                No available records found. Please add via COA page.
-                            </div>
-                        @endif
-                    </div> --}}
+                    </div>
 
 
                     <!-- Hidden input field to store the ID of the selected COA for Payment Gateway Fee -->

@@ -1,13 +1,8 @@
 <x-app-layout>
-
-    <!-- page title -->
     <div class="flex justify-between items-center gap-5 my-3 ">
-
-
         <div class="flex items-center gap-5 ">
-            <h2 class="text-3xl font-bold">Payment Voucher List</h2>
-            <!-- total Invoice number -->
-            <div data-tooltip="number of records"
+            <h2 class="text-3xl font-bold">Payment Voucher</h2>
+            <div data-tooltip="number of Charges"
                 class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
                 <span class="text-xl font-bold text-white">{{ $totalRecords }}</span>
             </div>
@@ -43,45 +38,43 @@
         </div>
 
 
+
     </div>
     <!-- ./page title -->
-
-
-
 
     <!-- page content -->
     <div class="tableCon">
         <div class="content-70">
             <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
-                <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <!--  search icon -->
-                    <div class="relative w-full">
-                        <!-- Search Input -->
-                        <input type="text" placeholder="Find fast and search here..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="searchInput">
+                <!--  search icon -->
+                <div class="relative">
+                    <!-- Search Input -->
+                    <input type="text" placeholder="Find fast and search here..."
+                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                        id="searchInput">
 
-                        <!-- Search Button with SVG Icon -->
-                        <button type="button"
-                            class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                            id="searchButton">
-                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
-                                    opacity="0.5"></circle>
-                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
+
+                    <!-- Search Button with SVG Icon -->
+                    <button type="button"
+                        class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
+                        id="searchButton">
+                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
+                                opacity="0.5"></circle>
+                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg>
+                    </button>
                 </div>
+                <!-- ./search icon -->
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
                     <!-- table -->
-                    <div class="dataTable-container h-max">
-                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                    <div class="dataTable2-container h-max">
+                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full">
                             <thead>
                                 <tr>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Date</th>
@@ -94,15 +87,11 @@
                             <tbody>
                                 @if ($bankPayments->isEmpty())
                                     <tr>
-                                        <td colspan="6" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        <td colspan="5" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                             No data for now.... Create new!</td>
                                     </tr>
                                 @else
                                     @foreach ($bankPayments as $bankpayment)
-                                        @php
-                                            // Retrieve the first records detail; adjust as needed if you want a different one.
-                                            $bankpaymentInfo = $bankpayment->first();
-                                        @endphp
                                         <tr>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ \Carbon\Carbon::parse($bankpayment->date)->format('Y-m-d') }}
@@ -117,18 +106,20 @@
                                                 {{ $bankpayment->reference_type }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                <a data-tooltip="Edit"
+                                                <a data-tooltip="View Payment Voucher"
                                                     href="{{ route('bank-payments.edit', $bankpayment->id) }}"
-                                                    class="text-sm font-medium text-blue-600 hover:underline">
-
+                                                    class="text-blue-500 hover:underline">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                                         height="20" viewBox="0 0 24 24">
-                                                        <path fill="none" stroke="#00ab55" stroke-linecap="round"
-                                                            stroke-linejoin="round" stroke-width="1.5"
-                                                            d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
-                                                            opacity=".5" />
+                                                        <g fill="none" stroke="currentColor" stroke-width="1">
+                                                            <path
+                                                                d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
+                                                                opacity=".5"></path>
+                                                            <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
+                                                        </g>
                                                     </svg>
                                                 </a>
+
                                             </td>
 
                                         </tr>
@@ -171,9 +162,10 @@
                                     </a>
                                 </li>
                             </ul>
+
+
                         </nav>
                     </div>
-
                     <!-- ./pagination -->
                 </div>
             </div>
@@ -182,8 +174,47 @@
 
         </div>
         <!-- right -->
+        <div class="content-30 hidden">
 
+            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
+                <!-- customize -->
+                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                        <path fill="#333333"
+                            d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
+                    </svg>
+                    <span class="text-sm">Customize</span>
+                </button>
+                <!-- ./customize -->
 
+                <!-- filter -->
+                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
+                    </svg>
+                    <span class="text-sm">Filter</span>
+                </button>
+                <!-- ./filter -->
+
+                <!-- export -->
+                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
+                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#333333"
+                            d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
+                    </svg>
+                    <span class="text-sm">Export</span>
+                </button>
+                <!-- ./export -->
+            </div>
+            <div class="mt-5 ">
+                <!-- display charge details here-->
+                <div id="chargeDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div>
+                <!-- display charge details here-->
+
+            </div>
+        </div>
+        <!-- ./right -->
     </div>
+    <!--./page content-->
 
 </x-app-layout>

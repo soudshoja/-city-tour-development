@@ -910,12 +910,12 @@ class InvoiceController extends Controller
     }
 
 
-    public function split(string $invoiceNumber, int $clientId)
+    public function split(string $invoiceNumber, int $clientId, int $partialId)
     {
 
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
-        $invoicePartial = InvoicePartial::where('invoice_number', $invoiceNumber)->where('client_id', $clientId)->with('client', 'invoice')->first();
+        $invoicePartial = InvoicePartial::where('id', $partialId)->where('invoice_number', $invoiceNumber)->where('client_id', $clientId)->with('client', 'invoice')->first();
         $invoicePartial->expiry_date = \Carbon\Carbon::parse($invoicePartial->expiry_date);
         // Check if the invoice exists
         if (!$invoice) {

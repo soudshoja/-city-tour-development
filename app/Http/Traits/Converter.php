@@ -6,6 +6,7 @@ use \Smalot\PdfParser\Parser;
 use Spatie\PdfToImage\Pdf;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Org_Heigl\Ghostscript\Ghostscript;
 use Intervention\Image\Facades\Image;
 use setasign\Fpdi\Tcpdf\Fpdi;
@@ -130,7 +131,7 @@ trait Converter
             return response()->json(['error' => 'API key is missing.'], 400);
         }
     
-        \Log::info('imagePath', ['imagePath' => $imagePath]);
+        Log::info('imagePath', ['imagePath' => $imagePath]);
     
         // Check if the file exists
         if (!file_exists($imagePath)) {
@@ -138,13 +139,13 @@ trait Converter
         }
     
         $fileSize = filesize($imagePath);
-        \Log::info('fileSize', ['fileSize' => $fileSize]);
+        Log::info('fileSize', ['fileSize' => $fileSize]);
         // Default $imagePath2 to the original imagePath
         $imagePath2 = $imagePath;
     
         // Check if the file exceeds the maximum size
         if ($fileSize > $maxFileSize) {
-            \Log::info('maxFileSize', ['maxFileSize' => $maxFileSize]);
+            Log::info('maxFileSize', ['maxFileSize' => $maxFileSize]);
             $compressedImagePath = storage_path('app/public/compressed_' . basename($imagePath));
             $maxWidth = 800;
             $maxHeight = 800;
@@ -177,7 +178,7 @@ trait Converter
                 $compressedImagePath = $jpegPath;
             }
         
-            \Log::info('Image compressed and resized:', [
+            Log::info('Image compressed and resized:', [
                 'originalSize' => $fileSize,
                 'compressedSize' => filesize($compressedImagePath),
             ]);
@@ -201,7 +202,7 @@ trait Converter
         $imagePathWithExtension = storage_path('app/public/temp_image.jpg');
         copy($imagePath2, $imagePathWithExtension);
     
-        \Log::info('imagePath', ['imagePath' => $imagePathWithExtension]);
+        Log::info('imagePath', ['imagePath' => $imagePathWithExtension]);
     
         // Use GuzzleClient instead of Client to avoid conflict
         $client = new GuzzleClient();
@@ -224,7 +225,7 @@ trait Converter
             $result = json_decode($response->getBody()->getContents(), true);
     
             // Log the raw OCR result for debugging
-            \Log::info('OCR Response:', ['ocrResponse' => $result]);
+            Log::info('OCR Response:', ['ocrResponse' => $result]);
     
             // Check if OCR was successful and parsed text is available
             if (isset($result['ParsedResults'][0]['ParsedText'])) {

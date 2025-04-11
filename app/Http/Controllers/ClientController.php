@@ -78,9 +78,9 @@ class ClientController extends Controller
     public function storeProcess(Request $request){
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:clients,email',
+            'email' => 'nullable|email|unique:clients,email',
             'phone' => 'nullable|string|max:15',
-            'agent_id' => 'required|exists:agents,id',
+            'agent_id' => 'nullable|exists:agents,id',
         ]);
 
         try{
@@ -89,7 +89,9 @@ class ClientController extends Controller
                 'email' => $request->email,
                 'status' => $request->status,
                 'phone' => $request->dial_code . $request->phone,
+                'date_of_birth' => $request->date_of_birth,
                 'address' => $request->address,
+                'civil_no' => $request->civil_no,
                 'status' => 'active',
                 'passport_no' => $request->passport_no,
                 'agent_id' => $request->agent_id,

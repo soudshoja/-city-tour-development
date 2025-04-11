@@ -29,7 +29,7 @@
 
 
             <!-- add new invoice -->
-            <a href="{{ route('invoice.create') }}">
+            <a   href="{{ route('invoices.create') }}">
                 <div data-tooltip="Create new Invoice"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
 

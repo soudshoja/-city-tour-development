@@ -892,8 +892,8 @@ class ChatController extends Controller
                 $extension = pathinfo($fileName, PATHINFO_EXTENSION);
                 // Process the image using OCR
 
-                \Log::info('extension:', ['extension' => $extension]);
-                \Log::info('extension:', ['extension' => $imagePath]);
+                Log::info('extension:', ['extension' => $extension]);
+                Log::info('extension:', ['extension' => $imagePath]);
 
                 if ($extension === 'pdf') {
 
@@ -901,9 +901,9 @@ class ChatController extends Controller
                     if ($text === null) {
                         // Extract images from the PDF and process them via OCR
                         $images = $this->extractImagesFromPdf($filePath);
-                        \Log::info('images:', ['images' => $images]);
+                        Log::info('images:', ['images' => $images]);
                         if (empty($images)) {
-                            \Log::info('No images found, converting PDF to images...');
+                            Log::info('No images found, converting PDF to images...');
                             $images = $this->pdfToImage($filePath);
                         }
 
@@ -923,6 +923,7 @@ class ChatController extends Controller
 
                         // If no OCR text was extracted
                         if (empty($ocrResponse)) {
+                            logger('No text extracted from images.', $ocrResponse);
                             return response()->json(['error' => 'Failed to extract text from the images in the PDF.'], 400);
                         }
                     } else {
@@ -941,7 +942,7 @@ class ChatController extends Controller
                     $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
                 }
 
-                \Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
+                Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
                 // Check if OCR response contains parsed text
                 if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
                     return response()->json([
@@ -985,7 +986,7 @@ class ChatController extends Controller
 
 
                     $response = $this->openAIService->getChatResponse($messages);
-                    \Log::info('response:', ['response' => $response]);
+                    Log::info('response:', ['response' => $response]);
 
                     // Check if $response is a JsonResponse object
                     if ($response instanceof \Illuminate\Http\JsonResponse) {
@@ -1000,7 +1001,7 @@ class ChatController extends Controller
 
                         if (json_last_error() === JSON_ERROR_NONE) {
                             // Now, $passportData is an array that contains the passport details
-                            \Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
+                            Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
 
                             // Update the client's passport details
                             $client = $this->createClientPassport($passportData);
@@ -1011,7 +1012,7 @@ class ChatController extends Controller
                                 'data' => $client,
                             ], 201);
                         } else {
-                            \Log::error('Failed to decode JSON from OpenAI response', ['error' => json_last_error_msg()]);
+                            Log::error('Failed to decode JSON from OpenAI response', ['error' => json_last_error_msg()]);
                             return response()->json([
                                 'success' => false,
                                 'message' => 'Failed to decode passport data.',
@@ -1019,20 +1020,20 @@ class ChatController extends Controller
                         }
                     } else {
                         // Handle missing data in OpenAI response
-                        Log::error('Failed to create client: ' . $e->getMessage());
+                        Log::error('Failed to create client: ');
                         return response()->json([
                             'success' => false,
-                            'message' => 'Error registering client: ' . $e->getMessage(),
-                            'errors' => $e->errors() ?? [],
+                            'message' => 'Error registering client: ',
+                            'errors' => $response,
                         ], 400);
                     }
                 } else {
-                    // Handle missing text in OCR response
-                    Log::error('Failed to create client: ' . $e->getMessage());
+
+                    Log::error('Failed to create client: ');
                     return response()->json([
                         'success' => false,
-                        'message' => 'Error registering client: ' . $e->getMessage(),
-                        'errors' => $e->errors() ?? [],
+                        'message' => 'Error registering client: ',
+                        'errors' => $ocrResponse,
                     ], 400);
                 }
             } catch (Exception $e) {
@@ -1040,17 +1041,17 @@ class ChatController extends Controller
                 Log::error('Failed to create client: ' . $e->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error registering client: ' . $e->getMessage(),
-                    'errors' => $e->errors() ?? [],
+                    'message' => 'Error registering client: ',
+                    'errors' => $e->getMessage(),
                 ], 400);
             }
         } else {
             // Handle case where no file is uploaded
-            Log::error('Failed to create client: ' . $e->getMessage());
+            Log::error('Failed to create client');
             return response()->json([
                 'success' => false,
-                'message' => 'Error registering client: ' . $e->getMessage(),
-                'errors' => $e->errors() ?? [],
+                'message' => 'Error registering client',
+                'errors' => 'No file uploaded.',
             ], 400);
         }
     }

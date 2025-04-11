@@ -1456,6 +1456,7 @@
 
                         if (response.data) {
                             const client = response.data;
+                            console.log(client);
 
                             // Display client details
                             document.getElementById('passport-details').innerHTML = `

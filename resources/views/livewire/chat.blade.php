@@ -373,25 +373,21 @@
                             placeholder="Client Email" />
                     </div>
                 </div>
-
-                <div class="mb-4 flex gap-4">
-                    <!-- Phone Field -->
-                    {{-- <div class="relative">
-                        <select name="countryChat" id="countryChat"
-                            class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                <!-- Phone Field -->
+                <div class="flex justify-between">
+                    <div class="px-2">
+                        <label for="dial_code" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Country Code
+                        </label>
+                        <select name="dial_code" id="dial_code" class="w-full px-3 border rounded-md pb-2 appearance-none ">
                             @foreach ($countries as $country)
-                                <option value="{{ $country->dialing_code }}">
-                                    {{ $country->dialing_code }} ({{ $country->name }})
-                                </option>
+                            <option value="{{ $country->dialing_code }}">
+                                {{ $country->dialing_code }} ({{ $country->name }})
+                            </option>
                             @endforeach
                             <!-- Add more country codes as needed -->
                         </select>
-                        <!-- Custom dropdown arrow -->
-                        <span
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
-                            ▼
-                        </span>
-                    </div> --}}
+                    </div>
                     <div class="w-1/2">
                         <label for="phone"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
@@ -399,6 +395,9 @@
                             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                             placeholder="Client Phone" />
                     </div>
+                </div>
+
+                <div class="mb-4 flex gap-4">
 
                     <!-- Address Field -->
                     <div class="w-1/2">
@@ -434,10 +433,10 @@
                     <div class="w-1/2">
                         <label for="agent_id"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
-                        <select id="agent_idChat" name="agent_idChat" required class="w-full p-2 border rounded-md"
+                        <select id="agent_idChat" name="agent_id" required class="w-full p-2 border rounded-md"
                             placeholder="Select Agent">
                             @foreach ($agents as $agent)
-                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -1508,6 +1507,7 @@
             const response = await fetch("{{ route('chat.client') }}", {
                 method: "POST",
                 headers: {
+                    "Accept": "application/json",
                     "X-CSRF-TOKEN": csrfToken,
                 },
                 body: form, // Send FormData directly
@@ -1661,14 +1661,6 @@
 
     const agentDropdown = new TomSelect("#agent_idChat", {
         placeholder: "Select Agent", // Placeholder text
-        allowEmptyOption: true, // Allows the first empty option
-        create: false, // Prevent creating new options
-        searchField: ["text"], // Enable searching by option text
-        maxItems: 1, // Limit to single select
-    });
-
-    const countryDropdown = new TomSelect("#countryChat", {
-        placeholder: "Select Country", // Placeholder text
         allowEmptyOption: true, // Allows the first empty option
         create: false, // Prevent creating new options
         searchField: ["text"], // Enable searching by option text

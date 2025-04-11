@@ -75,19 +75,16 @@ class ClientController extends Controller
         return view('clients.create');
     }
 
-    public function store(Request $request)
-    {
+    public function storeProcess(Request $request){
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:clients,email',
-            'dial_code' => 'nullable|string|max:30',
             'phone' => 'nullable|string|max:15',
             'agent_id' => 'required|exists:agents,id',
         ]);
 
-        try {
-
-            Client::create([
+        try{
+           $client = Client::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'status' => $request->status,
@@ -98,12 +95,40 @@ class ClientController extends Controller
                 'agent_id' => $request->agent_id,
             ]);
 
-            // Redirect to the clients list with a success message
-            return redirect()->route('clients.index')->with('success', 'Client added successfully!');
         } catch (Exception $e) {
             logger('Error creating client: ' . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', ('Failed to create client'));
+            
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create client',
+            ];
         }
+
+        return [
+            'status' => 'success',
+            'message' => 'Client created successfully',
+            'data' => $client,
+        ];
+
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:clients,email',
+            'dial_code' => 'nullable|string|max:30',
+            'phone' => 'nullable|string|max:15',
+            'agent_id' => 'required|exists:agents,id',
+        ]);
+
+        $response = $this->storeProcess($request);
+
+        if ($response['status'] === 'error') {
+            return redirect()->back()->withInput()->with('error', $response['message']);
+        }
+
+        return redirect()->back()->with('success', $response['message']);
     }
 
     /**

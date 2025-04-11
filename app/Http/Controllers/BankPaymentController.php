@@ -192,7 +192,7 @@ class BankPaymentController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Payment Voucher Successfully Recorded.');
+            return redirect()->route('bank-payments.index')->with('success', 'Payment Voucher Successfully Recorded.');
 
         } catch (\Exception $e) {
             DB::rollBack();

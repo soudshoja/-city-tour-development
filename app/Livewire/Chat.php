@@ -10,6 +10,7 @@ use Livewire\Component;
 use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
+use App\Models\Country;
 use App\Models\Role;
 
 class Chat extends Component
@@ -78,6 +79,7 @@ class Chat extends Component
         // Initialize variables with default values
         $agents = collect();
         $clients = collect();
+        $countries = Country::all();
     
         if ($user->role_id == Role::ADMIN) {
             // Add logic for admin if necessary
@@ -94,6 +96,6 @@ class Chat extends Component
             $clients = Client::whereIn('agent_id', $agentIds)->get();
         }
     
-        return view('livewire.chat', compact('agents', 'clients'));
+        return view('livewire.chat', compact('agents', 'clients', 'countries'));
     }
 }

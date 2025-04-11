@@ -75,6 +75,45 @@ class ClientController extends Controller
         return view('clients.create');
     }
 
+    public function storeProcess(Request $request){
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|unique:clients,email',
+            'phone' => 'nullable|string|max:15',
+            'agent_id' => 'nullable|exists:agents,id',
+        ]);
+
+        try{
+           $client = Client::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'status' => $request->status,
+                'phone' => $request->dial_code . $request->phone,
+                'date_of_birth' => $request->date_of_birth,
+                'address' => $request->address,
+                'civil_no' => $request->civil_no,
+                'status' => 'active',
+                'passport_no' => $request->passport_no,
+                'agent_id' => $request->agent_id,
+            ]);
+
+        } catch (Exception $e) {
+            logger('Error creating client: ' . $e->getMessage());
+            
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create client',
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Client created successfully',
+            'data' => $client,
+        ];
+
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -85,25 +124,13 @@ class ClientController extends Controller
             'agent_id' => 'required|exists:agents,id',
         ]);
 
-        try {
+        $response = $this->storeProcess($request);
 
-            Client::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'status' => $request->status,
-                'phone' => $request->dial_code . $request->phone,
-                'address' => $request->address,
-                'status' => 'active',
-                'passport_no' => $request->passport_no,
-                'agent_id' => $request->agent_id,
-            ]);
-
-            // Redirect to the clients list with a success message
-            return redirect()->route('clients.index')->with('success', 'Client added successfully!');
-        } catch (Exception $e) {
-            logger('Error creating client: ' . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', ('Failed to create client'));
+        if ($response['status'] === 'error') {
+            return redirect()->back()->withInput()->with('error', $response['message']);
         }
+
+        return redirect()->back()->with('success', $response['message']);
     }
 
     /**

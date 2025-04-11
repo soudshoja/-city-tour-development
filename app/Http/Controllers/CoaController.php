@@ -159,9 +159,9 @@ class CoaController extends Controller
             }
 
             // Assign the summed debit and credit to the parent account
-            $account->debit = $totalDebit;
-            $account->credit = $totalCredit;
-            $account->balance = $totalDebit - $totalCredit;
+            $account->debit = (string)$totalDebit;
+            $account->credit = (string)$totalCredit;
+            $account->balance = bcsub($totalDebit, $totalCredit, 2); 
         } else {
             // If it's the last level, calculate debit and credit from journal entries
             $journalEntries = JournalEntry::where('account_id', $account->id)->get();
@@ -169,9 +169,9 @@ class CoaController extends Controller
             $debit = $journalEntries->sum('debit');
             $credit = $journalEntries->sum('credit');
 
-            $account->debit = $debit;
-            $account->credit = $credit;
-            $account->balance = $debit - $credit;
+            $account->debit = (string)$debit;
+            $account->credit = (string)$credit;
+            $account->balance = bcsub($debit, $credit, 2); 
         }
 
         return $account; // Return the account with its childAccounts populated

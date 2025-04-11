@@ -29,6 +29,7 @@ use App\Models\InvoiceDetail;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Exception;
+use LDAP\Result;
 
 class ChatController extends Controller
 {
@@ -80,9 +81,8 @@ class ChatController extends Controller
             // Process based on classification
             if ($classification === 'DataQuery') {
                 return $this->handleDataRequest($userMessage, $userData);
-
             } elseif ($classification === 'ActionRequest') {
-          
+
                 return $this->handleActionRequest($userMessage, $userData);
             } else {
                 // Pass the message to OpenAI if it's not recognized as data or action
@@ -188,12 +188,12 @@ class ChatController extends Controller
                 'content' => json_encode($userData), // Providing user data for context
             ],
         ];
-        
+
         $response = $this->openAIService->getChatResponse($messagesData);
-    
+
         return response()->json($response, 200);
     }
-    
+
 
     private function handleActionRequest($message, $userData)
     {
@@ -320,18 +320,18 @@ class ChatController extends Controller
     {
         // Get the task IDs from the request
         $taskIds = $request->input('tasks');
-    
+
         // Fetch user data, including tasks
         $userData = $this->fetchUserBasedData();
 
         // Ensure task IDs are integers
         $taskIds = array_map('intval', $taskIds);
-              // Fetch available tasks based on the provided task IDs (with eager loading of client)
+        // Fetch available tasks based on the provided task IDs (with eager loading of client)
         $availableTasks = Task::with('client')  // Eager load the 'client' relationship
             ->whereIn('id', $taskIds)
             ->get();  // Execute the query to retrieve the tasks
-    
-              // If no tasks were found, return an error response
+
+        // If no tasks were found, return an error response
         if ($availableTasks->isEmpty()) {
             return response()->json(['message' => 'No valid tasks found for the provided IDs.'], 400);
         }
@@ -383,7 +383,7 @@ class ChatController extends Controller
                 'supplier' => $suppliers,
                 'company' => [
                     'name' => $company->name,  // Essential company data
-                    'contactPerson' => $company->contact_person, 
+                    'contactPerson' => $company->contact_person,
                     'id' => $company->id,
                 ],
                 'branches' => $company->branches->map(function ($branch) {
@@ -409,51 +409,51 @@ class ChatController extends Controller
                         'id' => $client->id,
                         'agentId' => $client->agent_id,
                         'agentName' => $client->agent->name,
-                        'contact' => $client->phone,  
+                        'contact' => $client->phone,
                         'email' => $client->email,
                         'address' => $client->address,
                         'passportNo' => $client->passport_no,
                     ];
                 }),
                 'tasks' => $company->branches
-                ->flatMap->agents->flatMap->clients->flatMap->tasks
-                ->map(function ($task) {
-                    return [
-                        'id' => $task->id,
-                        'description' => $task->reference . ' - ' . $task->additional_info,
-                        'status' => $task->status,
-                        'agentId' => $task->agent_id,
-                        'agentName' => $task->agent->name,
-                        'clientId' => $task->client_id,
-                        'clientName' => $task->client->name,
-                        'supplierName' => $task->supplier->name,
-                        'supplierId' => $task->supplier_id,
-                        'invprice' =>  $task->invoice_price,
-                        'price' => $task->total,
-                    ];
-                }),
+                    ->flatMap->agents->flatMap->clients->flatMap->tasks
+                    ->map(function ($task) {
+                        return [
+                            'id' => $task->id,
+                            'description' => $task->reference . ' - ' . $task->additional_info,
+                            'status' => $task->status,
+                            'agentId' => $task->agent_id,
+                            'agentName' => $task->agent->name,
+                            'clientId' => $task->client_id,
+                            'clientName' => $task->client->name,
+                            'supplierName' => $task->supplier->name,
+                            'supplierId' => $task->supplier_id,
+                            'invprice' =>  $task->invoice_price,
+                            'price' => $task->total,
+                        ];
+                    }),
                 'selectedtasks' => $company->branches()
-                ->with(['agents.clients.tasks.invoiceDetail']) // Eager load all nested relationships
-                ->get()
-                ->flatMap->agents->flatMap->clients->flatMap->tasks
-                ->filter(function ($task) {
-                    return !$task->invoiceDetail;
-                })
-                ->map(function ($task) {
-                    return [
-                        'id' => $task->id,
-                        'description' => $task->reference . ' - ' . $task->additional_info,
-                        'status' => $task->status,
-                        'agentId' => $task->agent_id,
-                        'agentName' => $task->agent->name,
-                        'clientId' => $task->client_id,
-                        'clientName' => $task->client->name,
-                        'supplierName' => $task->supplier->name,
-                        'supplierId' => $task->supplier_id,
-                        'invprice' =>  $task->invoice_price,
-                        'price' => $task->total,
-                    ];
-                }),
+                    ->with(['agents.clients.tasks.invoiceDetail']) // Eager load all nested relationships
+                    ->get()
+                    ->flatMap->agents->flatMap->clients->flatMap->tasks
+                    ->filter(function ($task) {
+                        return !$task->invoiceDetail;
+                    })
+                    ->map(function ($task) {
+                        return [
+                            'id' => $task->id,
+                            'description' => $task->reference . ' - ' . $task->additional_info,
+                            'status' => $task->status,
+                            'agentId' => $task->agent_id,
+                            'agentName' => $task->agent->name,
+                            'clientId' => $task->client_id,
+                            'clientName' => $task->client->name,
+                            'supplierName' => $task->supplier->name,
+                            'supplierId' => $task->supplier_id,
+                            'invprice' =>  $task->invoice_price,
+                            'price' => $task->total,
+                        ];
+                    }),
                 'invoices' => $company->branches->flatMap->agents->flatMap->invoices->map(function ($invoice) {
                     return [
                         'id' => $invoice->id,
@@ -502,7 +502,7 @@ class ChatController extends Controller
                 'supplier' => $suppliers,
                 'company' => [
                     'name' => $company->name,  // Essential company data
-                    'contactPerson' => $company->contact_person, 
+                    'contactPerson' => $company->contact_person,
                     'id' => $company->id,
                 ],
                 'branches' => $company->branches->map(function ($branch) {
@@ -882,18 +882,18 @@ class ChatController extends Controller
         // Ensure the request contains a file
         if ($request->hasFile('file')) {
             try {
-                
+
                 $file = $request->file('file');
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 $filePath = $file->storeAs('uploads', $fileName, 'public');
 
                 // Get the file path
                 $imagePath = $file->getRealPath();  // Path to the temporary uploaded file
-                $extension = pathinfo($fileName, PATHINFO_EXTENSION); 
+                $extension = pathinfo($fileName, PATHINFO_EXTENSION);
                 // Process the image using OCR
-                
-                \Log::info('extension:', ['extension' => $extension]);
-                \Log::info('extension:', ['extension' => $imagePath]);
+
+                Log::info('extension:', ['extension' => $extension]);
+                Log::info('extension:', ['extension' => $imagePath]);
 
                 if ($extension === 'pdf') {
 
@@ -901,12 +901,12 @@ class ChatController extends Controller
                     if ($text === null) {
                         // Extract images from the PDF and process them via OCR
                         $images = $this->extractImagesFromPdf($filePath);
-                        \Log::info('images:', ['images' => $images]);
+                        Log::info('images:', ['images' => $images]);
                         if (empty($images)) {
-                            \Log::info('No images found, converting PDF to images...');
-                             $images = $this->pdfToImage($filePath);
+                            Log::info('No images found, converting PDF to images...');
+                            $images = $this->pdfToImage($filePath);
                         }
-    
+
 
                         if (empty($images)) {
                             return response()->json(['error' => 'No images found or generated for OCR.'], 400);
@@ -920,43 +920,42 @@ class ChatController extends Controller
                                 $ocrResponse[] = ['ParsedText' => $ocrText];
                             }
                         }
-                        
+
                         // If no OCR text was extracted
                         if (empty($ocrResponse)) {
+                            logger('No text extracted from images.', $ocrResponse);
                             return response()->json(['error' => 'Failed to extract text from the images in the PDF.'], 400);
                         }
-    
                     } else {
                         // PDF contains text, use the extracted text
                         $ocrResponse = ['ParsedResults' => [['ParsedText' => $text]]];
                     }
-
                 } else if (in_array($extension, ['png', 'jpg', 'jpeg'])) {
-    
+
                     $ocrResponse = $this->processImage($imagePath);
                 } else {
                     return response()->json(['error' => 'Unsupported file format.'], 400);
                 }
 
-                            // Check if the OCR response is a JsonResponse object
-                    if ($ocrResponse instanceof \Illuminate\Http\JsonResponse) {
-                        $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
-                    }
+                // Check if the OCR response is a JsonResponse object
+                if ($ocrResponse instanceof \Illuminate\Http\JsonResponse) {
+                    $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
+                }
 
-                    \Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
-                      // Check if OCR response contains parsed text
-                      if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to extract text from the image.',
-                        ], 400);
-                    }
+                Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
+                // Check if OCR response contains parsed text
+                if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to extract text from the image.',
+                    ], 400);
+                }
 
-                    
+
                 // Check if the OCR response contains the required data
                 if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
                     $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
-    
+
                     // Pass the parsed text to OpenAI for passport data extraction
                     $prompt = "
                             You are an assistant for a travel agency. You need to extract passport details from the uploaded content. The passport details should include the following fields:
@@ -974,22 +973,22 @@ class ChatController extends Controller
                             only pass me the data extracted in JSON format.
                             ";
 
-                            $messages = [
-                                [
-                                    'role' => 'system',
-                                    'content' => $prompt,
-                                ],
-                                [
-                                    'role' => 'user',
-                                    'content' => $parsedText,
-                                ]
-                            ];
+                    $messages = [
+                        [
+                            'role' => 'system',
+                            'content' => $prompt,
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $parsedText,
+                        ]
+                    ];
 
 
-                      $response = $this->openAIService->getChatResponse($messages);
-                      \Log::info('response:', ['response' => $response]);
+                    $response = $this->openAIService->getChatResponse($messages);
+                    Log::info('response:', ['response' => $response]);
 
-                      // Check if $response is a JsonResponse object
+                    // Check if $response is a JsonResponse object
                     if ($response instanceof \Illuminate\Http\JsonResponse) {
                         $response = $response->getData(true); // Convert to an associative array
                     }
@@ -1002,18 +1001,18 @@ class ChatController extends Controller
 
                         if (json_last_error() === JSON_ERROR_NONE) {
                             // Now, $passportData is an array that contains the passport details
-                            \Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
-                    
+                            Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
+
                             // Update the client's passport details
                             $client = $this->createClientPassport($passportData);
-                    
+
                             return response()->json([
                                 'success' => true,
                                 'message' => 'Client registered successfully!',
                                 'data' => $client,
                             ], 201);
                         } else {
-                            \Log::error('Failed to decode JSON from OpenAI response', ['error' => json_last_error_msg()]);
+                            Log::error('Failed to decode JSON from OpenAI response', ['error' => json_last_error_msg()]);
                             return response()->json([
                                 'success' => false,
                                 'message' => 'Failed to decode passport data.',
@@ -1021,20 +1020,20 @@ class ChatController extends Controller
                         }
                     } else {
                         // Handle missing data in OpenAI response
-                        Log::error('Failed to create client: ' . $e->getMessage());
+                        Log::error('Failed to create client: ');
                         return response()->json([
                             'success' => false,
-                            'message' => 'Error registering client: ' . $e->getMessage(),
-                            'errors' => $e->errors() ?? [],
+                            'message' => 'Error registering client: ',
+                            'errors' => $response,
                         ], 400);
                     }
                 } else {
-                    // Handle missing text in OCR response
-                    Log::error('Failed to create client: ' . $e->getMessage());
+
+                    Log::error('Failed to create client: ');
                     return response()->json([
                         'success' => false,
-                        'message' => 'Error registering client: ' . $e->getMessage(),
-                        'errors' => $e->errors() ?? [],
+                        'message' => 'Error registering client: ',
+                        'errors' => $ocrResponse,
                     ], 400);
                 }
             } catch (Exception $e) {
@@ -1042,64 +1041,64 @@ class ChatController extends Controller
                 Log::error('Failed to create client: ' . $e->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error registering client: ' . $e->getMessage(),
-                    'errors' => $e->errors() ?? [],
+                    'message' => 'Error registering client: ',
+                    'errors' => $e->getMessage(),
                 ], 400);
             }
         } else {
             // Handle case where no file is uploaded
-            Log::error('Failed to create client: ' . $e->getMessage());
+            Log::error('Failed to create client');
             return response()->json([
                 'success' => false,
-                'message' => 'Error registering client: ' . $e->getMessage(),
-                'errors' => $e->errors() ?? [],
+                'message' => 'Error registering client',
+                'errors' => 'No file uploaded.',
             ], 400);
         }
     }
-    
+
 
     // Function to extract text from PDF using Smalot PdfParser
-        private function extractTextFromPdf($filePath)
-        {
+    private function extractTextFromPdf($filePath)
+    {
 
-            \Log::info('extractTextFromPdf:', ['filePath' => $filePath]);
-            try {
-                $parser = new Parser();
-                $pdf = $parser->parseFile(storage_path('app/public/' . $filePath));
-                \Log::info('pdf:', ['pdf' => $pdf]);
-                $text = $pdf->getText(); // Extract text content from PDF
+        \Log::info('extractTextFromPdf:', ['filePath' => $filePath]);
+        try {
+            $parser = new Parser();
+            $pdf = $parser->parseFile(storage_path('app/public/' . $filePath));
+            \Log::info('pdf:', ['pdf' => $pdf]);
+            $text = $pdf->getText(); // Extract text content from PDF
 
-                if (empty($text)) {
-                    return null; // No text extracted
-                }
-
-                \Log::info('Extracted Text from PDF:', ['text' => $text]);
-                return $text; // Return the extracted text
-            } catch (\Exception $e) {
-                \Log::error('Error extracting text from PDF', ['error' => $e->getMessage()]);
-                return null; // Return null in case of error
+            if (empty($text)) {
+                return null; // No text extracted
             }
+
+            \Log::info('Extracted Text from PDF:', ['text' => $text]);
+            return $text; // Return the extracted text
+        } catch (\Exception $e) {
+            \Log::error('Error extracting text from PDF', ['error' => $e->getMessage()]);
+            return null; // Return null in case of error
         }
+    }
 
-        private function extractImagesFromPdf($pdfFilePath)
-        {
-            try {
-                // Command to extract images from the PDF using poppler-utils (pdftohtml or pdfimages)
-                $outputDir = storage_path('app/public/outputs/');
-                $command = "pdftohtml -c -hidden -images '$pdfFilePath' '$outputDir/output.html'";
+    private function extractImagesFromPdf($pdfFilePath)
+    {
+        try {
+            // Command to extract images from the PDF using poppler-utils (pdftohtml or pdfimages)
+            $outputDir = storage_path('app/public/outputs/');
+            $command = "pdftohtml -c -hidden -images '$pdfFilePath' '$outputDir/output.html'";
 
-                // Run the command to extract images
-                exec($command);
+            // Run the command to extract images
+            exec($command);
 
-                // Get all image paths from the output directory
-                $imagePaths = glob($outputDir . '*.jpg'); // Adjust the file extension if necessary
+            // Get all image paths from the output directory
+            $imagePaths = glob($outputDir . '*.jpg'); // Adjust the file extension if necessary
 
-                return $imagePaths;
-            } catch (\Exception $e) {
-                \Log::error('Error extracting images from PDF', ['error' => $e->getMessage()]);
-                return [];
-            }
+            return $imagePaths;
+        } catch (\Exception $e) {
+            \Log::error('Error extracting images from PDF', ['error' => $e->getMessage()]);
+            return [];
         }
+    }
 
 
     public function createClientPassport($data)
@@ -1109,224 +1108,235 @@ class ChatController extends Controller
             // Create client from parsed passport data
             $dateOfBirth = $this->convertToDate($data['date_of_birth'] ?? null);
 
-            $receivableAccount = Account::where('name', 'like', '%Receivable%')
-                ->where('company_id', auth()->user()->company->id)
-                ->first();
+            $clientController = new ClientController();
 
-            if (!$receivableAccount) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
-                ], 404);
-            }
-
-            try {
-                $account = Account::create([
-                    'name' => $data['name'],
-                    'level' => 4,
-                    'actual_balance' => 0,
-                    'budget_balance' => 0,
-                    'variance' => 0,
-                    'company_id' => auth()->user()->company->id,
-                    'parent_id' => $receivableAccount->id,
-                    'reference_id' => 1,
-                    'code' => 'CLI-' . rand(1000000, 9999999),
-                ]);
-            } catch (Exception $e) {
-                Log::error('Failed to create account: ' . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error creating account',
-                ], 400);
-            }
-
-            $client = Client::create([
+            $request = new Request();
+            $request->merge([
                 'name' => $data['name'],
-                'status' => 'active',
-                'address' => $data['place_of_issue'], // Make sure place_of_issue exists, otherwise handle accordingly
                 'passport_no' => $data['passport_no'],
                 'civil_no' => $data['civil_no'],
                 'date_of_birth' => $dateOfBirth,
-                'account_id' => $account->id,
+                'address' => $data['place_of_issue'] ?? null, // Ensure this field exists
             ]);
-    
-            \Log::info('Client created successfully', ['client' => $client]);
+
+            $response = $clientController->storeProcess($request);
+
+            if($response['status'] == 'error') {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response['message'],
+                ], 400);
+            }
+
+            $client = $response['data'];
+            // $client = Client::create([
+            //     'name' => $data['name'],
+            //     'status' => 'active',
+            //     'address' => $data['place_of_issue'], // Make sure place_of_issue exists, otherwise handle accordingly
+            //     'passport_no' => $data['passport_no'],
+            //     'civil_no' => $data['civil_no'],
+            //     'date_of_birth' => $dateOfBirth,
+            //     'account_id' => $account->id,
+            // ]);
+
+            Log::info('Client created successfully', ['client' => $client]);
 
             return $client;
         } else {
-            \Log::error('Invalid passport data received', ['data' => $data]);
+            Log::error('Invalid passport data received', ['data' => $data]);
 
             throw new \Exception('Invalid passport data');
         }
     }
-    
+
     private function convertToDate(?string $date): ?string
     {
         if (!$date) {
             return null; // Return null if date is empty or not set
         }
-    
+
         // Check if the date is already in YYYY-MM-DD format
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return $date;
         }
-    
+
         // Convert DD/MM/YYYY to YYYY-MM-DD
         $dateParts = explode('/', $date);
         if (count($dateParts) === 3) {
             return sprintf('%04d-%02d-%02d', $dateParts[2], $dateParts[1], $dateParts[0]);
         }
-    
+
         \Log::error('Invalid date format', ['date' => $date]);
         return null; // Return null if the date format is invalid
     }
-    
 
     public function createClient(Request $request)
-    {   
-        $user = Auth::user();
+    {
+        $clientController = new ClientController();
+        $response = $clientController->storeProcess($request);
 
-        // Validate common fields
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:15', // Optional phone field
-            'clientForm' => 'required|string|in:new,update', // Ensure this field is provided
-            'agent_idChat' => 'required|exists:agents,id', // Ensure the agent ID exists
-        ]);
-    
-        try {
-            // Check if it's a new client or an update
-            if ($request->get('clientForm') === 'new') {
-                // Create logic
-                $agent = Agent::find($request->get('agent_idChat'));
-                if (!$agent) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Agent not found.',
-                    ], 404);
-                }
-    
-                $agentId = $request->get('agent_idChat');
-                $agent = Agent::find($agentId);
-            
-                if (!$agent) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Agent not found.',
-                    ], 404);
-                }
-
-                $companyId = $agent->company_id;
-
-                $receivableAccount = Account::where('name', 'like', '%Receivable%')
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if (!$receivableAccount) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
-                    ], 404);
-                }
-
-
-                try{
-                    $account = Account::create([
-                        'name' => $request->get('name'),
-                        'level' => 4,
-                        'actual_balance' => 0,
-                        'budget_balance' => 0,
-                        'variance' => 0,
-                        'company_id' => $companyId,
-                        'parent_id' => $receivableAccount->id,
-                        'reference_id' => $user->id,
-                        'code' => 'CLI-' . rand(1000000, 9999999),
-                    ]);
-                } catch (Exception $e) {
-                    Log::error('Failed to create account: ' . $e->getMessage());
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Error creating account',
-                    ], 400);
-                }
-
-                $client = Client::create([
-                    'name' => $request->get('name'),
-                    'email' => $request->get('email'),
-                    'status' => 'active',
-                    'phone' => $request->get('phone'),
-                    'address' => $request->get('address'),
-                    'passport_no' => $request->get('passport_no'),
-                    'date_of_birth' => $request->get('date_of_birthChat'),
-                    'civil_no' => $request->get('civil_noChat'),
-                    'account_id' => $account->id,
-                    'agent_id' =>  $request->get('agent_idChat')
-                    
-                ]);
-
-                $receivableAccount = Account::where('name', 'like', '%Receivable%')
-                ->where('company_id', $companyId)
-                ->first();
-                
-                $account = Account::create([
-                    'name' => $request->get('name'),
-                    'level' => 4,
-                    'actual_balance' => 0,
-                    'budget_balance' => 0,
-                    'variance' => 0,
-                    'company_id' => $companyId,
-                    'parent_id' => $receivableAccount->id,
-                    'reference_id' => $user->id,
-                    'code' => 'CLI-' . rand(1000000, 9999999),
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Client registered successfully!',
-                    'client' => $client,
-                    'action' => 'create',
-                ], 201);
-    
-            } elseif ($request->get('clientForm') === 'update') {
-                // Update logic
-                $validated = $request->validate([
-                    'clientId' => 'required|exists:clients,id', // Ensure the client ID exists
-                ]);
-    
-                $client = Client::find($request->get('clientId'));
-    
-                // Update the client details
-                $client->update([
-                    'name' => $request->get('name'),
-                    'email' => $request->get('email'),
-                    'status' => 'active',
-                    'phone' => $request->get('phone'),
-                    'address' => $request->get('address'),
-                    'passport_no' => $request->get('passport_no'),
-                    'date_of_birth' => $request->get('date_of_birthChat'),
-                    'civil_no' => $request->get('civil_noChat'),
-                    'agent_id' =>  $request->get('agent_idChat')
-                ]);
-    
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Client updated successfully!',
-                    'client' => $client,
-                    'action' => 'update',
-                ], 200);
-            }
-    
-        } catch (Exception $e) {
-            Log::error('Failed to handle client operation: ' . $e->getMessage());
+        if ($response['status'] == 'error') {
             return response()->json([
                 'success' => false,
-                'message' => 'Error processing request: ' . $e->getMessage(),
+                'message' => $response['message'],
             ], 400);
         }
-    }
-    
 
-    
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client updated successfully!',
+            'client' => $response['data'],
+            'action' => 'update',
+        ], 200);
+    }
+
+
+    // public function createClient(Request $request)
+    // {   
+    //     $user = Auth::user();
+
+    //     // Validate common fields
+    //     $validated = $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'phone' => 'nullable|string|max:15', // Optional phone field
+    //         'clientForm' => 'required|string|in:new,update', // Ensure this field is provided
+    //         'agent_idChat' => 'required|exists:agents,id', // Ensure the agent ID exists
+    //     ]);
+
+    //     try {
+    //         // Check if it's a new client or an update
+    //         if ($request->get('clientForm') === 'new') {
+    //             // Create logic
+    //             $agent = Agent::find($request->get('agent_idChat'));
+    //             if (!$agent) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Agent not found.',
+    //                 ], 404);
+    //             }
+
+    //             $agentId = $request->get('agent_idChat');
+    //             $agent = Agent::find($agentId);
+
+    //             if (!$agent) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Agent not found.',
+    //                 ], 404);
+    //             }
+
+    //             $companyId = $agent->company_id;
+
+    //             $receivableAccount = Account::where('name', 'like', '%Receivable%')
+    //                 ->where('company_id', $companyId)
+    //                 ->first();
+
+    //             if (!$receivableAccount) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Account Id for the related company is not found. Please check back the selected agent.',
+    //                 ], 404);
+    //             }
+
+
+    //             try{
+    //                 $account = Account::create([
+    //                     'name' => $request->get('name'),
+    //                     'level' => 4,
+    //                     'actual_balance' => 0,
+    //                     'budget_balance' => 0,
+    //                     'variance' => 0,
+    //                     'company_id' => $companyId,
+    //                     'parent_id' => $receivableAccount->id,
+    //                     'reference_id' => $user->id,
+    //                     'code' => 'CLI-' . rand(1000000, 9999999),
+    //                 ]);
+    //             } catch (Exception $e) {
+    //                 Log::error('Failed to create account: ' . $e->getMessage());
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Error creating account',
+    //                 ], 400);
+    //             }
+
+    //             $client = Client::create([
+    //                 'name' => $request->get('name'),
+    //                 'email' => $request->get('email'),
+    //                 'status' => 'active',
+    //                 'phone' => $request->get('phone'),
+    //                 'address' => $request->get('address'),
+    //                 'passport_no' => $request->get('passport_no'),
+    //                 'date_of_birth' => $request->get('date_of_birthChat'),
+    //                 'civil_no' => $request->get('civil_noChat'),
+    //                 'account_id' => $account->id,
+    //                 'agent_id' =>  $request->get('agent_idChat')
+
+    //             ]);
+
+    //             $receivableAccount = Account::where('name', 'like', '%Receivable%')
+    //             ->where('company_id', $companyId)
+    //             ->first();
+
+    //             $account = Account::create([
+    //                 'name' => $request->get('name'),
+    //                 'level' => 4,
+    //                 'actual_balance' => 0,
+    //                 'budget_balance' => 0,
+    //                 'variance' => 0,
+    //                 'company_id' => $companyId,
+    //                 'parent_id' => $receivableAccount->id,
+    //                 'reference_id' => $user->id,
+    //                 'code' => 'CLI-' . rand(1000000, 9999999),
+    //             ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Client registered successfully!',
+    //                 'client' => $client,
+    //                 'action' => 'create',
+    //             ], 201);
+
+    //         } elseif ($request->get('clientForm') === 'update') {
+    //             // Update logic
+    //             $validated = $request->validate([
+    //                 'clientId' => 'required|exists:clients,id', // Ensure the client ID exists
+    //             ]);
+
+    //             $client = Client::find($request->get('clientId'));
+
+    //             // Update the client details
+    //             $client->update([
+    //                 'name' => $request->get('name'),
+    //                 'email' => $request->get('email'),
+    //                 'status' => 'active',
+    //                 'phone' => $request->get('phone'),
+    //                 'address' => $request->get('address'),
+    //                 'passport_no' => $request->get('passport_no'),
+    //                 'date_of_birth' => $request->get('date_of_birthChat'),
+    //                 'civil_no' => $request->get('civil_noChat'),
+    //                 'agent_id' =>  $request->get('agent_idChat')
+    //             ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Client updated successfully!',
+    //                 'client' => $client,
+    //                 'action' => 'update',
+    //             ], 200);
+    //         }
+
+    //     } catch (Exception $e) {
+    //         Log::error('Failed to handle client operation: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error processing request: ' . $e->getMessage(),
+    //         ], 400);
+    //     }
+    // }
+
+
+
 
 
     public function createAgent(Request $request)
@@ -1358,8 +1368,8 @@ class ChatController extends Controller
             ]);
 
             $receivableAccount = Account::where('name', 'like', '%Receivable%')
-            ->where('company_id', $company->id)
-            ->first();
+                ->where('company_id', $company->id)
+                ->first();
 
             $account = Account::create([
                 'name' => $request->name,

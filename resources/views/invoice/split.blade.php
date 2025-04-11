@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
@@ -30,7 +30,6 @@
 
     <!-- CSS -->
     @vite(['resources/css/app.css'])
-
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.7.1.slim.js"
@@ -77,19 +76,32 @@
         </div>
 
         <!-- Invoice Items -->
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Split Payment ({{ $invoice->currency }})</h3>
         <table class="min-w-full mb-8 border border-gray-200">
             <thead>
                 <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
                     <th class="px-4 py-2 border">Item Description</th>
                     <th class="px-4 py-2 border">Quantity</th>
+                    <th class="px-4 py-2 border">Price</th>
+                    <th class="px-4 py-2 border">Total</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($invoiceDetails as $detail)
                     <tr class="text-sm text-gray-700">
-                        <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }} (Note:
-                            {{ $detail->client_notes ?? 'N/A' }})</td>
-                        <td class="px-4 py-2 border">{{ $detail->quantity ?? 0 }}</td>
+                        <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }}
+                        <p>
+                                    <br>Info: {{ $detail->task->additional_info }}
+                                    <br>Type: {{ ucfirst($detail->task->type) }}
+                                    <br>Venue: {{ $detail->task->venue }}
+                                    <br>Note: {{ $detail->client_notes ?? 'N/A' }}
+                         </p></td>
+                        <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
+                        <td class="px-4 py-2 border">{{ number_format($invoicePartial->amount ?? 0, 2) }}</td>
+                        <td class="px-4 py-2 border">
+                            {{ number_format(($detail->quantity ?? 1) * ($invoicePartial->amount ?? 0), 2, '.', ',') }}
+
+                        </td>
                     </tr>
                     <!--  <input type="hidden" name="selected_items[]" value="{{ $detail->id }}" form="paymentForm"> -->
                 @endforeach
@@ -117,6 +129,7 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoicePartial->status === 'unpaid')
+                @if(!auth()->check())
                 <form action="{{ route('whatsapp.send') }}" method="POST">
                     @csrf
                     <input type="hidden" name="client" value='{{ $invoicePartial->client }}'>
@@ -126,6 +139,7 @@
                         Send Invoice To Client
                     </button>
                 </form>
+                @endif
                 <form id="paymentForm"
                     action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
                     method="POST">
@@ -135,10 +149,15 @@
                     <input type="hidden" name="client_name" value="{{ $invoicePartial->client->name }}">
                     <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
                     <input type="hidden" name="payment_method" value="{{ $invoicePartial->payment_gateway }}">
-                    <button type="submit" id="payNowBtn"
-                        class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                        Pay Now
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="submit" id="payNowBtn"
+                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                            Pay Now
+                        </button>
+                        <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
+                                {{ number_format($invoicePartial->where('id', $invoicePartial->id)->where('status', 'unpaid')->sum('amount'), 2) }}
+                        </span>
+                    </div>
                     <div id="loadingSpinner" class="hidden mt-2">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         Processing...

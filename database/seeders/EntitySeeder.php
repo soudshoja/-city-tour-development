@@ -227,6 +227,7 @@ class EntitySeeder extends Seeder
                 $account = Account::create([
                     'name' => $supplier->name,
                     'level' => 4,
+                    'root_id' => 2, 
                     'actual_balance' => 0,
                     'budget_balance' => 0,
                     'variance' => 0,
@@ -252,11 +253,6 @@ class EntitySeeder extends Seeder
             }  
         }
 
-
-        $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')
-        ->where('company_id', $userCompany->company->id)
-        ->first();
-
         $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')
         ->where('company_id', $userCompany->company->id)
         ->first(); 
@@ -271,6 +267,15 @@ class EntitySeeder extends Seeder
         try {
             DB::beginTransaction();
             $paymentGatewayName = 'Tap'; 
+
+            $coaPaymentGateway = Account::where('name', 'like', '%' . $paymentGatewayName . '%') 
+            ->where('company_id', $userCompany->company->id)
+            ->orWhere(function ($query) { // Find accounts where the parent name is 'Payment Gateway Charges'
+                $query->whereHas('parent', function ($query) {
+                    $query->where('name', 'Payment Gateway Charges');
+                });
+            })
+            ->first();
 
             $asset = Account::where('name', 'Assets')->first();
 

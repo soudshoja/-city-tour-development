@@ -383,7 +383,7 @@ class TaskController extends Controller
      * @return array contains status, message and data of task id
      * 
      */
-    function saveTasks($data)
+    public function saveTasks($data)
     {
         logger('Data: ', $data);
         $task = $data;

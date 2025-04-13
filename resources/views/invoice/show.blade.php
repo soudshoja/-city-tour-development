@@ -120,7 +120,7 @@
                             <td class="px-4 py-2 border">
                                 {{ $detail->task_description ?? 'N/A' }}
                                 <p>
-                                    <br> Info: {{ $detail->task->additional_info }}
+                                    <br>Info: {{ $detail->task->additional_info }}
                                     <br>Type: {{ ucfirst($detail->task->type) }}
                                     <br>Venue: {{ $detail->task->venue }}
                                 </p>
@@ -215,7 +215,7 @@
                         <tr class="text-sm text-gray-700">
 
                             <td class="px-4 py-2 border">
-                                <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id) }}"
+                                <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id. '/' . $partial->id) }}"
                                     class="text-blue-500 underline" target="_blank">
                                     View Details
                                 </a>
@@ -256,7 +256,7 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
-                @if(!auth())
+                @if(!auth()->check())
                 <form action="{{ route('whatsapp.send') }}" method="POST">
                     @csrf
                     <input type="hidden" name="client" value='{{ $invoice->client }}'>

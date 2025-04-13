@@ -29,7 +29,7 @@
 
 
             <!-- add new invoice -->
-            <a href="{{ route('invoice.create') }}">
+            <a   href="{{ route('invoices.create') }}">
                 <div data-tooltip="Create new Invoice"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
 
@@ -212,9 +212,9 @@
                                         {{ $invoice->invoice_number }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}"
+                                        <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id. '/' . $partial->id) }}"
                                             class="text-green-500 hover:underline" target="_blank">
-                                            {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id) }}
+                                            {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}
                                         </a>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">

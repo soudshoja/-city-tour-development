@@ -97,11 +97,11 @@
                                 <input type="hidden" id="company_id" name="company_id" value="{{ $companies->id }}">
                             </div>
                         </div>
-                        <div class="w-full lg:w-1/2 lg:max-w-fit mt-20">
+                        <div class="w-full lg:w-1/2 lg:max-w-fit mt-5">
                             <div class="flex items-center gap-x-4">
                                 <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment
                                     Ref <span class="text-red-500">*</span></label>
-                                <input required readonly id="bankpaymentref" value="BPV{{ now()->timestamp }}"
+                                <input required readonly id="bankpaymentref" value="PV-{{ now()->timestamp }}"
                                     type="text" name="bankpaymentref"
                                     class="form-input w-2/3 lg:w-[250px] bg-gray-200 text-gray-700"
                                     placeholder="ref#" />
@@ -256,9 +256,18 @@
 
 
                     <div class="mt-6 flex justify-between px-4">
-                        <button type="submit" @click="validateForm()"
-                            class="btn btn-success btn px-6 py-2 w-40 rounded-lg">Save</button>
-                        <button type="reset" class="btn btn-warning btn px-6 py-2 w-40 rounded-lg">Reset</button>
+                        <!-- Left side: Cancel button -->
+                        <a href="{{ route('bank-payments.index') }}"
+                            class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
+                            Cancel
+                        </a>
+
+                        <!-- Right side: Save and Reset -->
+                        <div class="flex gap-4">
+                            <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
+                            <button type="submit" @click="validateForm()"
+                                class="btn btn-success px-6 py-2 w-40 rounded-lg">Save</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -382,8 +391,8 @@
                         <datalist id="accountList_${index}">
                             ${lastLevelAccounts.map(accpayreceive => 
                                 `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                                                        [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                                                    </option>`
+                                                                                                                                                                                                                                                                                [${accpayreceive.id}] ${accpayreceive.name}
+                                                                                                                                                                                                                                                                            </option>`
                             ).join('')}
                         </datalist>
 

@@ -377,7 +377,7 @@ Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->nam
 Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
 Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
 Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial');
-Route::get('/invoice/partial/{invoiceNumber}/{clientId}', [InvoiceController::class, 'split'])->name('invoice.split');
+Route::get('/invoice/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('invoice.split');
 
 
 // search for invoice creation

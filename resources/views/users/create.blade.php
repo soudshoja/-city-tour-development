@@ -1,7 +1,7 @@
 <x-app-layout>
 
     <div class="p-8 flex flex-col gap-2">
-        @can('create', App\Models\Company::class)
+        <!-- @can('create', App\Models\Company::class)
             <div class="col-span-2 bg-white shadow-lg rounded-lg p-6 dark:bg-dark">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold mb-4">Add New Company</h2>
@@ -110,7 +110,7 @@
                     </div>
                 </form>
             </div>
-        @endcan
+        @endcan -->
 
         <div>
             <div class="flex justify-between items-center gap-5 my-3">
@@ -120,8 +120,20 @@
             </div>
 
             <div class="w-full grid grid-cols-1 md:grid-cols-3 mt-5 gap-5">
+           
+           
                 <div class="grid grid-cols-2 gap-5 col-span-1">
+                    
                     <div class="w-full space-y-4">
+                    @can('create', App\Models\Company::class)
+                        <div data-form="companyForm"
+                            class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                            <button class="text-left flex rounded-lg w-full">
+                                <span class="text-md font-bold dark:text-white">Company</span>
+                            </button>
+                            <img src="{{ asset('images/registeruser.jpg') }}" alt="Company" class="w-10 h-10">
+                        </div>
+                    @endcan
 
                         @can('create', App\Models\Branch::class)
                             <div data-form="branchForm"
@@ -188,6 +200,97 @@
                     <div id="formDiv"
                         class="hidden h-auto bg-white dark:bg-gray-700 rounded-lg p-3 BoxShadow flex flex-col justify-between w-full">
                         <div class="my-5">
+                            <!-- Company Form -->
+                            <div id="companyForm" class="form hidden flex w-full h-auto">
+                                <div class="w-full h-auto">
+                                    <div class="flex items-center mb-5">
+                                        <div class="rounded-full p-2 border-2 border-gray-300 dark:border-gray-600">
+                                            <img src="{{ asset('images/registeruser.jpg') }}" alt="Company" class="w-10 h-10">
+                                        </div>
+                                        <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Company</h2>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('companies.store') }}" class="w-full">
+                                        @csrf
+                                        <!-- First two fields: 1 column each -->
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="name" placeholder="Company Name" class="custom-input w-full" />
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                <span class="tooltip-icon">!</span>
+                                                <span class="tooltip">Enter the company name.</span>
+                                            </span>
+                                        </div>
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="email" name="email" placeholder="Company Email" class="custom-input w-full" />
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                <span class="tooltip-icon">!</span>
+                                                <span class="tooltip">Provide a valid email for the company.</span>
+                                            </span>
+                                        </div>
+
+                                        <!-- Next two fields: 2 columns -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div class="flex items-center relative">
+                                                <input type="text" name="code" placeholder="Company Code" class="custom-input" />
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Enter a unique company code.</span>
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center relative">
+                                                <select name="country_id" class="custom-input">
+                                                    <option value="" disabled selected>Select a country</option>
+                                                    @foreach ($countries as $country)
+                                                        <option value="{{ $country->id }}">{{ $country->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Select the company's country.</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Address and Phone: 2 columns -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div class="flex items-center relative">
+                                                <input type="text" name="address" placeholder="Address" class="custom-input" />
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Provide the company's address.</span>
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center relative">
+                                                <input type="text" name="phone" placeholder="Phone" class="custom-input" />
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Enter the company's phone number.</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Password fields: 2 columns -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div class="flex items-center relative">
+                                                <input type="password" name="password" placeholder="Password" class="custom-input" />
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Set a secure password for the company.</span>
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center relative">
+                                                <input type="password" name="password_confirmation" placeholder="Confirm Password" class="custom-input" />
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Confirm the password.</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button type="submit" class="btn-success w-full text-white px-4 py-2 rounded-lg">Submit</button>
+                                    </form>
+                                </div>
+                            </div>
                             <!-- Branch Form -->
                             <div id="branchForm" class="form hidden flex w-full h-auto">
                                 <div class="w-full h-auto">

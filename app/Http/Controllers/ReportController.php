@@ -334,8 +334,10 @@ class ReportController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
             $childAccount->journalEntries = $journalEntries;
+            $credit = (string)$journalEntries->sum('credit');
+            $debit = (string)$journalEntries->sum('debit');
 
-            $childAccount->balance = $journalEntries->sum('credit') - $journalEntries->sum('debit');
+            $childAccount->balance = bcsub($credit, $debit, 2);
         }
 
         return $childAccountsPayable;

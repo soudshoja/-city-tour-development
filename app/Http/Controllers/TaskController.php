@@ -38,6 +38,8 @@ use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
+
 // use Carbon\Carbon;
 
 
@@ -47,6 +49,126 @@ use App\Models\Transaction;
 class TaskController extends Controller
 {
     use NotificationTrait, Converter;
+
+
+    public function store(Request $request)
+    {
+        $validatedData = $request->validate([
+            'type' => 'required|string',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'reference' => 'required|string|unique:tasks,reference',
+            'price' => 'nullable|numeric',
+            'total' => 'nullable|numeric',
+            'tax' => 'nullable|numeric',
+            'client_name' => 'nullable|string',
+            'agent_id' => 'nullable|exists:agents,id',
+            'client_id' => 'nullable|exists:clients,id',
+            'additional_info' => 'nullable|string',
+            'enabled' => 'required|boolean',
+        ]);
+
+        DB::beginTransaction(); 
+
+        try {
+            
+            $taskData = array_merge($validatedData, [
+                'company_id' => auth()->user()->company->id ?? null,
+            ]);
+            $task = Task::create($taskData);
+
+            if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
+                $this->saveHotelDetails($request->task_hotel_details, $task->id);
+            } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {
+                $this->saveFlightDetails($request->task_flight_details, $task->id);
+            }
+
+            $supplierCompany = SupplierCompany::with('account')
+                ->where('supplier_id', $task->supplier_id)
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$supplierCompany) {
+                throw new Exception('Supplier company not activated or not found.');
+            }
+
+            if (!$supplierCompany->account) {
+                throw new Exception('Supplier account not found.');
+            }
+
+            $receivableAccount = Account::where('name', 'like', '%Receivable%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            $payableFallback = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$receivableAccount) {
+                throw new Exception('Receivable account not found.');
+            }
+
+            $payableAccountId = $supplierCompany->account->id ?? $payableFallback->id;
+
+            if (!$payableAccountId) {
+                throw new Exception('No valid payable account found.');
+            }
+
+            $transaction = Transaction::create([
+                'entity_id' => $task->company_id,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' => $task->total,
+                'date' => Carbon::now(),
+                'description' => 'Task created: ' . $task->reference,
+                'reference_type' => 'Payment',
+                'task_id' => $task->id,
+            ]);
+
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $task->company_id,
+                'branch_id' => auth()->user()->branch->id ?? null,
+                'account_id' => $payableAccountId,
+                'task_id' => $task->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Payable to supplier: ' . $supplierCompany->supplier->name,
+                'debit' => 0,
+                'credit' => $task->total,
+                'balance' => $task->total,
+                'type' => 'payable',
+            ]);
+
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $task->company_id,
+                'branch_id' => auth()->user()->branch->id ?? null,
+                'account_id' => $receivableAccount->id,
+                'task_id' => $task->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Receivable from client: ' . ($task->client_name ?? 'N/A'),
+                'debit' => $task->total,
+                'credit' => 0,
+                'balance' => $task->total,
+                'type' => 'receivable',
+            ]);
+
+            DB::commit(); 
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Task created successfully.',
+                'data' => $task,
+            ], 201);
+        } catch (Exception $e) {
+            DB::rollBack(); 
+
+            Log::error('Task creation failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Task creation failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function index()
     {
@@ -467,7 +589,7 @@ class TaskController extends Controller
                 throw new Exception('Supplier not activated');
             }
 
-            if(!$supplierCompany->account) {
+            if (!$supplierCompany->account) {
                 $taskCreated->delete();
                 Log::info('Supplier account not found: ' . $supplier->name);
                 throw new Exception('Supplier account not found');
@@ -479,7 +601,7 @@ class TaskController extends Controller
                 ->where('company_id', $companyId)
                 ->first();
 
-            
+
             if ($supplierAccount) {
                 $payableAccountId = $supplierAccount->id;
             } elseif ($payableFallback) {
@@ -890,7 +1012,7 @@ class TaskController extends Controller
                 if ($value === null) {
                     $enabled = false;
                     Log::channel('magic_holidays')->warning("Missing required field: $key for reservation: " . ($reservation['id'] ?? 'Unknown'));
-                    break; 
+                    break;
                 }
             }
             $taskData['enabled'] = $enabled;
@@ -912,228 +1034,6 @@ class TaskController extends Controller
             Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'));
 
 
-            try {
-                $taskHotelDetail = TaskHotelDetail::create([
-                    'task_id' => $task->id,
-                    'hotel_id' => $hotelDB->id,
-                    'booking_time' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
-                    'check_in' => Carbon::parse($serviceDates['startDate'])->toDateTimeString() ?? null,
-                    'check_out' => Carbon::parse($serviceDates['endDate'])->toDateTimeString() ?? null,
-                    'room_reference' => (string) $room['id'] ?? null,
-                    'room_number' => 1,
-                    'room_type' => $room['name'] ?? null,
-                    'room_amount' => count($room['passengers']) ?? null,
-                    'room_details' => json_encode($room) ?? null,
-                    'room_promotion' => null,
-                    'rate' => $prices['issue']['selling']['value'] ?? null,
-                    'meal_type' => $room['board'] ?? null,
-                    'is_refundable' => strpos(strtolower($room['info'] ?? ''), 'non-refundable') === false,
-                    'supplements' => null,
-                ]);
-            } catch (Exception $e) {
-                $task->delete();
-
-                Log::channel('magic_holidays')->error('Error creating hotel details: ' . $e->getMessage(), [
-                    'reservation' => $reservation,
-                    'room' => $room,
-                ]);
-
-                return [
-                    'status' => 'error',
-                    'message' => 'Error creating hotel details: ' . $e->getMessage(),
-                ];
-            }
-
-            $adultCount = 0;
-            $childCount = 0;
-
-            foreach ($room['passengers'] as $passengerId) {
-                $passenger = collect($passengers)->where('paxId', $passengerId)->first();
-
-                if (!$passenger) {
-                    continue;
-                }
-
-                if ($passenger['type'] == 'adult') {
-                    $adultCount++;
-                } elseif ($passenger['type'] == 'child') {
-                    $childCount++;
-                } else {
-                    logger('Unknown passenger type: ' . $passenger['type']);
-                    continue;
-                }
-            }
-
-            try {
-                $room = Room::create([
-                    'task_hotel_details_id' => $taskHotelDetail->id,
-                    'name' => $room['name'] ?? null,
-                    'reference' => (string)$room['id'] ?? null,
-                    'adult_count' => $adultCount,
-                    'child_count' => $childCount,
-                ]);
-            } catch (Exception $e) {
-                $task->delete();
-                $taskHotelDetail->delete();
-
-                Log::channel('magic_holidays')->error('Error creating room: ' . $e->getMessage(), [
-                    'reservation' => $reservation,
-                    'room' => $room,
-                ]);
-
-                return [
-                    'status' => 'error',
-                    'message' => 'Error creating room: ' . $e->getMessage(),
-                ];
-            }
-
-            Log::channel('magic_holidays')->info('Hotel details created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'), [
-                'reservation' => $reservation,
-                'room' => $room,
-            ]);
-
-            $agent = $task->agent;
-            $client = $task->client;
-
-            $companyId = $task->company_id;
-            $branchId = auth()->user()->branch->id ?? auth()->user()->agent->branch_id ?? null;
-
-            $receivableAccount = Account::where('name', 'like', '%Hotels Cost%')->where('company_id', $companyId)->first();
-            // $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
-
-            if (!$receivableAccount) {
-                $task->delete();
-                $taskHotelDetail->delete();
-                $room->delete();
-
-                Log::info('Receivable account not found');
-                throw new Exception('Receivable account not found');
-            }
-
-            $supplierCompany = SupplierCompany::with('account')
-                ->where('supplier_id', $supplier->id)
-                ->where('company_id', $companyId)
-                ->first();
-
-            if (!$supplierCompany) {
-                $task->delete();
-                $taskHotelDetail->delete();
-
-                Log::info('Supplier not activated: ' . $supplier->name);
-                throw new Exception('Supplier not activated');
-            }
-
-            if(!$supplierCompany->account) {
-                $task->delete();
-                $taskHotelDetail->delete();
-                $room->delete();
-
-                Log::info('Supplier account not found: ' . $supplier->name . ' for company: ' . $companyId);
-                throw new Exception('Supplier account not found');
-            }
-
-            $supplierAccount = $supplierCompany->account;
-
-            $payableFallback = Account::where('name', 'Accounts Payable')
-                ->where('company_id', $companyId)
-                ->first();
-
-            
-            if ($supplierAccount) {
-                $payableAccountId = $supplierAccount->id;
-            } elseif ($payableFallback) {
-                $payableAccountId = $payableFallback->id;
-            } else {
-                $task->delete();
-                $taskHotelDetail->delete();
-                $room->delete();
-
-                throw new Exception('No valid payable account found.');
-            }
-
-            Log::info("Payable account selected: " . $payableAccountId . " for Supplier ID: " . $supplier->id);
-
-            $transaction = Transaction::create([
-                'entity_id' => $companyId,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'amount' => '200',
-                // 'amount' => $taskCreated->invoice_price ?? $taskCreated->total,
-                'date' => Carbon::now(),
-                'description' => 'Task created: ' . $task->reference,
-                'reference_type' => 'Payment',
-                'task_id' => $task->id,
-            ]);
-
-            if(!$transaction) {
-                $task->delete();
-                $taskHotelDetail->delete();
-                $room->delete();
-
-                Log::info('Transaction creation failed');
-                throw new Exception('Transaction creation failed');
-            }
-
-            $markup = ($taskCreated->invoice_price ?? $task->total) - $task->total;
-
-            try{
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'company_id' => $companyId,
-                    'branch_id' => $branchId,
-                    'account_id' => $payableAccountId, // This will now be correct
-                    'invoice_id' => null,
-                    'invoice_detail_id' => null,
-                    'task_id' => $task->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Records Payable to: ' . $supplier->name,
-                    'debit' => 0,
-                    'credit' => $task->total,
-                    'balance' => $task->total,
-                    'name' => $supplier->name,
-                    'type' => 'payable',
-                    'type_reference_id' => $supplier->id,
-                ]);
-    
-                // Receivable
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'company_id' => $companyId,
-                    'branch_id' => $branchId,
-                    'account_id' => $receivableAccount->id,
-                    'invoice_id' => null,
-                    'invoiceDetail_id' => null,
-                    'task_id' => $task->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Records Direct Expense',
-                    'debit' => $taskCreated->invoice_price ?? $task->total,
-                    'credit' => 0,
-                    'balance' => $taskCreated->invoice_price ?? $task->total,
-                    'name' => $client->name ?? 'N/A',
-                    'type' => 'receivable',
-                    'type_reference_id' => $client->id ?? null,
-                ]);
-
-            } catch (Exception $e) {
-                $task->delete();
-                $taskHotelDetail->delete();
-                $room->delete();
-
-                Log::channel('magic_holidays')->error('Error creating journal entry: ' . $e->getMessage(), [
-                    'reservation' => $reservation,
-                    'room' => $room,
-                ]);
-
-                return [
-                    'status' => 'error',
-                    'message' => 'Error creating journal entry: ' . $e->getMessage(),
-                ];
-            }
-
-            return [
-                'status' => 'success',
-                'message' => 'Task created successfully: ' . $task->id,
-            ];
         }
     }
 

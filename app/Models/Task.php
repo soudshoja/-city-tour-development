@@ -97,9 +97,4 @@ class Task extends Model
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
     }
-
-    public function journalEntries()
-    {
-        return $this->hasMany(JournalEntry::class, 'task_id');
-    }
 }

@@ -34,9 +34,9 @@
                     <select name="supplier_id" id="supplier_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                         <option value="">All Suppliers</option>
-                        @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" {{ $supplierId == $supplier->id ? 'selected' : '' }}>
-                                {{ ucfirst($supplier->name) }}
+                        @foreach ($suppliers as $supplierRec)
+                            <option value="{{ $supplierRec->supplier->id }}" {{ $supplierId == $supplierRec->supplier->id ? 'selected' : '' }}>
+                                {{ ucfirst($supplierRec->supplier->name) }}
                             </option>
                         @endforeach
                     </select>

@@ -7,8 +7,10 @@ use App\Models\Agent;
 use App\Models\Branch;
 use App\Models\JournalEntry;
 use App\Models\Supplier;
+use App\Models\SupplierCompany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 
 class ReportController extends Controller
@@ -301,7 +303,18 @@ class ReportController extends Controller
         }
 
         $branches = Branch::where('company_id', $companyId)->get();
-        $suppliers = Supplier::all();
+        $user = auth()->user();
+
+        if (Auth::user()->role->name == 'admin') {
+            $suppliers = Supplier::with('companies')->get();
+        }elseif(Auth::user()->role->name == 'company') {
+            $suppliers = SupplierCompany::where('company_id', $user->company->id)
+            ->with('supplier')
+            ->get();
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
 
         return view('reports.new-report', [
             'payableTransactions' => $payableTransactions,

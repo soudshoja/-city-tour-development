@@ -42,12 +42,23 @@ class InvoiceController extends Controller
 
         // Get all agents under the company
         $agents = Agent::with(['branch' => function ($query) use ($user) {
-            $query->where('company_id', $user->company_id);
+            $query->where('company_id', $user->company->id);
         }])->get();
 
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
-        $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
+        // $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
+
+        $invoices = Invoice::with([
+            'agent.branch', 
+            'invoiceDetails.task.supplier', 
+            'client'
+        ])
+        ->whereIn('agent_id', $agentIds)
+        ->whereHas('agent.branch', function ($query) use ($user) {
+            $query->where('company_id', $user->company->id);
+        })
+        ->paginate(500);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
@@ -100,6 +111,8 @@ class InvoiceController extends Controller
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
         $taskIdsArray = [];
 
+        $disableButtons = false;
+
         if (!empty($taskIds)) {
             if (gettype($taskIds) == 'string') {
                 $taskIdsArray = explode(',', $taskIds); // Multiple tasks
@@ -118,6 +131,8 @@ class InvoiceController extends Controller
                     return Redirect::route('tasks.index')->with('error', 'Task does not have full information!');
                 }
             }
+
+            $disableButtons = true;
         }
         $taskIdsArray = array_map('intval', $taskIdsArray);
         $taskIdsArray = Arr::flatten($taskIdsArray);
@@ -294,7 +309,8 @@ class InvoiceController extends Controller
             'selectedCompany',
             'paymentGateways',
             'todayDate',
-            'appUrl'
+            'appUrl',
+            'disableButtons'
         ));
     }
 
@@ -846,14 +862,27 @@ class InvoiceController extends Controller
 
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
+        // $invoices = Invoice::with([
+        //     'agent.branch', 
+        //     'invoiceDetails.task.supplier', 
+        //     'invoicePartials', 
+        //     'client'
+        // ])->whereIn('agent_id', $agentIds)
+        //   ->whereHas('invoiceDetails.task.supplier') // Ensures only invoices with suppliers are retrieved
+        //   ->paginate(500);
+
         $invoices = Invoice::with([
             'agent.branch', 
             'invoiceDetails.task.supplier', 
             'invoicePartials', 
             'client'
-        ])->whereIn('agent_id', $agentIds)
-          ->whereHas('invoiceDetails.task.supplier') // Ensures only invoices with suppliers are retrieved
-          ->paginate(500);
+        ])
+        ->whereIn('agent_id', $agentIds)
+        ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
+        ->whereHas('agent.branch', function ($query) use ($user) {
+            $query->where('company_id', $user->company->id);
+        })
+        ->paginate(500);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();

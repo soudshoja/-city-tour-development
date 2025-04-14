@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->dropForeign(['agent_id']);
+            $table->foreignId('agent_id')->nullable()->change();
         });
     }
 
     public function down(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->foreign('agent_id')->references('id')->on('agents')->onDelete('cascade');        
+            $table->foreignId('agent_id')->nullable(false)->change();
         });
     }
 };

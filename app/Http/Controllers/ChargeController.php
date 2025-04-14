@@ -15,18 +15,20 @@ class ChargeController extends Controller
 {
     public function index()
     {
-        $charges = Charge::all();
-
-        if (Auth::user()->role == 'company') {
+        if (Auth::user()->role->name == 'company') {
             $totalCharges = Charge::where('company_id', Auth::user()->company->id)->sum('amount');
-        } elseif (Auth::user()->role == 'branch') {
+            $charges = Charge::where('company_id', Auth::user()->company->id)->get();
+        } elseif (Auth::user()->role->name == 'branch') {
             $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->sum('amount');
+            $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
         } else {
             $totalCharges = 0;
+            $charges = collect(); 
         }
 
         return view('charges.index', compact('charges', 'totalCharges'));
     }
+    
 
     public function show($id)
     {

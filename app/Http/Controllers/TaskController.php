@@ -65,7 +65,21 @@ class TaskController extends Controller
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
             'enabled' => 'required|boolean',
+            'task_hotel_details' => 'required_if:task_flight_details,null|array|nullable',
+            'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
+
+        $existingTask = Task::where('reference', $validatedData['reference'])
+            ->where('supplier_id', $validatedData['supplier_id'])
+            ->where('company_id', auth()->user()->company->id ?? null)
+            ->first();
+        
+        if ($existingTask) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Task with this reference already exists.',
+            ], 422);
+        }
 
         DB::beginTransaction(); 
 
@@ -75,11 +89,12 @@ class TaskController extends Controller
                 'company_id' => auth()->user()->company->id ?? null,
             ]);
             $task = Task::create($taskData);
-
             if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
             } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
+            } else {
+                throw new Exception('Invalid task type or missing details.');
             }
 
             $supplierCompany = SupplierCompany::with('account')
@@ -131,7 +146,8 @@ class TaskController extends Controller
                 'account_id' => $payableAccountId,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Payable to supplier: ' . $supplierCompany->supplier->name,
+                'description' => 'Records Payable to: ' . $supplierCompany->supplier->name,
+                'name' => $supplierCompany->supplier->name,
                 'debit' => 0,
                 'credit' => $task->total,
                 'balance' => $task->total,
@@ -145,7 +161,8 @@ class TaskController extends Controller
                 'account_id' => $receivableAccount->id,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Receivable from client: ' . ($task->client_name ?? 'N/A'),
+                'description' => 'Records Direct Expenses',
+                'name' => $task->client_name ?? 'N/A',
                 'debit' => $task->total,
                 'credit' => 0,
                 'balance' => $task->total,
@@ -360,6 +377,8 @@ class TaskController extends Controller
 
         // Find the task
         $task = Task::findOrFail($id);
+        $prevClientName = $task->client_name;
+
         $client = Client::findOrFail($request->client_id);
         // If the request is an AJAX request, handle inline editing
         if ($request->ajax()) {
@@ -381,16 +400,29 @@ class TaskController extends Controller
                 $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total']));
                 $task->client_name = $client->name;
                 $task->save();
-                return redirect()->back()->with('success', 'Task updated successfully.');
+                
+                $transaction = Transaction::with('journalEntries')->where('description', 'like', '%'. $task->reference . '%')->first();
+                
             } catch (Exception $e) {
                 return redirect()->back()->with('error', 'Task update failed.');
             }
+
+            if ($transaction) {
+                try {
+                    $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
+                        if ($journalEntry->name == $prevClientName) {
+                            $journalEntry->name = $client->name;
+                            $journalEntry->update();
+                        }
+                    });
+                } catch (Exception $e) {
+                    return redirect()->back()->with('error', 'Task update failed.');
+                }
+            }
+            return redirect()->back()->with('success', 'Task updated successfully.');
         }
     }
 
-    /**
-     * @return array of imported tasks that come from savetasks method
-     */
     public function upload(Request $request)
     {
         $request->validate([
@@ -399,25 +431,56 @@ class TaskController extends Controller
 
         $file = $request->file('task_file')->store('public/tasks');
         if ($file) {
-            $response = $this->extractTaskFromFile($file);
+            $content = $this->extractTaskFromFile($file);
         } else {
+
             $response = [
                 'status' => 'error',
                 'message' => 'File upload failed.'
             ];
         }
-        // Excel::import(new TasksImport, $request->file('excel_file'));
 
-        if ($response['status'] == 'success') {
+        $openai = new OpenAiController(new AIService);
+        $response = $openai->flightOrHotel($content);
 
-            logger('imported task: ', $response['data']->toArray());
-            $existingTask = Cache::get('imported_task');
-            if ($existingTask) {
-                Cache::forget('imported_task');
-            }
-            Cache::put('imported_task', $response['data'], now()->addHour(1));
+        if ($response['status'] == 'error') {
+            return redirect()->back()->with('error', $response['message']);
         }
 
+        if ($response['data'] == 'flight') {
+            $response = $openai->extractFlightData($content);
+        } else {
+            $response = $openai->extractHotelData($content);
+        }
+
+        if ($response['status'] == 'error') {
+            return redirect()->back()->with('error', $response['message']);
+        }
+
+        $request = new Request($response['data']);
+
+        $request['enabled'] = true;
+
+        $supplier = Supplier::where('name', 'like', $response['data']['supplier_name'])->first();
+
+        $request['supplier_id'] =  $supplier->id;
+
+        $response = $this->store($request);
+
+        $response = json_decode($response->getContent(), true);
+
+        if ($response['status'] == 'error') {
+            return redirect()->back()->with('error', $response['message']);
+        }
+
+        logger('imported task: ', $response['data']);
+        $existingTask = Cache::get('imported_task');
+
+        if ($existingTask) {
+            Cache::forget('imported_task');
+        }
+
+        Cache::put('imported_task', $response['data'], now()->addHour(1));
         return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
     }
 
@@ -430,25 +493,8 @@ class TaskController extends Controller
         } else {
             $contents = File::get($file);
         }
-        // Prepare the OpenAI request
-        $openai = new OpenAiController(new AIService);
-        $response = $openai->flightOrHotel($contents);
 
-        if ($response['status'] == 'error') {
-            return $response;
-        }
-
-        if ($response['data'] == 'flight') {
-            $response = $openai->extractFlightData($contents);
-        } else {
-            $response = $openai->extractHotelData($contents);
-        }
-
-        if ($response['status'] == 'error') {
-            return $response;
-        }
-
-        return $this->saveTasks($response['data']);
+        return $contents;
     }
 
     public function exportCsv()
@@ -498,228 +544,6 @@ class TaskController extends Controller
     }
 
     /**
-     * Save tasks to the database
-     * 
-     * @param array $data
-     * 
-     * @return array contains status, message and data of task id
-     * 
-     */
-    public function saveTasks($data)
-    {
-        logger('Data: ', $data);
-        $task = $data;
-        $user = auth()->user();
-
-        if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } else if ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company_id;
-        } else if ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company_id;
-        } else {
-
-            return [
-                'status' => 'error',
-                'message' => 'User not authorized to create task',
-            ];
-        }
-        $supplier = Supplier::where('name', 'like', $task['supplier_name'])->first();
-
-        if (!$supplier) return redirect()->back()->with('errors', 'Supplier not found');
-
-        $agent = (isset($task['agent_name']) && $task['agent_name'] !== null) ?
-            Agent::where('name', 'like', '%' . $task['agent_name'] . '%')->first()
-            : null;
-
-        $client = (isset($task['client_name']) && $task['client_name'] !== null) ? Client::where('name', 'like', '%' . $task['client_name'] . '%')->first() : null;
-
-        logger('tasks: ', $task);
-
-        if ($agent) {
-            logger('agent: ', $agent->toArray());
-        } else {
-            logger('agent dont exist');
-        }
-
-        $client ? logger('client: ', $client->toArray()) : logger('client dont exist');
-
-        $taskData = [
-            'additional_info' => $task['additional_info'] ?? null,
-            'status' => $task['status'] ?? null,
-            'client_name' => $task['client_name'] ?? null,
-            'price' => isset($task['price']) ? $task['price'] : null,
-            'surcharge' => isset($task['surcharge']) ? $task['surcharge'] : null,
-            'total' => isset($task['total']) ? $task['total'] : null,
-            'tax' => isset($task['tax']) ? $task['tax'] : null,
-            'reference' => $task['reference'] ?? null,
-            'type' => $task['type'] ? strtolower($task['type']) : null,
-            'agent_id' => $agent->id ?? null,
-            'client_id' => $client->id ?? null,
-            'company_id' => $companyId,
-            'supplier_id' => $supplier->id,
-            'cancellation_policy' => $task['cancellation_policy'] ?? null,
-            'venue' => $task['venue'] ?? null,
-        ];
-
-        try {
-            $taskCreated = Task::create($taskData);
-
-            // ####################
-
-            // Fetch related data
-            $agent = $taskCreated->agent;
-            $client = $taskCreated->client;
-            $supplier = $taskCreated->supplier;
-
-            $companyId = $taskCreated->company_id;
-            $branchId = $user->branch->id ?? $user->agent->branch_id ?? null;
-
-            // Find accounts
-            $receivableAccount = Account::where('name', 'like', '%Flights Cost%')->where('company_id', $companyId)->first();
-            // $incomeAccount = Account::where('name', 'like', '%Income On Sales%')->where('company_id', $companyId)->first();
-
-            $supplierCompany = SupplierCompany::with('account')->where('supplier_id', $supplier->id)
-                ->where('company_id', $companyId)
-                ->first();
-
-            if (!$supplierCompany) {
-                $taskCreated->delete();
-                Log::info('Supplier not activated: ' . $supplier->name);
-                throw new Exception('Supplier not activated');
-            }
-
-            if (!$supplierCompany->account) {
-                $taskCreated->delete();
-                Log::info('Supplier account not found: ' . $supplier->name);
-                throw new Exception('Supplier account not found');
-            }
-
-            $supplierAccount = $supplierCompany->account;
-
-            $payableFallback = Account::where('name', 'Accounts Payable')
-                ->where('company_id', $companyId)
-                ->first();
-
-
-            if ($supplierAccount) {
-                $payableAccountId = $supplierAccount->id;
-            } elseif ($payableFallback) {
-                $payableAccountId = $payableFallback->id;
-            } else {
-                throw new Exception('No valid payable account found.');
-            }
-
-            // Log chosen account clearly
-            Log::info("Payable account selected: " . $payableAccountId . " for Supplier ID: " . $supplier->id);
-
-
-
-            // Create transaction
-            $transaction = Transaction::create([
-                'entity_id' => $companyId,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'amount' => '200',
-                // 'amount' => $taskCreated->invoice_price ?? $taskCreated->total,
-                'date' => Carbon::now(),
-                'description' => 'Task created: ' . $taskCreated->reference,
-                'reference_type' => 'Payment',
-                'task_id' => $taskCreated->id,
-            ]);
-
-            $markup = ($taskCreated->invoice_price ?? $taskCreated->total) - $taskCreated->total;
-
-            // Payable
-            JournalEntry::create([
-                'transaction_id' => $transaction->id,
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'account_id' => $payableAccountId, // This will now be correct
-                'invoice_id' => null,
-                'invoice_detail_id' => null,
-                'task_id' => $taskCreated->id,
-                'transaction_date' => Carbon::now(),
-                'description' => 'Records Payable to: ' . $supplier->name,
-                'debit' => 0,
-                'credit' => $taskCreated->total,
-                'balance' => $taskCreated->total,
-                'name' => $supplier->name,
-                'type' => 'payable',
-                'type_reference_id' => $supplier->id,
-            ]);
-
-            // Receivable
-            JournalEntry::create([
-                'transaction_id' => $transaction->id,
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'account_id' => $receivableAccount->id,
-                'invoice_id' => null,
-                'invoiceDetail_id' => null,
-                'task_id' => $taskCreated->id,
-                'transaction_date' => Carbon::now(),
-                'description' => 'Records Direct Expense',
-                'debit' => $taskCreated->invoice_price ?? $taskCreated->total,
-                'credit' => 0,
-                'balance' => $taskCreated->invoice_price ?? $taskCreated->total,
-                'name' => $client->name ?? 'N/A',
-                'type' => 'receivable',
-                'type_reference_id' => $client->id ?? null,
-            ]);
-
-            // // Income (markup)
-            // if ($markup > 0) {
-            //     JournalEntry::create([
-            //         'transaction_id' => $transaction->id,
-            //         'company_id' => $companyId,
-            //         'branch_id' => $branchId,
-            //         'account_id' => $incomeAccount->id,
-            //         'invoice_id' => null,
-            //         'invoiceDetail_id' => null,
-            //         'task_id' => $taskCreated->id,
-            //         'transaction_date' => Carbon::now(),
-            //         'description' => 'Markup by Agent: ' . ($agent->name ?? 'N/A'),
-            //         'debit' => 0,
-            //         'credit' => $markup,
-            //         'balance' => $markup,
-            //         'name' => $agent->name ?? 'N/A',
-            //         'type' => 'income',
-            //         'type_reference_id' => $agent->id ?? null,
-            //     ]);
-            // }
-
-            // ###################
-
-            if (isset($data['task_flight_details'])) {
-                $this->saveFlightDetails($data, $taskCreated->id);
-            }
-
-            if (isset($data['task_hotel_details'])) {
-                $this->saveHotelDetails($data, $taskCreated->id);
-            }
-        } catch (Exception $e) {
-            logger('Task creation error: ' . $e->getMessage());
-            if (isset($taskCreated)) {
-                $taskCreated->delete();
-            }
-
-            return [
-                'status' => 'error',
-                'message' => 'Task creation failed: ' . $e->getMessage(),
-            ];
-        }
-
-        logger('Task created: ', $taskCreated->toArray());
-
-        return [
-            'status' => 'success',
-            'message' => 'Task created successfully',
-            'data' => $taskCreated,
-        ];
-    }
-
-    /**
      * Save flight details to the database
      * 
      * @param array $data
@@ -732,8 +556,6 @@ class TaskController extends Controller
     {
 
         try {
-
-            $data = $data['task_flight_details'];
 
             $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
             $countryFrom = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first() : null;
@@ -778,11 +600,9 @@ class TaskController extends Controller
     public function saveHotelDetails(array $data, int $taskId)
     {
         try {
-            $data = $data['task_hotel_details'];
-
             $hotel = Hotel::where('name', 'like', '%' . $data['hotel_name'] . '%')->first();
 
-            $hotelCountry = Country::where('name', 'like', '%' . $data['hotel_country'] . '%')->first();
+            // $hotelCountry = Country::where('name', 'like', '%' . $data['hotel_country'] . '%')->first();
 
             if (!$hotel) {
                 $hotel = Hotel::create([
@@ -790,7 +610,7 @@ class TaskController extends Controller
                     'address' => $data['hotel_address'] ?? null,
                     'city' => $data['hotel_city'] ?? null,
                     'state' => $data['hotel_state'] ?? null,
-                    'country_id' => $hotelCountry->id ?? null,
+                    'country' => $data['hotel_country'] ?? null,
                     'zip' => $data['hotel_zip'] ?? null,
                 ]);
             }
@@ -807,7 +627,9 @@ class TaskController extends Controller
                 'rate' => $data['rate'] ?? null,
                 'task_id' => $taskId
             ];
+
             TaskHotelDetail::create($hotelDetails);
+
         } catch (Exception $e) {
             throw $e;
         }
@@ -927,37 +749,36 @@ class TaskController extends Controller
 
         $supplierId = $supplier->id;
 
-        $passengers = $reservation['service']['passengers'] ?? null;
 
 
-        $hotelDB = Hotel::where('name', 'like', '%' . $hotel['name'] . '%')->first();
+        // $hotelDB = Hotel::where('name', 'like', '%' . $hotel['name'] . '%')->first();
 
-        if (!$hotelDB) {
-            try {
+        // if (!$hotelDB) {
+        //     try {
 
-                $hotelDB = Hotel::create([
-                    'name' => $hotel['name'] ?? null,
-                    'address' => $hotel['address'] ?? null,
-                    'city' => $hotel['city'] ?? null,
-                    'state' => $hotel['state'] ?? null,
-                    'country' => $hotel['countryId'] ?? null,
-                    'zip' => $hotel['zip'] ?? null,
-                ]);
-            } catch (Exception $e) {
-                Log::channel('magic_holidays')->error('Error creating hotel: ' . $e->getMessage(), [
-                    'hotel' => $hotel,
-                ]);
+        //         $hotelDB = Hotel::create([
+        //             'name' => $hotel['name'] ?? null,
+        //             'address' => $hotel['address'] ?? null,
+        //             'city' => $hotel['city'] ?? null,
+        //             'state' => $hotel['state'] ?? null,
+        //             'country' => $hotel['countryId'] ?? null,
+        //             'zip' => $hotel['zip'] ?? null,
+        //         ]);
+        //     } catch (Exception $e) {
+        //         Log::channel('magic_holidays')->error('Error creating hotel: ' . $e->getMessage(), [
+        //             'hotel' => $hotel,
+        //         ]);
 
-                return [
-                    'status' => 'error',
-                    'message' => 'Error creating hotel: ' . $e->getMessage(),
-                ];
-            }
+        //         return [
+        //             'status' => 'error',
+        //             'message' => 'Error creating hotel: ' . $e->getMessage(),
+        //         ];
+        //     }
 
-            Log::channel('magic_holidays')->info('Hotel created: ' . $hotelDB->id, [
-                'hotel' => $hotel,
-            ]);
-        }
+        //     Log::channel('magic_holidays')->info('Hotel created: ' . $hotelDB->id, [
+        //         'hotel' => $hotel,
+        //     ]);
+        // }
 
         if (!$reservation['service']['rooms']) {
             Log::channel('magic_holidays')->warning('No rooms data found for reservation: ' . ($reservation['id'] ?? 'Unknown'));
@@ -993,7 +814,7 @@ class TaskController extends Controller
                 'type' => 'hotel',
                 'status' => $reservation['service']['status'] ?? null,
                 'client_name' => $clientName,
-                'reference' => $reservation['id'] ?? null,
+                'reference' => (string)$reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,
                 'payment_type' => $reservation['service']['payment']['type'] ?? null,
                 'price' => $prices['issue']['selling']['value'] ?? null,
@@ -1006,6 +827,22 @@ class TaskController extends Controller
                 'venue' => $hotel['name'] ?? null,
                 'invoice_price' => null,
                 'voucher_status' => null,
+                'task_hotel_details' => [
+                    'hotel_name' => $hotel['name'],
+                    'hotel_country' => $hotel['countryId'],
+                    'room_reference' => $room['id'] ?? null,
+                    'booking_time' =>  Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
+                    'check_in' => Carbon::parse($serviceDates['startDate'])->toDateTimeString() ?? null,
+                    'check_out' => Carbon::parse($serviceDates['endDate'])->toDateTimeString() ?? null,
+                    'room_reference' => (string) $room['id'] ?? null,
+                    'room_number' => $room['number'] ?? null,
+                    'room_type' => $room['type'] ?? null,
+                    'room_amount' => count($room['passengers'] ?? []),
+                    'room_details' => json_encode($room) ?? null,
+                    'rate' => $price['issue']['selling']['value'] ?? null,
+                    'meal_type' => $room['board'] ?? null,
+                    'is_refundable' => strpos(strtolower($room['info'] ?? ''), 'non-refundable') === false,
+                ],
             ];
 
             foreach ($taskData as $key => $value) {
@@ -1017,23 +854,83 @@ class TaskController extends Controller
             }
             $taskData['enabled'] = $enabled;
             Log::channel('magic_holidays')->info('Creating Task Initiate');
+
+            $request = new Request($taskData);
+
+            $response = $this->store($request);
+
+            $response = json_decode($response->getContent(), true);
+            logger('Task created: ', $response);
+            
+            if($response['status'] == 'error') {
+                Log::channel('magic_holidays')->error('Error creating task: ' . $response['message']);
+                return [
+                    'status' => 'error',
+                    'message' => $response['message'],
+                ];
+            }
+
+            $task = Task::with('hotelDetails')->find($response['data']['id']);
+            
+            if (!$task) {
+                Log::channel('magic_holidays')->error('Task not found after creation: ' . $response['data']['id']);
+                return [
+                    'status' => 'error',
+                    'message' => 'Task not found after creation',
+                ];
+            }
+
+            $passengers = $reservation['service']['passengers'] ?? null;
+
+            $adultCount = 0;
+            $childCount = 0;
+
+            foreach ($room['passengers'] as $passengerId) {
+                $passenger = collect($passengers)->where('paxId', $passengerId)->first();
+
+                if (!$passenger) {
+                    continue;
+                }
+
+                if ($passenger['type'] == 'adult') {
+                    $adultCount++;
+                } elseif ($passenger['type'] == 'child') {
+                    $childCount++;
+                } else {
+                    logger('Unknown passenger type: ' . $passenger['type']);
+                    continue;
+                }
+            }
+
             try {
-                $task = Task::create($taskData);
+                $room = Room::create([
+                    'task_hotel_details_id' => $task->hotelDetails->id,
+                    'name' => $room['name'] ?? null,
+                    'reference' => (string)$room['id'] ?? null,
+                    'adult_count' => $adultCount,
+                    'child_count' => $childCount,
+                ]);
             } catch (Exception $e) {
-                Log::channel('magic_holidays')->error('Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown') . ', Error: ' . $e->getMessage(), [
+                $task->delete();
+
+                Log::channel('magic_holidays')->error('Error creating room: ' . $e->getMessage(), [
                     'reservation' => $reservation,
                     'room' => $room,
                 ]);
 
                 return [
                     'status' => 'error',
-                    'message' => 'Error processing room for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'),
+                    'message' => 'Error creating room: ' . $e->getMessage(),
                 ];
             }
 
+
             Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'));
 
-
+            return [
+                'status' => 'success',
+                'message' => 'Task created successfully',
+            ];
         }
     }
 

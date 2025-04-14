@@ -70,7 +70,7 @@ class Account extends Model
     
     public function agent()
     {
-        return $this->hasOne(Agent::class, 'account_id');
+        return $this->belongsTo(Agent::class, 'account_id');
     }
 
     // public function client()

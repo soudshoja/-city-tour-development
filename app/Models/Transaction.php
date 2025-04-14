@@ -27,6 +27,15 @@ class Transaction extends Model
     'remarks_fl',
     ];
 
+    protected static function booted()
+    {
+        static::addGlobalScope('company', function ($query) {
+            if (auth()->check() && auth()->user()->company != null) {
+                $query->where('company_id', auth()->user()->company->id);
+            }
+        });
+    }
+
     // public function getTransactionHashAttribute()
     // {
     //     return hash('sha256', $this->id . $this->date . $this->amount);
@@ -45,6 +54,11 @@ class Transaction extends Model
     public function account()
     {
         return $this->belongsTo(Account::class, 'account_id');
+    }
+
+    public function journalEntries()
+    {
+        return $this->hasMany(JournalEntry::class, 'transaction_id');
     }
     
 }

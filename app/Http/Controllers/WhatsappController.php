@@ -144,7 +144,7 @@ class WhatsappController extends Controller
             ]
         ];
 
-        $bodies = [$invoiceNumber, $agent->name, $agent->company->name];
+        $bodies = [$invoiceNumber, $agent->name, $agent->branch->company->name];
         foreach ($bodies as $body) {
             $reqBody['template']['components'][1]['parameters'][] = ["type" => "text", "text" => $body];
         }

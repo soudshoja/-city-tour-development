@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Branch;
 use App\Models\Role;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Client\ResponseSequence;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -29,7 +31,6 @@ class BranchController extends Controller
         } else {
             if ($user->role_id == Role::ADMIN) {
                 $branches = Branch::all();
-
             } elseif ($user->role_id == Role::COMPANY) {
                 // Get agents belonging to the company
                 $branches = Branch::where('company_id', $user->company->id)->get();
@@ -62,6 +63,7 @@ class BranchController extends Controller
     public function create()
     {
         $this->authorize('create', Branch::class);
+
         return view('branches.store');
     }
 
@@ -77,6 +79,8 @@ class BranchController extends Controller
             'user_id' => 'required|integer|exists:users,id',
             'company_id' => 'required|integer|exists:companies,id',
         ]);
+        
+        DB::beginTransaction();
 
         try {
             $branch = Branch::create([
@@ -88,13 +92,64 @@ class BranchController extends Controller
                 'user_id' => $validatedData['user_id'],
             ]);
 
+            if (!$branch) {
+                throw new Exception('Branch creation failed');
+            }
+
+            $user = User::find($validatedData['user_id']);
+
+            if (!$user) {
+                throw new Exception('User not found on branch creation');
+            }
+
+            $company = Company::find($validatedData['company_id']);
+
+            if (!$company) {
+                throw new Exception('Company not found on branch creation');
+            }
+
+            $asset = Account::where('name', 'Assets')->first();
+            $accountReceivable = Account::where('name', 'like', '%Receivable%')->first();
+
+            if (!$asset->id) {
+                throw new Exception('Asset account not found on branch creation');
+            }
+
+            if (!$accountReceivable->id) {
+                throw new Exception('Account Receivable not found on branch creation');
+            }
+
+            $account = Account::create([
+                'name' => $request->name,
+                'level' => 3,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'company_id' => $company->id,
+                'root_id' => $asset->id,
+                'parent_id' => $accountReceivable->id,
+                'branch_id' => $branch->id,
+                'reference_id' => $branch->id,
+                'code' => 'BRN-' . rand(1000000, 9999999),
+            ]);
+
+            if (!$account) {
+                throw new Exception('Account creation failed on branch creation');
+            }
+
+            logger('Branch created successfully with ID: ' . $branch->id);
+
+            DB::commit();
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Branch created successfully',
                 'data' => $branch,
             ], 201);
-        } catch (Exception $e) {
 
+
+        } catch (Exception $e) {
+            DB::rollBack(); 
             logger('Branch creation failed with error: ' . $e->getMessage());
 
             return response()->json([
@@ -104,6 +159,4 @@ class BranchController extends Controller
             ], 500);
         }
     }
-
-
 }

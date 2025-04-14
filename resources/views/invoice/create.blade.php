@@ -2343,7 +2343,7 @@
             const date = document.getElementById('dueDate').value;
             const amount = parseFloat(document.getElementById('subTotal').value) || 0;
 
-            if (!gateway || !date || amount <= 0) {
+            if (!gateway || amount <= 0) {
                 displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
                 return false;
             }
@@ -2520,17 +2520,17 @@
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
 
-            console.log(
-                'clientId:', clientId,
-                'agentId:', agentId,
-                'tasksLength:', tasks.length,
-                'selectedBranchValue:', selectedBranchValue,
-                'currency:', currency,
-                'invoiceNumber:', invoiceNumber,
-                'invdate:', invdate,
-                'duedate:', duedate,
-                'subTotal:', subTotal,
-            );
+            // console.log(
+            //     'clientId:', clientId,
+            //     'agentId:', agentId,
+            //     'tasksLength:', tasks.length,
+            //     'selectedBranchValue:', selectedBranchValue,
+            //     'currency:', currency,
+            //     'invoiceNumber:', invoiceNumber,
+            //     'invdate:', invdate,
+            //     'duedate:', duedate,
+            //     'subTotal:', subTotal,
+            // );
 
             let errorMessages = [];
 
@@ -2538,7 +2538,7 @@
             if (!currency) errorMessages.push("Currency is missing.");
             if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
             if (!invdate) errorMessages.push("Invoice date is missing.");
-            if (!duedate) errorMessages.push("Due date is missing.");
+            // if (!duedate) errorMessages.push("Due date is missing.");
             if (!subTotal) errorMessages.push("Subtotal is missing.");
             if (!clientId) errorMessages.push("Client ID is missing.");
             if (!agentId) errorMessages.push("Agent ID is missing.");
@@ -2578,6 +2578,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                     },
                     body: JSON.stringify({

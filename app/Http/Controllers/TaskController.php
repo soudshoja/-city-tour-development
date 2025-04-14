@@ -372,6 +372,7 @@ class TaskController extends Controller
             'client_id' => 'required',
             'agent_id' => 'required',
             'supplier_id' => 'required',
+            'status' => 'required',
             'total' => 'required',
         ]);
 
@@ -397,7 +398,7 @@ class TaskController extends Controller
         } else {
 
             try {
-                $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total']));
+                $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total', 'status']));
                 $task->client_name = $client->name;
                 $task->save();
                 

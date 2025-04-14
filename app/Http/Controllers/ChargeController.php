@@ -16,10 +16,10 @@ class ChargeController extends Controller
     public function index()
     {
         if (Auth::user()->role->name == 'company') {
-            $totalCharges = Charge::where('company_id', Auth::user()->company->id)->sum('amount');
+            $totalCharges = Charge::where('company_id', Auth::user()->company->id)->count();
             $charges = Charge::where('company_id', Auth::user()->company->id)->get();
         } elseif (Auth::user()->role->name == 'branch') {
-            $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->sum('amount');
+            $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->count();
             $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
         } else {
             $totalCharges = 0;

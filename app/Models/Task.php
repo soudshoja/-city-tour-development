@@ -44,7 +44,7 @@ class Task extends Model
         'client_name',
         'reference',
         'total',
-        'venue',
+        // 'venue',
     ];
 
     // protected static function booted()

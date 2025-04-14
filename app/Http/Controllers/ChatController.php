@@ -914,27 +914,26 @@ class ChatController extends Controller
 
                         $ocrResponse = [];
                         foreach ($images as $image) {
-                            // Process each extracted image with OCR
                             $ocrText = $this->processImage($image);
                             if ($ocrText) {
                                 $ocrResponse[] = ['ParsedText' => $ocrText];
                             }
                         }
 
-                        // If no OCR text was extracted
                         if (empty($ocrResponse)) {
                             logger('No text extracted from images.', $ocrResponse);
-                            return response()->json(['error' => 'Failed to extract text from the images in the PDF.'], 400);
+                            throw new Exception('Failed to extract text from the images in the PDF.');
                         }
+
                     } else {
                         // PDF contains text, use the extracted text
                         $ocrResponse = ['ParsedResults' => [['ParsedText' => $text]]];
                     }
-                } else if (in_array($extension, ['png', 'jpg', 'jpeg'])) {
 
+                } else if (in_array($extension, ['png', 'jpg', 'jpeg'])) {
                     $ocrResponse = $this->processImage($imagePath);
                 } else {
-                    return response()->json(['error' => 'Unsupported file format.'], 400);
+                    throw new Exception('Unsupported file type. Please upload a PDF or image file.');
                 }
 
                 // Check if the OCR response is a JsonResponse object
@@ -945,10 +944,7 @@ class ChatController extends Controller
                 Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
                 // Check if OCR response contains parsed text
                 if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to extract text from the image.',
-                    ], 400);
+                    throw new Exception('Failed to extract text from the image.');
                 }
 
 
@@ -966,7 +962,7 @@ class ChatController extends Controller
                             - `nationality`: Nationality
                             - `date_of_birth`: Date of birth
                             - `date_of_issue`: Date of issue
-                            - `date_of_expiry`: Date of expiry
+                            - `date_of_expiry`: Date of expiry, format (yyyy-MM-dd)
                             - `place_of_birth`: Place of birth
                             - `place_of_issue`: Place of issue
                         
@@ -999,43 +995,22 @@ class ChatController extends Controller
                         // Update the client's passport details
                         $passportData = json_decode($content, true);
 
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            // Now, $passportData is an array that contains the passport details
-                            Log::info('Parsed Passport Data:', ['passportData' => $passportData]);
-
-                            // Update the client's passport details
-                            $client = $this->createClientPassport($passportData);
-
-                            return response()->json([
-                                'success' => true,
-                                'message' => 'Client registered successfully!',
-                                'data' => $client,
-                            ], 201);
-                        } else {
-                            Log::error('Failed to decode JSON from OpenAI response', ['error' => json_last_error_msg()]);
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Failed to decode passport data.',
-                            ], 400);
-                        }
-                    } else {
-                        // Handle missing data in OpenAI response
-                        Log::error('Failed to create client: ');
                         return response()->json([
-                            'success' => false,
-                            'message' => 'Error registering client: ',
-                            'errors' => $response,
-                        ], 400);
-                    }
-                } else {
+                            'success' => true,
+                            'message' => 'Client retrieved successfully!',
+                            'data' => $passportData,
+                        ], 201);
 
+                    } else {
+                        Log::error('Failed to create client: ');
+                        throw new Exception('Failed to get data from OpenAI.');
+                    }
+
+                } else {
                     Log::error('Failed to create client: ');
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Error registering client: ',
-                        'errors' => $ocrResponse,
-                    ], 400);
+                    throw new Exception('Failed to extract passport data from the image.');
                 }
+
             } catch (Exception $e) {
                 // Handle exceptions and errors
                 Log::error('Failed to create client: ' . $e->getMessage());

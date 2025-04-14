@@ -443,7 +443,7 @@
                     <div class="w-1/2">
                         <label for="civil_no"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Date of Birth</label>
-                        <input id="date_of_birthChat" type="date" name="date_of_birthChat" required
+                        <input id="date_of_birth_chat" type="date" name="date_of_birthChat" required
                             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
                     </div>
                 </div>
@@ -1451,8 +1451,6 @@
                 .then(response => {
                     if (response.success) {
                         document.getElementById('upload-status').textContent = 'Upload successful!';
-                        console.log(response.message);
-                        console.log(response.data);
 
                         if (response.data) {
                             const client = response.data;
@@ -1466,10 +1464,13 @@
                                     <p>Status: ${client.status}</p>
                                 `;
 
+                            clientDOB = client.date_of_birth ? 
+                                client.date_of_birth.replace(/\//g, '-') : '';
+                            
                             // Populate other form fields
                             document.getElementById('chatClientForm').value = "update";
                             document.getElementById('clientId').value = client.id || '';
-                            document.getElementById('date_of_birthChat').value = client.date_of_birth || '';
+                            document.getElementById('date_of_birth_chat').value = clientDOB;
                             document.getElementById('nameChat').value = client.name || '';
                             document.getElementById('addressChat').value = client.address || '';
                             document.getElementById('civil_noChat').value = client.civil_no || '';

@@ -125,7 +125,7 @@
                 <div class="grid grid-cols-2 gap-5 col-span-1">
 
                     <div class="w-full space-y-4">
-                    @if(auth()->user()->role->name == 'admin')
+                    <!-- @if(auth()->user()->role->name == 'admin') -->
                         @can('create', App\Models\Company::class)
                         <div data-form="companyForm"
                             class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
@@ -135,7 +135,7 @@
                             <img src="{{ asset('images/registeruser.jpg') }}" alt="Company" class="w-10 h-10">
                         </div>
                         @endcan
-                    @endif
+                    <!-- @endif -->
 
                         @can('create', App\Models\Branch::class)
                         <div data-form="branchForm"

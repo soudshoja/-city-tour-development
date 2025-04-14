@@ -159,7 +159,9 @@
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                         <x-application-logo class="custom-logo-size" />
-
+                        @php
+                            $disabled = $disableButtons ? 1 : 0;
+                        @endphp
                         @if ($selectedCompany)
                             <div class="pl-2">
                                 <h3>{{ $selectedCompany->name }}</h3>
@@ -2831,7 +2833,19 @@
             renderClientList(clients);
             renderTaskList(tasks);
 
+            const chooseClientButton = document.getElementById('openClientModalButton');
+            const chooseAgentButton = document.getElementById('select-agent');
+            const disabled = {{ $disabled ?? 0 }}; 
 
+            if (chooseClientButton && chooseAgentButton) {
+                if (disabled === 1) {
+                    chooseClientButton.disabled = true;
+                    chooseAgentButton.disabled = true;
+                } else {
+                    chooseClientButton.disabled = false;
+                    chooseAgentButton.disabled = false;
+                }
+            }
 
         });
     </script>

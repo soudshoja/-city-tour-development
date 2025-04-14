@@ -120,12 +120,13 @@
             </div>
 
             <div class="w-full grid grid-cols-1 md:grid-cols-3 mt-5 gap-5">
-           
-           
+
+
                 <div class="grid grid-cols-2 gap-5 col-span-1">
-                    
+
                     <div class="w-full space-y-4">
-                    @can('create', App\Models\Company::class)
+                    @if(auth()->user()->role->name == 'admin')
+                        @can('create', App\Models\Company::class)
                         <div data-form="companyForm"
                             class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                             <button class="text-left flex rounded-lg w-full">
@@ -133,49 +134,50 @@
                             </button>
                             <img src="{{ asset('images/registeruser.jpg') }}" alt="Company" class="w-10 h-10">
                         </div>
-                    @endcan
+                        @endcan
+                    @endif
 
                         @can('create', App\Models\Branch::class)
-                            <div data-form="branchForm"
-                                class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                                <button class="text-left flex rounded-lg w-full ">
-                                    <span class="text-md font-bold dark:text-white">Branch</span>
-                                </button>
-                                <img src="{{ asset('images/BranchPic.png') }}" alt="Branch" class="w-10 h-10">
-                            </div>
+                        <div data-form="branchForm"
+                            class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                            <button class="text-left flex rounded-lg w-full ">
+                                <span class="text-md font-bold dark:text-white">Branch</span>
+                            </button>
+                            <img src="{{ asset('images/BranchPic.png') }}" alt="Branch" class="w-10 h-10">
+                        </div>
                         @endcan
 
                         @can('create', App\Models\Agent::class)
-                            <div data-form="agentForm"
-                                class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                                <button class="text-left flex rounded-lg w-full ">
-                                    <span class="text-md font-bold dark:text-white">Agent</span>
-                                </button>
-                                <img src="{{ asset('images/AgentPic.png') }}" alt="Agent" class="w-10 h-10">
-                            </div>
+                        <div data-form="agentForm"
+                            class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                            <button class="text-left flex rounded-lg w-full ">
+                                <span class="text-md font-bold dark:text-white">Agent</span>
+                            </button>
+                            <img src="{{ asset('images/AgentPic.png') }}" alt="Agent" class="w-10 h-10">
+                        </div>
                         @endcan
                     </div>
 
                     <div class="w-full space-y-4">
 
                         @can('create', App\Models\Account::class)
-                            <div data-form="accountantForm"
-                                class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                                <button class="text-left flex rounded-lg w-full ">
-                                    <span class="text-md font-bold dark:text-white">Accountant</span>
-                                </button>
-                                <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant" class="w-10 h-10">
-                            </div>
+                        <div data-form="accountantForm"
+                            class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                            <button class="text-left flex rounded-lg w-full ">
+                                <span class="text-md font-bold dark:text-white">Accountant</span>
+                            </button>
+                            <img src="{{ asset('images/AccountantPic.png') }}" alt="Accountant" class="w-10 h-10">
+                        </div>
                         @endcan
 
                         @can('create', App\Models\Client::class)
-                            <div data-form="clientForm"
-                                class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                                <button class="text-left flex rounded-lg w-full ">
-                                    <span class="text-md font-bold dark:text-white">Client</span>
-                                </button>
-                                <img src="{{ asset('images/ClientPic.png') }}" alt="Client" class="w-10 h-10">
-                            </div>
+                        <div data-form="clientForm"
+                            class="flex items-center justify-between px-5 py-2 bg-white dark:bg-gray-700 BoxShadow rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                            <button class="text-left flex rounded-lg w-full ">
+                                <span class="text-md font-bold dark:text-white">Client</span>
+                            </button>
+                            <img src="{{ asset('images/ClientPic.png') }}" alt="Client" class="w-10 h-10">
+                        </div>
                         @endcan
                     </div>
                 </div>
@@ -241,7 +243,7 @@
                                                 <select name="country_id" class="custom-input">
                                                     <option value="" disabled selected>Select a country</option>
                                                     @foreach ($countries as $country)
-                                                        <option value="{{ $country->id }}">{{ $country->name }}</option>
+                                                    <option value="{{ $country->id }}">{{ $country->name }}</option>
                                                     @endforeach
                                                 </select>
                                                 <span class="tooltip-container ml-2 cursor-pointer">
@@ -266,6 +268,33 @@
                                                     <span class="tooltip-icon">!</span>
                                                     <span class="tooltip">Enter the company's phone number.</span>
                                                 </span>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <div class="flex items-center space-x-4">
+                                                <label class="text-lg font-semibold mb-2">Select a status:</label>
+
+                                                <label class="flex items-center cursor-pointer">
+                                                    <input type="radio" name="status" value="1" class="status-radio peer hidden"
+                                                        id="active" />
+                                                    <span
+                                                        class="flex items-center justify-center w-6 h-6 border border-gray-500 dark:border-white rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
+                                                        <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                                    </span>
+                                                    <span
+                                                        class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold dark:text-white">Active</span>
+                                                </label>
+
+                                                <label class="flex items-center cursor-pointer">
+                                                    <input type="radio" name="status" value="0" class="status-radio peer hidden"
+                                                        id="inactive" />
+                                                    <span
+                                                        class="flex items-center justify-center w-6 h-6 border border-gray-500 dark:border-white rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
+                                                        <span class="w-3 h-3 bg-transparent rounded-full"></span>
+                                                    </span>
+                                                    <span
+                                                        class="ml-2 text-lg text-gray-700 dark:text-white peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
+                                                </label>
                                             </div>
                                         </div>
 
@@ -343,9 +372,9 @@
                                                     <select name="dial_code" id="dial_code"
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
-                                                            <option value="{{ $country->dialing_code }}">
-                                                                {{ $country->dialing_code }} ({{ $country->name }})
-                                                            </option>
+                                                        <option value="{{ $country->dialing_code }}">
+                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                        </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->
                                                     </select>
@@ -485,9 +514,9 @@
                                                     <select name="dial_code" id="dial_code"
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
-                                                            <option value="{{ $country->dialing_code }}">
-                                                                {{ $country->dialing_code }} ({{ $country->name }})
-                                                            </option>
+                                                        <option value="{{ $country->dialing_code }}">
+                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                        </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->
                                                     </select>
@@ -524,10 +553,10 @@
                                                 <div
                                                     class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid grid-cols-2 gap-2 py-3">
                                                     @foreach ($agentTypes as $type)
-                                                        <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                            data-value="{{ $type->id }}">
-                                                            {{ $type->name }}
-                                                        </div>
+                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                                        data-value="{{ $type->id }}">
+                                                        {{ $type->name }}
+                                                    </div>
                                                     @endforeach
                                                 </div>
                                                 <input type="hidden" name="type_id" id="selectedType">
@@ -539,10 +568,10 @@
                                                 <div
                                                     class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                                     @foreach ($branches as $branch)
-                                                        <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                                            data-value="{{ $branch->id }}">
-                                                            {{ $branch->name }}
-                                                        </div>
+                                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                                        data-value="{{ $branch->id }}">
+                                                        {{ $branch->name }}
+                                                    </div>
                                                     @endforeach
                                                 </div>
                                                 <input type="hidden" name="branch_id" id="selectedBranch">
@@ -605,9 +634,9 @@
                                                     <select name="dial_code" id="dial_code"
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
-                                                            <option value="{{ $country->dialing_code }}">
-                                                                {{ $country->dialing_code }} ({{ $country->name }})
-                                                            </option>
+                                                        <option value="{{ $country->dialing_code }}">
+                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                        </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->
                                                     </select>
@@ -678,9 +707,9 @@
                                                     <select name="dial_code" id="dial_code"
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
-                                                            <option value="{{ $country->dialing_code }}">
-                                                                {{ $country->dialing_code }} ({{ $country->name }})
-                                                            </option>
+                                                        <option value="{{ $country->dialing_code }}">
+                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                        </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->
                                                     </select>
@@ -711,9 +740,9 @@
                                             name="agent_id" id="agent_id">
                                             <option value="" disabled> Select Agent </option>
                                             @foreach ($agents as $agent)
-                                                <option class="" value="{{ $agent->id }}">
-                                                    {{ $agent->name }}
-                                                </option>
+                                            <option class="" value="{{ $agent->id }}">
+                                                {{ $agent->name }}
+                                            </option>
                                             @endforeach
                                         </select>
 

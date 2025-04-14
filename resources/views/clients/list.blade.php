@@ -113,10 +113,13 @@
                                         </td>
 
 
-                                        <td
-                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer">
-                                            <a href="{{ route('clients.show', ['id' => $client->id]) }}"
-                                                class="block">{{ $client->name }}</a>
+                                        <!-- <td
+                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
+                                            <td
+                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                            <!-- <a href="{{ route('clients.show', ['id' => $client->id]) }}"
+                                                class="block">{{ $client->name }}</a> -->
+                                                {{ $client->name }}
                                         </td>
                                         <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                             {{ $client->email ? $client->email : 'N/A' }}

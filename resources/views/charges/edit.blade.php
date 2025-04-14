@@ -86,7 +86,7 @@
                             Debited
                             Bank
                             Account</label>
-                        <input list="bankAccountOptions" type="text" name="acc_bank_name" id="acc_bank_name"
+                        <input required list="bankAccountOptions" type="text" name="acc_bank_name" id="acc_bank_name"
                             value="{{ old('acc_bank_name', isset($accBank) && $accBank ? $accBank->name : '') }}"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
 

@@ -177,11 +177,11 @@ class AgentController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make('citytour123'),
+                'password' => Hash::make($request->password),
                 'role_id' => Role::AGENT,
                 'remember_token' => Str::random(10),
                 'first_login' => 1,
-            ])->assignRole(Role::AGENT);
+            ])->assignRole('agent');
 
         } catch(Exception $e){
             logger('Failed to create user for agent: ' . $e->getMessage());
@@ -202,7 +202,6 @@ class AgentController extends Controller
             logger('Failed to create agent: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to create agent');
         }
-
 
         try{
             Account::create([

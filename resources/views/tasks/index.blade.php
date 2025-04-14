@@ -394,7 +394,7 @@
                                         @endif
                                     </td>
                                     @can('viewPrice', 'App\Models\Task')
-                                    <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">{{ $task->price }}</td>
+                                    <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">{{ $task->total }}</td>
                                     @endcan
                                     <td>
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium

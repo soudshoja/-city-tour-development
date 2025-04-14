@@ -209,10 +209,9 @@ class BankPaymentController extends Controller
         
         $user = auth()->user();
         if($user->role_id == Role::ADMIN){
-            $company = Company::with('branches.accounts', 'branches.agents')->find($bankPayment->entity_id);
-            $accounts = $company->branches->flatMap->accounts;            
-            $branches = $company->branches;
-            $companies = $company;
+            $companies = Company::with('branches.account', 'branches.agents')->get();
+            $branches = $companies->flatMap->branches;
+            $accounts = $branches->pluck('account')->filter();
 
             $parentIds = Account::where('name', 'LIKE', '%Payable%')
             ->orWhere('name', 'LIKE', '%Receivable%')
@@ -226,8 +225,8 @@ class BankPaymentController extends Controller
 
             
         }elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.accounts', 'branches.agents')->find($bankPayment->entity_id);
-            $accounts = $company->branches->flatMap->accounts;
+            $company = Company::with('branches.account', 'branches.agents')->find($bankPayment->entity_id);
+            $accounts = $company->branches->pluck('account')->filter(); // get accounts from each branch
             $branches = $company->branches;
             $companies = $company;
             

@@ -100,6 +100,8 @@ class InvoiceController extends Controller
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
         $taskIdsArray = [];
 
+        $disableButtons = false;
+
         if (!empty($taskIds)) {
             if (gettype($taskIds) == 'string') {
                 $taskIdsArray = explode(',', $taskIds); // Multiple tasks
@@ -118,6 +120,8 @@ class InvoiceController extends Controller
                     return Redirect::route('tasks.index')->with('error', 'Task does not have full information!');
                 }
             }
+
+            $disableButtons = true;
         }
         $taskIdsArray = array_map('intval', $taskIdsArray);
         $taskIdsArray = Arr::flatten($taskIdsArray);
@@ -294,7 +298,8 @@ class InvoiceController extends Controller
             'selectedCompany',
             'paymentGateways',
             'todayDate',
-            'appUrl'
+            'appUrl',
+            'disableButtons'
         ));
     }
 

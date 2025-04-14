@@ -186,7 +186,6 @@ class CompanyController extends Controller
     {
         // Fetch the specific company with its agents, tasks, clients, invoices, and items    
         $companies = Company::all();
-        $companies = Company::all();
         $company = Company::with([
             'agents.tasks.client',
             'agents.invoices',

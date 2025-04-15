@@ -197,7 +197,6 @@ class CompanyController extends Controller
         return view('companies.show', compact('company', 'companies'));
     }
 
-
     public function edit($id)
     {
         $company = Company::findOrFail($id);
@@ -205,6 +204,61 @@ class CompanyController extends Controller
 
 
         return view('companies.companiesEdit', compact('company', 'companies'));
+    }
+
+    public function store(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role_id' => Role::COMPANY,
+                'remember_token' => Str::random(10),
+                'first_login' => 1,
+            ]);
+
+            if (!$user) {
+                Log::error('Error creating company user:', ['user_id' => $user->id]);
+                throw new Exception('Error creating company user.');
+            }
+
+            Log::info('Company owner user created:', ['user_id' => $user->id]);
+
+            // Create the company
+            $company = Company::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'code' => $request->code,
+                'country_id' => $request->country_id,
+                'address' => $request->address,
+                'phone' => $request->phone,
+                'user_id' => $user->id,
+                'status' => $request->status,
+            ]);
+
+            $user->assignRole('company');
+
+            Log::info('Company created:', ['company_id' => $company->id]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Company created successfully.',
+                'data' => $company,
+            ], 201);
+
+        } catch (Exception $e) {
+            Log::error('Error creating company:', ['error' => $e->getMessage()]);
+
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error creating company: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
@@ -237,6 +291,7 @@ class CompanyController extends Controller
 
     public function import(Request $request)
     {
+        return redirect()->back()->with('error', 'Module not available yet.');
         $request->validate([
             'excel_file' => 'required|mimes:xlsx',
         ]);

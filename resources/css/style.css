@@ -5602,7 +5602,7 @@ pre {
 }
 .bg-danger {
     --tw-bg-opacity: 1;
-    background-color: rgb(231 81 90 / var(--tw-bg-opacity));
+    background-color: rgb(239 68 68 / var(--tw-bg-opacity, 1));
 }
 .bg-danger-light {
     --tw-bg-opacity: 1;
@@ -8437,7 +8437,9 @@ pre {
     background-color: rgb(231 81 90 / var(--tw-bg-opacity));
 }
 :is(.dark .dark\:bg-danger-dark-light) {
-    background-color: #e7515a26;
+    --tw-bg-opacity: 1;
+    color: white;
+    background-color: rgb(231 81 90 / var(--tw-bg-opacity));
 }
 :is(.dark .dark\:bg-dark) {
     --tw-bg-opacity: 1;

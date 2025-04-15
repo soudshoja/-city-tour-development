@@ -408,7 +408,7 @@ class InvoiceController extends Controller
     {
         $request->validate([
             'invoiceId' => 'required',
-            'date' => 'required',
+            'date' => 'nullable',
             'clientId' => 'required',
             'amount' => 'required',
             'type' => 'required|string',
@@ -512,7 +512,7 @@ class InvoiceController extends Controller
             'tasks.*.client_id' => 'required|integer',
             'tasks.*.agent_id' => 'required|integer',
             'invdate' => 'required|date',
-            'duedate' => 'required|date',
+            'duedate' => 'nullable|date',
             'subTotal' => 'required|numeric',
             'clientId' => 'required|integer',
             'agentId' => 'required|integer',

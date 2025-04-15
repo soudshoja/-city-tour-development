@@ -29,6 +29,8 @@ class EntitySeeder extends Seeder
 {
     public function run(): void
     {
+        DB::beginTransaction();
+
         $name = 'City Travelers';
         $email = 'admin@citytravelers.co';
 
@@ -57,7 +59,7 @@ class EntitySeeder extends Seeder
                 'status' => 1,
             ]);
         } catch (Exception $e) {
-            $user->delete();
+            DB::rollBack();
             throw $e;
         } 
 
@@ -75,6 +77,7 @@ class EntitySeeder extends Seeder
         try {
             CoaSeeder::run($company->id);
         } catch (Exception $e) {
+            DB::rollBack();
             Log::error('Error seeding COA:', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -83,6 +86,16 @@ class EntitySeeder extends Seeder
        
         $name = 'City Travelers HQ';
         $email = 'hq@citytravelers.co';
+
+        // $user = User::firstOrCreate([
+        //     'name' => $name,
+        //     'email' => $email,
+        // ], [
+        //     'password' => Hash::make(config('auth.branch_password')),
+        //     'role_id' => Role::BRANCH,
+        //     'remember_token' => Str::random(10),
+        //     'first_login' => 1,
+        // ]);
 
         try {
             $branch = Branch::firstOrCreate([
@@ -94,19 +107,21 @@ class EntitySeeder extends Seeder
                 'company_id' => $company->id,
             ]);
         } catch (Exception $e) {
-            $user->delete();
+            DB::rollBack();
             throw $e;
         }
 
         $assetAccount = $coa->where('name', 'like','Assets%')->first();
 
         if(!$assetAccount){
+            DB::rollBack();
             throw new Exception('Assets account not found in COA');
         }
 
         $accountReceivable = $coa->where('name', 'like','Accounts Receivable%')->first();
 
         if(!$accountReceivable){
+            DB::rollBack();
             throw new Exception('Account Receivable not found in COA');
         }
 
@@ -151,6 +166,7 @@ class EntitySeeder extends Seeder
         try{
             $agentType = AgentType::where('name', 'salary')->first();
         } catch (Exception $e) {
+            DB::rollBack();
             throw $e;
         }
 
@@ -165,7 +181,7 @@ class EntitySeeder extends Seeder
                 'branch_id' => $branch->id,
             ]);
         } catch (Exception $e) {
-            $user->delete();
+            DB::rollBack();
             throw $e;
         }
 
@@ -236,6 +252,7 @@ class EntitySeeder extends Seeder
                     'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children()->count() + 1, 3, '0', STR_PAD_LEFT),
                 ]);
             } catch (Exception $e) {
+                DB::rollBack();
                 logger('Created Supplier Company Account Error: ' . $e->getMessage());
                 throw new Exception('Failed to create supplier account.');
             }
@@ -247,7 +264,7 @@ class EntitySeeder extends Seeder
                     'account_id' => $account->id,
                 ]);
             } catch (Exception $e) {
-                $account->delete();
+                DB::rollBack();
                 logger('Created Supplier Company Error: ' . $e->getMessage());
                 throw new Exception('Failed to create supplier-company relation.');
             }  
@@ -265,7 +282,6 @@ class EntitySeeder extends Seeder
 
     
         try {
-            DB::beginTransaction();
             $paymentGatewayName = 'Tap'; 
 
             $coaPaymentGateway = Account::where('name', 'like', '%' . $paymentGatewayName . '%') 
@@ -319,12 +335,12 @@ class EntitySeeder extends Seeder
             ]);
     
             // Commit the transaction
-            DB::commit();
 
         } catch (Exception $e) {
             DB::rollBack();
             throw $e;
         }
 
+        DB::commit();
     }
 }

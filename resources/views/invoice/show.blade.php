@@ -256,7 +256,7 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
-                @if(!auth()->check())
+                @if(auth()->check())
                 <form action="{{ route('whatsapp.send') }}" method="POST">
                     @csrf
                     <input type="hidden" name="client" value='{{ $invoice->client }}'>

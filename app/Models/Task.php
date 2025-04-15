@@ -44,7 +44,7 @@ class Task extends Model
         'client_name',
         'reference',
         'total',
-        'venue',
+        // 'venue',
     ];
 
     // protected static function booted()
@@ -96,10 +96,5 @@ class Task extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
-    }
-
-    public function journalEntries()
-    {
-        return $this->hasMany(JournalEntry::class, 'task_id');
     }
 }

@@ -322,6 +322,11 @@
                                                         @method('PUT')
                                                         <div class="p-4 inline-flex flex-col gap-2">
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
+                                                            <select name="status" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                <option value="">Set Status</option>
+                                                                <option value="Pending" {{ $task->status === 'Pending' ? 'selected' : '' }}>Pending</option>
+                                                                <option value="Completed" {{ $task->status === 'Completed' ? 'selected' : '' }}>Completed</option>
+                                                            </select>
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
                                                             <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
@@ -404,8 +409,10 @@
             {{ $task->status === 'Pending' ? 'badge-outline-danger' : '' }}
             {{ $task->status === 'Confirmed' ? 'badge-outline-primary' : '' }}
             {{ $task->status === 'Cancelled' ? 'badge-outline-danger' : '' }}
-            {{ $task->status === 'Hold' ? 'badge-outline-danger' : '' }}">
-                                            {{ $task->status }}
+            {{ $task->status === 'Hold' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === null ? 'badge-outline-danger' : '' }}"
+            >
+                                            {{ $task->status  === null ? 'Not Set' : $task->status }}
                                         </span>
                                     </td>
                                     <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->supplier->name }}</td>

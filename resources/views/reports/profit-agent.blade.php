@@ -2,7 +2,7 @@
     <div class="flex justify-between p-2 bg-white rounded shadow mb-2">
         Profit Agent
         <div class="flex items-center gap-4 mt-2">
-           
+
         </div>
     </div>
     <div class="p-2 bg-white rounded shadow mb-2">
@@ -14,7 +14,16 @@
         <div id="invoices-{{ $agent->id }}" class="hidden ml-4">
             @foreach($agent->invoices as $invoice)
             <div class="p-4 border rounded">
-                <p>Invoice ID: {{ $invoice->id }}</p>
+                <div class="flex justify-between">
+                    <p>Invoice ID: {{ $invoice->invoice_number }}</p>
+                    <div>
+                        @foreach($invoice->transactions as $transaction)
+                        <a href="{{ route('journal-entries.index', $transaction->id) }}" class="text-blue-600" target="_blank">
+                            <p class="text-blue-600">Transaction ID: {{ $transaction->id }} - {{ $transaction->date}}</p>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
                 <p class="font-semibold">Details:</p>
                 <ul>
                     @foreach($invoice->invoiceDetails as $detail)

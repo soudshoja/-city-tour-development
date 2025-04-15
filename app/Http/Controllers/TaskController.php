@@ -56,7 +56,7 @@ class TaskController extends Controller
         $validatedData = $request->validate([
             'type' => 'required|string',
             'supplier_id' => 'required|exists:suppliers,id',
-            'reference' => 'required|string|unique:tasks,reference',
+            'reference' => 'required|string',
             'price' => 'nullable|numeric',
             'total' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
@@ -372,6 +372,7 @@ class TaskController extends Controller
             'client_id' => 'required',
             'agent_id' => 'required',
             'supplier_id' => 'required',
+            'status' => 'required',
             'total' => 'required',
         ]);
 
@@ -397,7 +398,7 @@ class TaskController extends Controller
         } else {
 
             try {
-                $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total']));
+                $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total', 'status']));
                 $task->client_name = $client->name;
                 $task->save();
                 
@@ -738,7 +739,7 @@ class TaskController extends Controller
 
         $cancellationPolicy = json_encode($cancellationPolicy);
         $supplier = Supplier::where('name', 'Magic Holiday')->first();
-
+       
         if (!$supplier) {
             Log::channel('magic_holidays')->error('Supplier not found: Magic Holiday');
             return [
@@ -748,9 +749,6 @@ class TaskController extends Controller
         }
 
         $supplierId = $supplier->id;
-
-
-
         // $hotelDB = Hotel::where('name', 'like', '%' . $hotel['name'] . '%')->first();
 
         // if (!$hotelDB) {
@@ -788,24 +786,6 @@ class TaskController extends Controller
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
 
-            //no duplication for same reference number with same room id
-            $existingTask = Task::where('reference', $reservation['id'])
-                ->orderBy('id', 'desc')
-                ->where('supplier_id', $supplierId)
-                ->withoutGlobalScope('enabled')->first();
-
-            if ($existingTask) {
-                $existingTaskHotelDetail = TaskHotelDetail::where('task_id', $existingTask->id)->first();
-                if ($existingTaskHotelDetail) {
-                    if ($existingTaskHotelDetail->room_reference == $room['id']) {
-                        Log::channel('magic_holidays')->warning('Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ', Reservation: ' . ($reservation['id'] ?? 'Unknown') . ' by' . $existingTask->agent->name);
-                        return [
-                            'status' => 'error',
-                            'message' => 'Task already exists for room: ' . ($room['id'] ?? 'Unknown') . ' by ' . $existingTask->agent->name,
-                        ];
-                    }
-                }
-            }
 
             $taskData = [
                 'client_id' => null,

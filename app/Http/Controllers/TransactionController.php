@@ -11,8 +11,11 @@ class TransactionController extends Controller
     public function index()
     {
         if (Auth::user()->role->name == 'company') {
-            $totalRecords = Transaction::where('company_id', Auth::user()->company->id)->count();
-            $transactions = Transaction::where('company_id', Auth::user()->company->id)->get();
+            
+            $branchesId = Auth::user()->company->branches->pluck('id')->toArray();
+
+            $totalRecords = Transaction::whereIn('branch_id', $branchesId)->count();
+            $transactions = Transaction::whereIn('branch_id', $branchesId)->get();
         } elseif (Auth::user()->role->name == 'branch') {
             $totalRecords = Transaction::where('branch_id', Auth::user()->branch->id)->count();
             $transactions = Transaction::where('branch_id', Auth::user()->branch->id)->get();

@@ -425,12 +425,17 @@
                     <div id="paymentMethod" class="mt-4">
                         <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Type</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                            <!-- Full Payment Tab -->
-                            <label class="cursor-pointer rounded-full shadow">
+                        <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_full" name="payment_type" value="full"
                                     onclick="hideModal()" hidden class="peer" checked />
                                 <div
-                                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
                                     <span class="font-medium">Fully Payment</span>
                                 </div>
                             </label>
@@ -440,24 +445,32 @@
                                 <input type="radio" id="payment_type_partial" name="payment_type" value="partial"
                                     onclick="showModal('partial')" hidden class="peer" />
                                 <div
-                                    class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
                                     <span class="font-medium">Partially Payment</span>
                                 </div>
                             </label>
-
-
 
                             <!-- Split Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_split" name="payment_type" value="split"
                                     onclick="showModal('split')" hidden class="peer" />
                                 <div
-                                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
                                     <span class="font-medium">Split Payment</span>
                                 </div>
                             </label>
-
-
 
                         </div>
 
@@ -485,7 +498,7 @@
                                             d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
                                             fill="currentColor" />
                                     </svg>
-                                    Update Invoice
+                                    <span id="button-text-full">Save Full Payment</span>
                                 </button>
                             </div>
                         </section>
@@ -645,7 +658,7 @@
                                                         <label class="block text-sm font-medium mb-1"
                                                             for="split-into">Split into *</label>
                                                         <select id="split-into"
-                                                            class="w-full border-gray-300 rounded-md shadow-sm"
+                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm"
                                                             onchange="updateRows()">
                                                             <option value="" disabled selected>Select a value
                                                             </option>
@@ -668,7 +681,7 @@
                                                     <div>
                                                         <label class="block text-sm font-medium mb-1">Description
                                                             *</label>
-                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
                                                     </div>
                                                 </div>
 
@@ -735,7 +748,7 @@
                                                     <label class="block text-sm font-medium mb-1"
                                                         for="split-into1">Split into *</label>
                                                     <select id="split-into1"
-                                                        class="w-full border-gray-300 rounded-md shadow-sm"
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
                                                         onchange="updateRows1()">
                                                         <option value="" disabled selected>Select a value
                                                         </option>
@@ -779,7 +792,7 @@
                                                 partial payments must match the invoice total.</p>
 
                                             <div class="flex space-x-4 mt-5">
-                                                <button onclick="savePartial('partial')" type="button"
+                                                <button id="partialbutton" onclick="savePartial('partial')" type="button"
                                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
                                             </div>
@@ -1080,7 +1093,6 @@
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
         const buttonSaved = document.getElementById('button-saved');
-
 
         const invoiceIdInput = document.getElementById('invoiceId');
 
@@ -2294,6 +2306,11 @@
                 }
 
             } else if (type === 'partial') {
+
+                let button = document.getElementById("partialbutton");
+                button.disabled = true;
+                button.innerText = "Saving..."; // Change text while saving
+
                 // Handle partial payment as before
                 const clientId = document.getElementById('receiverId').value;
 
@@ -2817,7 +2834,6 @@
             document.getElementById("buttonText").textContent = "Sending...";
             document.getElementById("spinner").classList.remove("hidden");
         }
-
 
         document.addEventListener("DOMContentLoaded", function() {
 

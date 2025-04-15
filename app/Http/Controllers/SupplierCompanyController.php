@@ -9,6 +9,7 @@ use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SupplierCompanyController extends Controller
 {
@@ -25,7 +26,7 @@ class SupplierCompanyController extends Controller
         return view('supplier-company.index', compact('supplier', 'companies'));
     }
 
-    public function activateSupplier(Request $request, Supplier $supplier, Company $company)
+    public function activateSupplier(Request $request, ?Supplier $supplier = null, ?Company $company = null)
     {
         if ($request->has('supplier_id')) {
             $request->validate([
@@ -121,28 +122,39 @@ class SupplierCompanyController extends Controller
             }
 
 
-            return redirect()->back()->with('success', 'Supplier activated successfully.');
+            return redirect()->back()->with('success', 'Supplier activated successfully.'); 
         }
 
-        // fallback if no supplier_id in request (keep or remove based on use-case)
-        $accountPayable = Account::where('name', 'Accounts Payable')->first();
+        DB::beginTransaction();
 
-        $supplierCompany = SupplierCompany::firstOrCreate([
-            'supplier_id' => $supplier->id,
-            'company_id' => $company->id,
-        ]);
+        try {
 
-        Account::create([
-            'name' => $supplier->name,
-            'level' => 4,
-            'actual_balance' => 0,
-            'budget_balance' => 0,
-            'variance' => 0,
-            'company_id' => $company->id,
-            'parent_id' => $accountPayable->id,
-            'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children()->count() + 1, 3, '0', STR_PAD_LEFT),
-            'supplier_id' => $supplier->id
-        ]);
+            $accountPayable = Account::where('name', 'Accounts Payable')->first();
+
+            $account = Account::create([
+                'name' => $supplier->name,
+                'level' => 4,
+                'actual_balance' => 0,
+                'budget_balance' => 0,
+                'variance' => 0,
+                'company_id' => $company->id,
+                'parent_id' => $accountPayable->id,
+                'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children()->count() + 1, 3, '0', STR_PAD_LEFT),
+                'supplier_id' => $supplier->id
+            ]);
+
+            SupplierCompany::firstOrCreate([
+                'supplier_id' => $supplier->id,
+                'company_id' => $company->id,
+                'account_id' => $account->id
+            ]);
+
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollBack();
+            logger('Created Supplier Company Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create supplier company.');
+        }
 
         return redirect()->back()->with('success', 'Supplier activated successfully.');
     }

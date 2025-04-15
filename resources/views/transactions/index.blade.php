@@ -6,7 +6,7 @@
             </li>
         </ul>
     </nav>
-    <header class="p-2 bg-white rounded shadow text-xl font-bold mb-4">
+    <header class="p-2 bg-gray-100 rounded shadow text-2xl font-bold mb-4 text-center">
         Transactions History
     </header>
     <main class="transaction p-4 bg-white shadow rounded">

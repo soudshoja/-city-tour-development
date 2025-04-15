@@ -109,9 +109,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/companies/create-accountant', [CompanyController::class, 'createAccountant'])->name('companies.createAccountant');
     Route::post('/companies/create-client', [CompanyController::class, 'createClient'])->name('companies.createClient');
 
-    Route::get('/agentsettings', [CompanyController::class, 'showAgentTypeForm'])->name('agentsetting');
-    Route::post('/agent-types', [CompanyController::class, 'createAgentType'])->name('agent-types.create');
-
     // Route to show the delete form (GET request)
     Route::get('/agent-types/delete', [CompanyController::class, 'showDeleteAgentTypeForm'])->name('agent-types.delete.form');
 
@@ -316,6 +313,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/new-report', [ReportController::class, 'accountsPayableReceivableReport'])->name('new-report');
         Route::get('/payable_supplier',[ReportController::class, 'payableSupplier'])->name('payable-supplier');
         Route::get('/profit-agent',[ReportController::class, 'profitAgent'])->name('profit-agent');
+        Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');
+        Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank');
     });
 
 });

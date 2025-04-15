@@ -511,6 +511,7 @@ class MobileController extends Controller
                         ]);
 
                         $transaction = Transaction::create([
+                            'branch_id' => $branchId,
                             'entity_id' => $companyId,
                             'entity_type' => 'company',
                             'transaction_type' => 'credit',
@@ -703,6 +704,7 @@ class MobileController extends Controller
     
                     // Create a new Transaction
                     $transaction = Transaction::create([
+                        'branch_id' => $branchId,
                         'entity_id' => $companyId,
                         'entity_type' => 'company',
                         'transaction_type' => 'credit',

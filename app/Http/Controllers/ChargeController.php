@@ -89,6 +89,10 @@ class ChargeController extends Controller
             ->where('name', 'like', '%' . $request->name . '%') 
             ->first(); 
 
+            if ($childCoaPaymentGateway) {
+                return redirect()->route('charges.index')->withErrors(['name' => 'Please change the charges name.']);
+            } 
+                
         // Fetch COA for Payment Gateway (Assets)
         $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first();  
 

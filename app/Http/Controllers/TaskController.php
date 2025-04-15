@@ -128,9 +128,9 @@ class TaskController extends Controller
             if (!$payableAccountId) {
                 throw new Exception('No valid payable account found.');
             }
-
+            
             $transaction = Transaction::create([
-                'branch_id' => $task->agent->branch_id ?? null,
+                'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
                 'company_id' => $task->company_id,
                 'entity_id' => $task->company_id,
                 'entity_type' => 'company',
@@ -145,7 +145,7 @@ class TaskController extends Controller
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
-                'branch_id' => auth()->user()->branch->id ?? null,
+                'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
                 'account_id' => $payableAccountId,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
@@ -160,7 +160,7 @@ class TaskController extends Controller
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
-                'branch_id' => auth()->user()->branch->id ?? null,
+                'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
                 'account_id' => $receivableAccount->id,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),

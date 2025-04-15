@@ -87,6 +87,16 @@ class EntitySeeder extends Seeder
         $name = 'City Travelers HQ';
         $email = 'hq@citytravelers.co';
 
+        $user = User::firstOrCreate([
+            'name' => $name,
+            'email' => $email,
+        ], [
+            'password' => Hash::make(config('auth.branch_password')),
+            'role_id' => Role::BRANCH,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
         try {
             $branch = Branch::firstOrCreate([
                 'user_id' => $user->id,

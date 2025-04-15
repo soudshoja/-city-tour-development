@@ -15,7 +15,7 @@
     <div class="p-2 bg-white rounded shadow">
         @foreach($childAccountsPayable as $account)
         <div class="mb-2">
-            <div class="p-2 flex justify-between text-lg font-semibold cursor-pointer hover:bg-gray-100"  onclick="toggleTable('table-{{ $account->id }}')">
+            <div class="p-2 flex justify-between text-lg font-semibold cursor-pointer hover:bg-gray-100" onclick="toggleTable('table-{{ $account->id }}')">
                 <p> {{ $account->name }} </p>
                 <p class="@if($account->balance > 0) text-red-500 @else text-green-500 @endif">
                     {{ $account->balance }}
@@ -40,6 +40,7 @@
                         @else
                         @foreach($account->journalEntries as $journalEntry)
                         <tr>
+                            @if($journalEntry->transaction !== null)
                             <td class="flex gap-2 justify-between border border-gray-300 px-4 py-2">
                                 <p>
                                     {{ $journalEntry->transaction->id }}
@@ -49,8 +50,7 @@
                                     title="View Transaction"
                                     data-tooltip-target="tooltip-default"
                                     data-tooltip-placement="top"
-                                    data-tooltip-trigger="hover"
-                                >
+                                    data-tooltip-trigger="hover">
                                     View Transaction
                                 </a>
                             </td>
@@ -58,6 +58,7 @@
                             <td class="border border-gray-300 px-4 py-2">{{ $journalEntry->description }}</td>
                             <td class="border border-gray-300 px-4 py-2">{{ number_format($journalEntry->debit, 2) }}</td>
                             <td class="border border-gray-300 px-4 py-2">{{ number_format($journalEntry->credit, 2) }}</td>
+                            @endif
                         </tr>
                         @endforeach
                         @endif

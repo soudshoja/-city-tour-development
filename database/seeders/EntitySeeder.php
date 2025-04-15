@@ -15,6 +15,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
+use App\Models\SupplierCredential;
 use App\Models\User;
 use Exception;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -229,21 +230,59 @@ class EntitySeeder extends Seeder
         $suppliers = Supplier::all();
 
         $supplierCompanyController = new SupplierCompanyController();
-        foreach($suppliers as $supplier) {
-            if(!($supplier->name == 'Amadeus' || $supplier->name == 'Magic Holiday' || $supplier->name == 'TBO Holiday')) {
+
+        foreach ($suppliers as $supplier) {
+            if (!($supplier->name == 'Amadeus' || $supplier->name == 'Magic Holiday' || $supplier->name == 'TBO Holiday')) {
                 continue;
             }
-            $accountPayable = Account::where('name', 'Accounts Payable')->first();
+
+
+            // Check if supplier is already activated
+            $isActivated = SupplierCompany::where('supplier_id', $supplier->id)
+                ->where('company_id', $company->id)
+                ->exists();
+
+            if ($isActivated) {
+                continue;
+            }
+
+            // Check if credentials exist
+            $credentials = SupplierCredential::where('supplier_id', $supplier->id)
+                ->where('company_id', $company->id)
+                ->exists();
+
+            if (!$credentials) {
+                SupplierCredential::create([
+                    'supplier_id' => $supplier->id,
+                    'company_id' => $company->id,
+                    'environment' => env('APP_ENV') == 'production' ? 'production' : 'sandbox',
+                    'type' => 'basic',
+                    'username' => 'test',
+                    'password' => 'test',
+                    'client_id' => null,
+                    'client_secret' => null,
+                    'access_token' => null,
+                    'refresh_token' => null,
+                    'expires_at' => null,
+                ]);
+            }
+
+
+
+            $parentAccountName = $supplier->has_flight
+                ? 'Suppliers (Flights)'
+                : ($supplier->has_hotel ? 'Suppliers (Hotels)' : 'Accounts Payable');
+
+            $accountPayable = Account::where('name', $parentAccountName)->first();
 
             if (!$accountPayable) {
-                throw new Exception("Account Payable group 'Accounts Payable' not found.");
+                throw new Exception('Account Payable not found in COA');
             }
 
             try {
                 $account = Account::create([
                     'name' => $supplier->name,
                     'level' => 4,
-                    'root_id' => 2, 
                     'actual_balance' => 0,
                     'budget_balance' => 0,
                     'variance' => 0,
@@ -252,9 +291,8 @@ class EntitySeeder extends Seeder
                     'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children()->count() + 1, 3, '0', STR_PAD_LEFT),
                 ]);
             } catch (Exception $e) {
-                DB::rollBack();
                 logger('Created Supplier Company Account Error: ' . $e->getMessage());
-                throw new Exception('Failed to create supplier account.');
+                throw $e;
             }
 
             try {
@@ -264,11 +302,13 @@ class EntitySeeder extends Seeder
                     'account_id' => $account->id,
                 ]);
             } catch (Exception $e) {
-                DB::rollBack();
+                $account->delete();
                 logger('Created Supplier Company Error: ' . $e->getMessage());
-                throw new Exception('Failed to create supplier-company relation.');
-            }  
+                throw $e;
+            }
         }
+            $accountPayable = Account::where('name', 'Accounts Payable')->first();
+
 
         $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')
         ->where('company_id', $userCompany->company->id)

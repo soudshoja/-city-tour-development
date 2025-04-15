@@ -97,6 +97,7 @@ class TaskController extends Controller
                 throw new Exception('Invalid task type or missing details.');
             }
 
+
             $supplierCompany = SupplierCompany::with('account')
                 ->where('supplier_id', $task->supplier_id)
                 ->where('company_id', $task->company_id)
@@ -129,6 +130,8 @@ class TaskController extends Controller
             }
 
             $transaction = Transaction::create([
+                'branch_id' => $task->agent->branch_id ?? null,
+                'company_id' => $task->company_id,
                 'entity_id' => $task->company_id,
                 'entity_type' => 'company',
                 'transaction_type' => 'credit',

@@ -338,46 +338,9 @@ class PaymentController extends Controller
                     $client = Client::where('id', operator: $selectedtask->client_id)->first();
                     $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
 
-                    $receivableAccount = Account::where('name', 'like', '%' . $client->name . '%')->first();
+                    $receivableAccount = Account::where('name', 'Clients')->first();
+                    $receivableAccountId = $receivableAccount->id;
                     //dd($receivableAccount, $client->name);
-
-                    if (empty($receivableAccount) || !$receivableAccount->id) {
-
-                        $clientsAccount = Account::where('name', 'like', '%Clients%')
-                            ->whereHas('parent', function($query) {
-                                $query->where('name', 'Accounts Receivable');
-                            })
-                            ->first();
-
-                        $assetsAccount = Account::where('name' , 'Assets')->first();
-
-                        try{
-                            $newAccount = Account::create([
-                                'serial_number' => '1313',
-                                'account_type' => 'receivable',
-                                'name' => $client->name,
-                                'level' => 5,
-                                'actual_balance' => 0,
-                                'budget_balance' => 0,
-                                'variance' => 0,
-                                'parent_id' =>  $clientsAccount->id,
-                                'root_id' => $assetsAccount->id,
-                                'code' => 'CLI-' . rand(1000000, 9999999),
-                                'reference_id' => $client->id,
-                                'company_id' => $invoice->agent->branch->company->id,
-                                'agent_id' => $invoice->agent->id,
-                            ]);
-
-                            $receivableAccountId = $newAccount->id;
-                        } catch(Exception $e){
-                            logger('Failed to create account: ' . $e->getMessage());
-                            return redirect()->back()->with('error', 'Failed to create account');
-                        }
-
-                    }else{
-                        $receivableAccountId = $receivableAccount->id;
-
-                    }
 
                     if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
                         return response()->json(['error' => 'Invalid invoice/agent/branch/company structure'], 400);

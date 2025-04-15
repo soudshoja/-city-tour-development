@@ -64,55 +64,38 @@
                     </div>
                 </div>
                 @endif
-                <div class="p-2 rounded shadow bg-white flex flex-col gap-2">
-                    <a class="p-2 min-w-56 flex justify-between items-center bg-gray-100 rounded" href="{{ route('reports.payable-supplier')}}">
-                        <p>
-                            Payable Supplier:
-                        </p>
-                        <p class="@if($payableSupplier < 0) text-green-500 @else text-red-500 @endif">
+                <div class="flex flex-col gap-4 w-full lg:max-w-sm bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg">
+                    <a href="{{ route('reports.payable-supplier') }}"
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 bg-red-50 dark:bg-red-100 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-gray-500 font-medium">Payable Supplier</p>
+                        <p class="text-xs text-gray-400">Amount owed to suppliers</p>
+                        <p class="@if($payableSupplier < 0) text-green-500 @else text-red-600 @endif text-xl font-bold">
                             {{ $payableSupplier }}
                         </p>
+                        <span class="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
-                    <div class="p-2 flex justify-between items-center bg-gray-100 rounded">
-                        <a
-                            class="p-2 min-w-56 flex justify-between items-center bg-gray-100 rounded"
-                            href=" {{ route('reports.profit-agent') }}">
-                            <p>
-                                Profit Agent Wise
-                            </p>
-                            <p class="text-green-500">
-                                {{ $profitAgentWise }}
-                            </p>
-
-                        </a>
-                        <p>
+                    <a href="{{ route('reports.profit-agent') }}"
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-100 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-gray-500 font-medium">Profit Agent Wise</p>
+                        <p class="text-xs text-gray-400">Profit earned by agents</p>
+                        <p class="text-green-600 text-xl font-bold">
+                            {{ $profitAgentWise }}
                         </p>
-                    </div>
-                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
-                        <p>
-                            Total Receivable
-                        </p>
-                    </div>
-                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
-                        <p>
-                            {{ $totalReceivable }}
-                        </p>
-                    </div>
-                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
-                        <p>
-                            Total Bank
-                        </p>
-                        <p>
-                            {{ $totalBank }}
-                        </p>
-                    </div>
-                    <div class="p-2 flex gap-2 justify-between items-center bg-gray-100 rounded">
-                        <p>
-                            Gateway Receivable
-                        </p>
-                        <p>
-                            {{ $gatewayReceivable }}
-                        </p>
+                        <span class="absolute top-2 right-2 text-green-400 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+                    </a>
+                    <a  href="{{ route('reports.total-receivable') }}"
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Total Receivable</p>
+                        <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $totalReceivable }}</p>
+                    </a>
+                    <a href="{{ route('reports.total-bank') }}"
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Total Bank</p>
+                        <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $totalBank }}</p>
+                    </a>
+                    <div class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Gateway Receivable</p>
+                        <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $gatewayReceivable }}</p>
                     </div>
                 </div>
                 <div class="p-10 pt-2 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">

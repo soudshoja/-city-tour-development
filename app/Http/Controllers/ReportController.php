@@ -367,8 +367,9 @@ class ReportController extends Controller
 
     public function getProfitAgent()
     {
-        $companyId = auth()->user()->company->id;
-        $agents= Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')->get();
+        $branchesId = auth()->user()->company->branches->pluck('id')->toArray();
+
+        $agents= Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')->whereIn('branch_id', $branchesId)->get();
 
        $sumProfitAgent = 0;
         foreach ($agents as $agent) {
@@ -432,4 +433,94 @@ class ReportController extends Controller
 
         return $childAccountsReceivable;
     }
+
+        public function getReceivable()
+    {
+        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        $accountPayable = Account::where('name', 'Accounts Receivable')->first();
+
+        if (!$accountPayable) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        }
+
+        $childAccountsReceivable = Account::where('parent_id', $accountPayable->id)->get();
+
+        foreach ($childAccountsReceivable  as $childAccount) {
+            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
+                ->where('company_id', $companyId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $childAccount->journalEntries = $journalEntries;
+
+            $childAccount->balance = $journalEntries->sum('credit') - $journalEntries->sum('debit');
+        }
+
+        return $childAccountsReceivable ;
+    }
+
+    public function receivable()
+    {
+        $childAccountsReceivable = $this->getReceivable();
+
+        return response()->json($childAccountsReceivable);
+        // return view('reports.receivable', [
+        //     'childAccountsReceivable' => $childAccountsReceivable,
+        // ]);
+    }
+
+    public function getTotalBank()
+    {
+        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        $accountBank = Account::where('name', 'Bank Accounts')->first();
+
+        if (!$accountBank) {
+            return redirect()->back()->with('error', 'Bank account not found.');
+        }
+
+        $childAccountsBank = Account::where('parent_id', $accountBank->id)->get();
+
+        foreach ($childAccountsBank as $childAccount) {
+            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
+                ->where('company_id', $companyId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $childAccount->journalEntries = $journalEntries;
+
+            $childAccount->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
+        }
+
+       return $childAccountsBank;
+    }
+
+    public function totalBank()
+    {
+        $childAccountsBank = $this->getTotalBank();
+
+        return response()->json($childAccountsBank);
+        // return view('reports.total-bank', [
+        //     'childAccountsBank' => $childAccountsBank,
+        // ]);
+    }
+
+    public function getGatewayReceivable()
+    {
+        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        $accountGateway = Account::where('name', 'Payment Gateway')->first();
+        if (!$accountGateway) {
+            return redirect()->back()->with('error', 'Gateway Receivable account not found.');
+        }
+
+        $childAccountsGateway = Account::where('parent_id', $accountGateway->id)->get();
+        foreach ($childAccountsGateway as $childAccount) {
+            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
+                ->where('company_id', $companyId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $childAccount->journalEntries = $journalEntries;
+
+            $childAccount->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
+        }
+        return $childAccountsGateway;
+    }
+
 }

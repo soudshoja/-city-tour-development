@@ -11,4 +11,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:tbo-task')->everyMinute()->runInBackground();
 Schedule::command('app:update-exchange-rate')->daily()->runInBackground();
-Schedule::command('perform:payment-release-to-company-bankacc-process')->daily()->runInBackground();
+Schedule::command('perform:payment-release-to-company-bankacc-process')
+    ->cron('0 0 * * 0-4') // Sunday (0) to Thursday (4) at 12:00 AM
+    ->runInBackground();

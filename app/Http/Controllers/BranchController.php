@@ -67,7 +67,6 @@ class BranchController extends Controller
         return view('branches.store');
     }
 
-    // Store a new branch
     public function store(Request $request)
     {
         $validatedData = $request->validate([

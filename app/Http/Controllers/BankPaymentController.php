@@ -17,20 +17,25 @@ class BankPaymentController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $companyId = Company::where('user_id', $user->id)->value('id'); // Get the company ID
 
         if($user->role_id == Role::ADMIN){
             $bankPayments = Transaction::all();
             $totalRecords = Transaction::count();
 
         }elseif ($user->role_id == Role::COMPANY) {
-            $bankPayments = Transaction::where('entity_id', $companyId)
+
+            $companyId = Company::where('user_id', $user->id)->value('id'); // Get the company ID
+            $branch = Branch::where('company_id', $companyId)->get();
+
+            $branchesId = $branch->pluck('id')->toArray(); 
+
+            $bankPayments = Transaction::whereIn('branch_id', $branchesId)
             ->where('reference_type', 'Payment')
             ->whereNotNull('name')
             ->latest()
             ->paginate(10);
         
-            $totalRecords = Transaction::where('entity_id', $companyId)
+            $totalRecords = Transaction::whereIn('branch_id', $branchesId)
             ->where('reference_type', 'Payment')
             ->whereNotNull('name')
             ->count();

@@ -347,15 +347,6 @@ class CompanyController extends Controller
         exit();
     }
 
-    public function showCreateOptions()
-    {
-        // Fetch branches belonging to the logged-in company
-        $branches = Branch::where('company_id', auth()->user()->company->id)->get();
-        $agentTypes = AgentType::all(); // Fetch all agent types
-
-        return view('companies.addNewToCompany', compact('branches', 'agentTypes'));
-    }
-
     public function createBranch(Request $request)
     {
         $user = Auth::user();
@@ -393,48 +384,6 @@ class CompanyController extends Controller
             return back()->withErrors(['error' => 'Failed to create branch.']);
         }
 
-        $branchCreationResponseData = json_decode($branchCreationResponse->getContent());
-
-        $branchId = $branchCreationResponseData->data->id;
-        $branch = Branch::find($branchId);
-
-        $asset = Account::where('name', 'Assets')->first();
-        $accountReceivable = Account::where('name', 'like', '%Receivable%')->first();
-
-        if(!$asset->id) {
-            $user->delete();
-            $branch->delete();
-            return back()->withErrors(['error' => 'Liability account not found.']);
-        }
-
-        if(!$accountReceivable->id) {
-            $user->delete();
-            $branch->delete();
-            return back()->withErrors(['error' => 'Receivable account not found.']);
-        }
-
-        try {
-            $account = Account::create([
-                'name' => $request->name,
-                'level' => 3,
-                'actual_balance' => 0,
-                'budget_balance' => 0,
-                'variance' => 0,
-                'company_id' => $company->id,
-                'root_id' => $asset->id,
-                'parent_id' => $accountReceivable->id,
-                'branch_id' => $branch->id,
-                'reference_id' => $userBranchId,
-                'code' => 'BRN-' . rand(1000000, 9999999),
-            ]);
-        } catch (Exception $e) {
-            $user->delete();
-            $branch->delete();
-
-            logger('Failed to create account for branch: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Failed to create account.']);
-        }
-
         return redirect()->back()->with('success', 'Branch created successfully.');
     }
 
@@ -458,30 +407,6 @@ class CompanyController extends Controller
 
         return redirect()->back()->with('success', 'Accountant created successfully.');
     }
-
-    public function createAgentType(Request $request)
-    {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:agent_type,name', // Ensure unique names
-        ]);
-
-        // Create the agent type
-        AgentType::create([
-            'name' => $validatedData['name'],
-        ]);
-
-        return redirect()->back()->with('success', 'Agent type created successfully.');
-    }
-
-    public function showAgentTypeForm()
-    {
-        $agentTypes = AgentType::all(); // Fetch all existing agent types
-
-        return view('companies.setting.agentSettings', compact('agentTypes'));
-    }
-
-
-    // delete agent type 
 
     public function deleteAgentType(Request $request)
     {

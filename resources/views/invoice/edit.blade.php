@@ -385,14 +385,22 @@
 
                     <!-- Payment Type Section -->
                     <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span
-                                class="font-large text-success"> {{ $invoice->payment_type }}</span></h2>
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span class="font-large text-success">{{ $invoice->payment_type }}</span></h2>
+                        <input type="hidden" id="paymentTypeSaved" name="payment_type_saved" value="{{ $invoice->payment_type }}">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                            <!-- Full Payment Tab -->
+                           <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
-                                <input type="radio" id="payment_type_full" name="payment_type" value="full" hidden class="peer" checked />
+                                <input type="radio" id="payment_type_full" name="payment_type" value="full"
+                                    onclick="hideModal()" hidden class="peer"
+                                    {{ $invoice->payment_type == 'full' ? 'checked' : '' }} />
                                 <div
-                                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
                                     <span class="font-medium">Fully Payment</span>
                                 </div>
                             </label>
@@ -400,26 +408,36 @@
                             <!-- Partial Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_partial" name="payment_type" value="partial"
-                                    onclick="showModal('partial')" hidden class="peer" />
+                                    onclick="showModal('partial')" hidden class="peer"
+                                    {{ $invoice->payment_type == 'partial' ? 'checked' : '' }} />
                                 <div
-                                    class="city-light-yellow hover:text-[#004c9e] rounded-full  flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
                                     <span class="font-medium">Partially Payment</span>
                                 </div>
                             </label>
 
-
-
                             <!-- Split Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_split" name="payment_type" value="split"
-                                    onclick="showModal('split')" hidden class="peer" />
+                                    onclick="showModal('split')" hidden class="peer"
+                                    {{ $invoice->payment_type == 'split' ? 'checked' : '' }} />
                                 <div
-                                    class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2">
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
                                     <span class="font-medium">Split Payment</span>
                                 </div>
                             </label>
-
-
 
                         </div>
 
@@ -624,7 +642,7 @@
                                                         <label class="block text-sm font-medium mb-1"
                                                             for="split-into">Split into *</label>
                                                         <select id="split-into"
-                                                            class="w-full border-gray-300 rounded-md shadow-sm"
+                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm"
                                                             onchange="updateRows()">
                                                             <option value="" disabled selected>Select a value
                                                             </option>
@@ -647,7 +665,7 @@
                                                     <div>
                                                         <label class="block text-sm font-medium mb-1">Description
                                                             *</label>
-                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Add Description"></textarea>
+                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
                                                     </div>
                                                 </div>
 
@@ -713,7 +731,7 @@
                                                     <label class="block text-sm font-medium mb-1"
                                                         for="split-into1">Split into *</label>
                                                     <select id="split-into1"
-                                                        class="w-full border-gray-300 rounded-md shadow-sm"
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
                                                         onchange="updateRows1()">
                                                         <option value="" disabled selected>Select a value
                                                         </option>
@@ -759,7 +777,11 @@
                                             <div class="flex space-x-4 mt-5">
                                                 <button onclick="savePartial('partial')" type="button"
                                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
+                                                            <span id="button-text">Save</span>
+                                                            <span id="button-loading" style="display: none;">Saving...</span>
+                                                            <span id="button-saved" style="display: none;">Saved</span>
+                                                        </button>
                                             </div>
                                         </div>
                                     </div>
@@ -1039,11 +1061,22 @@
         const addTabButton = document.getElementById('addTabButton');
         const selectTab = document.getElementById('selectTab');
         const addTab = document.getElementById('addTab');
+        const clientButton = document.getElementById("openClientModalButton");
+        const openTaskModalButton = document.getElementById("openTaskModalButton");
+        const agentButton = document.getElementById("select-agent");
+        const updateInvoiceBtn = document.getElementById("update-invoice-btn");
+
+        const paymentTypeFull = document.getElementById("payment_type_full");
+        const paymentTypePartial = document.getElementById("payment_type_partial");
+        const paymentTypeSplit = document.getElementById("payment_type_split");
+
+        clientButton.disabled = true;
+        agentButton.disabled = true;
+        openTaskModalButton.disabled = true;
 
         document.getElementById("openClientModalButton").onclick = openClientModal;
         document.getElementById("closeClientModalButton").onclick = closeClientModal;
         document.getElementById('clientSearchInput').addEventListener('input', filterClients);
-
 
         document.getElementById("openTaskModalButton").onclick = openTaskModal;
         document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
@@ -1070,11 +1103,36 @@
             const paymentType = invoice.payment_type;
             console.log('paymenttype', paymentType);
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
+            const additionalActions = document.getElementById('additional-actions');
 
             if (paymentType === 'full') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block'; 
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
+            } else if (paymentType === 'partial') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block'; 
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
+            } else if (paymentType === 'split') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block'; 
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
             } else {
                 paymentGatewaySection.style.display = 'none'; // Hide the section
+                additionalActions.style.display = 'none'; 
+                updateInvoiceBtn.disabled = false;
+                paymentTypeFull.disabled = false;
+                paymentTypePartial.disabled = false;
+                paymentTypeSplit.disabled = false;
             }
 
         }
@@ -2566,7 +2624,34 @@
             renderClientList(clients);
             renderTaskList(tasks);
 
+            const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
 
+            const paymentTypeSavedInput = document.getElementById('paymentTypeSaved');
+            const paymentTypeSaved = paymentTypeSavedInput ? paymentTypeSavedInput.value : '';
+
+            if (paymentTypeSaved) {
+                const matchingRadio = document.querySelector(`input[name="payment_type"][value="${paymentTypeSaved}"]`);
+                if (matchingRadio) {
+                    matchingRadio.checked = true;
+
+                    // Trigger modal function manually if needed
+                    if (paymentTypeSaved === 'partial') {
+                        showModal('partial');
+                    } else if (paymentTypeSaved === 'split') {
+                        showModal('split');
+                    } else {
+                        hideModal();
+                    }
+                }
+            }
+
+            // Optional: Attach listeners to update hidden input
+            const radios = document.querySelectorAll('input[name="payment_type"]');
+            radios.forEach(radio => {
+                radio.addEventListener('change', function () {
+                    paymentTypeSavedInput.value = this.value;
+                });
+            });
 
         });
     </script>

@@ -22,7 +22,7 @@ class AgentPolicy
      */
     public function view(User $user, Agent $agent): bool
     {
-        if($user->can('view agent')) return true;
+        // if($user->can('view agent')) return true;
 
         if($user->branch) {
             return $user->branch->id === $agent->branch_id;

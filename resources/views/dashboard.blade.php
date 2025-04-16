@@ -54,6 +54,7 @@
             @endcan
         </div>
 
+        @if(auth()->user()->company && auth()->user()->hasRole('company'))  
         <div class="my-5 w-full">
             <div class="flex flex-col lg:flex-row gap-3">
                 @if(isset($paidAmounts) && isset($unpaidAmounts))
@@ -110,6 +111,7 @@
             </div>
 
         </div>
+        @endif
     </div>
     <script>
         document.addEventListener('alpine:init', () => {

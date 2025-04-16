@@ -70,9 +70,8 @@ class AdminUsersController extends Controller
         } elseif ($user->role_id == Role::COMPANY) {
             $branches = Branch::where('company_id', auth()->user()->company->id)->get();
         } else {
-            return redirect()->route('home')->with('error', 'You are not authorized to access this page.');
+            $branches = collect();
         }
-
         $branches_id = $branches->pluck('id');
 
         $agents = Agent::whereIn('branch_id', $branches_id)->get();

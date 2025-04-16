@@ -159,7 +159,7 @@ class EntitySeeder extends Seeder
             'email' => $email,
         ], [
             'password' => Hash::make(config('auth.agent_password')),
-            'role_id' => Role::COMPANY,
+            'role_id' => Role::AGENT,
             'remember_token' => Str::random(10),
             'first_login' => 1,
         ]);

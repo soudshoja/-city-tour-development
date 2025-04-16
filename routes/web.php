@@ -94,7 +94,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [AgentController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [AgentController::class, 'edit'])->name('edit');
         Route::put('/{id}', [AgentController::class, 'update'])->name('update');
-        Route::post('/create-profile', [AgentController::class, 'createAgentProfile'])->name('create.profile');
+        // Route::post('/create-profile', [AgentController::class, 'createAgentProfile'])->name('create.profile');
         Route::get('/{id}/tasks', [AgentController::class, 'getTasks'])->name('tasks');
         Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
         Route::get('/{id}/invoices', [AgentController::class, 'getInvoices'])->name('invoices');
@@ -297,6 +297,7 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'journal-entries.',
     ], function(){
         Route::get('/{transactionId}',[JournalEntryController::class, 'index'])->name('index');
+        Route::get('/{accountId}/account',[JournalEntryController::class, 'show'])->name('show');
     });
 
     Route::group([
@@ -315,6 +316,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profit-agent',[ReportController::class, 'profitAgent'])->name('profit-agent');
         Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');
         Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank');
+        Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable');
     });
 
 });

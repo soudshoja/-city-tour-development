@@ -11,6 +11,8 @@ use App\Models\Company;
 use App\Models\Client;
 use App\Models\Notification;
 use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\SupplierCompany;
 use App\Models\Task;
 use Illuminate\Support\Facades\Auth;
 
@@ -153,106 +155,130 @@ class DashboardController extends Controller
 
     public function agentDashboard()
     {
-        $companyCount = Company::count();
-        $agentCount = Agent::count();
-        $clientCount = Client::count();
-        $invoiceCount = Invoice::count();
-        $taskCount = Task::count();
-        $pendingTask = Task::where('status', 'pending')->count();
-        $completedTask = Task::where('status', 'completed')->count();
-        $itemCount = Item::count();
-        $totalInvoiceAmount = Invoice::sum('amount');
-        $totalPaidAmount = Invoice::where('status', 'paid')->sum('amount');
-        $totalUnpaidAmount = Invoice::where('status', 'unpaid')->sum('amount');
-        $paidInvoices =  Invoice::where('status', 'paid')->count();
-        $unpaidInvoices =  Invoice::where('status', 'unpaid')->count();
-        $invoices = Invoice::all();
-        $tasks = Task::all();
-        $agents = Agent::with('branch.company')->get();
-        $clients = Client::all();
-        $companies = Company::all();
-        
-        $clientsWithDetails = $clients->map(function ($client) {
-            
-            $taskCount = Task::where('client_id', $client->id)->count();
+        $user = Auth::user();
 
-            $totalInvoices = Invoice::where('client_id', $client->id)->count();
+        $queueTasks = Task::where('agent_id', $user->agent->id)->withoutGlobalScopes()->get();
+        $tasks = Task::where('agent_id', $user->agent->id)->get();
+        $taskCount  = $tasks->count();
+        $suppliers = Supplier::whereHas('companies', function ($query) use ($user){
+            $query->where('company_id', $user->agent->branch->company_id);
+        })->get();
+        $types = Task::distinct()->pluck('type');
+        $companyId = $user->agent->branch->company_id;
+        $clients = $user->agent->clients;
 
-            $unpaidInvoices = Invoice::where('client_id', $client->id)
-                ->where('status', 'unpaid')
-                ->count();
-
-            return [
-                'name' => $client->name,
-                'taskCount' => $taskCount,
-                'totalInvoices' => $totalInvoices,
-                'unpaidInvoices' => $unpaidInvoices,
-            ];
-        });
-
-        $agents->map(function ($agent) {
-            $taskCount = Task::where('agent_id', $agent->id)->count();
-            $pendingTasks = Task::where('agent_id', $agent->id)
-            ->where('status', 'pending')
-            ->count();
-            $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
-
-            // $data = [
-            // 'taskCount' => $taskCount,
-            // 'totalInvoices' => $totalInvoices,
-            // 'pendingTasks' => $pendingTasks,
-            // ];
-            $agent->taskCount = $taskCount;
-            $agent->totalInvoices = $totalInvoices;
-            $agent->pendingTasks = $pendingTasks;
-
-        });
-
-       
-
-        // $dashboardData = [
-        //     'totalTasks' => $taskCount,
-        //     'pendingTasks' => $pendingTask,
-        //     'completedTasks' => $completedTask,
-        //     'totalInvoices' => $invoiceCount,
-        //     'totalInvoiceAmount' => $totalInvoiceAmount,
-        //     'totalPaidAmount' => $totalPaidAmount,
-        //     'totalUnpaidAmount' => $totalUnpaidAmount,
-        //     'paidInvoices' => $paidInvoices,
-        //     'unpaidInvoices' => $unpaidInvoices,
-        //     'clientsCount' => $clientCount,
-        //     'agentCount' => $agentCount,
-        //     'companiesCount' => $companyCount,
-        //     'agents' => $agentsWithDetails,
-        //     'clients' => $clientsWithDetails,
-        // ];
-       
-      
-        $totalTasks = $taskCount;
-        $pendingTasks = $pendingTask;
-        $completedTasks = $completedTask;
-        $totalInvoices = $invoiceCount;
-        $clientsCount = $clientCount;
-        $companiesCount = $companyCount;
-        $clients = $clientsWithDetails;
-
-        return view('agents.index', compact(
-            'totalTasks',
-            'pendingTasks',
-            'completedTasks',
-            'totalInvoices',
-            'totalInvoiceAmount',
-            'totalPaidAmount',
-            'totalUnpaidAmount',
-            'paidInvoices',
-            'unpaidInvoices',
-            'clientsCount',
-            'agentCount',
-            'companiesCount',
-            'agents',
+        return view('tasks.index', compact(
             'clients',
+            'queueTasks',
+            'tasks',
+            'taskCount',
+            'suppliers',
+            'types',
+            'companyId',
         ));
     }
+
+    // public function agentDashboard()
+    // {
+    //     $companyCount = Company::count();
+    //     $agentCount = Agent::count();
+    //     $clientCount = Client::count();
+    //     $invoiceCount = Invoice::count();
+    //     $taskCount = Task::count();
+    //     $pendingTask = Task::where('status', 'pending')->count();
+    //     $completedTask = Task::where('status', 'completed')->count();
+    //     $totalInvoiceAmount = Invoice::sum('amount');
+    //     $totalPaidAmount = Invoice::where('status', 'paid')->sum('amount');
+    //     $totalUnpaidAmount = Invoice::where('status', 'unpaid')->sum('amount');
+    //     $paidInvoices =  Invoice::where('status', 'paid')->count();
+    //     $unpaidInvoices =  Invoice::where('status', 'unpaid')->count();
+    //     $invoices = Invoice::all();
+    //     $tasks = Task::all();
+    //     $agents = Agent::with('branch.company')->get();
+    //     $clients = Client::all();
+    //     $companies = Company::all();
+        
+    //     $clientsWithDetails = $clients->map(function ($client) {
+            
+    //         $taskCount = Task::where('client_id', $client->id)->count();
+
+    //         $totalInvoices = Invoice::where('client_id', $client->id)->count();
+
+    //         $unpaidInvoices = Invoice::where('client_id', $client->id)
+    //             ->where('status', 'unpaid')
+    //             ->count();
+
+    //         return [
+    //             'name' => $client->name,
+    //             'taskCount' => $taskCount,
+    //             'totalInvoices' => $totalInvoices,
+    //             'unpaidInvoices' => $unpaidInvoices,
+    //         ];
+    //     });
+
+    //     $agents->map(function ($agent) {
+    //         $taskCount = Task::where('agent_id', $agent->id)->count();
+    //         $pendingTasks = Task::where('agent_id', $agent->id)
+    //         ->where('status', 'pending')
+    //         ->count();
+    //         $totalInvoices = Invoice::where('agent_id', $agent->id)->count();
+
+    //         // $data = [
+    //         // 'taskCount' => $taskCount,
+    //         // 'totalInvoices' => $totalInvoices,
+    //         // 'pendingTasks' => $pendingTasks,
+    //         // ];
+    //         $agent->taskCount = $taskCount;
+    //         $agent->totalInvoices = $totalInvoices;
+    //         $agent->pendingTasks = $pendingTasks;
+
+    //     });
+
+       
+
+    //     // $dashboardData = [
+    //     //     'totalTasks' => $taskCount,
+    //     //     'pendingTasks' => $pendingTask,
+    //     //     'completedTasks' => $completedTask,
+    //     //     'totalInvoices' => $invoiceCount,
+    //     //     'totalInvoiceAmount' => $totalInvoiceAmount,
+    //     //     'totalPaidAmount' => $totalPaidAmount,
+    //     //     'totalUnpaidAmount' => $totalUnpaidAmount,
+    //     //     'paidInvoices' => $paidInvoices,
+    //     //     'unpaidInvoices' => $unpaidInvoices,
+    //     //     'clientsCount' => $clientCount,
+    //     //     'agentCount' => $agentCount,
+    //     //     'companiesCount' => $companyCount,
+    //     //     'agents' => $agentsWithDetails,
+    //     //     'clients' => $clientsWithDetails,
+    //     // ];
+       
+      
+    //     $totalTasks = $taskCount;
+    //     $pendingTasks = $pendingTask;
+    //     $completedTasks = $completedTask;
+    //     $totalInvoices = $invoiceCount;
+    //     $clientsCount = $clientCount;
+    //     $companiesCount = $companyCount;
+    //     $clients = $clientsWithDetails;
+
+    //     return view('tasks.index', compact(
+    //         'totalTasks',
+    //         'pendingTasks',
+    //         'completedTasks',
+    //         'totalInvoices',
+    //         'totalInvoiceAmount',
+    //         'totalPaidAmount',
+    //         'totalUnpaidAmount',
+    //         'paidInvoices',
+    //         'unpaidInvoices',
+    //         'clientsCount',
+    //         'agentCount',
+    //         'companiesCount',
+    //         'agents',
+    //         'clients',
+    //     ));
+    // }
 
     public function branchDashboard()
     {

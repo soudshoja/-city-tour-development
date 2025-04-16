@@ -41,9 +41,21 @@ class InvoiceController extends Controller
        // Gate::authorize('viewAny', Invoice::class);
 
         // Get all agents under the company
-        $agents = Agent::with(['branch' => function ($query) use ($user) {
-            $query->where('company_id', $user->company->id);
-        }])->get();
+        if($user->role_id == Role::ADMIN){
+            $agents = Agent::with(['branch'])->get();
+        } else if($user->role_id == Role::COMPANY){
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->get();
+            $companyId = $user->company->id;
+        } else if($user->role_id == Role::AGENT){
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->agent->branch->company_id);
+            }])->get();
+            $companyId = $user->agent->branch->company_id;
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
 
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
@@ -55,8 +67,8 @@ class InvoiceController extends Controller
             'client'
         ])
         ->whereIn('agent_id', $agentIds)
-        ->whereHas('agent.branch', function ($query) use ($user) {
-            $query->where('company_id', $user->company->id);
+        ->whereHas('agent.branch', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId);
         })
         ->paginate(500);
 
@@ -66,7 +78,7 @@ class InvoiceController extends Controller
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
         $suppliers = Supplier::all();
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
+        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companyId)->get();
         $types = Task::distinct()->pluck('type');
         $totalInvoices = $invoices->total();
 

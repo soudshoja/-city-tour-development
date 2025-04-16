@@ -173,6 +173,8 @@ class BankPaymentController extends Controller
 
             // Store General Ledger Entries
             foreach ($request->items as $item) {
+                $accname = Account::where('id', $item['ac_code'])->first();
+
                 JournalEntry::create([
                     'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                     'account_id' => $item['ac_code'],
@@ -184,7 +186,7 @@ class BankPaymentController extends Controller
                     'credit' => $item['credit'] ?? 0,
                     'balance' => $item['balance'] ?? 0,
                     'voucher_number' => $request->bankpaymentref,
-                    'name' => $request->pay_to ?? '',
+                    'name' => $accname->name ?? '',
                     'type' => 'payable',
                     'currency' => $item['currency'] ?? '',
                     'exchange_rate' => $item['exchange_rate'] ?? 0,

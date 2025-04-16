@@ -64,11 +64,11 @@ class CoaController extends Controller
         $expensesAccount = Account::where('name', 'Expenses')->first();
         $equitiesAccount = Account::where('name', 'Equity')->first();
 
-        $assets = $this->assetsLevel($assetsAccount);
-        $liabilities = $this->assetsLevel($liabilitiesAccount);
-        $incomes = $this->assetsLevel($incomesAccount);
-        $expenses = $this->assetsLevel($expensesAccount);
-        $equities = $this->assetsLevel($equitiesAccount);
+        $assets = $this->childAccount($assetsAccount, 'normal');
+        $liabilities = $this->childAccount($liabilitiesAccount, 'reverse');
+        $incomes = $this->childAccount($incomesAccount, 'reverse');
+        $expenses = $this->childAccount($expensesAccount , 'normal');
+        $equities = $this->childAccount($equitiesAccount, 'reverse');
         
         // $assets = $this->getAssets();
         // $liabilities = $this->getLiabilities();
@@ -135,12 +135,12 @@ class CoaController extends Controller
     {
         $assets = Account::where('name', 'Assets')->first();
 
-        $assets = $this->assetsLevel($assets);
+        $assets = $this->childAccount($assets);
 
         return $assets;
     }
 
-    private function assetsLevel($account)
+    public function childAccount($account, $debitCreditType = 'normal')
     {
         $childAccounts = Account::where('parent_id', $account->id)->get();
 
@@ -151,7 +151,7 @@ class CoaController extends Controller
             $account->childAccounts = $childAccounts;
 
             foreach ($childAccounts as $child) {
-                $this->assetsLevel($child); // Recursively process each child
+                $this->childAccount($child, $debitCreditType); // Recursively get child accounts
 
                 // Sum up the debit and credit from child accounts
                 $totalDebit += $child->debit ?? 0;
@@ -161,197 +161,36 @@ class CoaController extends Controller
             // Assign the summed debit and credit to the parent account
             $account->debit = (string)$totalDebit;
             $account->credit = (string)$totalCredit;
-            $account->balance = bcsub($totalDebit, $totalCredit, 2); 
+
+            if ($debitCreditType == 'normal') {
+                $account->balance = bcsub($totalDebit, $totalCredit, 2);
+            } else if($debitCreditType == 'reverse') {
+                $account->balance = bcsub($totalCredit, $totalDebit, 2);
+            } else {
+                throw New Exception('Invalid debitCreditType');
+            }
+
         } else {
             // If it's the last level, calculate debit and credit from journal entries
-            $journalEntries = JournalEntry::where('account_id', $account->id)->get();
+            $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)->get();
 
             $debit = $journalEntries->sum('debit');
             $credit = $journalEntries->sum('credit');
 
             $account->debit = (string)$debit;
             $account->credit = (string)$credit;
-            $account->balance = bcsub($debit, $credit, 2); 
+            
+            if ($debitCreditType == 'normal') {
+                $account->balance = bcsub($debit, $credit, 2);
+            } else {
+                $account->balance = bcsub($credit, $debit, 2);
+            }
+
+            $account->journalEntries = $journalEntries; // Attach journal entries to the account
         }
 
         return $account; // Return the account with its childAccounts populated
     }
-
-    private function getLiabilities()
-    {
-        $liabilitiesId = Account::where('name', 'Liabilities')->value('id');
-
-        // Initialize liabilities collection
-        $liabilities = collect();
-
-        if ($liabilitiesId) {
-            // Top-level liabilities
-            $liabilities = Account::where('parent_id', $liabilitiesId)->get();
-
-            foreach ($liabilities as $liability) {
-                $liability->level3liabilities = Account::where('parent_id', $liability->id)->get();
-
-                foreach ($liability->level3liabilities as $level3liability) {
-                    // Fetch level 4 for each level 3
-                    $level3liability->level4liabilities = Account::where('parent_id', $level3liability->id)->get();
-
-                    foreach ($level3liability->level4liabilities as $level4liability) {
-
-                        if (stripos($level3liability->name, 'payable') !== false) {
-
-                            $suppliers = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->where('account_id', $level4liability->id)->get();
-                            $suppliers = $suppliers->pluck('supplier');
-
-                            $invoiceIds = $suppliers->flatMap(function ($supplier) {
-                                return $supplier->tasks->flatMap(function ($task) {
-                                    return optional($task->invoiceDetail)->invoice ? [$task->invoiceDetail->invoice->id] : [];
-                                });
-                            })->unique();
-
-                            $JournalEntrys = JournalEntry::whereIn('invoice_id', $invoiceIds)->where('account_id', $level3liability->id)->get();
-                            $credit = 0.00;
-                            $debit = 0.00;
-                            $actualBalance = 0.00;
-                            foreach ($JournalEntrys as $JournalEntry) {
-                                $credit += $JournalEntry->credit;
-                                $debit += $JournalEntry->debit;
-                            }
-
-                            $level4liability->actual_balance = $credit - $debit;
-                            $level4liability->save();
-
-                            $level4liability->credit = $credit;
-                            $level4liability->debit = $debit;
-                        } else {
-                            // Assuming level4liability has actual_balance and budget_balance attributes
-                            $actualBalanceLiabilities = $level4liability->actual_balance; // Replace with the actual field name
-                            $budgetBalanceLiabilities = $level4liability->budget_balance; // Replace with the actual field name
-                            // Optional: Store the values in an array for later use if needed
-                            $balancesLiabilities[] = [
-                                'actual_balance' => $actualBalanceLiabilities,
-                                'budget_balance' => $budgetBalanceLiabilities,
-                            ];
-                        }
-                    }
-                }
-            }
-        }
-        // dd($liabilities);
-        return $liabilities;
-    }
-
-    private function getEquity()
-    {
-        // Equity Account
-        $equityId = Account::where('name', 'Equity')->value('id');
-    
-        // Initialize equity collection
-        $equities = collect();
-    
-        if ($equityId) {
-            // Top-level equity accounts
-            $equities = Account::where('parent_id', $equityId)->get();
-            
-            foreach ($equities as $equity) {
-                $equity->level3equity = Account::where('parent_id', $equity->id)->get();
-    
-                foreach ($equity->level3equity as $level3equity) {
-                    // Fetch level 4 for each level 3
-                    $level3equity->level4equity = Account::where('parent_id', $level3equity->id)->get();
-    
-                    foreach ($level3equity->level4equity as $level4equity) {
-                        // Assuming level 4 equity has actual_balance and budget_balance attributes
-                        $actualBalanceEquity = $level4equity->actual_balance; // Adjust if field name differs
-                        $budgetBalanceEquity = $level4equity->budget_balance; // Adjust if field name differs
-    
-                        // Optional: Store the values in an array for later use if needed
-                        $balancesEquity[] = [
-                            'actual_balance' => $actualBalanceEquity,
-                            'budget_balance' => $budgetBalanceEquity,
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $equities;
-    }
-    
-
-    private function getIncome()
-    {
-        // Income Account
-        $incomeId = Account::where('name', 'Income')->value('id');
-
-        // Initialize income collection
-        $incomes = collect();
-
-        if ($incomeId) {
-            // Top-level income
-            $incomes = Account::where('parent_id', $incomeId)->get();
-
-            foreach ($incomes as $income) {
-                $income->level3income = Account::where('parent_id', $income->id)->get();
-
-                foreach ($income->level3income as $level3income) {
-                    // Fetch level 4 for each level 3
-                    $level3income->level4incomes = Account::where('parent_id', $level3income->id)->get();
-
-                    foreach ($level3income->level4incomes as $level4income) {
-                        // Assuming level4income has actual_balance and budget_balance attributes
-                        $actualBalanceIncome = $level4income->actual_balance; // Replace with the actual field name
-                        $budgetBalanceIncome = $level4income->budget_balance; // Replace with the actual field name
-
-                        // Optional: Store the values in an array for later use if needed
-                        $balancesIncome[] = [
-                            'actual_balance' => $actualBalanceIncome,
-                            'budget_balance' => $budgetBalanceIncome,
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $incomes;
-    }
-
-    private function getExpenses()
-    {
-        // Expenses Account
-        $expensesId = Account::where('name', 'Expenses')->value('id');
-
-        // Initialize expenses collection
-        $expenses = collect();
-
-        if ($expensesId) {
-            // Top-level expenses
-            $expenses = Account::where('parent_id', $expensesId)->get();
-
-            foreach ($expenses as $expense) {
-                $expense->level3expenses = Account::where('parent_id', $expense->id)->get();
-
-                foreach ($expense->level3expenses as $level3expense) {
-                    // Fetch level 4 for each level 3
-                    $level3expense->level4expenses = Account::where('parent_id', $level3expense->id)->get();
-
-                    foreach ($level3expense->level4expenses as $level4expense) {
-
-                        // Assuming level4income has actual_balance and budget_balance attributes
-                        $actualBalanceExpenses = $level4expense->actual_balance; // Replace with the actual field name
-                        $budgetBalanceExpenses = $level4expense->budget_balance; // Replace with the actual field name
-
-                        // Optional: Store the values in an array for later use if needed
-                        $balancesExpenses[] = [
-                            'actual_balance' => $actualBalanceExpenses,
-                            'budget_balance' => $budgetBalanceExpenses,
-                        ];
-                    }
-                }
-            }
-        }
-        return $expenses;
-    }
-
 
 
     // create accounts

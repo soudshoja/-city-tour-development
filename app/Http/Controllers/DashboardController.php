@@ -42,11 +42,7 @@ class DashboardController extends Controller
             $reportController = new ReportController();
 
             $childAccountsPayable = $reportController->getPayableSupplier();
-
-            $payableSupplier = 0;
-            foreach ($childAccountsPayable as $childAccount) {
-                $payableSupplier+= $childAccount->balance;
-            }
+            $payableSupplier = $childAccountsPayable['totalBalance'];
 
 
             $profitAgentWise = $reportController->getProfitAgent();

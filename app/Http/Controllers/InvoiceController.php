@@ -227,6 +227,8 @@ class InvoiceController extends Controller
             $selectedClient = null; // No tasks selected
             $selectedAgent = null;
         }
+
+        
          
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
         // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
@@ -287,7 +289,8 @@ class InvoiceController extends Controller
                 : collect();
                 Log::info('tasks', ['tasks' => $tasks]);
         }
-
+        
+        //dd($task->flightDetails->countryTo);
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
@@ -372,6 +375,7 @@ class InvoiceController extends Controller
     
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
+        //dd('testing',$clients);
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
@@ -639,7 +643,7 @@ class InvoiceController extends Controller
                     ->first();
 
                 if($clientAccount) {
-                    $clientAccount->description = 'Payment received from: ' . $client->name;
+                    $clientAccount->description = 'Invoice created for (Assets): ' . $client->name;
                     $clientAccount->debit_credit = 'debit';
                     $clientAccount->amount = $task['invprice'];
 
@@ -657,7 +661,7 @@ class InvoiceController extends Controller
                 }
 
                 if($detailsAccount){
-                    $detailsAccount->description = 'Payment received for: ' . $task['additional_info'];
+                    $detailsAccount->description = 'Invoice created for (Revenue): ' . $task['additional_info'];
                     $detailsAccount->debit_credit = 'credit';
                     $detailsAccount->amount = $task['invprice'];
 
@@ -672,7 +676,7 @@ class InvoiceController extends Controller
                     ->first();
 
                 if($commissionExpenses){
-                    $commissionExpenses->description = 'Commissions Expense (Agents) for: ' . $task['agent']['name'];
+                    $commissionExpenses->description = 'Agents Commissions for (Expenses): ' . $task['agent']['name'];
                     $commissionExpenses->debit_credit = 'debit';
                     $commissionExpenses->amount = $commissionCalculate;
 
@@ -685,7 +689,7 @@ class InvoiceController extends Controller
                     ->first();
 
                 if($AccruedCommissionsAgent){
-                    $AccruedCommissionsAgent->description = 'Commissions (Agents) for : ' . $task['agent']['name'];
+                    $AccruedCommissionsAgent->description = 'Agents Commissions for (Liabilities): ' . $task['agent']['name'];
                     $AccruedCommissionsAgent->debit_credit = 'credit';
                     $AccruedCommissionsAgent->amount = $commissionCalculate;
 

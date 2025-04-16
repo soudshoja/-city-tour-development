@@ -27,7 +27,7 @@ class SupplierCompany extends Pivot
 
     public function account()
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'supplier_company_id');
     }
 
     public function supplierCredential()

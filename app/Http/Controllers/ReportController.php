@@ -339,19 +339,22 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Accounts Payable account not found.');
         }
 
-        $childAccountsPayable = Account::where('parent_id', $accountPayable->id)->get();
 
-        foreach ($childAccountsPayable as $childAccount) {
-            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
-                ->where('company_id', $companyId)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            $childAccount->journalEntries = $journalEntries;
-            $credit = (string)$journalEntries->sum('credit');
-            $debit = (string)$journalEntries->sum('debit');
+        $coaController = new CoaController();
+        $childAccountsPayable = $coaController->childAccount($accountPayable, 'reverse');
+        // $childAccountsPayable = Account::where('parent_id', $accountPayable->id)->get();
 
-            $childAccount->balance = bcsub($credit, $debit, 2);
-        }
+        // foreach ($childAccountsPayable as $childAccount) {
+        //     $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
+        //         ->where('company_id', $companyId)
+        //         ->orderBy('created_at', 'desc')
+        //         ->get();
+        //     $childAccount->journalEntries = $journalEntries;
+        //     $credit = (string)$journalEntries->sum('credit');
+        //     $debit = (string)$journalEntries->sum('debit');
+
+        //     $childAccount->balance = bcsub($credit, $debit, 2);
+        // }
 
         return $childAccountsPayable;
     }

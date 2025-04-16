@@ -712,10 +712,12 @@
                                                 <!-- Buttons -->
 
                                                 <div>
-                                                    <button type="button" id="splitbutton"
-                                                        onclick="savePartial('split')"
+                                                        <button onclick="savePartial('split')" id="splitbutton" type="button"
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
+
+                                                        <span id="button-text-split">Save Split Payment</span>
+                                                    </button>
                                                 </div>
                                             </form>
                                         </div>
@@ -796,10 +798,15 @@
                                             <p id="error-message" class="text-red-500 mt-3 hidden">The total of
                                                 partial payments must match the invoice total.</p>
 
-                                            <div class="flex space-x-4 mt-5">
-                                                <button id="partialbutton" onclick="savePartial('partial')" type="button"
-                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                            <div class="flex space-x-4 mt-15">
+
+                                            <button onclick="savePartial('partial')" id="partialbutton" type="button"
+                                                class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
+
+                                                    <span id="button-text-partial">Save Partial Payment</span>
+                                                </button>
+
                                             </div>
                                         </div>
                                     </div>
@@ -1252,7 +1259,7 @@
 
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
-
+            
             for (let i = 1; i <= splitInto; i++) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -2148,7 +2155,7 @@
 
                 // Replace icon with spinner
                 icon.innerHTML = `
-                    <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg class="w-[500px] h-[80px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor"
                             d="M4 12a8 8 0 018-8v8z"></path>
@@ -2159,7 +2166,7 @@
                 setTimeout(() => {
                     icon.innerHTML = ''; // optional: keep icon off after saving
                     text.textContent = 'Saved ✅';
-                }, 2000);
+                }, 500);
 
 
             } else
@@ -2193,6 +2200,30 @@
 
                 save('split', splitData);
 
+
+                const button = document.getElementById('splitbutton');
+                const icon = document.getElementById('button-icon-split');
+                const text = document.getElementById('button-text-split');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="w-[500px] h-[120px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                setTimeout(() => {
+                    icon.innerHTML = ''; // optional: keep icon off after saving
+                    text.textContent = 'Saved ✅';
+                }, 500);
+
+
+
             } else if (mode === 'partial') {
                 if (!validatePartialPayment()) return;
 
@@ -2216,6 +2247,28 @@
                 });
 
                 save('partial', partialData);
+
+
+                const button = document.getElementById('partialbutton');
+                const icon = document.getElementById('button-icon-partial');
+                const text = document.getElementById('button-text-partial');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="w-[500px] h-[120px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                setTimeout(() => {
+                    icon.innerHTML = ''; // optional: keep icon off after saving
+                    text.textContent = 'Saved ✅';
+                }, 500);
 
             }
         }

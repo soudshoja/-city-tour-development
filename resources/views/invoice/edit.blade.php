@@ -455,17 +455,22 @@
                             <div class="mt-4">
                                 <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                        <path
-                                            d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
-                                            fill="currentColor" />
-                                        <path
-                                            d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
-                                            fill="currentColor" />
-                                    </svg>
-                                    Save Full Payment
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
+                                        hover:bg-[#f7b14f] hover:shadow-xl hover:text-white transition">
+                                    
+                                    <span id="button-icon-full" class="mr-2 inline-block">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
+                                            <path
+                                                d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                                fill="currentColor" />
+                                            <path
+                                                d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                                fill="currentColor" />
+                                        </svg>
+                                    </span>
+
+                                    <span id="button-text-full">Save Full Payment</span>
                                 </button>
                             </div>
                         </section>
@@ -691,9 +696,12 @@
                                                 <!-- Buttons -->
 
                                                 <div>
-                                                    <button type="button" onclick="savePartial('split')"
+                                                    <button type="button" id="splitbutton" onclick="savePartial('split')"
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">Save</button>
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
+                                                        
+                                                            <span id="button-text-split">Save Split Payment</span>
+                                                        </button>
                                                 </div>
                                             </form>
                                         </div>
@@ -775,12 +783,12 @@
                                                 partial payments must match the invoice total.</p>
 
                                             <div class="flex space-x-4 mt-5">
-                                                <button onclick="savePartial('partial')" type="button"
+                                                <button id="partialbutton" onclick="savePartial('partial')" type="button"
                                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
-                                                            <span id="button-text">Save</span>
-                                                            <span id="button-loading" style="display: none;">Saving...</span>
-                                                            <span id="button-saved" style="display: none;">Saved</span>
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10  rounded-full shadow">
+                                                            <span id="button-text-partial">Save Partial Payment</span>
+                                                            <!-- <span id="button-loading" style="display: none;">Saving...</span>
+                                                            <span id="button-saved" style="display: none;">Saved</span> -->
                                                         </button>
                                             </div>
                                         </div>
@@ -1211,7 +1219,7 @@
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-
+            const clients = @json($clients);
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
 
@@ -2090,6 +2098,30 @@
                     gateway
                 });
                 save('full', fullData);
+
+                const button = document.getElementById('update-invoice-btn');
+                const icon = document.getElementById('button-icon-full');
+                const text = document.getElementById('button-text-full');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                setTimeout(() => {
+                    icon.innerHTML = ''; 
+                    text.textContent = 'Saved ✅';
+                    location.reload(); // refresh the page
+                }, 500);
+
+                
             } else
             if (mode === 'split') {
                 // Collect Split Payment Data
@@ -2124,6 +2156,32 @@
                 });
                 save('split', splitData);
 
+
+
+                const button = document.getElementById('splitbutton');
+                const icon = document.getElementById('button-icon-split');
+                const text = document.getElementById('button-text-split');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="w-[500px] h-[120px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                setTimeout(() => {
+                    icon.innerHTML = ''; // optional: keep icon off after saving
+                    text.textContent = 'Saved ✅';
+                }, 500);
+
+
+
+
             } else if (mode === 'partial') {
                 // Collect Partial Payment Data
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
@@ -2146,6 +2204,31 @@
 
                 console.log('Partial Payment Data:', partialData);
                 save('partial', partialData);
+
+
+
+                const button = document.getElementById('partialbutton');
+                const icon = document.getElementById('button-icon-partial');
+                const text = document.getElementById('button-text-partial');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="w-[500px] h-[120px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                setTimeout(() => {
+                    icon.innerHTML = ''; // optional: keep icon off after saving
+                    text.textContent = 'Saved ✅';
+                }, 500);
+
+
 
             }
         }

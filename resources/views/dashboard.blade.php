@@ -54,6 +54,7 @@
             @endcan
         </div>
 
+        @if(auth()->user()->company && auth()->user()->hasRole('company'))  
         <div class="my-5 w-full">
             <div class="flex flex-col lg:flex-row gap-3">
                 @if(isset($paidAmounts) && isset($unpaidAmounts))
@@ -83,7 +84,7 @@
                         </p>
                         <span class="absolute top-2 right-2 text-green-400 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
-                    <a  href="{{ route('reports.total-receivable') }}"
+                    <a href="{{ route('reports.total-receivable') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Total Receivable</p>
                         <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $totalReceivable }}</p>
@@ -93,10 +94,11 @@
                         <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Total Bank</p>
                         <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $totalBank }}</p>
                     </a>
-                    <div class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                    <a href="{{ route('reports.gateway-receivable') }}"
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Gateway Receivable</p>
                         <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $gatewayReceivable }}</p>
-                    </div>
+                    </a>
                 </div>
                 <div class="p-10 pt-2 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">
                     <h1>
@@ -107,22 +109,9 @@
                     </div>
                 </div>
             </div>
-            <!-- <div id="dashboard-revenue" class="mb-2 rounded-md min-h-32 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-                <div class="rounded-md bg-red-300 min-h-full">
-                    Task
-                </div>
-                <div class="rounded-md bg-koromiko-300 ">
-                    Invoices
-                </div>
-                <div class="rounded-md bg-amber-300">
-
-                </div>
-                <div class="rounded-md bg-green-300">
-
-                </div>
-            </div> -->
 
         </div>
+        @endif
     </div>
     <script>
         document.addEventListener('alpine:init', () => {

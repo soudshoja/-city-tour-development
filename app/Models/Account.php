@@ -25,6 +25,7 @@ class Account extends Model
        'agent_id',
        'client_id',
        'supplier_id',
+       'supplier_company_id',
        'reference_id', 
        'account_type_id',
        'code',

@@ -330,6 +330,62 @@ class ReportController extends Controller
         ]);
     }
 
+    private function childAccount($account)
+    {
+        $totalBalance = $account['balance'] ?? 0;
+        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+
+        $account = $account['account'];
+
+        if ($account) {
+            $childAccounts = Account::where('parent_id', $account->id)->get();
+
+            $totalDebit = 0;
+            $totalCredit = 0;
+
+
+
+            if ($childAccounts->isNotEmpty()) {
+                $account->childAccounts = $childAccounts;
+
+                foreach ($childAccounts as $child) {
+                    $this->childAccount($child); // Recursively process each child
+
+                    // Sum up the debit and credit from child accounts
+                    $totalDebit += $child->debit ?? 0;
+                    $totalCredit += $child->credit ?? 0;
+                }
+
+                // Assign the summed debit and credit to the parent account
+                $account->debit = (string)$totalDebit;
+                $account->credit = (string)$totalCredit;
+                $account->balance = bcsub($totalDebit, $totalCredit, 2);
+                $totalBalance += $account->balance;
+            } else {
+                // If it's the last level, calculate debit and credit from journal entries
+                // $journalEntries = JournalEntry::where('account_id', $account->id)->get();
+                $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)
+                    ->where('company_id', $companyId)
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+
+                $debit = $journalEntries->sum('debit');
+                $credit = $journalEntries->sum('credit');
+
+                $account->debit = (string)$debit;
+                $account->credit = (string)$credit;
+                $account->balance = bcsub($debit, $credit, 2);
+                $totalBalance += $account->balance;
+                $account->journalEntries = $journalEntries; // Attach journal entries to the account 
+            }
+        }
+
+        return [
+            'account' => $account,
+            'totalBalance' =>  $totalBalance,
+        ];
+    }
+
     public function getPayableSupplier()
     {
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
@@ -362,6 +418,11 @@ class ReportController extends Controller
     public function payableSupplier()
     {
         $childAccountsPayable = $this->getPayableSupplier();
+
+
+        // return response()->json($childAccountsPayable);
+
+        // dd($childAccountsPayable);
 
         return view('reports.payable-supplier', [
             'childAccountsPayable' => $childAccountsPayable,
@@ -422,77 +483,55 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Accounts Receivable account not found.');
         }
 
-        $childAccountsReceivable = Account::where('parent_id', $receivableAccount->id)->get();
-
-        foreach ($childAccountsReceivable as $childAccount) {
-            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
-                ->where('company_id', $companyId)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            $childAccount->journalEntries = $journalEntries;
-
-            $childAccount->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
-        }
+        $coaController = new CoaController();
+        $childAccountsReceivable = $coaController->childAccount($receivableAccount, 'reverse');
 
         return $childAccountsReceivable;
     }
 
-        public function getReceivable()
+    public function getReceivable()
     {
-        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
-        $accountPayable = Account::where('name', 'Accounts Receivable')->first();
+        $companyId = auth()->user()->company->id;
+        $receivableAccount = Account::where('name', 'Accounts Receivable')
+            ->where('company_id', $companyId)
+            ->first();
 
-        if (!$accountPayable) {
+        if (!$receivableAccount) {
             return redirect()->back()->with('error', 'Accounts Receivable account not found.');
         }
 
-        $childAccountsReceivable = Account::where('parent_id', $accountPayable->id)->get();
+        $coaController = new CoaController();
+        $childAccountsReceivable = $coaController->childAccount($receivableAccount, 'reverse');
 
-        foreach ($childAccountsReceivable  as $childAccount) {
-            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
-                ->where('company_id', $companyId)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            $childAccount->journalEntries = $journalEntries;
-
-            $childAccount->balance = $journalEntries->sum('credit') - $journalEntries->sum('debit');
-        }
-
-        return $childAccountsReceivable ;
+        return $childAccountsReceivable;
     }
 
     public function receivable()
     {
         $childAccountsReceivable = $this->getReceivable();
 
-        return response()->json($childAccountsReceivable);
-        // return view('reports.receivable', [
-        //     'childAccountsReceivable' => $childAccountsReceivable,
-        // ]);
+        // return response()->json($childAccountsReceivable);
+
+        return view('reports.total-receivable', [
+            'childAccountsReceivable' => $childAccountsReceivable,
+        ]);
     }
 
     public function getTotalBank()
     {
-        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
-        $accountBank = Account::where('name', 'Bank Accounts')->first();
+        $companyId = auth()->user()->company->id;
+        $bankAccount = Account::where('name', 'Bank Accounts')
+            ->where('company_id', $companyId)
+            ->first();
 
-        if (!$accountBank) {
-            return redirect()->back()->with('error', 'Bank account not found.');
+        if (!$bankAccount) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
         }
 
-        $childAccountsBank = Account::where('parent_id', $accountBank->id)->get();
+        $coaController = new CoaController();
+        $childAccountsBank = $coaController->childAccount($bankAccount, 'normal');
 
-        foreach ($childAccountsBank as $childAccount) {
-            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
-                ->where('company_id', $companyId)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            $childAccount->journalEntries = $journalEntries;
-
-            $childAccount->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
-        }
-
-       return $childAccountsBank;
+        return $childAccountsBank;
     }
 
     public function totalBank()
@@ -507,23 +546,30 @@ class ReportController extends Controller
 
     public function getGatewayReceivable()
     {
-        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
-        $accountGateway = Account::where('name', 'Payment Gateway')->first();
-        if (!$accountGateway) {
-            return redirect()->back()->with('error', 'Gateway Receivable account not found.');
+        $companyId = auth()->user()->company->id;
+        $gatewayAccount = Account::where('name', 'Payment Gateway')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$gatewayAccount) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
         }
 
-        $childAccountsGateway = Account::where('parent_id', $accountGateway->id)->get();
-        foreach ($childAccountsGateway as $childAccount) {
-            $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
-                ->where('company_id', $companyId)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            $childAccount->journalEntries = $journalEntries;
+        $coaController = new CoaController();
+        $childAccountsBank = $coaController->childAccount($gatewayAccount, 'normal');
 
-            $childAccount->balance = $journalEntries->sum('debit') - $journalEntries->sum('credit');
-        }
-        return $childAccountsGateway;
+        return $childAccountsBank;
     }
+
+    public function gatewayReceivable()
+    {
+        $childAccountsBank = $this->getGatewayReceivable();
+
+        return response()->json($childAccountsBank);
+        // return view('reports.gateway-receivable', [
+        //     'childAccountsBank' => $childAccountsBank,
+        // ]);
+    }
+
 
 }

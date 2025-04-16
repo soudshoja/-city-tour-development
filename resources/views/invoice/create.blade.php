@@ -486,11 +486,14 @@
                                 </select>
                             </div>
                             <div class="mt-4">
-                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
-                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                            <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                    city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
+                                    hover:bg-[#f7b14f] hover:shadow-xl hover:text-white transition">
+                                
+                                <span id="button-icon-full" class="mr-2 inline-block">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
+                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
                                         <path
                                             d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
                                             fill="currentColor" />
@@ -498,9 +501,10 @@
                                             d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
                                             fill="currentColor" />
                                     </svg>
-                                    
-                                    <span id="button-text-full">Save Full Payment</span>
-                                </button>
+                                </span>
+
+                                <span id="button-text-full">Save Full Payment</span>
+                            </button>
                             </div>
                         </section>
 
@@ -2134,6 +2138,30 @@
                     gateway
                 });
                 save('full', fullData);
+
+
+                const button = document.getElementById('update-invoice-btn');
+                const icon = document.getElementById('button-icon-full');
+                const text = document.getElementById('button-text-full');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                setTimeout(() => {
+                    icon.innerHTML = ''; // optional: keep icon off after saving
+                    text.textContent = 'Saved ✅';
+                }, 2000);
+
+
             } else
             if (mode === 'split') {
 
@@ -2834,6 +2862,23 @@
             document.getElementById("submitButton").disabled = true;
             document.getElementById("buttonText").textContent = "Sending...";
             document.getElementById("spinner").classList.remove("hidden");
+        }
+
+        function handleInvoiceUpdate() {
+            const button = document.getElementById('update-invoice-btn');
+
+            button.disabled = true;
+            button.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-2 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                Saving...
+            `;
+
+            setTimeout(() => {
+                button.innerHTML = 'Saved ✅';
+            }, 2000);
         }
 
         document.addEventListener("DOMContentLoaded", function() {

@@ -84,15 +84,20 @@ class Chat extends Component
         if ($user->role_id == Role::ADMIN) {
             // Add logic for admin if necessary
         } elseif ($user->role_id == Role::COMPANY) {
-            // Company can only see trips with tasks under their agents
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            }])->get();
+            // // Company can only see trips with tasks under their agents //i dont know what this means, please checks when you got time
+            // $agents = Agent::with(['branch' => function ($query) use ($user) {
+            //     $query->where('company_id', $user->company->id);
+            // }])->get();
     
-            $agentIds = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            }])->pluck('id');
-    
+            // $agentIds = Agent::with(['branch' => function ($query) use ($user) {
+            //     $query->where('company_id', $user->company->id);
+            // }])->pluck('id');
+
+            $branchesId = $user->company->branches->pluck('id');
+
+            $agents = Agent::whereIn('branch_id', $branchesId)->get();
+            $agentIds = Agent::whereIn('branch_id', $branchesId)->pluck('id');
+
             $clients = Client::whereIn('agent_id', $agentIds)->get();
         }
     

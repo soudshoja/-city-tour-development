@@ -6,14 +6,14 @@
         <!-- first row -->
         <div class="mb-5">
             <div class="flex space-x-2">
-                <div class="text-4xl font-bold text-gray-800">34</div>
+                <div class="text-4xl font-bold text-gray-800">{{ $companiesCount }}</div>
                 <h3 class="text-sm font-medium text-gray-500 mt-5">Companies</h3>
 
-                <div class="relative">
+                <!-- <div class="relative">
                     <div class="bg-lime-200 absolute -top-2 -right-3 text-xs font-bold text-gray-900 
                                     rounded-full px-2 py-0.5">+3
                     </div>
-                </div>
+                </div> -->
             </div>
 
         </div>
@@ -81,24 +81,6 @@
 
 
                 <!--./ table -->
-            </div>
-            <div class="w-[5%]">
-                <div class="relative h-[200px]"> <!-- Adjust the height as needed -->
-                    <div class="absolute text-white top-2 right-2 z-10 flex flex-col space-y-4">
-                        <div class="w-12 h-12 bg-black rounded-full shadow-md flex items-center justify-center">
-                            <!-- Icon 1 -->
-                            1
-                        </div>
-                        <div class="w-12 h-12 bg-black rounded-full shadow-md flex items-center justify-center">
-                            <!-- Icon 2 -->
-                            2
-                        </div>
-                        <div class="w-12 h-12 bg-black rounded-full shadow-md flex items-center justify-center">
-                            <!-- Icon 3 -->
-                            3
-                        </div>
-                    </div>
-                </div>
             </div>
 
         </div>

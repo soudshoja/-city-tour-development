@@ -661,7 +661,7 @@ class InvoiceController extends Controller
                 }
 
                 if($detailsAccount){
-                    $detailsAccount->description = 'Invoice created for (Revenue): ' . $task['additional_info'];
+                    $detailsAccount->description = 'Invoice created for (Income): ' . $task['additional_info'];
                     $detailsAccount->debit_credit = 'credit';
                     $detailsAccount->amount = $task['invprice'];
 

@@ -716,6 +716,7 @@
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
 
+                                                        <span id="button-icon-split" class="mr-2"></span> 
                                                         <span id="button-text-split">Save Split Payment</span>
                                                     </button>
                                                 </div>
@@ -804,7 +805,8 @@
                                                 class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
 
-                                                    <span id="button-text-partial">Save Partial Payment</span>
+                                                    <span id="button-icon-partial" class="mr-2"></span> 
+                                                    <span id="button-text-partial">Save Partial Payment</span>                                                   
                                                 </button>
 
                                             </div>
@@ -2201,26 +2203,31 @@
                 save('split', splitData);
 
 
-                const button = document.getElementById('splitbutton');
-                const icon = document.getElementById('button-icon-split');
-                const text = document.getElementById('button-text-split');
+                const buttonSplit = document.getElementById('splitbutton');
+                const iconSplit = document.getElementById('button-icon-split');
+                const textSplit = document.getElementById('button-text-split');
 
-                button.disabled = true;
+                if (buttonSplit && iconSplit && textSplit) {
+                    buttonSplit.disabled = true;
 
-                // Replace icon with spinner
-                icon.innerHTML = `
-                    <svg class="w-[500px] h-[120px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                `;
-                text.textContent = 'Saving...';
+                    // Show spinner
+                    iconSplit.innerHTML = `
+                        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                    `;
 
-                setTimeout(() => {
-                    icon.innerHTML = ''; // optional: keep icon off after saving
-                    text.textContent = 'Saved ✅';
-                }, 500);
+                    textSplit.textContent = 'Saving...';
+
+                    setTimeout(() => {
+                        iconSplit.innerHTML = ''; // remove spinner
+                        textSplit.textContent = 'Saved ✅';
+                        location.reload(); // or redirect if needed
+                    }, 1000);
+                } else {
+                    console.error('Split button or icon/text elements not found in the DOM.');
+                }
 
 
 
@@ -2249,26 +2256,31 @@
                 save('partial', partialData);
 
 
-                const button = document.getElementById('partialbutton');
-                const icon = document.getElementById('button-icon-partial');
-                const text = document.getElementById('button-text-partial');
+                const buttonPartial = document.getElementById('partialbutton');
+                const iconPartial = document.getElementById('button-icon-partial');
+                const textPartial = document.getElementById('button-text-partial');
 
-                button.disabled = true;
+                if (buttonPartial && iconPartial && textPartial) {
+                    buttonPartial.disabled = true;
 
-                // Replace icon with spinner
-                icon.innerHTML = `
-                    <svg class="w-[500px] h-[120px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                `;
-                text.textContent = 'Saving...';
+                    // Spinner icon (cleaned up)
+                    iconPartial.innerHTML = `
+                        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                    `;
 
-                setTimeout(() => {
-                    icon.innerHTML = ''; // optional: keep icon off after saving
-                    text.textContent = 'Saved ✅';
-                }, 500);
+                    textPartial.textContent = 'Saving...';
+
+                    setTimeout(() => {
+                        iconPartial.innerHTML = ''; // remove icon
+                        textPartial.textContent = 'Saved ✅';
+                        location.reload(); // or redirect if you want
+                    }, 1000);
+                } else {
+                    console.error('One or more elements (button, icon, text) not found in the DOM');
+                }
 
             }
         }
@@ -2328,9 +2340,9 @@
             } else
             if (type === 'split') {
 
-                let button = document.getElementById("splitbutton");
-                button.disabled = true;
-                button.innerText = "Saving..."; // Change text while saving
+                // let button = document.getElementById("splitbutton");
+                // button.disabled = true;
+                // button.innerText = "Saving..."; // Change text while saving
 
                 // Handle split payment, generate links for each row
                 try {
@@ -2381,17 +2393,17 @@
 
                 } catch (error) {
                     console.error('Error generating invoices:', error);
-                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
+                    //displayErrorMessage("Error generating one or more invoices. Please check your data.");
                 } finally {
                     afterPaymentType();
-                    //hideModal();
+                    hideModal();
                 }
 
             } else if (type === 'partial') {
 
-                let button = document.getElementById("partialbutton");
-                button.disabled = true;
-                button.innerText = "Saving..."; // Change text while saving
+                // let button = document.getElementById("partialbutton");
+                // button.disabled = true;
+                // button.innerText = "Saving..."; // Change text while saving
 
                 // Handle partial payment as before
                 const clientId = document.getElementById('receiverId').value;
@@ -2541,6 +2553,9 @@
             const split = document.getElementById('payment_type_split');
             const full = document.getElementById('payment_type_full');
             const update = document.getElementById('update-invoice-btn');
+            const updateSplitButton = document.getElementById('splitbutton');
+            const updatePartialButton = document.getElementById('partialbutton');
+
             const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
             // Get all payment type inputs
             const paymentOptions = document.querySelectorAll('input[name="payment_type"]');

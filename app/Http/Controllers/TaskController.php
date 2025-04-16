@@ -53,6 +53,7 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
+      
         $validatedData = $request->validate([
             'type' => 'required|string',
             'supplier_id' => 'required|exists:suppliers,id',
@@ -81,6 +82,15 @@ class TaskController extends Controller
             ], 422);
         }
 
+        $supplier = Supplier::find($validatedData['supplier_id']);
+
+        if (!$supplier) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Supplier not found.',
+            ], 404);
+        }
+
         DB::beginTransaction(); 
 
         try {
@@ -98,8 +108,7 @@ class TaskController extends Controller
             }
 
 
-            $supplierCompany = SupplierCompany::with('account')
-                ->where('supplier_id', $task->supplier_id)
+            $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
                 ->where('company_id', $task->company_id)
                 ->first();
 
@@ -107,8 +116,24 @@ class TaskController extends Controller
                 throw new Exception('Supplier company not activated or not found.');
             }
 
-            if (!$supplierCompany->account) {
-                throw new Exception('Supplier account not found.');
+            // $supplierCompanyAccount = Account::where('supplier_company_id', $supplierCompany->account_id)
+            //     ->where('company_id', $task->company_id)
+            //     ->first();
+
+            // if (!$supplierCompanyAccount) {
+            //     throw new Exception('Supplier account not found.');
+            // }
+
+            $liabilities = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            $expenses = Account::where('name', 'like', '%Expenses%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$liabilities || !$expenses) {
+                throw new Exception('Assets or Expenses account not found.');
             }
 
             $receivableAccount = Account::where('name', 'like', '%Receivable%')
@@ -128,6 +153,47 @@ class TaskController extends Controller
             if (!$payableAccountId) {
                 throw new Exception('No valid payable account found.');
             }
+
+            $supplierAccount = Account::where('supplier_company_id', $supplierCompany->id)
+                ->where('company_id', $task->company_id)
+                ->get();
+
+            if (!$supplierAccount) {
+                throw new Exception('Supplier account not found.');
+            }
+
+            $supplierPayable = collect();
+            $supplierCost = collect();
+            
+            if($task->type == 'flight') {
+                $supplierPayable = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->first();
+
+                $supplierCost = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $expenses->id)
+                    ->first();    
+
+            } elseif($task->type == 'hotel') {
+
+                $supplierPayable = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->first();
+
+                $supplierCost = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $expenses->id)
+                    ->first();
+                }
+
+            if (!$supplierCost || !$supplierPayable) {
+                throw new Exception('Supplier account not found.');
+            }
+           
+
             
             $transaction = Transaction::create([
                 'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
@@ -142,17 +208,21 @@ class TaskController extends Controller
                 'task_id' => $task->id,
             ]);
 
+            if (!$transaction) {
+                throw new Exception('Transaction creation failed.');
+            }
+
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
                 'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
-                'account_id' => $payableAccountId,
+                'account_id' => $supplierCost->id,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Records Payable to: ' . $supplierCompany->supplier->name,
+                'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
                 'name' => $supplierCompany->supplier->name,
-                'debit' => 0,
-                'credit' => $task->total,
+                'debit' => $task->total,
+                'credit' => 0,
                 'balance' => $task->total,
                 'type' => 'payable',
             ]);
@@ -161,16 +231,31 @@ class TaskController extends Controller
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
                 'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
-                'account_id' => $receivableAccount->id,
+                'account_id' => $supplierPayable->id,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Records Direct Expenses',
-                'name' => $task->client_name ?? 'N/A',
-                'debit' => $task->total,
-                'credit' => 0,
+                'description' => 'Records Payable to (Liabilities) : ' . $supplierCompany->supplier->name,
+                'name' => $supplierCompany->supplier->name,
+                'debit' => 0,
+                'credit' => $task->total,
                 'balance' => $task->total,
-                'type' => 'receivable',
+                'type' => 'payable',
             ]);
+
+            // JournalEntry::create([
+            //     'transaction_id' => $transaction->id,
+            //     'company_id' => $task->company_id,
+            //     'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
+            //     'account_id' => $receivableAccount->id,
+            //     'task_id' => $task->id,
+            //     'transaction_date' => Carbon::now(),
+            //     'description' => 'Records Direct Expenses',
+            //     'name' => $task->client_name ?? 'N/A',
+            //     'debit' => $task->total,
+            //     'credit' => 0,
+            //     'balance' => $task->total,
+            //     'type' => 'receivable',
+            // ]);
 
             DB::commit(); 
 

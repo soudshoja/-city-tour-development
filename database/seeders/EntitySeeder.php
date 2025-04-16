@@ -236,7 +236,6 @@ class EntitySeeder extends Seeder
                 continue;
             }
 
-
             // Check if supplier is already activated
             $isActivated = SupplierCompany::where('supplier_id', $supplier->id)
                 ->where('company_id', $company->id)
@@ -246,68 +245,10 @@ class EntitySeeder extends Seeder
                 continue;
             }
 
-            // Check if credentials exist
-            $credentials = SupplierCredential::where('supplier_id', $supplier->id)
-                ->where('company_id', $company->id)
-                ->exists();
-
-            if (!$credentials) {
-                SupplierCredential::create([
-                    'supplier_id' => $supplier->id,
-                    'company_id' => $company->id,
-                    'environment' => env('APP_ENV') == 'production' ? 'production' : 'sandbox',
-                    'type' => 'basic',
-                    'username' => 'test',
-                    'password' => 'test',
-                    'client_id' => null,
-                    'client_secret' => null,
-                    'access_token' => null,
-                    'refresh_token' => null,
-                    'expires_at' => null,
-                ]);
-            }
-
-
-
-            $parentAccountName = $supplier->has_flight
-                ? 'Suppliers (Flights)'
-                : ($supplier->has_hotel ? 'Suppliers (Hotels)' : 'Accounts Payable');
-
-            $accountPayable = Account::where('name', $parentAccountName)->first();
-
-            if (!$accountPayable) {
-                throw new Exception('Account Payable not found in COA');
-            }
-
-            try {
-                $account = Account::create([
-                    'name' => $supplier->name,
-                    'level' => 4,
-                    'actual_balance' => 0,
-                    'budget_balance' => 0,
-                    'variance' => 0,
-                    'company_id' => $company->id,
-                    'parent_id' => $accountPayable->id,
-                    'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children()->count() + 1, 3, '0', STR_PAD_LEFT),
-                ]);
-            } catch (Exception $e) {
-                logger('Created Supplier Company Account Error: ' . $e->getMessage());
-                throw $e;
-            }
-
-            try {
-                SupplierCompany::firstOrCreate([
-                    'supplier_id' => $supplier->id,
-                    'company_id' => $company->id,
-                    'account_id' => $account->id,
-                ]);
-            } catch (Exception $e) {
-                $account->delete();
-                logger('Created Supplier Company Error: ' . $e->getMessage());
-                throw $e;
-            }
+            $supplierCompanyController->activateSupplierProcess($supplier, $company);
+            
         }
-            $accountPayable = Account::where('name', 'Accounts Payable')->first();
+            // $accountPayable = Account::where('name', 'Accounts Payable')->first();
 
 
         $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')

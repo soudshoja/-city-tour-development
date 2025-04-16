@@ -154,11 +154,16 @@ class AgentController extends Controller
             'dial_code' => 'nullable|string|max:30',
             'phone' => 'required|string',
             'branch_id' => 'required',
-            'company_id' => 'required',
+            // 'company_id' => 'required',
             'type_id' => 'required',
         ]);
 
-        $branch = Branch::with('account')->find($request->branch_id);
+        $branch = Branch::with('company','account')->find($request->branch_id);
+
+        if(!$branch) {
+            logger('Failed to create agent: Branch not found');
+            return redirect()->back()->with('error', 'Branch not found');
+        }
 
         if (!$branch->account) {
             logger('Failed to create agent: Branch ' . $branch->name . ' does not have an account');
@@ -216,7 +221,7 @@ class AgentController extends Controller
                 'root_id' => $assetsAccount->id,
                 'code' => 'AGT-' . rand(1000000, 9999999),
                 'reference_id' => $user->id,
-                'company_id' => $request->company_id,
+                'company_id' => $branch->company_id,
                 'agent_id' => $agent->id,
             ]);
         } catch(Exception $e){

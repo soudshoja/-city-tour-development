@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Gate;
 
 class ReportController extends Controller
 {
@@ -388,6 +389,7 @@ class ReportController extends Controller
 
     public function getPayableSupplier()
     {
+        
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
         $accountPayable = Account::where('name', 'Accounts Payable')->first();
 

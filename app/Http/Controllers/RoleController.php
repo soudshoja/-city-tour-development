@@ -77,9 +77,19 @@ class RoleController extends Controller
 
     public function edit($roleId)
     {
-        $groupedPermissions = cache()->remember('permissions', 3600, function () {
-            return $this->getAllPermission();
-        });
+        $user = Auth::user();
+
+        if ($user->role_id == Role::ADMIN) {
+            $groupedPermissions = cache()->remember('permissions', 3600, function () {
+                return $this->getAllPermission();
+            });
+        } else if($user->role_id == Role::AGENT){
+            $groupedPermissions = cache()->remember('permissions_company', 3600, function () {
+                return $this->getAllPermissionForAgent();
+            });
+        } else {
+            return redirect()->back()->with('error', 'You do not have role, please contact your administrator');
+        }
 
         $role = Role::with('permissions')->find($roleId);
 
@@ -139,7 +149,21 @@ class RoleController extends Controller
         return $permissions;
     }
 
-    public function getAllPermissionGroupedByAI()
+    public function getAllPermissionForAgent()
+    {
+        $permissions = Permission::getGroupedByGroup();
+
+        $excludedGroups = ['company', 'branch', 'agent'];
+
+        $permissions = $permissions->filter(function ($group, $key) use ($excludedGroups) {
+            return !in_array($key, $excludedGroups);
+        });
+
+        return $permissions;
+    }
+
+
+    public function getAllPermissionGroupedByAI() //not used
     {
         $permissions = Permission::all();
         

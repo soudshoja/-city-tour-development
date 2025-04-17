@@ -44,7 +44,7 @@ class DashboardController extends Controller
             $reportController = new ReportController();
 
             $childAccountsPayable = $reportController->getPayableSupplier();
-            $payableSupplier = $childAccountsPayable['totalBalance'];
+            $payableSupplier = $childAccountsPayable;
 
 
             $profitAgentWise = $reportController->getProfitAgent();

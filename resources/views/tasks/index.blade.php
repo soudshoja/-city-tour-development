@@ -71,7 +71,7 @@
             border-radius: 50%;
         }
     </style>
-    @if($queueTasks->isNotEmpty())
+    <!-- @if($queueTasks->isNotEmpty())
     <div class="flex flex-col gap-5 w-full">
         <h2 class="text-3xl font-bold">Queue</h2>
         <div class="flex flex-col gap-2">
@@ -81,11 +81,11 @@
                     <div>
                         <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
                         <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name ?? 'No Agent Set'}}</p>
-                    </div>
+                    </div> -->
                     <!-- <div>
                         <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="editTaskModal = true">View</a>
                     </div> -->
-                </div>
+                <!-- </div>
             </div>
             @endforeach
             @if($queueTasks->count() > 3)
@@ -97,7 +97,7 @@
         </div>
         <a class="font-semibold hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
     </div>
-    @endif
+    @endif -->
 
     <div
         class="flex justify-between items-center gap-5 my-3 ">

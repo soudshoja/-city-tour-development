@@ -213,7 +213,7 @@ class AgentController extends Controller
                 'serial_number' => $request->serial_number,
                 'account_type' => $request->account_type,
                 'name' => $request->name,
-                'level' => 1,
+                'level' => $branch->account->level + 1,
                 'actual_balance' => 0,
                 'budget_balance' => 0,
                 'variance' => 0,

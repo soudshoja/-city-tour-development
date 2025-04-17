@@ -9,12 +9,12 @@
             <div class="grid grid-cols-12 gap-4">
                 <div class="flex flex-col col-span-6 lg:col-span-2">
                     <label for="start_date" class="font-medium text-sm mb-1">Start Date:</label>
-                    <input type="date" name="start_date" id="start_date" value="{{ $startDate }}"
+                    <input type="date" name="start_date" id="start_date" value="{{ $startDate ? date('Y-m-d', strtotime($startDate)) : '' }}"
                         class="border rounded px-2 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                 </div>
                 <div class="flex flex-col col-span-6 lg:col-span-2">
                     <label for="end_date" class="font-medium text-sm mb-1">End Date:</label>
-                    <input type="date" name="end_date" id="end_date" value="{{ $endDate }}"
+                    <input type="date" name="end_date" id="end_date" value="{{ $endDate ? date('Y-m-d', strtotime($endDate)) : '' }}"
                         class="border rounded px-2 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                 </div>
                 <div class="flex flex-col col-span-6 lg:col-span-2">
@@ -23,26 +23,26 @@
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
                         <option value="">All Branches</option>
                         @foreach ($branches as $branch)
-                            <option value="{{ $branch->id }}" {{ $branchId == $branch->id ? 'selected' : '' }}>
-                                {{ ucfirst($branch->name) }}
-                            </option>
+                        <option value="{{ $branch->id }}" {{ $branchId == $branch->id ? 'selected' : '' }}>
+                            {{ ucfirst($branch->name) }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
                 <div class="flex flex-col col-span-6 lg:col-span-3">
-                    <label for="supplier_id" class="font-medium text-sm mb-1">Filter by Supplier:</label>
-                    <select name="supplier_id" id="supplier_id"
+                    <label for="account_id" class="font-medium text-sm mb-1">Filter by Account:</label>
+                    <select name="account_id" id="account_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
-                        <option value="">All Suppliers</option>
-                        @foreach ($suppliers as $supplierRec)
-                            <option value="{{ $supplierRec->supplier->id }}" {{ $supplierId == $supplierRec->supplier->id ? 'selected' : '' }}>
-                                {{ ucfirst($supplierRec->supplier->name) }}
-                            </option>
+                        <option value="all" {{ $supplierId == 'all' ? 'selected' : '' }}>All Accounts</option>
+                        @foreach ($allAccounts as $account)
+                        <option value="{{ $account->id }}" {{ $accountId == $account->id ? 'selected' : '' }}>
+                            {{ ucfirst($account->name) }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
                 @php
-                    $selectedType = request()->input('type_id', 'All');
+                $selectedType = request()->input('type_id', 'All');
                 @endphp
                 <div class="flex flex-col col-span-6 lg:col-span-3">
                     <label for="type_id" class="font-medium text-sm mb-1">Filter by Type:</label>
@@ -60,29 +60,29 @@
 
             <!-- Button Section (Centered) -->
             <div class="flex justify-center">
-                <x-primary-button type="submit" class="w-6/12 md:w-6/12 lg:w-4/12 flex justify-center">
+                <button id="submit-account-filter" type="submit" class="w-6/12 md:w-6/12 lg:w-4/12 flex justify-center flex items-center px-2 py-2 bg-black text-white rounded-md hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
                     Filter
-                </x-primary-button>
+                </button>
             </div>
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
 
                     @if ($startDate && $endDate)
-                        <p>Report for the period: {{ $startDate }} to {{ $endDate }}</p>
+                    <p>Report for the period: {{ $startDate }} to {{ $endDate }}</p>
                     @elseif (!$startDate && !$endDate)
-                        <p>Showing all transactions (no date filter applied).</p>
+                    <p>Showing all transactions (no date filter applied).</p>
                     @endif
 
                     @if ($branchId)
-                        <p>Filtered by Branch: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
+                    <p>Filtered by Branch: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
                     @endif
                     @if ($supplierId)
-                        <p>Filtered by Supplier:
-                            {{ \App\Models\Supplier::find($supplierId)->name ?? 'Unknown Supplier' }}
-                        </p>
+                    <p>Filtered by Supplier:
+                        {{ \App\Models\Supplier::find($supplierId)->name ?? 'Unknown Supplier' }}
+                    </p>
                     @endif
                     @if ($selectedType)
-                        <p>Filtered by Type: {{ ucfirst($selectedType) }}</p>
+                    <p>Filtered by Type: {{ ucfirst($selectedType) }}</p>
                     @endif
 
 
@@ -102,119 +102,120 @@
                     {{ $accountPayable->code ?? 'CI12300' }})</span></h2>
 
             @php
-                $totalDebitPayable = 0;
-                $totalCreditPayable = 0;
-                $totalAllPayable = 0;
-                $totalDebitReceivable = 0;
-                $totalCreditReceivable = 0;
-                $totalAllReceivable = 0;
+            $totalDebitPayable = 0;
+            $totalCreditPayable = 0;
+            $totalAllPayable = 0;
+            $totalDebitReceivable = 0;
+            $totalCreditReceivable = 0;
+            $totalAllReceivable = 0;
             @endphp
 
             @if ($payableTransactions->isNotEmpty())
-                <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
-                    <thead>
-                        <tr>
-                            <th style="width:220px; style="padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($payableTransactions as $transaction)
-                            @php
-                                $totalDebitPayable += $transaction->debit;
-                                $totalCreditPayable += $transaction->credit;
-                                $totalAllPayable = $totalDebitPayable - $totalCreditPayable;
-                            @endphp
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $transaction->transaction_date }}
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    <p>{{ $transaction->description }}</p>
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->debit, 2) }}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->credit, 2) }}
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($totalAllPayable, 2) }}
-                                    {{-- {{ number_format($transaction->balance, 2) }} --}}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
+                <thead>
+                    <tr>
+                        <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
+                        <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
+                        <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
+                        <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($payableTransactions as $transaction)
+                    @php
+                    $totalDebitPayable += $transaction->debit;
+                    $totalCreditPayable += $transaction->credit;
+                    $totalAllPayable = $totalDebitPayable - $totalCreditPayable;
+                    @endphp
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ $transaction->transaction_date }}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            <p>{{ $transaction->description }}</p>
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ number_format($transaction->debit, 2) }}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ number_format($transaction->credit, 2) }}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ number_format($totalAllPayable, 2) }}
+                            {{-- {{ number_format($transaction->balance, 2) }} --}}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
             @else
-                <p class="text-red-500">No Accounts Payable transactions found for the selected period.</p>
+            <p class="text-red-500">No Accounts Payable transactions found for the selected period.</p>
             @endif
         </div>
         <div id="account_receivable"
             class="{{ $selectedType == 'receivable' ? '' : ($selectedType == 'payable' ? 'hidden' : '') }} p-3 mt-4 border shadow">
             <h2 class="font-bold">Accounts Receivable Transactions <span class="font-normal">(Account ID:
-                    {{ $accountReceivable->code ?? 'CI12301' }})</span></h2>
+                    {{ $receivableAccount->code ?? 'CI12301' }})</span></h2>
             @if ($receivableTransactions->isNotEmpty())
-                <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
-                    <thead>
-                        <tr>
-                            <th style="width:220px; style="padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
-                            <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
-                            <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($receivableTransactions as $transaction)
-                            @php
-                                $totalDebitReceivable += $transaction->debit;
-                                $totalCreditReceivable += $transaction->credit;
-                                $totalAllReceivable = $totalDebitReceivable - $totalCreditReceivable;
-                            @endphp
+            <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
+                <thead>
+                    <tr>
+                        <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
+                        <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
+                        <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Credit</th>
+                        <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($receivableTransactions as $transaction)
+                    @php
+                    $totalDebitReceivable += $transaction->debit;
+                    $totalCreditReceivable += $transaction->credit;
+                    $totalAllReceivable = $totalDebitReceivable - $totalCreditReceivable;
+                    @endphp
 
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $transaction->transaction_date }}
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    <p>{{ $transaction->description }}</p>
-                                    <p><small>Ref:
-                                            {{ $transaction->type_reference_id ?? $transaction->invoice->invoice_number }}
-                                            @if ($transaction->invoice && $transaction->invoice->invoice_number)
-                                                <a target="_blank"
-                                                    href="{{ route('invoice.show', ['invoiceNumber' => $transaction->invoice->invoice_number]) }}"
-                                                    class="text-blue-500 ml-0">
-                                                    🔍
-                                                </a>
-                                            @endif
-                                        </small>
-                                    </p>
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->debit, 2) }}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($transaction->credit, 2) }}
-                                </td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ number_format($totalAllReceivable, 2) }}
-                                    {{-- {{ number_format($transaction->balance, 2) }} --}}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ $transaction->transaction_date }}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            <p>{{ $transaction->description }}</p>
+                            <p><small>Ref:
+                                    {{ $transaction->type_reference_id ?? $transaction->invoice->invoice_number }}
+                                    @if ($transaction->invoice && $transaction->invoice->invoice_number)
+                                    <a target="_blank"
+                                        href="{{ route('invoice.show', ['invoiceNumber' => $transaction->invoice->invoice_number]) }}"
+                                        class="text-blue-500 ml-0">
+                                        🔍
+                                    </a>
+                                    @endif
+                                </small>
+                            </p>
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ number_format($transaction->debit, 2) }}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ number_format($transaction->credit, 2) }}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            {{ number_format($totalAllReceivable, 2) }}
+                            {{-- {{ number_format($transaction->balance, 2) }} --}}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
             @else
-                <p class="text-red-500">No Accounts Receivable transactions found for the selected period.</p>
+            <p class="text-red-500">No Accounts Receivable transactions found for the selected period.</p>
             @endif
         </div>
 
         <div class="p-3 mt-4 border shadow">
             <h2 class="flex justify-start">
-                <h2 class="font-bold">Outstanding Balances <span class="font-normal">(Account ID:
-                        {{ $accountReceivable->code ?? 'CI12301' }})</span></h2>
+                <h2 class="font-bold">Outstanding Balances</h2>
             </h2>
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
@@ -229,24 +230,58 @@
         </div>
     </div>
     <script>
-        function filterType() {
-            let type = document.getElementById('type_id').value;
-            let payableDiv = document.getElementById('account_payable');
-            let receivableDiv = document.getElementById('account_receivable');
+        let filterType = document.getElementById('type_id');
+        let filterButton = document.getElementById('submit-account-filter');
 
-            // Hide both initially
-            payableDiv.classList.add('hidden');
-            receivableDiv.classList.add('hidden');
+        filterType.addEventListener('change', (event) => {
+            type_id = event.target.value;
 
-            // Show based on selection
-            if (type === 'payable') {
-                payableDiv.classList.remove('hidden');
-            } else if (type === 'receivable') {
-                receivableDiv.classList.remove('hidden');
-            } else {
-                payableDiv.classList.remove('hidden');
-                receivableDiv.classList.remove('hidden');
-            }
-        }
+            let accountSelect = document.getElementById('account_id');
+            accountSelect.innerHTML = '<option value="all">Loading...</option>'; // Show loading indication
+
+            // Disable the filter button while fetching data
+            filterButton.innerHTML = 'Loading...';
+            filterButton.classList.add('cursor-not-allowed');
+            filterButton.disabled = true;
+
+            fetch(`{{ route('reports.account-list') }}?type_id=${type_id}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+            })
+            .then(response => response.json())
+                .then(data => {
+
+                    accountSelect.innerHTML = '<option value="all">All Account</option>'; // Reset options
+
+                    // Convert the received data into a select option
+                    let option = document.createElement('option');
+                    
+                    for(let i = 0; i < data.length; i++) {
+                        option = document.createElement('option');
+                        option.value = data[i].id;
+                        option.textContent = data[i].name;
+                        accountSelect.appendChild(option);
+                    }
+
+                    // Re-enable the filter button after data is loaded
+                    filterButton.disabled = false;
+                })
+                .catch(error => {
+                    
+                    accountSelect.innerHTML = '<option value="all">Error loading accounts</option>'; // Show error message
+
+                    // Re-enable the filter button in case of an error
+                    filterButton.disabled = false;
+                })
+                .finally(() => {
+                    // Reset the button text and remove the loading class
+                    filterButton.innerHTML = 'Filter';
+                    filterButton.classList.remove('cursor-not-allowed');
+                });
+        });
+    </script>
     </script>
 </x-app-layout>

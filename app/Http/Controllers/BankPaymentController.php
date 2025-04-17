@@ -136,6 +136,7 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {   
+        
        // Fetch all account names and their IDs
        $assetsRootIdMap = Account::where('name', 'Assets')->value('id');
        $liabilitiesRootIdMap = Account::where('name', 'Liabilities')->value('id');

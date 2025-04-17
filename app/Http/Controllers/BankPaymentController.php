@@ -78,19 +78,12 @@ class BankPaymentController extends Controller
 
 
             $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-
-            $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id');
-            //$suppliers = Account::doesntHave('children')->get();
-
             $suppliers = Account::doesntHave('children')
                 ->whereHas('parent', function ($query) use ($liabilitiesRootId) {
                     $query->where('root_id', $liabilitiesRootId);
                 })
                 ->get();
 
-                //dd($suppliers);
             
         }elseif ($user->role_id == Role::COMPANY) {
             $company = Company::with('branches.agents')->find($user->company->id);
@@ -122,11 +115,7 @@ class BankPaymentController extends Controller
                 ->get();
 
 
-            $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id');
-            //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
-
+            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
             $suppliers = Account::doesntHave('children')
                 ->whereHas('parent', function ($query) use ($liabilitiesRootId) {
                     $query->where('root_id', $liabilitiesRootId);
@@ -147,21 +136,28 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {   
-        //dd($request->all());
-
        // Fetch all account names and their IDs
-        $accountMap = Account::pluck('id', 'name')->toArray(); 
+       $assetsRootIdMap = Account::where('name', 'Assets')->value('id');
+       $liabilitiesRootIdMap = Account::where('name', 'Liabilities')->value('id');
+       
+       $accountMap = Account::whereIn('root_id', [$assetsRootIdMap, $liabilitiesRootIdMap])
+           ->pluck('id', 'name')
+           ->toArray();
 
         // Modify request data: Replace account name with ID
         $modifiedItems = collect($request->items)->map(function ($item) use ($accountMap) {
             if (isset($accountMap[$item['ac_code']])) {
                 $item['ac_code'] = $accountMap[$item['ac_code']]; // Replace name with ID
+                //dd($item['ac_code']);
             }
             return $item;
         })->toArray();
-
+        
+        
         // Replace request data
         $request->merge(['items' => $modifiedItems]);
+
+
 
         $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -172,7 +168,6 @@ class BankPaymentController extends Controller
             'remarks_create' => 'required|string',
             'internal_remarks' => 'nullable|string',
             'remarks_fl' => 'nullable|string',
-            'account_id' => 'nullable|exists:accounts,id',
             'items' => 'required|array|min:1',
             'items.*.ac_code' => ['nullable', 'exists:accounts,id'],
             'items.*.remarks' => 'nullable|string',

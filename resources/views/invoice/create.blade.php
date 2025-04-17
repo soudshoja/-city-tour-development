@@ -161,6 +161,7 @@
                         <x-application-logo class="custom-logo-size" />
                         @php
                             $disabled = $disableButtons ? 1 : 0;
+                            $disabledagentbutton = auth()->user()->role_id == \App\Models\Role::AGENT ? 1 : 0;
                         @endphp
                         @if ($selectedCompany)
                             <div class="pl-2">
@@ -2975,10 +2976,19 @@
             const chooseClientButton = document.getElementById('openClientModalButton');
             const chooseAgentButton = document.getElementById('select-agent');
             const disabled = {{ $disabled ?? 0 }}; 
+            const disabledagentbutton = {{ $disabledagentbutton ?? 0 }}; 
 
             if (chooseClientButton && chooseAgentButton) {
                 if (disabled === 1) {
                     chooseClientButton.disabled = true;
+                    chooseAgentButton.disabled = true;
+                } else {
+                    chooseClientButton.disabled = false;
+                    chooseAgentButton.disabled = false;
+                }
+
+                if (disabledagentbutton === 1) {
+                    chooseClientButton.disabled = false;
                     chooseAgentButton.disabled = true;
                 } else {
                     chooseClientButton.disabled = false;

@@ -298,18 +298,18 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                                <button id="select-agent" type="button" onclick="openagentmodal()"
+                                <button id="select-agent" type="button" onclick="openAgentModal()"
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                    <svg width="18" height="18" viewbox="0 0 24 24" fill="#004c9e"
+                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
                                         xmlns="http://www.w3.org/2000/svg">
                                         <circle cx="10" cy="6" r="4" fill="#004c9e" />
                                         <path
-                                            d="m18 17.5c18 19.9853 18 22 10 22c2 22 2 19.9853 2 17.5c2 15.0147 5.58172 13 10 13c14.4183 13 18 15.0147 18 17.5z"
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
                                             fill="#004c9e" />
-                                        <path d="m21 10h19m19 10h17m19 10l19 8m19 10l19 12" stroke="#004c9e"
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
                                             stroke-width="1.5" stroke-linecap="round" />
-                                    </svg><span class="pl-5">choose agent</span>
+                                    </svg><span class="pl-5">Choose Agent</span>
                                 </button>
                             @else
                                 <div id="select-agent"

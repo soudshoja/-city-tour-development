@@ -283,6 +283,20 @@
                                         stroke-width="1.5" stroke-linecap="round" />
                                 </svg><span class="pl-5">Choose Agent</span>
                             </button>
+                            @else
+                            <div id="select-agent"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow cursor-not-allowed">
+                                <svg width="18" height="18" viewbox="0 0 24 24" fill="#004c9e"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path
+                                        d="m18 17.5c18 19.9853 18 22 10 22c2 22 2 19.9853 2 17.5c2 15.0147 5.58172 13 10 13c14.4183 13 18 15.0147 18 17.5z"
+                                        fill="#004c9e" />
+                                    <path d="m21 10h19m19 10h17m19 10l19 8m19 10l19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">{{ auth()->user()->agent->name }}</span>
+                            </div>
                             @endcan
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
@@ -388,7 +402,7 @@
                         <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span class="font-large text-success">{{ $invoice->payment_type }}</span></h2>
                         <input type="hidden" id="paymentTypeSaved" name="payment_type_saved" value="{{ $invoice->payment_type }}">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                           <!-- Full Payment Tab -->
+                            <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_full" name="payment_type" value="full"
                                     onclick="hideModal()" hidden class="peer"
@@ -457,7 +471,7 @@
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
                                         hover:bg-[#f7b14f] hover:shadow-xl hover:text-white transition">
-                                    
+
                                     <span id="button-icon-full" class="mr-2 inline-block">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                             xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
@@ -699,9 +713,9 @@
                                                     <button type="button" id="splitbutton" onclick="savePartial('split')"
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
-                                                            <span id="button-icon-split" class="mr-2"></span> 
-                                                            <span id="button-text-split">Save Split Payment</span>
-                                                        </button>
+                                                        <span id="button-icon-split" class="mr-2"></span>
+                                                        <span id="button-text-split">Save Split Payment</span>
+                                                    </button>
                                                 </div>
                                             </form>
                                         </div>
@@ -786,9 +800,9 @@
                                                 <button id="partialbutton" onclick="savePartial('partial')" type="button"
                                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10  rounded-full shadow">
-                                                            <span id="button-icon-partial" class="mr-2"></span> 
-                                                            <span id="button-text-partial">Save Partial Payment</span>
-                                                        </button>
+                                                    <span id="button-icon-partial" class="mr-2"></span>
+                                                    <span id="button-text-partial">Save Partial Payment</span>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -1095,8 +1109,6 @@
 
         updateClientAgent(selectedClient.id, selectedAgent.id);
 
-        const generateInvoiceButton = document.getElementById('generate-invoice-btn');
-        const deleteInvoiceButton = document.getElementById('delete-invoice-btn');
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
         const buttonSaved = document.getElementById('button-saved');
@@ -1114,28 +1126,28 @@
 
             if (paymentType === 'full') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block'; 
+                additionalActions.style.display = 'block';
                 updateInvoiceBtn.disabled = true;
                 paymentTypeFull.disabled = true;
                 paymentTypePartial.disabled = true;
                 paymentTypeSplit.disabled = true;
             } else if (paymentType === 'partial') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block'; 
+                additionalActions.style.display = 'block';
                 updateInvoiceBtn.disabled = true;
                 paymentTypeFull.disabled = true;
                 paymentTypePartial.disabled = true;
                 paymentTypeSplit.disabled = true;
             } else if (paymentType === 'split') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block'; 
+                additionalActions.style.display = 'block';
                 updateInvoiceBtn.disabled = true;
                 paymentTypeFull.disabled = true;
                 paymentTypePartial.disabled = true;
                 paymentTypeSplit.disabled = true;
             } else {
                 paymentGatewaySection.style.display = 'none'; // Hide the section
-                additionalActions.style.display = 'none'; 
+                additionalActions.style.display = 'none';
                 updateInvoiceBtn.disabled = false;
                 paymentTypeFull.disabled = false;
                 paymentTypePartial.disabled = false;
@@ -2029,25 +2041,6 @@
             document.getElementById('agentPhone').value = agent.phone;
         }
 
-        generateInvoiceButton.addEventListener('click', async function(event) {
-            event.preventDefault(); // Prevent form submission or default action
-            if (isSaving || isSaved) return; // Prevent multiple clicks while saving or after saved
-
-            // Start saving
-            isSaving = true;
-            updateButtonState();
-
-            try {
-                // Simulate invoice generation (replace with your actual API call)
-                await updateInvoice();
-                updateButtonState();
-            } catch (error) {
-                console.error("Error generating invoice:", error);
-                isSaving = false; // Reset saving state
-                updateButtonState();
-
-            }
-        });
 
 
         deleteInvoiceButton.addEventListener('click', async function(event) {
@@ -2062,26 +2055,6 @@
 
             }
         });
-
-        // Function to update button state (text, loading spinner, disabled state)
-        function updateButtonState() {
-            if (isSaving) {
-                buttonText.style.display = 'none';
-                buttonLoading.style.display = 'inline-block';
-                buttonSaved.style.display = 'none';
-                generateInvoiceButton.disabled = true; // Disable button during saving
-            } else if (isSaved) {
-                buttonText.style.display = 'none';
-                buttonLoading.style.display = 'none';
-                buttonSaved.style.display = 'inline-block';
-                generateInvoiceButton.disabled = false; // Re-enable button after saved
-            } else {
-                buttonText.style.display = 'inline-block';
-                buttonLoading.style.display = 'none';
-                buttonSaved.style.display = 'none';
-                generateInvoiceButton.disabled = false; // Re-enable button if not saving or saved
-            }
-        }
 
         function savePartial(mode) {
 
@@ -2115,12 +2088,12 @@
                 text.textContent = 'Saving...';
 
                 setTimeout(() => {
-                    icon.innerHTML = ''; 
+                    icon.innerHTML = '';
                     text.textContent = 'Saved ✅';
-                    location.reload(); 
+                    location.reload();
                 }, 500);
 
-                
+
             } else
             if (mode === 'split') {
                 // Collect Split Payment Data
@@ -2244,12 +2217,12 @@
             const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
 
             const invoiceUrl = "{{ route('invoice.partial') }}";
-            
+
             const csrfToken = "{{ csrf_token() }}";
             const invoiceId = document.getElementById('invoiceId').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
             const amount = data.amount;
-            
+
             if (type === 'full') {
                 const clientId = document.getElementById('receiverId').value;
 
@@ -2449,7 +2422,6 @@
                  </div>
                  `
                 document.body.appendChild(alert);
-                resetButtonState();
             }
         }
 
@@ -2506,7 +2478,6 @@
                  </div>
                  `
                 document.body.appendChild(errorNotification);
-                resetButtonState();
                 return;
             }
 
@@ -2554,7 +2525,6 @@
 
                 // Show success state
                 isSaved = true; // Mark as saved after generating
-                updateButtonState();
 
             } catch (error) {
                 console.error('Error generating invoice:', error);
@@ -2569,23 +2539,16 @@
                  </div>
                  `
                 document.body.appendChild(alert);
-                resetButtonState();
             } finally {
                 // Reset button states
                 buttonLoading.style.display = "none";
                 setTimeout(() => {
                     checkInvoiceId();
-                    resetButtonState();
                 }, 1000);
             }
         };
 
 
-        function resetButtonState() {
-            isSaving = false;
-            isSaved = false;
-            updateButtonState();
-        }
 
         function viewInvoice() {
             openInvoiceModal(invoice.invoice_number);
@@ -2639,12 +2602,6 @@
             modal.classList.add("hidden");
         }
 
-
-        function resetButtonState() {
-            isSaving = false;
-            isSaved = false;
-            updateButtonState();
-        }
 
 
         function copyLink() {
@@ -2739,7 +2696,7 @@
             // Optional: Attach listeners to update hidden input
             const radios = document.querySelectorAll('input[name="payment_type"]');
             radios.forEach(radio => {
-                radio.addEventListener('change', function () {
+                radio.addEventListener('change', function() {
                     paymentTypeSavedInput.value = this.value;
                 });
             });

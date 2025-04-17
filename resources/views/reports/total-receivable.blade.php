@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="p-2 bg-gray-100 dark:bg-gray-800 rounded shadow mb-2 text-center text-xl font-semibold dark:text-gray-50">
-        Account Ledger
+        Total Receivable
     </div>
     <div class="mt-2 mb-4 flex justify-end">
         <div class="px-4 py-2 bg-blue-50 dark:bg-gray-700 border border-blue-200 dark:border-gray-600 rounded shadow text-xs text-gray-700 dark:text-gray-300">
@@ -22,11 +22,7 @@
         </div>
     </div>
     <div class="space-y-4">
-        @foreach($childAccountsPayable->childAccounts as $account)
-        @include('reports.account-child', ['account' => $account])
-        @endforeach
-
-        <!-- @foreach($childAccountsPayable->childAccounts as $account)
+        @foreach($childAccountsReceivable as $account)
         @if($account->level == 3)
         <div class="bg-white dark:bg-gray-700 shadow hover:shadow-lg transition">
             <div class="p-4 flex justify-between items-center text-base font-semibold cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition"
@@ -41,7 +37,7 @@
                     {{ number_format($account->balance, 2) }}
                 </p>
             </div>
-            <div id="table-{{ $account->id }}" class="hidden px-4 pt-4 pb-4">
+            <!-- <div id="table-{{ $account->id }}" class="hidden px-4 pt-4 pb-4">
                 <div class="space-y-2">
                     @if(isset($account->childAccounts) && !empty($account->childAccounts))
                     @foreach($account->childAccounts as $subChild)
@@ -103,10 +99,10 @@
                     @endforeach
                     @endif
                 </div>
-            </div>
+            </div> -->
         </div>
         @endif
-        @endforeach -->
+        @endforeach
     </div>
 
     <script>

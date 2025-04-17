@@ -42,27 +42,137 @@ use Illuminate\Support\Facades\DB;
 
 // use Carbon\Carbon;
 
-
-
-
-
 class TaskController extends Controller
 {
     use NotificationTrait, Converter;
 
+    public function index()
+    {
+        $user = Auth::user();
+        $agent = null;
+        $taskCount = 0;
+        $clients = collect();
+        $agents = collect();
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
+        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+            ->withoutGlobalScope('enabled')
+            ->where('enabled', false)
+            ->orderBy('id', 'desc');
+
+        if ($user->role_id == Role::ADMIN) {
+            $tasks = $tasks->orderBy('created_at', 'desc')->get();
+            $clients = Client::all();
+            $agents = Agent::all();
+            $queueTasks = $queueTasks->get();
+            $suppliers = Supplier::all();
+
+        } elseif ($user->role_id == Role::COMPANY) {
+
+            $branches = Branch::where('company_id', $user->company->id)->get();
+            $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $tasks = $tasks->where('company_id', $user->company->id)->get();
+            $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            })->get();
+        } elseif ($user->role_id == Role::BRANCH) {
+            $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->get();
+            $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->branch->company_id);
+            })->get();
+        } elseif ($user->role_id == Role::AGENT) {
+
+            $clients = Client::where('agent_id', $user->agent->id)->get();
+            $tasks = $tasks->where('agent_id', $user->agent->id)->get();
+            $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
+            $companyId = $user->agent->branch->company_id;
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            })->get();
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to view tasks.');
+        }
+        $processTask = $tasks->toArray();
+        $processTask = array_map(function ($row) {
+
+            $row = (array) $row;
+            $hasNull = false;
+
+            foreach ($row as $key => $value) {
+                if ($value === null) {
+                    $hasNull = true;
+                    break;
+                }
+            }
+
+            if ($hasNull) {
+                $row['is_complete'] = false;
+            } else {
+                $row['is_complete'] = true;
+            }
+
+            return $row;
+        }, $processTask);
+
+        $taskCount = $tasks->count();
+        $types = Task::distinct()->pluck('type');
+
+        $importedTask = Cache::get('imported_task');
+
+        if ($user->hasAnyRole('admin', 'company')) {
+
+            $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
+            $companyId = $user->role_id == Role::ADMIN ? null : $user->company->id;
+
+            // dd($agents);
+            return view('tasks.index', compact(
+                'tasks',
+                'agent',
+                'taskCount',
+                'agents',
+                'clients',
+                'suppliers',
+                'branches',
+                'types',
+                'queueTasks',
+                'processTask',
+                'companyId'
+            ));
+        }
+
+        return view('tasks.index', compact(
+            'tasks',
+            'agent',
+            'taskCount',
+            'agents',
+            'clients',
+            'suppliers',
+            'types',
+            'queueTasks',
+            'processTask',
+            'companyId',
+        ));
+    }
 
     public function store(Request $request)
     {
       
         $validatedData = $request->validate([
             'type' => 'required|string',
+            'company_id' => 'required|exists:companies,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'reference' => 'required|string',
             'price' => 'nullable|numeric',
             'total' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
             'client_name' => 'nullable|string',
-            'agent_id' => 'nullable|exists:agents,id',
+            'agent_id' => 'required|exists:agents,id',
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
             'enabled' => 'required|boolean',
@@ -72,7 +182,7 @@ class TaskController extends Controller
 
         $existingTask = Task::where('reference', $validatedData['reference'])
             ->where('supplier_id', $validatedData['supplier_id'])
-            ->where('company_id', auth()->user()->company->id ?? null)
+            ->where('company_id', $validatedData['company_id'])
             ->first();
         
         if ($existingTask) {
@@ -95,9 +205,8 @@ class TaskController extends Controller
 
         try {
             
-            $taskData = array_merge($validatedData, [
-                'company_id' => auth()->user()->company->id ?? null,
-            ]);
+            $taskData = $validatedData;
+            
             $task = Task::create($taskData);
             if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
@@ -107,7 +216,12 @@ class TaskController extends Controller
                 throw new Exception('Invalid task type or missing details.');
             }
 
+            $agent = $task->agent;
 
+            if (!$agent) {
+                throw new Exception('Task not linked to an agent.');
+            }
+            
             $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
                 ->where('company_id', $task->company_id)
                 ->first();
@@ -194,9 +308,8 @@ class TaskController extends Controller
             }
            
 
-            
             $transaction = Transaction::create([
-                'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
+                'branch_id' => $task->agent->branch_id,
                 'company_id' => $task->company_id,
                 'entity_id' => $task->company_id,
                 'entity_type' => 'company',
@@ -205,7 +318,6 @@ class TaskController extends Controller
                 'date' => Carbon::now(),
                 'description' => 'Task created: ' . $task->reference,
                 'reference_type' => 'Payment',
-                'task_id' => $task->id,
             ]);
 
             if (!$transaction) {
@@ -215,7 +327,7 @@ class TaskController extends Controller
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
+                'branch_id' => $task->agent->branch_id,
                 'account_id' => $supplierCost->id,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
@@ -227,10 +339,11 @@ class TaskController extends Controller
                 'type' => 'payable',
             ]);
 
+
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
+                'branch_id' => $task->agent->branch_id,
                 'account_id' => $supplierPayable->id,
                 'task_id' => $task->id,
                 'transaction_date' => Carbon::now(),
@@ -273,86 +386,6 @@ class TaskController extends Controller
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
         }
-    }
-
-    public function index()
-    {
-        $user = Auth::user();
-        $agent = null;
-        $taskCount = 0;
-        $clients = collect();
-        $agents = collect();
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->orderBy('id', 'desc');
-        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
-            ->withoutGlobalScope('enabled')
-            ->where('enabled', false)
-            ->orderBy('id', 'desc');
-
-        if ($user->role_id == Role::ADMIN) {
-            $tasks = $tasks->orderBy('created_at', 'desc')->get();
-            $clients = Client::all();
-            $agents = Agent::all();
-            $queueTasks = $queueTasks->get();
-        } elseif ($user->role_id == Role::COMPANY) {
-
-            $branches = Branch::where('company_id', $user->company->id)->get();
-            $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
-            $agentsId = $agents->pluck('id');
-            $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->where('company_id', $user->company->id)->get();
-            $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
-        } elseif ($user->role_id == Role::BRANCH) {
-            $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
-            $agentsId = $agents->pluck('id');
-            $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->get();
-            $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
-        } elseif ($user->role_id == Role::AGENT) {
-
-            $clients = Client::where('agent_id', $user->agent->id)->get();
-            $tasks = $tasks->where('agent_id', $user->agent->id)->get();
-            $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
-        } else {
-            return redirect()->back()->with('error', 'User not authorized to view tasks.');
-        }
-        $processTask = $tasks->toArray();
-        $processTask = array_map(function ($row) {
-
-            $row = (array) $row;
-            $hasNull = false;
-
-            foreach ($row as $key => $value) {
-                if ($value === null) {
-                    $hasNull = true;
-                    break;
-                }
-            }
-
-            if ($hasNull) {
-                $row['is_complete'] = false;
-            } else {
-                $row['is_complete'] = true;
-            }
-
-            return $row;
-        }, $processTask);
-
-        $taskCount = $tasks->count();
-        $types = Task::distinct()->pluck('type');
-        $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
-            $query->where('company_id', $user->company->id);
-        })->get();
-
-        $importedTask = Cache::get('imported_task');
-
-        if ($user->hasAnyRole('admin', 'company')) {
-
-            $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
-
-            // dd($agents);
-            return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'branches', 'types', 'queueTasks', 'processTask'));
-        }
-        return view('tasks.index', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers', 'types', 'queueTasks', 'processTask'));
     }
 
     public function voucher($id = null)
@@ -514,10 +547,24 @@ class TaskController extends Controller
 
     public function upload(Request $request)
     {
+        $user = Auth::user();
+   
+
+        if($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to upload tasks.');
+        }
+
         $request->validate([
             'task_file' => 'required|mimes:pdf,txt',
+            'agent_id' => 'required|exists:agents,id',
         ]);
-
+        
         $file = $request->file('task_file')->store('public/tasks');
         if ($file) {
             $content = $this->extractTaskFromFile($file);
@@ -533,7 +580,7 @@ class TaskController extends Controller
         $response = $openai->flightOrHotel($content);
 
         if ($response['status'] == 'error') {
-            return redirect()->back()->with('error', $response['message']);
+            return $response;
         }
 
         if ($response['data'] == 'flight') {
@@ -543,23 +590,27 @@ class TaskController extends Controller
         }
 
         if ($response['status'] == 'error') {
-            return redirect()->back()->with('error', $response['message']);
+            return $response;
         }
 
-        $request = new Request($response['data']);
+        $newRequest = new Request($response['data']);
 
-        $request['enabled'] = true;
 
         $supplier = Supplier::where('name', 'like', $response['data']['supplier_name'])->first();
 
-        $request['supplier_id'] =  $supplier->id;
+        $newRequest->merge([
+            'enabled' => true,
+            'agent_id' => $request->agent_id,
+            'supplier_id' => $supplier->id,
+            'company_id' => $companyId,
+        ]);
 
-        $response = $this->store($request);
+        $response = $this->store($newRequest);
 
         $response = json_decode($response->getContent(), true);
 
         if ($response['status'] == 'error') {
-            return redirect()->back()->with('error', $response['message']);
+            return $response;
         }
 
         logger('imported task: ', $response['data']);
@@ -570,7 +621,7 @@ class TaskController extends Controller
         }
 
         Cache::put('imported_task', $response['data'], now()->addHour(1));
-        return redirect()->back()->with($response['status'], $response['message'])->with('importedTask', $response['data'] ?? null);
+        return $response;
     }
 
     public function extractTaskFromFile($file)
@@ -924,6 +975,9 @@ class TaskController extends Controller
             Log::channel('magic_holidays')->info('Creating Task Initiate');
 
             $request = new Request($taskData);
+            $request->merge([
+                'company_id' => $companyId,
+            ]);
 
             $response = $this->store($request);
 
@@ -1006,7 +1060,8 @@ class TaskController extends Controller
     {
         $request->validate([
             'agent_id' => 'required',
-            'supplier_ref' => 'required',
+            'supplier_ref' => 'nullable',
+            'task_file' => 'nullable|mimes:pdf,txt',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
@@ -1032,6 +1087,11 @@ class TaskController extends Controller
 
         switch ($supplier->name) {
             case 'Magic Holiday':
+
+                if (!$request->supplier_ref) {
+                    return redirect()->back()->with('error', 'Supplier reference is required for Magic Holiday');
+                }
+
                 $response = $supplierController->getMagicHoliday($request->supplier_ref);
                 $response = json_decode($response->getContent(), true);
 
@@ -1064,8 +1124,12 @@ class TaskController extends Controller
                 }
 
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
+            case 'Amadeus':
+                $response = $this->upload($request);
+
+                return redirect()->back()->with($response['status'], $response['message']);
             default:
-                return redirect()->back()->with('error', 'Cannot Get Task From Supplier');
+                return redirect()->back()->with('error', 'This supplier will be available soon');
         }
     }
 

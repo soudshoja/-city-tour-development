@@ -10,7 +10,6 @@ const rows = Array.from(table.querySelector("tbody").rows);
 const totalPages = Math.ceil(rows.length / rowsPerPage);
 
 const toggleFiltersButton = document.getElementById("toggleFilters");
-const filterBox = document.getElementById("filterBox");
 const taskDetailsDiv = document.getElementById("taskDetails");
 const showRightDiv = document.getElementById("showRightDiv");
 let currentlyDisplayed = null;
@@ -259,7 +258,6 @@ function toggleTasksDetails(taskId, url) {
 `;
 
                 taskDetailsDiv.style.display = "block";
-                filterBox.style.display = "none";
                 showRightDiv.classList.remove("hidden");
                 currentlyDisplayed = `task-${taskId}`;
             } else {
@@ -281,10 +279,8 @@ function showSidebar(contentId) {
 
     // Show the requested content (either filters or task details)
     if (contentId === "filters") {
-        filterBox.style.display = "block";
         taskDetailsDiv.style.display = "none";
     } else if (contentId === "details") {
-        filterBox.style.display = "none";
         taskDetailsDiv.style.display = "block";
     }
 }
@@ -296,7 +292,6 @@ function hideSidebar() {
 
     showRightDiv.classList.remove("visible");
 
-    filterBox.style.display = "none";
     taskDetailsDiv.style.display = "none";
 }
 

@@ -187,6 +187,7 @@ class CoaController extends Controller
             }
 
             $account->journalEntries = $journalEntries; // Attach journal entries to the account
+            $account->ledger = true;
         }
 
         return $account; // Return the account with its childAccounts populated

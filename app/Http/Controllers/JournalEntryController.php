@@ -12,4 +12,15 @@ class JournalEntryController extends Controller
         $journalEntries = JournalEntry::where('transaction_id', $transactionId)->get();
         return view('journal_entries.index', compact('journalEntries','transactionId'));      
     }
+
+    public function show($accountId)
+    {
+        $journalEntries = JournalEntry::with('transaction')->where('account_id', $accountId)->get();
+
+        if (!$journalEntries) {
+            return response()->json(['message' => 'Journal entry not found'], 404);
+        }
+
+        return view('journal_entries.show', compact('journalEntries'));
+    }
 }

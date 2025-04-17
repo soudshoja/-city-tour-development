@@ -840,8 +840,17 @@ class ChatController extends Controller
     {
 
         $user = Auth::user();
+        $company = collect();
 
-        $company = Company::with('branches.agents.clients')->find($user->company->id);
+        if($user->role_id == Role::COMPANY){
+            $company = Company::with('branches.agents.clients')->find($user->company->id);
+        } else if($user->role_id == Role::BRANCH){
+            $company = Company::with('branches.agents.clients')->find($user->branch->company->id);
+        } else if($user->role_id == Role::AGENT){
+            $company = Company::with('branches.agents.clients')->find($user->agent->branch->company->id);
+        } else {
+            return response()->json(['error' => 'Unauthorized role for creating a client.'], 403);
+        }
 
         return response()->json([
             'message' => 'Create New Client:',

@@ -403,11 +403,13 @@
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->type }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                         @if($task->invoiceDetail)
-                                        <span
-                                            data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
-                                            class="invoiceModal badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
-                                            {{ $task->invoiceDetail->invoice_number }}
-                                        </span>
+                                        <a target="_blank" href="{{ route('invoice.show', $task->invoiceDetail->invoice_number) }}">
+                                            <span
+                                                data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
+                                                class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
+                                                {{ $task->invoiceDetail->invoice_number }}
+                                            </span>
+                                         </a>
                                         @else
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
                                             Not Yet

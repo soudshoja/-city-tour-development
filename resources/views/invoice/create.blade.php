@@ -2238,7 +2238,7 @@
                         iconSplit.innerHTML = ''; // remove spinner
                         textSplit.textContent = 'Saved ✅';
                         location.reload(); // or redirect if needed
-                    }, 1000);
+                    }, 500);
                 } else {
                     console.error('Split button or icon/text elements not found in the DOM.');
                 }
@@ -2291,7 +2291,7 @@
                         iconPartial.innerHTML = ''; // remove icon
                         textPartial.textContent = 'Saved ✅';
                         location.reload(); // or redirect if you want
-                    }, 1000);
+                    }, 500);
                 } else {
                     console.error('One or more elements (button, icon, text) not found in the DOM');
                 }
@@ -2960,7 +2960,7 @@
 
             setTimeout(() => {
                 button.innerHTML = 'Saved ✅';
-            }, 2000);
+            }, 500);
         }
 
         document.addEventListener("DOMContentLoaded", function() {

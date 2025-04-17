@@ -318,6 +318,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');
         Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank');
         Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable');
+        Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
     });
 
 });

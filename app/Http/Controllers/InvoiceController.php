@@ -49,9 +49,7 @@ class InvoiceController extends Controller
             }])->get();
             $companyId = $user->company->id;
         } else if($user->role_id == Role::AGENT){
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->agent->branch->company_id);
-            }])->get();
+            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $companyId = $user->agent->branch->company_id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
@@ -156,7 +154,14 @@ class InvoiceController extends Controller
         $tasks1 = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
 
         $selectedTasks = $tasks1->whereIn('id', $taskIdsArray)->get();
-       
+        
+        // if (!empty($selectedTasks)) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'The selected task details is not completed.',
+        //     ]);
+        // }
+
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {

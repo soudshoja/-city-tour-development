@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
 class ReportController extends Controller
@@ -19,13 +20,13 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $agents = DB::table('transactions')
-        ->join('companies', 'transactions.company_id', '=', 'companies.id')
-        ->join('agents', 'companies.id', '=', 'agents.company_id')
-        ->select('agents.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date')
-        ->get()
-        ->groupBy('name');
+            ->join('companies', 'transactions.company_id', '=', 'companies.id')
+            ->join('agents', 'companies.id', '=', 'agents.company_id')
+            ->select('agents.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date')
+            ->get()
+            ->groupBy('name');
 
-            $clients = DB::table('transactions')
+        $clients = DB::table('transactions')
             ->join('companies', 'transactions.company_id', '=', 'companies.id')
             ->join('clients', 'clients.id', '=', 'transactions.client_id')
             ->select('clients.name as name', 'transactions.description', 'transactions.amount', 'transactions.transaction_date')
@@ -34,9 +35,9 @@ class ReportController extends Controller
         return view('reports.index', compact('agents', 'clients'));
     }
     public function agentReport()
-    {   
+    {
         return view('reports.maintenance'); // Show the maintenance page
-        
+
         $agents = DB::table('transactions')
             ->join('companies', 'transactions.company_id', '=', 'companies.id')
             ->join('agents', 'companies.id', '=', 'agents.company_id')
@@ -70,7 +71,7 @@ class ReportController extends Controller
 
     // Fetch client report data
     public function clientReport()
-    {   
+    {
         return view('reports.maintenance'); // Show the maintenance page
 
         $clients = DB::table('transactions')
@@ -123,7 +124,7 @@ class ReportController extends Controller
             )
             ->groupBy('agents.id', 'agents.name')
             ->get()
-            ->map(function($agent) {
+            ->map(function ($agent) {
                 // Calculate a performance score based on custom logic
                 $agent->performance_score = $agent->total_transactions > 10 && $agent->balance > 1000 ? 5 : 3; // Example score calculation
                 return $agent;
@@ -142,7 +143,7 @@ class ReportController extends Controller
             )
             ->groupBy('clients.id', 'clients.name')
             ->get()
-            ->map(function($client) {
+            ->map(function ($client) {
                 // Determine if the client is a good payer based on balance and transaction history
                 $client->is_good_payer = $client->total_debit < $client->total_credit && $client->balance >= 0;
                 $client->client_rating = $client->is_good_payer ? 5 : 3; // Example rating
@@ -177,7 +178,7 @@ class ReportController extends Controller
             )
             ->groupBy('agents.id', 'agents.name')
             ->get()
-            ->map(function($agent) {
+            ->map(function ($agent) {
                 $agent->profit_margin = ($agent->total_credit - $agent->total_debit) / max($agent->total_credit, 1);
                 return $agent;
             });
@@ -197,7 +198,7 @@ class ReportController extends Controller
             )
             ->groupBy('clients.id', 'clients.name')
             ->get()
-            ->map(function($client) {
+            ->map(function ($client) {
                 $client->credit_score = $client->outstanding_balance < $client->total_credit ? 5 : 3;
                 return $client;
             });
@@ -217,7 +218,7 @@ class ReportController extends Controller
         $accounts = DB::table('accounts')
             ->join('companies', 'companies.id', '=', 'accounts.company_id')
             ->join('users', 'users.id', '=', 'companies.user_id')
-            ->select( 'accounts.name', 'balance', 'accounts.company_id')
+            ->select('accounts.name', 'balance', 'accounts.company_id')
             ->get();
 
         // Fetch clients and suppliers
@@ -228,7 +229,7 @@ class ReportController extends Controller
             ->get();
 
         $suppliers = DB::table('suppliers') // Assuming there's a suppliers table
-            ->select('id','name')
+            ->select('id', 'name')
             ->get();
 
         return view('reports.accsummary', compact('accounts', 'clients', 'suppliers'));
@@ -240,28 +241,62 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
         $supplierId = $request->input('supplier_id');
+        $accountId = $request->input('account_id');
 
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
 
-        // $payableQuery = JournalEntry::where('account_id', 50)
-        //     ->where('company_id', $companyId);
-        $payableQuery = JournalEntry::orderBy('created_at', 'desc'); 
-    
-    
-        // $receivableQuery = JournalEntry::where('account_id', 45)
-        //     ->where('company_id', $companyId);
-        $receivableQuery = JournalEntry::where('company_id', $companyId)
-        ->where(function ($query) {
-            $query->where('account_id', 45)
-                  ->orWhereIn('account_id', function ($subquery) {
-                      $subquery->select('id')
-                               ->from('accounts')
-                               ->where('parent_id', 45);
-                  });
-        })
-        ->orderBy('created_at', 'desc');  
+        $accountPayable = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $companyId)
+            ->first();
 
-        
+        if (!$accountPayable) {
+            return redirect()->back()->with('error', 'Accounts Payable account not found.');
+        }
+
+        $receivableAccount = Account::where('name', 'Accounts Receivable')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$receivableAccount) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        }
+
+        $payableQuery = JournalEntry::whereIn('account_id', function ($query) use ($accountPayable) {
+            $query->select('id')
+                ->from('accounts')
+                ->where('parent_id', $accountPayable->id)
+                ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $accountPayable->id);
+                });
+        });
+
+        $receivableQuery = JournalEntry::whereIn('account_id', function ($query) use ($receivableAccount) {
+            $query->select('id')
+                ->from('accounts')
+                ->where('id', $receivableAccount->id)
+                ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $receivableAccount->id);
+                });
+        });
+
+        if ($accountId && $accountId != 'all') {
+            $childAccountIds = Account::where('id', $accountId)
+                ->orWhereIn('id', function ($subquery) use ($accountId) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $accountId);
+                })
+                ->pluck('id')
+                ->toArray();
+
+            $payableQuery->whereIn('account_id', $childAccountIds);
+            $receivableQuery->whereIn('account_id', $childAccountIds);
+        }
+
         if ($branchId) {
             $payableQuery->where('branch_id', $branchId);
             $receivableQuery->where('branch_id', $branchId);
@@ -269,25 +304,65 @@ class ReportController extends Controller
 
         if ($supplierId) {
             $supplier = Supplier::find($supplierId);
-                if ($supplier) {
-                    $payableQuery->where('name', $supplier->name);
-                    $receivableQuery->where('name', $supplier->name);
-                }
+            if ($supplier) {
+                $payableQuery->where('name', $supplier->name);
+                $receivableQuery->where('name', $supplier->name);
+            }
         }
 
+        if($startDate == null && $endDate !== null) {
+            $startDate = Carbon::parse($endDate)->startOfMonth(); // 2023-10-01 00:00:00
+
+            $payableQuery->where('transaction_date', '>=', $startDate);
+            $receivableQuery->where('transaction_date', '>=', $startDate);
+        }
+
+        if($endDate == null && $startDate !== null) {
+            $endDate = Carbon::parse($startDate)->endOfMonth(); // 2023-10-31 23:59:59
+
+            $payableQuery->where('transaction_date', '<=', $endDate);
+            $receivableQuery->where('transaction_date', '<=', $endDate);
+        }
+
+
         if ($startDate && $endDate) {
+            $startDate = Carbon::parse($startDate)->startOfDay(); // 2023-10-01 00:00:00
+            $endDate = Carbon::parse($endDate)->endOfDay();
+
             $payableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
             $receivableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
         }
 
-        // Get payable transactions (for the detailed view)
         $payableTransactions = $payableQuery->get();
-
-        // Get receivable transactions (for the detailed view)
         $receivableTransactions = $receivableQuery->get();
 
         $receivableBalance = $receivableTransactions->sum('debit') - $receivableTransactions->sum('credit');
         $payableBalance = $payableTransactions->sum('credit') - $payableTransactions->sum('debit');
+
+        $payableAccounts = collect();
+        $receivableAccounts = collect();
+
+        if (!isset($request->type_id) || $request->type_id == 'all' || $request->type_id == 'payable') {
+            $payableAccounts = Account::where('parent_id', $accountPayable->id)
+                ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $accountPayable->id);
+                })
+                ->get();
+        }
+
+        if (!isset($request->type_id) || $request->type_id == 'all' || $request->type_id == 'receivable') {
+            $receivableAccounts = Account::where('id', $receivableAccount->id)
+                ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $receivableAccount->id);
+                })
+                ->get();
+        }
+        // List out all accounts
+        $allAccounts = $payableAccounts->merge($receivableAccounts);
 
         $receivableSum = 0.0;
         foreach ($payableTransactions as $transaction) {
@@ -308,27 +383,87 @@ class ReportController extends Controller
 
         if (Auth::user()->role->name == 'admin') {
             $suppliers = Supplier::with('companies')->get();
-        }elseif(Auth::user()->role->name == 'company') {
+        } elseif (Auth::user()->role->name == 'company') {
             $suppliers = SupplierCompany::where('company_id', $user->company->id)
-            ->with('supplier')
-            ->get();
+                ->with('supplier')
+                ->get();
         } else {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 
-
         return view('reports.new-report', [
             'payableTransactions' => $payableTransactions,
             'receivableTransactions' => $receivableTransactions,
-            'payableBalance' => $payableBalance, // Pass the payable balance to the view
-            'receivableBalance' => $receivableBalance, // Pass the receivable balance to the view
+            'payableBalance' => $payableBalance,
+            'receivableBalance' => $receivableBalance,
             'startDate' => $startDate,
             'endDate' => $endDate,
             'branchId' => $branchId,
             'supplierId' => $supplierId,
             'branches' => $branches,
             'suppliers' => $suppliers,
+            'accountPayable' => $accountPayable,
+            'receivableAccount' => $receivableAccount,
+            'accountId' => $accountId,
+            'allAccounts' => $allAccounts,
         ]);
+    }
+
+    public function getAccounts(Request $request)
+    {
+        $user = auth()->user();
+
+        if ($user->company == null) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        $companyId = $user->company->id; // Adjust this to get the current company ID
+
+        $accountPayable = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$accountPayable) {
+            return redirect()->back()->with('error', 'Accounts Payable account not found.');
+        }
+
+        $receivableAccount = Account::where('name', 'Accounts Receivable')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$receivableAccount) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        }
+
+        $payableAccounts = collect();
+        $receivableAccounts = collect();
+
+        $typeId = request()->query('type_id'); // Get type_id from the URL query parameter
+
+        if ($typeId == 'payable' || $typeId == 'all') {
+            $payableAccounts = Account::where('parent_id', $accountPayable->id)
+            ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
+                $subquery->select('id')
+                ->from('accounts')
+                ->where('parent_id', $accountPayable->id);
+            })
+            ->get();
+        }
+
+        if ($typeId == 'receivable' || $typeId == 'all') {
+            $receivableAccounts = Account::where('id', $receivableAccount->id)
+            ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
+                $subquery->select('id')
+                ->from('accounts')
+                ->where('parent_id', $receivableAccount->id);
+            })
+            ->get();
+        }
+
+        // Merge all accounts
+        $allAccounts = $payableAccounts->merge($receivableAccounts);
+
+        return $allAccounts;
     }
 
     private function childAccount($account)
@@ -389,7 +524,7 @@ class ReportController extends Controller
 
     public function getPayableSupplier()
     {
-        
+
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
         $accountPayable = Account::where('name', 'Accounts Payable')->first();
 
@@ -435,9 +570,9 @@ class ReportController extends Controller
     {
         $branchesId = auth()->user()->company->branches->pluck('id')->toArray();
 
-        $agents= Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')->whereIn('branch_id', $branchesId)->get();
+        $agents = Agent::with('account', 'invoices.invoiceDetails.task', 'invoices.transactions')->whereIn('branch_id', $branchesId)->get();
 
-       $sumProfitAgent = 0;
+        $sumProfitAgent = 0;
         foreach ($agents as $agent) {
             // $agent->balance = 0;
             $agent->profit = 0;
@@ -459,11 +594,11 @@ class ReportController extends Controller
 
 
             $sumProfitAgent += $agent->profit;
-       }
-       return [
-        'agents' => $agents,
-        'sumProfitAgent' => $sumProfitAgent,
-       ];
+        }
+        return [
+            'agents' => $agents,
+            'sumProfitAgent' => $sumProfitAgent,
+        ];
     }
 
     public function profitAgent()
@@ -540,10 +675,11 @@ class ReportController extends Controller
     {
         $childAccountsBank = $this->getTotalBank();
 
-        return response()->json($childAccountsBank);
-        // return view('reports.total-bank', [
-        //     'childAccountsBank' => $childAccountsBank,
-        // ]);
+        // return response()->json($childAccountsBank);
+
+        return view('reports.total-bank', [
+            'childAccountsBank' => $childAccountsBank,
+        ]);
     }
 
     public function getGatewayReceivable()
@@ -567,11 +703,10 @@ class ReportController extends Controller
     {
         $childAccountsBank = $this->getGatewayReceivable();
 
-        return response()->json($childAccountsBank);
-        // return view('reports.gateway-receivable', [
-        //     'childAccountsBank' => $childAccountsBank,
-        // ]);
+        // return response()->json($childAccountsBank);
+
+        return view('reports.gateway-receivable', [
+            'childAccountsBank' => $childAccountsBank,
+        ]);
     }
-
-
 }

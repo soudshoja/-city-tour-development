@@ -1109,7 +1109,6 @@
 
         updateClientAgent(selectedClient.id, selectedAgent.id);
 
-        const deleteInvoiceButton = document.getElementById('delete-invoice-btn');
         const buttonText = document.getElementById('button-text');
         const buttonLoading = document.getElementById('button-loading');
         const buttonSaved = document.getElementById('button-saved');

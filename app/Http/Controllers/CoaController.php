@@ -66,6 +66,7 @@ class CoaController extends Controller
 
         $assets = $this->childAccount($assetsAccount, 'normal');
         $liabilities = $this->childAccount($liabilitiesAccount, 'reverse');
+        // dd($liabilities);
         $incomes = $this->childAccount($incomesAccount, 'reverse');
         $expenses = $this->childAccount($expensesAccount , 'normal');
         $equities = $this->childAccount($equitiesAccount, 'reverse');

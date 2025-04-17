@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="p-2 bg-gray-100 dark:bg-gray-800 rounded shadow mb-2 text-center text-xl font-semibold dark:text-gray-50">
-        Account Ledger
+        Bank Accounts
     </div>
     <div class="mt-2 mb-4 flex justify-end">
         <div class="px-4 py-2 bg-blue-50 dark:bg-gray-700 border border-blue-200 dark:border-gray-600 rounded shadow text-xs text-gray-700 dark:text-gray-300">
@@ -22,7 +22,7 @@
         </div>
     </div>
     <div class="space-y-4">
-        @foreach($childAccountsPayable->childAccounts as $account)
+        @foreach($childAccountsBank->childAccounts as $account)
         @include('reports.account-child', ['account' => $account])
         @endforeach
     </div>

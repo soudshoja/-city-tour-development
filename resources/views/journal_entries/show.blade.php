@@ -9,6 +9,7 @@
                     <th class="border border-gray-300 px-4 py-2">Account</th>
                     <th class="border border-gray-300 px-4 py-2">Debit</th>
                     <th class="border border-gray-300 px-4 py-2">Credit</th>
+                    <th class="border border-gray-300 px-4 py-2">Balance</th>
                 </tr>
             </thead>
             <tbody>
@@ -20,6 +21,7 @@
                         <td class="border border-gray-300 px-4 py-2">{{ $entry->account->name }}</td>
                         <td class="border border-gray-300 px-4 py-2">{{ $entry->debit }}</td>
                         <td class="border border-gray-300 px-4 py-2">{{ $entry->credit }}</td>
+                        <td class="border border-gray-300 px-4 py-2">{{ $entry->running_balance }}</td>
                     </tr>
                 @endforeach
             </tbody>

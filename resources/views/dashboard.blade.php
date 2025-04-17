@@ -54,7 +54,7 @@
             @endcan
         </div>
 
-        @if(auth()->user()->company && auth()->user()->hasRole('company'))  
+        @if(auth()->user()->company && auth()->user()->hasRole('company'))
         <div class="my-5 w-full">
             <div class="flex flex-col lg:flex-row gap-3">
                 @if(isset($paidAmounts) && isset($unpaidAmounts))
@@ -65,41 +65,41 @@
                     </div>
                 </div>
                 @endif
-                <div class="flex flex-col gap-4 w-full lg:max-w-sm bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg">
+                <!-- <div class="flex flex-col gap-4 w-full lg:max-w-sm bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg">
                     <a href="{{ route('reports.payable-supplier') }}"
-                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 bg-red-50 dark:bg-red-100 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
-                        <p class="text-sm text-gray-500 font-medium">Payable Supplier</p>
-                        <p class="text-xs text-gray-400">Amount owed to suppliers</p>
-                        <p class="@if($payableSupplier < 0) text-green-500 @else text-red-600 @endif text-xl font-bold">
-                            {{ $payableSupplier }}
-                        </p>
-                        <span class="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-red-500 dark:text-red-400 font-medium">Payable Supplier</p>
+                        <p class="text-xs text-red-400 dark:text-red-200">Amount owed to suppliers</p>
+                        <p class="@if($payableSupplier->balance < 0) text-green-600 dark:text-green-500 @else text-red-600 dark:text-red-400 @endif text-xl font-bold">{{ $payableSupplier->balance }}</p>
+                        <span class="absolute top-2 right-2 text-red-400 dark:text-red-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                     <a href="{{ route('reports.profit-agent') }}"
-                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-100 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
-                        <p class="text-sm text-gray-500 font-medium">Profit Agent Wise</p>
-                        <p class="text-xs text-gray-400">Profit earned by agents</p>
-                        <p class="text-green-600 text-xl font-bold">
-                            {{ $profitAgentWise }}
-                        </p>
-                        <span class="absolute top-2 right-2 text-green-400 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-green-600 dark:text-green-400 font-medium">Profit Agent Wise</p>
+                        <p class="text-xs text-green-500 dark:text-green-200">Profit earned by agents</p>
+                        <p class="text-green-600 dark:text-green-400 text-xl font-bold">{{ $profitAgentWise }}</p>
+                        <span class="absolute top-2 right-2 text-green-400 dark:text-green-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                     <a href="{{ route('reports.total-receivable') }}"
-                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
-                        <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Total Receivable</p>
-                        <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $totalReceivable }}</p>
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-koromiko-600 dark:text-koromiko-400 font-medium">Total Receivable</p>
+                        <p class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">{{ $totalReceivable }}</p>
+                        <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                     <a href="{{ route('reports.total-bank') }}"
-                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
-                        <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Total Bank</p>
-                        <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $totalBank }}</p>
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Total Bank</p>
+                        <p class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">{{ $totalBank }}</p>
+                        <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+
                     </a>
                     <a href="{{ route('reports.gateway-receivable') }}"
-                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-gray-600 bg-gray-100 dark:bg-gray-500 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
-                        <p class="text-sm text-gray-500 dark:text-gray-300 font-medium">Gateway Receivable</p>
-                        <p class="text-gray-800 dark:text-blue-600 text-lg font-semibold">{{ $gatewayReceivable }}</p>
+                        class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                        <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Gateway Receivable</p>
+                        <p class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">{{ $gatewayReceivable }}</p>
+                        <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
-                </div>
+                </div> -->
                 <div class="p-10 pt-2 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">
                     <h1>
                         {{ $pieChartTitle }}
@@ -109,7 +109,45 @@
                     </div>
                 </div>
             </div>
-
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-3 mx-5">
+            <a href="{{ route('reports.payable-supplier') }}"
+                class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                <p class="text-sm text-red-500 dark:text-red-400 font-medium">Payable Supplier</p>
+                <p class="text-xs text-red-400 dark:text-red-200">Amount owed to suppliers</p>
+                <p class="@if($payableSupplier->balance < 0) text-green-600 dark:text-green-500 @else text-red-600 dark:text-red-400 @endif text-xl font-bold">{{ $payableSupplier->balance }}</p>
+                <span class="absolute top-2 right-2 text-red-400 dark:text-red-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+            </a>
+            <a href="{{ route('reports.total-receivable') }}"
+                class="relative group flex flex-col gap-1 p-4 border-l-4 border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                <p class="text-sm text-green-600 dark:text-green-400 font-medium">Total Receivable</p>
+                <p class="text-xs text-green-500 dark:text-green-200">Total amount due from clients or customers</p>
+                <p class="text-green-600 dark:text-green-400 text-xl font-bold">{{ $totalReceivable }}</p>
+                <span class="absolute top-2 right-2 text-green-400 dark:text-green-300 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+            </a>
+        </div>
+        <div class="grid grid-cols-3 gap-3 mt-3">
+            <a href="{{ route('reports.profit-agent') }}"
+                class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Profit Agent Wise</p>
+                <p class="text-xs text-koromiko-400 dark:text-koromiko-200">Profit earned by agents</p>
+                <p class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">{{ $profitAgentWise }}</p>
+                <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+            </a>
+            <a href="{{ route('reports.total-bank') }}"
+                class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Total Bank</p>
+                <p class="text-xs text-koromiko-400 dark:text-koromiko-200">Total balance across all bank accounts</p>
+                <p class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">{{ $totalBank }}</p>
+                <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+            </a>
+            <a href="{{ route('reports.gateway-receivable') }}"
+                class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
+                <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Gateway Receivable</p>
+                <p class="text-xs text-koromiko-400 dark:text-koromiko-200">Outstanding amounts from payment gateways</p>
+                <p class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">{{ $gatewayReceivable }}</p>
+                <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
+            </a>
         </div>
         @endif
     </div>

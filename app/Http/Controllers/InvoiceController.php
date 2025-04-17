@@ -154,20 +154,24 @@ class InvoiceController extends Controller
         $tasks1 = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
 
         $selectedTasks = $tasks1->whereIn('id', $taskIdsArray)->get();
-        
-        // if (!empty($selectedTasks)) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'The selected task details is not completed.',
-        //     ]);
-        // }
-
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
-                return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
-                    
+                return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);                    
             }
+            //dd($task);
+            //check miss data
+            if($task->flightDetails) {
+                if (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from)) {
+                    return redirect()->back()->with('error', 'Missing important data in Task record.');
+                }
+            }
+            // if($task->hotelDetails) {
+            //     if (!isset($task->hotelDetails->room_details)) {
+            //         return redirect()->back()->with('error', 'Missing important data in Task record.');
+            //     }                
+            // }
+
         }
 
         $selectedTasks = $selectedTasks->map(function ($task) {

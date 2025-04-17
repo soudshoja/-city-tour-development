@@ -77,10 +77,11 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full">
                             <thead>
                                 <tr>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Date</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Payment Ref</th>    
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Pay To</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Doc Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Reference Number</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Registered</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
                                 </tr>
                             </thead>
@@ -94,16 +95,19 @@
                                     @foreach ($bankPayments as $bankpayment)
                                         <tr>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ \Carbon\Carbon::parse($bankpayment->date)->format('Y-m-d') }}
+                                                {{ $bankpayment->reference_number }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->name }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
+                                                {{ \Carbon\Carbon::parse($bankpayment->date)->format('Y-m-d') }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->description }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->reference_number }}
+                                                {{ $bankpayment->created_at }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 <a data-tooltip="View Payment Voucher"

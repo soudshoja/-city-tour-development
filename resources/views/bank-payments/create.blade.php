@@ -60,7 +60,7 @@
                 <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
-        <form method="POST" action="{{ route('bank-payments.store') }}">
+        <form onsubmit="handleSaveClick(event)" method="POST" action="{{ route('bank-payments.store') }}">
             @csrf
             <div class="flex flex-col gap-2.5 xl:flex-row">
                 <div class="panel flex-1 px-0 py-6 ltr:lg:mr-6 rtl:lg:ml-6">
@@ -265,8 +265,18 @@
                         <!-- Right side: Save and Reset -->
                         <div class="flex gap-4">
                             <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
-                            <button type="submit" @click="validateForm()"
-                                class="btn btn-success px-6 py-2 w-40 rounded-lg">Save</button>
+                            <button id="save-paymentvoucher-btn" type="submit"
+                                class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
+                                <span id="iconSavePaymentVoucher" class="mr-2 inline-block">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+                                    </svg>
+                                </span>
+                                <span id="textSavePaymentVoucher">Save</span>
+                            </button>
+
                         </div>
                     </div>
                 </div>
@@ -374,7 +384,6 @@
                 }
             }
 
-
             function renderTable() {
                 paymentTable.innerHTML = "";
                 items.forEach((item, index) => {
@@ -443,6 +452,37 @@
             addItemButton.addEventListener("click", addItem);
             addItem();
         });
+
+        
+        function handleSaveClick(event) {
+            event.preventDefault(); // Prevent form from submitting immediately
+
+            const button = document.getElementById('save-paymentvoucher-btn');
+            const icon = document.getElementById('iconSavePaymentVoucher');
+            const text = document.getElementById('textSavePaymentVoucher');
+
+            // Disable the button
+            button.disabled = true;
+
+            // Show loading spinner
+            icon.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+            `;
+            text.textContent = 'Saving...';
+
+            // Simulate delay
+            setTimeout(() => {
+                icon.innerHTML = ''; // Remove spinner or replace with checkmark if you want
+                text.textContent = 'Saved ✅';
+                    setTimeout(() => {
+                        window.location.href = "{{ route('bank-payments.index') }}";
+                    }, 500); 
+            }, 1000);
+        }
+
     </script>
 
 </x-app-layout>

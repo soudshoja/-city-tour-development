@@ -195,7 +195,6 @@
                         </div>
                     </div>
                     <!-- ./div to show the forms -->
-                    @if(auth()->user()->company !== null)
                     <div id="formDiv"
                         class="hidden h-auto bg-white dark:bg-gray-700 rounded-lg p-3 BoxShadow flex flex-col justify-between w-full">
                         <div class="my-5">
@@ -318,6 +317,7 @@
                                 </div>
                             </div>
                             <!-- Branch Form -->
+                            @if(auth()->user()->company !== null)
                             <div id="branchForm" class="form hidden flex w-full h-auto">
                                 <div class="w-full h-auto">
                                     <div class="flex items-center mb-5">
@@ -409,6 +409,7 @@
                                     </form>
                                 </div>
                             </div>
+                            @endif
 
                             <style>
                                 .tooltip-container {
@@ -483,8 +484,6 @@
                                     <form action="{{ route('agents.store') }}" method="POST"
                                         class="w-full">
                                         @csrf
-                                        <input type="hidden" name="company_id"
-                                            value="{{ auth()->user()->company->id }}">
 
                                         <div class="mb-4 flex items-center relative">
                                             <input type="text" name="name" class="custom-input"
@@ -598,7 +597,7 @@
                                         @csrf
                                         <!-- Hidden Company ID -->
                                         <input type="hidden" name="company_id"
-                                            value="{{ auth()->user()->company->id }}">
+                                            value="">
 
                                         <!-- Form Grid Layout -->
                                         <div class="grid grid-cols-1 gap-4">
@@ -676,8 +675,6 @@
                                     <form action="{{ route('clients.store') }}" method="POST"
                                         class="w-full">
                                         @csrf
-                                        <input type="hidden" name="company_id"
-                                            value="{{ auth()->user()->company->id }}">
 
                                         <div class="mb-4 flex items-center relative">
                                             <input type="text" name="name" class="custom-input"
@@ -732,6 +729,9 @@
                                         <!-- Options Container -->
                                         {{-- <div
                                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($agents) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3"> --}}
+                                        @if(auth()->user()->agent)
+                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                        @else
                                         <select
                                             class="custom-select w-full border rounded-lg px-4 py-2 dark:text-white dark:bg-gray-700"
                                             name="agent_id" id="agent_id">
@@ -742,6 +742,7 @@
                                             </option>
                                             @endforeach
                                         </select>
+                                        @endif
 
                                         <!-- ./Agent Selection -->
                                         <button type="submit"
@@ -755,7 +756,6 @@
                         </div>
 
                     </div>
-                    @endif
                 </div>
             </div>
         </div>

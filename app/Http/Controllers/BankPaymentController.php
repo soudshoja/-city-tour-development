@@ -55,18 +55,42 @@ class BankPaymentController extends Controller
             $accounts = Account::all();
             $companies = Company::all();
             $branches = Branch::all();
-            $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            ->orWhere('name', 'LIKE', '%Receivable%')
-            ->pluck('id');
-            $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
-            $lastLevelAccounts = Account::doesntHave('children')->get();
+            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+            $parentIds = Account::where(function ($query) {
+                    $query->where('name', 'LIKE', '%Payable%')
+                        ->orWhere('name', 'LIKE', '%Receivable%');
+                })
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id');
+
+            $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
+            
+
+            $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
+            $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
+            
+            $lastLevelAccounts = Account::doesntHave('children')
+                ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
+                    $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+                })
+                ->get();
+
+
+            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
-            ->pluck('id');
-            //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
-            $suppliers = Account::doesntHave('children')->get();
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id');
+            //$suppliers = Account::doesntHave('children')->get();
 
+            $suppliers = Account::doesntHave('children')
+                ->whereHas('parent', function ($query) use ($liabilitiesRootId) {
+                    $query->where('root_id', $liabilitiesRootId);
+                })
+                ->get();
+
+                //dd($suppliers);
             
         }elseif ($user->role_id == Role::COMPANY) {
             $company = Company::with('branches.agents')->find($user->company->id);
@@ -74,22 +98,40 @@ class BankPaymentController extends Controller
             $branches = $company->branches;
             $companies = $company;
 
-            $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            ->orWhere('name', 'LIKE', '%Receivable%')
-            ->pluck('id');
+            // $parentIds = Account::where('name', 'LIKE', '%Payable%')
+            // ->orWhere('name', 'LIKE', '%Receivable%')
+            // ->pluck('id');
+
+            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+            $parentIds = Account::where(function ($query) {
+                    $query->where('name', 'LIKE', '%Payable%')
+                        ->orWhere('name', 'LIKE', '%Receivable%');
+                })
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id');
+
             $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
+            $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
+            $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
+            
             $lastLevelAccounts = Account::doesntHave('children')
-            ->where('company_id', $user->company->id)
-            ->get();
+                ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
+                    $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+                })
+                ->get();
+
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
-            ->pluck('id');
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id');
             //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
 
             $suppliers = Account::doesntHave('children')
-            ->where('company_id', $user->company->id)
-            ->get();
+                ->whereHas('parent', function ($query) use ($liabilitiesRootId) {
+                    $query->where('root_id', $liabilitiesRootId);
+                })
+                ->get();
 
 
         }else{
@@ -220,9 +262,16 @@ class BankPaymentController extends Controller
             $branches = $companies->flatMap->branches;
             $accounts = $branches->pluck('account')->filter();
 
-            $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            ->orWhere('name', 'LIKE', '%Receivable%')
-            ->pluck('id');
+            // $parentIds = Account::where('name', 'LIKE', '%Payable%')
+            // ->orWhere('name', 'LIKE', '%Receivable%')
+            // ->pluck('id');
+            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+            $parentIds = Account::where(function ($query) {
+                    $query->where('name', 'LIKE', '%Payable%')
+                        ->orWhere('name', 'LIKE', '%Receivable%');
+                })
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id');
             $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
@@ -237,9 +286,16 @@ class BankPaymentController extends Controller
             $branches = $company->branches;
             $companies = $company;
             
-            $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            ->orWhere('name', 'LIKE', '%Receivable%')
-            ->pluck('id');
+            // $parentIds = Account::where('name', 'LIKE', '%Payable%')
+            // ->orWhere('name', 'LIKE', '%Receivable%')
+            // ->pluck('id');
+            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+            $parentIds = Account::where(function ($query) {
+                    $query->where('name', 'LIKE', '%Payable%')
+                        ->orWhere('name', 'LIKE', '%Receivable%');
+                })
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id');
             $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
@@ -366,9 +422,18 @@ class BankPaymentController extends Controller
      */
     private function getPayableReceivableAccounts()
     {
-        return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')
-            ->orWhere('name', 'LIKE', '%Receivable%')
-            ->pluck('id'))->get();
+        // return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')
+        //     ->orWhere('name', 'LIKE', '%Receivable%')
+        //     ->pluck('id'))->get();
+        $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+
+        return Account::whereIn('parent_id', Account::where(function ($query) {
+                        $query->where('name', 'LIKE', '%Payable%')
+                            ->orWhere('name', 'LIKE', '%Receivable%');
+                    })
+                    ->where('root_id', $liabilitiesRootId)
+                    ->pluck('id'))
+                ->get();
     }
 
     /**
@@ -376,7 +441,14 @@ class BankPaymentController extends Controller
      */
     private function getSupplierAccounts()
     {
-        return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')->pluck('id'))->get();
+        //return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')->pluck('id'))->get();
+        $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+
+        return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')
+                ->where('root_id', $liabilitiesRootId)
+                ->pluck('id'))
+            ->get();
+
     }
 
 

@@ -96,10 +96,20 @@ class Chat extends Component
             $branchesId = $user->company->branches->pluck('id');
 
             $agents = Agent::whereIn('branch_id', $branchesId)->get();
-            $agentIds = Agent::whereIn('branch_id', $branchesId)->pluck('id');
+            $agentIds = $agents->pluck('id');
 
             $clients = Client::whereIn('agent_id', $agentIds)->get();
-        }
+        } else if($user->role_id == Role::BRANCH){
+            $agents = Agent::where('branch_id', $user->branch->id)->get();
+            $agentIds = $agents->pluck('id');
+
+            $clients = Client::whereIn('agent_id', $agentIds)->get();
+
+        } else if($user->role_id == Role::AGENT){
+            // Agent can only see trips with tasks under their clients
+            $agents = Agent::where('id', $user->agent->id)->get();
+            $clients = Client::where('agent_id', $user->agent->id)->get();
+        } 
     
         return view('livewire.chat', compact('agents', 'clients', 'countries'));
     }

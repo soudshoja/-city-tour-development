@@ -60,7 +60,7 @@
                 <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
             </div>
         </div>
-        <form onsubmit="handleSaveClick(event)" method="POST" action="{{ route('bank-payments.store') }}">
+        <form method="POST" action="{{ route('bank-payments.store') }}">
             @csrf
             <div class="flex flex-col gap-2.5 xl:flex-row">
                 <div class="panel flex-1 px-0 py-6 ltr:lg:mr-6 rtl:lg:ml-6">
@@ -451,37 +451,42 @@
             // Initial row
             addItemButton.addEventListener("click", addItem);
             addItem();
-        });
 
-        
-        function handleSaveClick(event) {
-            event.preventDefault(); // Prevent form from submitting immediately
 
-            const button = document.getElementById('save-paymentvoucher-btn');
-            const icon = document.getElementById('iconSavePaymentVoucher');
-            const text = document.getElementById('textSavePaymentVoucher');
 
-            // Disable the button
-            button.disabled = true;
+            const saveBtn = document.getElementById('save-paymentvoucher-btn');
 
-            // Show loading spinner
-            icon.innerHTML = `
-                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                </svg>
-            `;
-            text.textContent = 'Saving...';
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', handleSaveClick);
+                }
 
-            // Simulate delay
-            setTimeout(() => {
-                icon.innerHTML = ''; // Remove spinner or replace with checkmark if you want
-                text.textContent = 'Saved ✅';
+                function handleSaveClick(event) {
+                    event.preventDefault(); // Prevent form from submitting immediately
+
+                    const button = document.getElementById('save-paymentvoucher-btn');
+                    const icon = document.getElementById('iconSavePaymentVoucher');
+                    const text = document.getElementById('textSavePaymentVoucher');
+
+                    // Disable the button
+                    button.disabled = true;
+
+                    // Show loading spinner
+                    icon.innerHTML = `
+                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                    `;
+                    text.textContent = 'Saving...';
+
+                    // Submit the form after delay (simulate AJAX or save effect)
                     setTimeout(() => {
-                        window.location.href = "{{ route('bank-payments.index') }}";
-                    }, 500); 
-            }, 1000);
-        }
+                        button.closest('form').submit(); // Actually submit the form
+                    }, 500);
+                }
+
+
+        });
 
     </script>
 

@@ -1519,7 +1519,6 @@
             console.log("Server Response:", data);
 
             if (data.success) {
-                alert(`New client created: ${data.client.name}`);
                 const client = response.client;
                 appendMessage("cityTour",
                     `New client created: <span style="color: #ff9800; font-weight: bold;">${data.client.name}</span>`

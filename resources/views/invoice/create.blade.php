@@ -153,8 +153,9 @@
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
-            <div
-                class="panel flex-1 px-0 py-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]">
+            <!-- <div class="panel flex-1 px-0 py-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]"> -->
+                <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
+
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
@@ -494,7 +495,7 @@
                             <div class="mt-4">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
                                 <select id="payment_gateway" name="payment_gateway"
-                                    class="border border-gray-300 p-2 rounded w-full">
+                                    class="border border-gray-300 p-2 rounded-lg mt-4 w-full">
                                     @foreach ($paymentGateways as $gateway)
                                         <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
@@ -1734,9 +1735,9 @@
             </summary>
             <div class="p-4">
                 <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
+                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel</div>
                     <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
-                </div>
+                    </div>
                 <div class="flex justify-center items-center">
                     <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
                     <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>

@@ -28,7 +28,7 @@ class SupplierController extends Controller
 
     public function index(Request $request)
     {
-        Gate::authorize('view supplier');
+        Gate::authorize('viewAny', Supplier::class);
         $user = auth()->user();
 
         $suppliers = Supplier::all();
@@ -69,9 +69,10 @@ class SupplierController extends Controller
 
     public function show($suppliersId)
     {
-        if (Auth::user()->role_id !== Role::ADMIN && Auth::user()->role_id !== Role::COMPANY) {
-            abort(403, 'Unauthorized action.');
-        }
+        Gate::authorize('view', Supplier::class);
+        // if (Auth::user()->role_id !== Role::ADMIN || Auth::user()->role_id !== Role::COMPANY) {
+        //     abort(403, 'Unauthorized action.');
+        // }
 
         $supplier = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->findOrFail($suppliersId)->supplier;
         $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();

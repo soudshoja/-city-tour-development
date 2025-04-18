@@ -123,6 +123,7 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client name</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Registered Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
                                 </tr>
                             </thead>
@@ -285,7 +286,8 @@
                                                             </div>
                                                         </a>
                                                         @elseif(strtolower($invoiceDetail->task->type) === 'hotel')
-                                                        <a href="{{ route('tasks.pdf.hotel', ['taskId' => $invoiceDetail->task->id]) }}"
+                                                        <!-- <a href="{{ route('tasks.pdf.hotel', ['taskId' => $invoiceDetail->task->id]) }}" -->
+                                                        <a href="#"
                                                             target="_blank">
                                                             <div
                                                                 class="flex gap-2 border-2 border-blue-700 bg-gradient-to-r from-blue-300 to-koromiko-200 rounded-xl p-2 min-h-40 hover:shadow-xl">
@@ -297,7 +299,7 @@
                                                                     <h1 class="text-center">You Have Hotel Reservation</h1>
                                                                     <div
                                                                         class="p-1 border-y border-gray-400 text-center font-bold">
-                                                                        {{ $invoiceDetail->task->hotelDetails->hotel->name }}
+                                                                        {{ $invoiceDetail->task->hotelDetails->hotel ? $invoiceDetail->task->hotelDetails->hotel->name : 'n/a'  }}
                                                                     </div>
                                                                     <div
                                                                         class="flex justify-between gap-2 p-2">
@@ -321,7 +323,7 @@
                                                                             <p>{{ $invoiceDetail->task->hotelDetails->room_type }}</p>
                                                                         </div>
                                                                     </div>
-                                                                </div>
+                                                                </div> 
                                                                 <div
                                                                     class="ps-2 border-l border-gray-400">
                                                                     <svg width="24"
@@ -377,6 +379,9 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $invoice->currency }} {{ $invoice->amount }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->created_at }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')

@@ -130,90 +130,102 @@ class PaymentController extends Controller
     }
 
 
-
     public function initiatePayment($data)
     {
-
-                    
+        //dd($data);
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-
+    
         if (!$voucherSequence) {
             $voucherSequence = Sequence::create(['current_sequence' => 1]);
         }
-
+    
         $currentSequence = $voucherSequence->current_sequence;
         $voucherNumber = $this->generateVoucherNumber($currentSequence);
-
         $voucherSequence->current_sequence++;
         $voucherSequence->save();
-
+    
         $invoice = $data['invoice'];
-        $selectedPartials = $data['selected_partials'];
-
+    
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->name,
             'pay_to' => $invoice->agent->branch->company->name,
             'currency' => 'KWD',
-            'payment_date' =>  Carbon::now(),
-            'amount' =>  $data['total_amount'],
+            'payment_date' => Carbon::now(),
+            'amount' => $data['total_amount'],
             'payment_method' => $data['payment_method'],
-            'status'  => 'pending',
+            'status' => 'pending',
             'payment_reference' => $invoice->id,
             'invoice_id' => $invoice->id,
         ]);
-
-        $requestTap = [
-            'amount' => $data['total_amount'],
-            'currency' => 'KWD',
-            'save_card' => false,
-            'customer' => [
-                'first_name' => $data['client_name'],
-                'email' => $data['client_email'],
-            ],
-            'source' => [
-                'id' => 'src_all',
-            ],
-            'description' => 'Payment for order ',
-            'metadata' => [
-                'invoice_number' => $invoice->invoice_number,
-                'payment_id' => $payment->id,
-                'payment_gateway' => $payment->payment_method,
-                'invoice_partial_id' => json_encode($data['invoice_partial_id']),
-            ],
-            'redirect' => [
-                'url' => $data['redirect_url'],
-            ],
-            'post' => [
-                'url' => $data['webhook_url'],
-            ],
-        ];
-
-        if (isset($data['selected_items'])) {
-            foreach ($data['selected_items'] as $key => $item) {
-                $selectedItemKey = 'selected_item_' . $key;
-                $data['metadata'][$selectedItemKey] = $item;
+    
+        if (strtolower($data['payment_method']) === 'tap') {
+                        
+            $requestTap = [
+                'amount' => $data['total_amount'],
+                'currency' => 'KWD',
+                'save_card' => false,
+                'customer' => [
+                    'first_name' => $data['client_name'],
+                    'email' => $data['client_email'],
+                ],
+                'source' => [
+                    'id' => 'src_all',
+                ],
+                'description' => 'Payment for order ',
+                'metadata' => [
+                    'invoice_number' => $invoice->invoice_number,
+                    'payment_id' => $payment->id,
+                    'payment_gateway' => $payment->payment_method,
+                    'invoice_partial_id' => json_encode($data['invoice_partial_id']),
+                ],
+                'redirect' => [
+                    'url' => $data['redirect_url'],
+                ],
+                'post' => [
+                    'url' => $data['webhook_url'],
+                ],
+            ];
+            
+            $tap = new Tap();
+            Log::info('requestTap', ['requestTap' => $requestTap]);
+            $response = $tap->createCharge($requestTap);
+            
+            logger('response', ['response' => $response]);
+    
+            if (isset($response['errors'])) {
+                return response()->json(['error' => $response['errors'][0]['description']], 500);
             }
+            
+            $payment->payment_reference = $response['id'];
+            $payment->status = 'initiate';
+            $payment->save();
+    
+            return response()->json([
+                'success' => 'Payment initiated successfully',
+                'url' => $response['transaction']['url'],
+            ]);
         }
+    
+        if (strtolower($data['payment_method']) === 'myfatoorah') {
+            $mfController = new \App\Http\Controllers\MyFatoorahController();
+    
+            $queryParams = http_build_query([
+                'oid' => $invoice->id,
+            ]);
+    
+            $payment->status = 'initiate';
+            $payment->save();
+    
+            return response()->json([
+                'success' => 'Redirecting to MyFatoorah',
+                'url' => route('myfatoorah.paynow') . '?' . $queryParams
+                // 'url' => route('myfatoorah.paynow') . '?' . http_build_query(['oid' => $invoice->id])
 
-        $tap = new Tap();
-        Log::info('requestTap', ['requestTap' => $requestTap]);
-        $response = $tap->createCharge($requestTap);
-        
-        logger('response', ['response' => $response]);
-
-        if (isset($response['errors'])) {
-            return response()->json(['error' => $response['errors'][0]['description']], 500);
+            ]);
         }
+    return response()->json(['error' => 'Unsupported payment method'], 400);
 
-        $payment->payment_reference = $response['id'];
-        $payment->status = 'initiate';
-        $payment->save();
-
-        return response()->json([
-            'success' => 'Payment initiated successfully',
-            'url' => $response['transaction']['url'],
-        ]);
     }
 
     public function process(Request $request)
@@ -501,6 +513,148 @@ class PaymentController extends Controller
         // }
         return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])
             ->with('status', 'Payment successful! Thank you for your payment.');
+    }
+    public function processMyFatoorah(array $data)
+    {
+        $focus = $data['Data']['focusTransaction'];
+        $invoiceId = $data['Data']['CustomerReference']; // You stored this in CustomerReference
+        $paymentReference = $focus['PaymentId'];
+        $totalPaidAmount = $focus['TransationValue'];
+        $paymentGateway = $focus['PaymentGateway'];
+        
+        // STEP 1: Fetch the invoice
+        $invoice = Invoice::with('agent.branch', 'client')->find($invoiceId);
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found.');
+        }
+
+        // STEP 2: Fetch related payment
+        $payment = Payment::where('invoice_id', $invoice->id)
+            ->where('payment_reference', $invoice->id)
+            ->where('status', 'initiate')
+            ->latest()->first();
+
+        if (!$payment) {
+            return redirect()->back()->with('error', 'Payment not found.');
+        }
+
+        // STEP 3: Update payment record
+        $payment->status = 'completed';
+        $payment->completed = 1;
+        $payment->payment_reference = $paymentReference;
+        $payment->save();
+
+        // STEP 4: Get financial accounts
+        $chargeRecord = Charge::where('name', 'LIKE', $paymentGateway)
+            ->where('company_id', $invoice->agent->branch->company->id)
+            ->first();
+
+        if (!$chargeRecord) {
+            return redirect()->back()->with('error', 'Charge account not configured.');
+        }
+
+        $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
+        $tapAccount = Account::find($chargeRecord->acc_fee_id);
+        $receivableAccount = Account::where('name', 'Clients')->first();
+
+        // STEP 5: Create transaction
+        $transaction = Transaction::create([
+            'branch_id' => $invoice->agent->branch->id,
+            'company_id' => $invoice->agent->branch->company->id,
+            'entity_id' => $invoice->agent->branch->company->id,
+            'entity_type' => 'company',
+            'transaction_type' => 'debit',
+            'amount' => $totalPaidAmount,
+            'date' => now(),
+            'description' => 'Payment via MyFatoorah for Invoice: ' . $invoice->invoice_number,
+            'invoice_id' => $invoice->id,
+            'reference_type' => 'Invoice',
+        ]);
+
+        $invoiceDetail = InvoiceDetail::where('invoice_number', $invoice->invoice_number)->first();
+        $client = $invoice->client;
+
+        // Receivable Journal
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'branch_id' => $invoice->agent->branch->id,
+            'company_id' => $invoice->agent->branch->company->id,
+            'invoice_id' => $invoice->id,
+            'account_id' => $receivableAccount->id,
+            'invoice_detail_id' => $invoiceDetail->id,
+            'transaction_date' => now(),
+            'description' => 'Client payment received via MyFatoorah',
+            'debit' => 0,
+            'credit' => $totalPaidAmount,
+            'balance' => $invoiceDetail->task_price - $totalPaidAmount,
+            'name' => $client->name,
+            'type' => 'receivable',
+            'voucher_number' => $payment->voucher_number,
+            'type_reference_id' => $receivableAccount->id,
+        ]);
+
+        // Bank assets (excluding fee)
+        $netAmount = $totalPaidAmount - $chargeRecord->amount;
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'branch_id' => $invoice->agent->branch->id,
+            'company_id' => $invoice->agent->branch->company->id,
+            'invoice_id' => $invoice->id,
+            'invoice_detail_id' => $invoiceDetail->id,
+            'account_id' => $bankPaymentFee->id,
+            'transaction_date' => now(),
+            'description' => 'Net payment received',
+            'debit' => $netAmount,
+            'credit' => 0,
+            'balance' => $invoiceDetail->task_price - $totalPaidAmount,
+            'name' => $bankPaymentFee->name,
+            'type' => 'bank',
+            'voucher_number' => $payment->voucher_number,
+            'type_reference_id' => $bankPaymentFee->id,
+        ]);
+        $bankPaymentFee->actual_balance += $netAmount;
+        $bankPaymentFee->save();
+
+        // Fee as expense
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'branch_id' => $invoice->agent->branch->id,
+            'company_id' => $invoice->agent->branch->company->id,
+            'invoice_id' => $invoice->id,
+            'invoice_detail_id' => $invoiceDetail->id,
+            'account_id' => $tapAccount->id,
+            'transaction_date' => now(),
+            'description' => 'MyFatoorah service fee',
+            'debit' => $chargeRecord->amount,
+            'credit' => 0,
+            'balance' => $tapAccount->actual_balance + $chargeRecord->amount,
+            'name' => $tapAccount->name,
+            'type' => 'charges',
+            'voucher_number' => $payment->voucher_number,
+            'type_reference_id' => $tapAccount->id,
+        ]);
+        $tapAccount->actual_balance += $chargeRecord->amount;
+        $tapAccount->save();
+
+        // STEP 6: Update invoice status
+        $invoice->status = 'paid';
+        $invoice->paid_date = now();
+        $invoice->save();
+
+        // STEP 7: Update invoice partials (optional based on your use case)
+        InvoicePartial::where('invoice_id', $invoice->id)->update([
+            'status' => 'paid',
+            'payment_id' => $payment->id
+        ]);
+
+        $this->storeNotification([
+            'user_id' => $invoice->agent->id,
+            'title' => 'Payment Successful',
+            'message' => 'Payment received via MyFatoorah for invoice ' . $invoice->invoice_number,
+        ]);
+
+        return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])
+            ->with('status', 'Payment successful via MyFatoorah!');
     }
 
     public function check($tap_id)

@@ -673,4 +673,21 @@ class ReportController extends Controller
             'childAccountsBank' => $childAccountsBank,
         ]);
     }
+    public function show($account_name)
+    {
+        // Fetch journal entries where the account name matches the account_name
+        // For example, only show entries related to 'clients'
+        $account = Account::where('name', 'clients')->first();  // Check for 'clients' account type
+
+        if ($account) {
+            // Retrieve journal entries linked to this account
+            $journalEntries = JournalEntry::where('account_id', $account->id)->get();
+
+            // Pass data to the view
+            return view('journal-entries.show', compact('journalEntries'));
+        }
+
+        // If account not found, you can handle it by showing an error or redirecting
+        return abort(404);  // Or redirect with a message
+    }
 }

@@ -46,6 +46,11 @@ class DashboardController extends Controller
             $childAccountsPayable = $reportController->getPayableSupplier();
             $payableSupplier = $childAccountsPayable;
 
+            $childAccountReceivable = $reportController->getReceivable();
+
+            $totalBank = $reportController->getTotalBank();
+
+            $gatewayReceivable = $reportController->getGatewayReceivable();
 
             $profitAgentWise = $reportController->getProfitAgent();
 
@@ -61,9 +66,9 @@ class DashboardController extends Controller
                 'pieChartColors' => $this->generateColors($dashboardData['branches']->count()),
                 'payableSupplier' => $payableSupplier,
                 'profitAgentWise' => $profitAgentWise['sumProfitAgent'],
-                'totalReceivable' => 0,
-                'totalBank' => 0,
-                'gatewayReceivable' => 0,
+                'totalReceivable' => $childAccountReceivable['balance'],
+                'totalBank' =>  $totalBank['balance'],
+                'gatewayReceivable' =>  $gatewayReceivable['balance'],
             ];
 
         } elseif (Auth::user()->role_id == Role::AGENT) {

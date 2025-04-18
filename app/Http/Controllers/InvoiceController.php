@@ -159,18 +159,19 @@ class InvoiceController extends Controller
             if ($task->invoiceDetail) {
                 return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);                    
             }
-            //dd($task);
+            
             //check miss data
             if($task->flightDetails) {
                 if (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from)) {
-                    return redirect()->back()->with('error', 'Missing important data in Task record.');
+                    return redirect()->back()->with('error', 'The task record is missing important flight data.');
                 }
             }
-            // if($task->hotelDetails) {
-            //     if (!isset($task->hotelDetails->room_details)) {
-            //         return redirect()->back()->with('error', 'Missing important data in Task record.');
-            //     }                
-            // }
+            if($task->hotelDetails) {
+                //dd($task->hotelDetails->hotel->id);
+                if (!isset($task->hotelDetails->hotel)) {
+                    return redirect()->back()->with('error', 'The task record is missing important hotel data.');
+                }                
+            }
 
         }
 

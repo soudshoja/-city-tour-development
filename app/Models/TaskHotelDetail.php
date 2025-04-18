@@ -57,7 +57,8 @@ class TaskHotelDetail extends Model
 
     public function hotel()
     {
-        return $this->hasOne(Hotel::class, 'id');
+        //return $this->hasOne(Hotel::class, 'id');
+        return $this->belongsTo(Hotel::class, 'hotel_id');
     }
 
     public function room()

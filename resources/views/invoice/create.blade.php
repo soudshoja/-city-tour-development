@@ -2358,6 +2358,10 @@
             } else
             if (type === 'split') {
 
+                let button = document.getElementById("splitbutton");
+                button.disabled = true;
+                button.innerText = "Saving..."; // Change text while saving
+
                 // Handle split payment, generate links for each row
                 try {
                     const invoiceLinks = []; // Store links for each client
@@ -2370,7 +2374,7 @@
                             gateway
                         } = item;
 
-                        // console.log(invoiceId, clientId, type, date, amount);
+                        console.log(invoiceId, clientId, type, date, amount);
                         // console.log(csrfToken);
                         // console.log(clientName)
                         // Send POST request for each client
@@ -2410,7 +2414,7 @@
                     //displayErrorMessage("Error generating one or more invoices. Please check your data.");
                 } finally {
                     afterPaymentType();
-                    hideModal();
+                    //hideModal();
                 }
 
             } else if (type === 'partial') {
@@ -2602,7 +2606,7 @@
                 if (clientId) {
                     const linkCell = row.querySelector("td:last-child");
                     linkCell.innerHTML = `
-                        <a href="/invoice/partial/${invoiceNumber}/${clientId}" 
+                        <a href="/invoice/${invoiceNumber}" 
                         class="text-blue-500 underline" 
                         target="_blank">
                         View Details

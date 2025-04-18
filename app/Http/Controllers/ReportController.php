@@ -466,60 +466,39 @@ class ReportController extends Controller
         return $allAccounts;
     }
 
-    private function childAccount($account)
+    private function sumJournalEntries($account, $debitCreditType = 'normal')
     {
-        $totalBalance = $account['balance'] ?? 0;
-        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        if ($account->childAccounts) {
+            foreach ($account->childAccounts as $childAccount) {
+                $this->sumJournalEntries($childAccount, $debitCreditType);
 
-        $account = $account['account'];
-
-        if ($account) {
-            $childAccounts = Account::where('parent_id', $account->id)->get();
-
-            $totalDebit = 0;
-            $totalCredit = 0;
-
-
-
-            if ($childAccounts->isNotEmpty()) {
-                $account->childAccounts = $childAccounts;
-
-                foreach ($childAccounts as $child) {
-                    $this->childAccount($child); // Recursively process each child
-
-                    // Sum up the debit and credit from child accounts
-                    $totalDebit += $child->debit ?? 0;
-                    $totalCredit += $child->credit ?? 0;
+                if ($account->journalEntries) {
+                    $runningBalance = 0;
+                    foreach ($account->journalEntries as $journalEntry) {
+                        if ($debitCreditType == 'normal') {
+                            $runningBalance += $journalEntry->debit - $journalEntry->credit;
+                        } else {
+                            $runningBalance += $journalEntry->credit - $journalEntry->debit;
+                        }
+                        $journalEntry->balance = $runningBalance;
+                    }
                 }
-
-                // Assign the summed debit and credit to the parent account
-                $account->debit = (string)$totalDebit;
-                $account->credit = (string)$totalCredit;
-                $account->balance = bcsub($totalDebit, $totalCredit, 2);
-                $totalBalance += $account->balance;
-            } else {
-                // If it's the last level, calculate debit and credit from journal entries
-                // $journalEntries = JournalEntry::where('account_id', $account->id)->get();
-                $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)
-                    ->where('company_id', $companyId)
-                    ->orderBy('created_at', 'desc')
-                    ->get();
-
-                $debit = $journalEntries->sum('debit');
-                $credit = $journalEntries->sum('credit');
-
-                $account->debit = (string)$debit;
-                $account->credit = (string)$credit;
-                $account->balance = bcsub($debit, $credit, 2);
-                $totalBalance += $account->balance;
-                $account->journalEntries = $journalEntries; // Attach journal entries to the account 
+            }
+        } else {
+            if($account->journalEntries) {
+                $runningBalance = 0;
+                foreach ($account->journalEntries as $journalEntry) {
+                    if ($debitCreditType == 'normal') {
+                        $runningBalance += $journalEntry->debit - $journalEntry->credit;
+                    } else {
+                        $runningBalance += $journalEntry->credit - $journalEntry->debit;
+                    }
+                    $journalEntry->balance = $runningBalance;
+                }
             }
         }
 
-        return [
-            'account' => $account,
-            'totalBalance' =>  $totalBalance,
-        ];
+       return $account;
     }
 
     public function getPayableSupplier()
@@ -534,32 +513,20 @@ class ReportController extends Controller
 
 
         $coaController = new CoaController();
-        $childAccountsPayable = $coaController->childAccount($accountPayable, 'reverse');
-        // $childAccountsPayable = Account::where('parent_id', $accountPayable->id)->get();
+        $debitCreditType = 'reverse';
 
-        // foreach ($childAccountsPayable as $childAccount) {
-        //     $journalEntries = JournalEntry::with('transaction')->where('account_id', $childAccount->id)
-        //         ->where('company_id', $companyId)
-        //         ->orderBy('created_at', 'desc')
-        //         ->get();
-        //     $childAccount->journalEntries = $journalEntries;
-        //     $credit = (string)$journalEntries->sum('credit');
-        //     $debit = (string)$journalEntries->sum('debit');
+        $childAccountsPayable = $coaController->childAccount($accountPayable, $debitCreditType);
 
-        //     $childAccount->balance = bcsub($credit, $debit, 2);
-        // }
-
+        $childAccountsPayable = $this->sumJournalEntries($childAccountsPayable, $debitCreditType);
+        
         return $childAccountsPayable;
     }
 
     public function payableSupplier()
     {
         $childAccountsPayable = $this->getPayableSupplier();
-
-
         // return response()->json($childAccountsPayable);
 
-        // dd($childAccountsPayable);
 
         return view('reports.payable-supplier', [
             'childAccountsPayable' => $childAccountsPayable,
@@ -611,21 +578,6 @@ class ReportController extends Controller
         ]);
     }
 
-    public function getTotalReceivable()
-    {
-        $companyId = auth()->user()->company->id;
-        $receivableAccount = Account::where('name', 'Accounts Receivable')->first();
-
-        if (!$receivableAccount) {
-            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
-        }
-
-        $coaController = new CoaController();
-        $childAccountsReceivable = $coaController->childAccount($receivableAccount, 'reverse');
-
-        return $childAccountsReceivable;
-    }
-
     public function getReceivable()
     {
         $companyId = auth()->user()->company->id;
@@ -638,7 +590,11 @@ class ReportController extends Controller
         }
 
         $coaController = new CoaController();
-        $childAccountsReceivable = $coaController->childAccount($receivableAccount, 'reverse');
+        $debitCreditType = 'normal';
+
+        $childAccountsReceivable = $coaController->childAccount($receivableAccount, $debitCreditType);
+
+        $childAccountsReceivable = $this->sumJournalEntries($childAccountsReceivable, $debitCreditType);
 
         return $childAccountsReceivable;
     }
@@ -666,7 +622,11 @@ class ReportController extends Controller
         }
 
         $coaController = new CoaController();
-        $childAccountsBank = $coaController->childAccount($bankAccount, 'normal');
+        $debitCreditType = 'normal';
+
+        $childAccountsBank = $coaController->childAccount($bankAccount, $debitCreditType);
+
+        $childAccountsBank = $this->sumJournalEntries($childAccountsBank, $debitCreditType);
 
         return $childAccountsBank;
     }
@@ -694,7 +654,11 @@ class ReportController extends Controller
         }
 
         $coaController = new CoaController();
-        $childAccountsBank = $coaController->childAccount($gatewayAccount, 'normal');
+        $debitCreditType = 'normal';
+
+        $childAccountsBank = $coaController->childAccount($gatewayAccount, $debitCreditType);
+
+        $childAccountsBank = $this->sumJournalEntries($childAccountsBank, $debitCreditType);
 
         return $childAccountsBank;
     }

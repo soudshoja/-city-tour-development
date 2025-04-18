@@ -205,7 +205,7 @@
                             <input id="duedate" type="date" name="duedate" value={{ $dueDate }}
                                 class="w-full form-input" />
                         </div>
-
+                        
 
                     </div>
                     <!--./invoice details -->

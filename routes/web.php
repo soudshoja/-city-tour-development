@@ -40,6 +40,7 @@ use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\BankPaymentController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\MyFatoorahController;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -282,6 +283,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/branch', [ChatController::class, 'createBranch'])->name('chat.branch');
     Route::post('/chat/payment', [ChatController::class, 'processPayment'])->name('chat.processPayment');
     Route::post('/chat/upload', [ChatController::class, 'handleFileUpload'])->name('chat.handleFileUpload');
+
+    // MyMyFatoorah
+    Route::get('callback',[MyFatoorahController :: class,'callback'])->name('myfatoorah.callback');
+    Route::get('/pay-now', [MyFatoorahController::class, 'index'])->name('myfatoorah.paynow');
+    Route::get('checkout', [MyFatoorahController::class, 'checkout'])->name('myfatoorah.checkout');
+
+
 
     //TRANSACTION
     Route::group([
@@ -529,3 +537,5 @@ Route::group([
 
 
 require __DIR__ . '/auth.php';
+
+

@@ -2255,6 +2255,10 @@
                 }
             } else
             if (type === 'split') {
+                let button = document.getElementById("splitbutton");
+                button.disabled = true;
+                button.innerText = "Saving..."; // Change text while saving
+
                 // Handle split payment, generate links for each row
                 try {
                     const invoiceLinks = []; // Store links for each client
@@ -2296,12 +2300,16 @@
                         const result = await response.json();
                     }
 
+                    button.innerText = "Saved!";
+                    // Update the visibility of the link
+                    updateLinkVisibility(invoiceNumber);
+
                 } catch (error) {
                     console.error('Error generating invoices:', error);
                     displayErrorMessage("Error generating one or more invoices. Please check your data.");
                 } finally {
                     afterPaymentType();
-                    hideModal();
+                    //hideModal();
                 }
 
             } else if (type === 'partial') {

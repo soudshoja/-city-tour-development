@@ -11,6 +11,13 @@ class JournalEntryController extends Controller
     public function index($transactionId)
     {
         $journalEntries = JournalEntry::where('transaction_id', $transactionId)->get();
+        
+        if (!$journalEntries) {
+            return response()->json(['message' => 'Journal entry not found'], 404);
+        }
+
+        $journalEntries = $this->getJournalEntries($journalEntries);
+
         return view('journal_entries.index', compact('journalEntries','transactionId'));      
     }
 
@@ -21,7 +28,14 @@ class JournalEntryController extends Controller
         if (!$journalEntries) {
             return response()->json(['message' => 'Journal entry not found'], 404);
         }
+        
+        $journalEntries = $this->getJournalEntries($journalEntries);
 
+        return view('journal_entries.show', compact('journalEntries'));
+    }
+
+    public function getJournalEntries($journalEntries)
+    {
         $assets = Account::where('name', 'Assets')->first();
         $liabilities = Account::where('name', 'Liabilities')->first();
         $equity = Account::where('name', 'Equity')->first();
@@ -49,7 +63,7 @@ class JournalEntryController extends Controller
             }
             $journalEntry->running_balance = $runningBalance;
         }
-        dd($journalEntries);
-        return view('journal_entries.show', compact('journalEntries'));
+    
+        return $journalEntries;
     }
 }

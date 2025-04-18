@@ -2042,20 +2042,6 @@
         }
 
 
-
-        deleteInvoiceButton.addEventListener('click', async function(event) {
-            event.preventDefault(); // Prevent form submission or default action
-
-            try {
-                // Simulate invoice generation (replace with your actual API call)
-                await deleteInvoice();
-
-            } catch (error) {
-                console.error("Error generating invoice:", error);
-
-            }
-        });
-
         function savePartial(mode) {
 
             if (mode === 'full') {
@@ -2107,7 +2093,7 @@
                     const selectElement = row.querySelector('select');
                     const clientId = selectElement.value;
                     const date = row.querySelector('input[type="date"]').value;
-                    const gateway = row.querySelector('#payment_gateway2').value || null;
+                    const gateway = row.querySelector('#payment_gateway').value || null;
                     const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
                     const clientName = selectElement.options[selectElement.selectedIndex].text;
 
@@ -2149,8 +2135,7 @@
                     setTimeout(() => {
                         iconSplit.innerHTML = ''; // remove spinner
                         textSplit.textContent = 'Saved ✅';
-                        location.reload(); // or redirect if needed
-                    }, 1000);
+                    }, 500);
                 } else {
                     console.error('Split button or icon/text elements not found in the DOM.');
                 }
@@ -2202,7 +2187,7 @@
                         iconPartial.innerHTML = ''; // remove icon
                         textPartial.textContent = 'Saved ✅';
                         location.reload(); // or redirect if you want
-                    }, 1000);
+                    }, 500);
                 } else {
                     console.error('One or more elements (button, icon, text) not found in the DOM');
                 }
@@ -2284,7 +2269,7 @@
 
                         console.log(invoiceId, clientId, type, date, amount);
                         console.log(csrfToken);
-                        console.log(clientName)
+                        console.log(clientName);
                         // Send POST request for each client
                         const response = await fetch(invoiceUrl, {
                             method: 'POST',
@@ -2303,6 +2288,7 @@
                             }),
                         });
 
+                        console.log(response);
                         if (!response.ok) {
                             throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
                         }
@@ -2386,45 +2372,6 @@
 
 
         }
-
-        // Delete invoice
-        async function deleteInvoice() {
-            console.log('delete', invoice.id);
-
-            const invoiceUrl = `/invoice/delete/${invoice.id}`;
-            const csrfToken = "{{ csrf_token() }}";
-
-            try {
-                const response = await fetch(invoiceUrl, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken
-                    }
-                });
-
-                if (response.ok) {
-                    console.log("Invoice deleted successfully.");
-                    showNotification("Invoice deleted successfully.", "success");
-                } else {
-                    console.error("Failed to delete invoice:", await response.text());
-                }
-
-            } catch (error) {
-                console.error('Error deleting invoice:', error);
-                let alert = document.createElement('div');
-                alert.innerHTML = ` 
-                 <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                       Error Generating Invoice: make sure all fields are filled correctly
-                     <button type="button" class="close text-white ml-2" aria-label="Close"
-                         onclick="this.parentElement.style.display='none';">
-                         <span aria-hidden="true">&times;</span>
-                     </button>
-                 </div>
-                 `
-                document.body.appendChild(alert);
-            }
-        }
-
 
         function showNotification(message, type) {
             let notification = document.createElement('div');

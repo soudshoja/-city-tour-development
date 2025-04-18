@@ -13,29 +13,35 @@
         Journal Entry
     </header>
     <main class="p-2 bg-white rounded shadow">
+
         <body>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Transaction ID</th>
-                        <th>Date/Time</th>
-                        <th>Description</th>
-                        <th>Account</th>
-                        <th>Debit</th>
-                        <th>Credit</th>
+            <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-md">
+                <thead class="bg-gray-100 text-gray-700">
+                    <tr class="border-b border-gray-300">
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Transaction ID</th>
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Date/Time</th>
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Description</th>
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Account</th>
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Debit</th>
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Credit</th>
+                        <th class="text-center px-4 py-3 text-left text-base font-semibold">Running Balance</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="text-gray-700">
                     @foreach($journalEntries as $entry)
-                    <tr>
-                        <td class="text-center">{{ $entry->transaction_id }}</td>    
-                        <td class="text-center">{{ $entry->created_at }}</td>    
-                        <td class="text-center">{{ $entry->description }}</td>
-                        <td class="text-center">{{ $entry->account->name }}</td>
-                        <td class="text-center">{{ $entry->debit }}</td>
-                        <td class="text-center">{{ $entry->credit }}</td>
-                        
-                    </tr>
+                        <tr class="hover:bg-gray-50 transition-all">
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base font-medium">{{ $entry->transaction_id }}</td>
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base">{{ $entry->created_at }}</td>
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base">{{ $entry->description }}</td>
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base">
+                                <a href="{{ route('journal-entries.show', ['accountId' => $entry->account->id]) }}" class="text-blue-500 hover:underline">
+                                    {{ $entry->account->name }}
+                                </a>
+                            </td>
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base">{{ $entry->debit }}</td>
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base">{{ $entry->credit }}</td>
+                            <td class="text-center border-b border-gray-200 px-4 py-3 text-base">N/A</td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>

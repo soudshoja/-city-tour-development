@@ -208,22 +208,19 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/role', [RoleController::class, 'update'])->name('role.update');
     Route::get('/permission/{role}', [RoleController::class, 'permission'])->name('role.permission');
 
-    //ACCOUNT
-    Route::get('/coa', [CoaController::class, 'index'])->name('coa.index');
-    Route::post('/coa/create', [CoaController::class, 'createAccounts'])->name('coa.create');
-    Route::delete('/api/coa/{id}', [CoaController::class, 'dstry'])->name('coa.destroy');
-    Route::post('/updateCode/{id}', [CoaController::class, 'updateCode']);
-    Route::get('/coa/payment-voucher', [CoaController::class, 'payment'])->name('coa.payment');
-
-    Route::get('/get-level1-accounts', [CoaController::class, 'getLevel1Accounts']);
-    Route::get('/get-level2-accounts/{level1Id}', [CoaController::class, 'getLevel2Accounts']);
-    Route::get('/get-level3-accounts/{level2Id}', [CoaController::class, 'getLevel3Accounts']);
-    Route::get('/get-level4-accounts/{level3Id}', [CoaController::class, 'getLevel4Accounts']);
-    Route::get('/get-account', [CoaController::class, 'getTransactionsByLevel4']);
-    Route::post('/submit-voucher', [CoaController::class, 'submitVoucher']);
-    Route::get('/coa/transactions', [CoaController::class, 'transaction'])->name('coa.transaction');
-
-    Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('coa.addCategory');
+    // COA
+    Route::group([
+        'prefix' => 'coa',
+        'as' => 'coa.',
+    ], function () {
+        Route::get('/', [CoaController::class, 'index'])->name('index');
+        Route::post('/create', [CoaController::class, 'createAccounts'])->name('create');
+        Route::delete('/api/{id}', [CoaController::class, 'dstry'])->name('destroy');
+        Route::post('/updateCode/{id}', [CoaController::class, 'updateCode'])->name('updateCode');
+        Route::get('/payment-voucher', [CoaController::class, 'payment'])->name('payment');
+        Route::get('/transactions', [CoaController::class, 'transaction'])->name('transaction');
+        Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('addCategory');
+    });
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting-summary', [AccountingController::class, 'showCompanySummary'])->name('accounting.index');
@@ -255,8 +252,6 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('/branches/{id}', [BranchController::class, 'show']);
-
-
 
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
@@ -329,101 +324,32 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
     });
 
-});
+    // INVOICE
+    Route::group([
+        'prefix' => 'invoices',
+        'as' => 'invoices.',
+    ], function () {
+        Route::get('/', [InvoiceController::class, 'index'])->name('index');
+        // Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('salelist');
+        Route::get('/create', [InvoiceController::class, 'create'])->name('create');
+        Route::get('/link', [InvoiceController::class, 'link'])->name('link');
+    });
 
 
-// ITEMS
-// Route::get('/items', [ItemController::class, 'index'])->name('items.index');
-// Route::post('/items', [ItemController::class, 'store'])->name('items.store');
-// Route::get('/items/{id}', [ItemController::class, 'show'])->name('items.show');
-
-// TASKS
-Route::group([
-    'prefix' => 'agent',
-    'as' => 'agent.',
-], function () {
-    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-});
-
-
-// Route for fetching task details
-// Route::get('/tasks/{id}', function ($id) {
-//     $task = Task::with('client', 'supplier', 'agent.branch', 'invoiceDetail.invoice')->find($id);
-//     if ($task) {
-//         return response()->json($task);
-//     }
-//     return response()->json(['error' => 'Task not found'], 404);
-// });
-
-    Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
-    //VERSION
-    Route::get('/version', [VersionController::class, 'index'])->name('version.index');
-    Route::get('/version/{versionId}', [VersionController::class, 'edit'])->name('version.edit');
-    Route::post('/version', [VersionController::class, 'store'])->name('version.store');
-    Route::put('/version/update/{id}', [VersionController::class, 'update'])->name('version.update');
-    Route::post('/version/update/current', [VersionController::class, 'updateCurrent'])->name('version.current');
-    Route::post('/version/updateMaster', [VersionController::class, 'updateMaster'])->name('version.updateMaster');
-    Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.getCurrent');
-
-    Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
-    
-// INVOICE
-Route::group([
-    'middleware' => ['auth'],
-    'prefix' => 'invoices',
-    'as' => 'invoices.',
-], function () {
-    Route::get('/', [InvoiceController::class, 'index'])->name('index');
-    Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('salelist');
-    Route::get('/create', [InvoiceController::class, 'create'])->name('create');
-    Route::get('/link', [InvoiceController::class, 'link'])->name('link');
-});
-
-Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
-Route::get('/invoice/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoice.pdf');
-Route::post('/invoice/store', [InvoiceController::class, 'store'])->name('invoice.store');
-Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
-Route::delete('/invoice/delete/{id}', [InvoiceController::class, 'delete'])->name('invoice.delete');
-Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
-Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('invoices.clientAdd');
-Route::get('/invoice/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('invoice.edit');
-Route::post('/invoice/partial', [InvoiceController::class, 'savePartial'])->name('invoice.partial');
-Route::post('/invoice/remove/partial', [InvoiceController::class, 'removePartial'])->name('invoice.removepartial');
-Route::get('/invoice/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('invoice.split');
-
-
-// search for invoice creation
-
-// branch 
-Route::get('/search-branch', [InvoiceController::class, 'searchBranch'])->name('search.branch');
-Route::post('/select-branch', [InvoiceController::class, 'selectBranch'])->name('select.branch');
-
-// agent
-Route::get('/search-agent', [InvoiceController::class, 'searchAgent'])->name('search.agent');
-Route::post('/select-agent', [InvoiceController::class, 'selectAgent'])->name('select.agent');
-
-// client
-Route::get('/search-client', [InvoiceController::class, 'searchClient'])->name('search.client');
-Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name('select.client');
-
-
-// items 
-Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
-Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
-
-
-
-Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');
-Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->name('bank-payments.store');
-Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
-Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])->name('bank-payments.update');
-Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
-
-
-// PAYMENT
-Route::group([
-    'middleware' => ['auth'],
-], function () {
+    Route::group([
+        'prefix' => 'invoice',
+        'as' => 'invoice.',
+    ], function () {
+        Route::post('/store', [InvoiceController::class, 'store'])->name('store');
+        Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
+        Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
+        // Route::patch('/invoice/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('updateStatus');
+        // Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
+        Route::get('/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
+        Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
+        Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
+    });
 
     Route::group([
         'prefix' => 'payment',
@@ -481,23 +407,84 @@ Route::group([
 
     Route::get('update-rate',[SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
 
-
-
     Route::post('credentials', [SupplierCredentialController::class, 'store'])->name('credentials.store');
 
+    //CHARGES
+    Route::group([
+        'prefix' => 'charges',
+        'as' => 'charges.',
+    ], function () {
+        Route::get('/', [ChargeController::class, 'index'])->name('index');
+        Route::get('/create', [ChargeController::class, 'create'])->name('create');
+        Route::post('/store', [ChargeController::class, 'store'])->name('store');
+        Route::get('/edit/{id}', [ChargeController::class, 'edit'])->name('edit');
+        Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
+        Route::put('/{id}', [ChargeController::class, 'update'])->name('update');
+        Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
+    });
+
+    Route::group([
+        'prefix' => 'supplier-company',
+        'as' => 'supplier-company.',
+    ], function () {
+        Route::get('/edit/{id}', [SupplierCompanyController::class, 'edit'])->name('edit');
+        Route::post('/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
+        Route::post('/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
+    });
+
+    // NOIFICATIONS
+    Route::group([
+        'prefix' => 'notifications',
+        'as' => 'notifications.',
+    ], function () {
+        Route::get('/', NotificationIndex::class)->name('index');
+    });
+
 });
 
-Route::group([
-    'prefix' => 'supplier-company',
-    'as' => 'supplier-company.',
-], function () {
-    Route::get('/edit/{id}', [SupplierCompanyController::class, 'edit'])->name('edit');
-    Route::post('/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
-    Route::post('/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
-});
+Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
+//VERSION
+Route::get('/version', [VersionController::class, 'index'])->name('version.index');
+Route::get('/version/{versionId}', [VersionController::class, 'edit'])->name('version.edit');
+Route::post('/version', [VersionController::class, 'store'])->name('version.store');
+Route::put('/version/update/{id}', [VersionController::class, 'update'])->name('version.update');
+Route::post('/version/update/current', [VersionController::class, 'updateCurrent'])->name('version.current');
+Route::post('/version/updateMaster', [VersionController::class, 'updateMaster'])->name('version.updateMaster');
+Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.getCurrent');
+
+Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
+
+
+Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
+Route::get('/invoice/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoice.pdf');
+
+
+// search for invoice creation
+
+// branch 
+Route::get('/search-branch', [InvoiceController::class, 'searchBranch'])->name('search.branch');
+Route::post('/select-branch', [InvoiceController::class, 'selectBranch'])->name('select.branch');
+
+// agent
+Route::get('/search-agent', [InvoiceController::class, 'searchAgent'])->name('search.agent');
+Route::post('/select-agent', [InvoiceController::class, 'selectAgent'])->name('select.agent');
+
+// client
+Route::get('/search-client', [InvoiceController::class, 'searchClient'])->name('search.client');
+Route::post('/select-client', [InvoiceController::class, 'selectClient'])->name('select.client');
+
+
+// items 
+Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('search.item');
+Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
 
 
 
+Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');
+Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->name('bank-payments.store');
+Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
+Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])->name('bank-payments.update');
+Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
 
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');
@@ -511,29 +498,11 @@ Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.ex
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 
 // todolist routes
-Route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.index');
-Route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.store');
-Route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
-Route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
+route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.index');
+route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.store');
+route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
+route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
 
-//CHARGES
-Route::get('/charges', [ChargeController::class, 'index'])->name('charges.index');
-Route::get('/charges/create', [ChargeController::class, 'create'])->name('charges.create');
-Route::post('/charges/store', [ChargeController::class, 'store'])->name('charges.store');
-Route::get('/charges/edit/{id}', [ChargeController::class, 'edit'])->name('charges.edit');
-Route::delete('/charges/{id}', [ChargeController::class, 'destroy'])->name('charges.destroy');
-Route::put('/charges/{id}', [ChargeController::class, 'update'])->name('charges.update');
-Route::get('/charges/{id}', [ChargeController::class, 'show']);
-
-
-// NOIFICATIONS
-Route::group([
-    'middleware' => ['auth'],
-    'prefix' => 'notifications',
-    'as' => 'notifications.',
-], function () {
-    Route::get('/', NotificationIndex::class)->name('index');
-});
 
 
 require __DIR__ . '/auth.php';

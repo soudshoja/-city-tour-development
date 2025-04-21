@@ -333,6 +333,7 @@ Route::middleware(['auth'])->group(function () {
         // Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('salelist');
         Route::get('/create', [InvoiceController::class, 'create'])->name('create');
         Route::get('/link', [InvoiceController::class, 'link'])->name('link');
+        Route::post('/clientAdd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
     });
 
 
@@ -344,7 +345,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
         // Route::patch('/invoice/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('updateStatus');
-        // Route::post('/invoices/clientadd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
         Route::get('/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
@@ -362,6 +362,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
+        Route::get('/link/{paymentId}',[PaymentController::class, 'paymentLink'])->name('link');
         
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');
         Route::post('/initiate-myfatoorah-payment', [PaymentController::class, 'initiateMyFatoorahPayment'])->name('payment.initiateMyFatoorah');

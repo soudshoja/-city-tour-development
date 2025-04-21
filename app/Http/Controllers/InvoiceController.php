@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Redirect;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Arr;
+use InvalidArgumentException;
 
 class InvoiceController extends Controller
 {
@@ -151,10 +152,10 @@ class InvoiceController extends Controller
             throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
         }
 
-        $tasks1 = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
-
-        $selectedTasks = $tasks1->whereIn('id', $taskIdsArray)->get();
-
+        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
+       
+        $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
+        
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
                 return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);                    
@@ -269,49 +270,29 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
         $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
-
+        $agentId = (array) $agentId;
         $clientId = $selectedClient ? $selectedClient->id : null;
-
-
-        if ($user->role_id == Role::AGENT) {
-
-            $tasks = $agentId 
-                ? Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
-                    ->where('agent_id', $agentId)
-                    ->get()
-                    ->filter(function ($task) {
-                        // Filter out tasks that already have an invoice detail
-                        return !$task->invoiceDetail;
-                    })
-                    ->map(function ($task) {
-                        $task->agent_name = $task->agent->name ?? null;
-                        $task->branch_name = $task->agent->branch->name ?? null;
-                        $task->supplier_name = $task->supplier->name ?? null;
-                        $task->quantity = 1;
-                        return $task;
-                    })
-                : collect();
-        } else {
-            Log::info('agentId', ['agentId' => $agentId]);
-            $tasks = $agentId 
-                ? Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')
-                    ->whereIn('agent_id', $agentId instanceof \Illuminate\Support\Collection ? $agentId->toArray() : [$agentId]) 
-                    ->get()
-                    ->filter(function ($task) {
-                        // Filter out tasks that already have an invoice detail
-                        return !$task->invoiceDetail;
-                    })
-                    ->map(function ($task) {
-                        $task->agent_name = $task->agent->name ?? null;
-                        $task->branch_name = $task->agent->branch->name ?? null;
-                        $task->supplier_name = $task->supplier->name ?? null;
-                        $task->quantity = 1;
-                        return $task;
-                    })
-                : collect();
-                Log::info('tasks', ['tasks' => $tasks]);
-        }
         
+        // Log::info('agentId', ['agentId' => $agentId]);
+        // dd(gettype($agentId));
+        $tasks = $agentId
+            ? (clone $tasks)
+            ->whereIn('agent_id', $agentId)
+            ->get()
+            ->filter(function ($task) {
+                // Filter out tasks that already have an invoice detail
+                return !$task->invoiceDetail;
+            })
+            ->map(function ($task) {
+                $task->agent_name = $task->agent->name ?? null;
+                $task->branch_name = $task->agent->branch->name ?? null;
+                $task->supplier_name = $task->supplier->name ?? null;
+                $task->quantity = 1;
+                return $task;
+            })
+            : collect();
+        // Log::info('tasks', ['tasks' => $tasks]);
+
         //dd($task->flightDetails->countryTo);
 
         $suppliers = Supplier::all();

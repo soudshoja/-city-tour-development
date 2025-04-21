@@ -154,39 +154,35 @@
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <!-- <div class="panel flex-1 px-0 py-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]"> -->
-                <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
+            <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
 
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                         <x-application-logo class="custom-logo-size" />
-                        @php
-                            $disabled = $disableButtons ? 1 : 0;
-                            $disabledagentbutton = auth()->user()->role_id == \App\Models\Role::AGENT ? 1 : 0;
-                        @endphp
                         @if ($selectedCompany)
-                            <div class="pl-2">
-                                <h3>{{ $selectedCompany->name }}</h3>
-                                <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
-                                <p>{{ $selectedCompany->email }}</p>
-                                <p>{{ $selectedCompany->phone }}</p>
-                            </div>
+                        <div class="pl-2">
+                            <h3>{{ $selectedCompany->name }}</h3>
+                            <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                            <p>{{ $selectedCompany->email }}</p>
+                            <p>{{ $selectedCompany->phone }}</p>
+                        </div>
                         @else
-                            <div class="custom-select w-full border rounded-lg mt-4">
-                                <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
-                                </div>
-                                <div
-                                    class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                    @foreach ($companies as $company)
-                                        <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                            data-value="{{ $company->id }}">
-                                            {{ $company->name }}
-                                        </div>
-                                    @endforeach
-                                </div>
-
-                                <input type="hidden" name="branch_id" id="selectedBranch">
+                        <div class="custom-select w-full border rounded-lg mt-4">
+                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                             </div>
+                            <div
+                                class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                @foreach ($companies as $company)
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                    data-value="{{ $company->id }}">
+                                    {{ $company->name }}
+                                </div>
+                                @endforeach
+                            </div>
+
+                            <input type="hidden" name="branch_id" id="selectedBranch">
+                        </div>
 
                         @endif
 
@@ -195,10 +191,10 @@
                             <div
                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                        data-value="{{ $branch->id }}">
-                                        {{ $branch->name }}
-                                    </div>
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                    data-value="{{ $branch->id }}">
+                                    {{ $branch->name }}
+                                </div>
                                 @endforeach
                             </div>
 
@@ -300,33 +296,33 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                                <button id="select-agent" type="button" onclick="openAgentModal()"
-                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button id="select-agent" type="button" onclick="openAgentModal()"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                        <path
-                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                            fill="#004c9e" />
-                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                            stroke-width="1.5" stroke-linecap="round" />
-                                    </svg><span class="pl-5">Choose Agent</span>
-                                </button>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path
+                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                        fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Agent</span>
+                            </button>
                             @else
-                                <button disabled id="select-agent" type="button"
-                                        class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button disabled id="select-agent" type="button"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                             city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                            <path
-                                                d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                                fill="#004c9e" />
-                                            <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                                stroke-width="1.5" stroke-linecap="round" />
-                                        </svg><span class="pl-5">Choose Agent</span>
-                                    </button>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path
+                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                        fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Agent</span>
+                            </button>
                             @endcan
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
@@ -418,12 +414,12 @@
                     </div>
                 </div>
 
-                <div class="panel flex-1 px-6 py-6 lg:mr-6" id="coa-activities-container">
+                <!-- <div class="panel flex-1 px-6 py-6 lg:mr-6" id="coa-activities-container">
                     <h3 class="font-bold text-xl mb-4">COA Activities:</h3>
-                    <ul id="coa-activities-list" class="list-disc pl-6 space-y-2">
-                        <!-- COA activities will be inserted here by the coaActivites function -->
-                    </ul>
-                </div>
+                    <ul id="coa-activities-list" class="list-disc pl-6 space-y-2"> -->
+                <!-- COA activities will be inserted here by the coaActivites function -->
+                <!-- </ul>
+                </div> -->
 
             </div>
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
@@ -438,10 +434,10 @@
                     </select>
 
                     <!-- Payment Type Section -->
-                    <div id="paymentMethod" class="mt-4">
+                    <div id="paymentMethod" class="mt-4 hidden">
                         <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Type</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                        <label class="cursor-pointer rounded-full shadow">
+                            <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_full" name="payment_type" value="full"
                                     onclick="hideModal()" hidden class="peer" checked />
                                 <div
@@ -497,30 +493,30 @@
                                 <select id="payment_gateway" name="payment_gateway"
                                     class="border border-gray-300 p-2 rounded-lg mt-4 w-full">
                                     @foreach ($paymentGateways as $gateway)
-                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="mt-4">
-                            <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                     city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
                                     hover:bg-[#f7b14f] hover:shadow-xl hover:text-white transition">
-                                
-                                <span id="button-icon-full" class="mr-2 inline-block">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
-                                        <path
-                                            d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
-                                            fill="currentColor" />
-                                        <path
-                                            d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
-                                            fill="currentColor" />
-                                    </svg>
-                                </span>
 
-                                <span id="button-text-full">Save Full Payment</span>
-                            </button>
+                                    <span id="button-icon-full" class="mr-2 inline-block">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
+                                            <path
+                                                d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                                fill="currentColor" />
+                                            <path
+                                                d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                                fill="currentColor" />
+                                        </svg>
+                                    </span>
+
+                                    <span id="button-text-full">Save Full Payment</span>
+                                </button>
                             </div>
                         </section>
 
@@ -728,11 +724,11 @@
                                                 <!-- Buttons -->
 
                                                 <div>
-                                                        <button onclick="savePartial('split')" id="splitbutton" type="button"
+                                                    <button onclick="savePartial('split')" id="splitbutton" type="button"
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
 
-                                                        <span id="button-icon-split" class="mr-2"></span> 
+                                                        <span id="button-icon-split" class="mr-2"></span>
                                                         <span id="button-text-split">Save Split Payment</span>
                                                     </button>
                                                 </div>
@@ -791,8 +787,8 @@
                                                     <select id="payment_gateway1" name="payment_gateway1"
                                                         class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}
-                                                            </option>
+                                                        <option value="{{ $gateway }}">{{ $gateway }}
+                                                        </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -817,12 +813,12 @@
 
                                             <div class="flex space-x-4 mt-15">
 
-                                            <button onclick="savePartial('partial')" id="partialbutton" type="button"
-                                                class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                <button onclick="savePartial('partial')" id="partialbutton" type="button"
+                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
 
-                                                    <span id="button-icon-partial" class="mr-2"></span> 
-                                                    <span id="button-text-partial">Save Partial Payment</span>                                                   
+                                                    <span id="button-icon-partial" class="mr-2"></span>
+                                                    <span id="button-text-partial">Save Partial Payment</span>
                                                 </button>
 
                                             </div>
@@ -871,10 +867,10 @@
                                     class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                                     <!-- Dynamic list items go here -->
                                     @foreach ($agents as $agent)
-                                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
-                                            onclick="chooseTasksAgent('{{ $agent }}')">
-                                            {{ $agent->name }}
-                                        </li>
+                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
+                                        onclick="chooseTasksAgent('{{ $agent }}')">
+                                        {{ $agent->name }}
+                                    </li>
                                     @endforeach
                                 </ul>
                                 <!-- ./List of Agents -->
@@ -1277,7 +1273,7 @@
 
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
-            
+
             for (let i = 1; i <= splitInto; i++) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -2769,7 +2765,7 @@
 
         function coaActivities(items, subTotal) { // FUNCTION CLOSED/NOT USED
 
-        //  const supplierTotals = new Map(); // To track cumulative amounts for each supplier
+            //  const supplierTotals = new Map(); // To track cumulative amounts for each supplier
             let cumulativeMarkup = 0; // Total markup income
 
             const clientNameInput = document.getElementById("receiverName");
@@ -2963,13 +2959,17 @@
             }, 500);
         }
 
+        function lockTasks(){
+
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
 
             tasks = @json($tasks);
             tasks = Array.isArray(tasks) ? tasks : Object.values(tasks);
             let clients = @json($clients);
-            console.log('tasks', tasks);
-            console.log(Array.isArray(tasks));
+            // console.log('tasks', tasks);
+            // console.log(Array.isArray(tasks));
             // Initial rendering of items
             renderItems();
 
@@ -2977,30 +2977,6 @@
             // Initialize modals with full data
             renderClientList(clients);
             renderTaskList(tasks);
-
-            const chooseClientButton = document.getElementById('openClientModalButton');
-            const chooseAgentButton = document.getElementById('select-agent');
-            const disabled = {{ $disabled ?? 0 }}; 
-            const disabledagentbutton = {{ $disabledagentbutton ?? 0 }}; 
-
-            if (chooseClientButton && chooseAgentButton) {
-                if (disabled === 1) {
-                    chooseClientButton.disabled = true;
-                    chooseAgentButton.disabled = true;
-                } else {
-                    chooseClientButton.disabled = false;
-                    chooseAgentButton.disabled = false;
-                }
-
-                if (disabledagentbutton === 1) {
-                    chooseClientButton.disabled = false;
-                    chooseAgentButton.disabled = true;
-                } else {
-                    chooseClientButton.disabled = false;
-                    chooseAgentButton.disabled = false;
-                }
-            }
-
         });
     </script>
 

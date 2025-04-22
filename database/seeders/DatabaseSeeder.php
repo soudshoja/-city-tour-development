@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             AccountTypeSeeder::class,
             EntitySeeder::class,
             AgentPermissionSeeder::class,
+            CurrencySeeder::class,
         ]);
     }
 }

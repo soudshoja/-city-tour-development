@@ -81,8 +81,10 @@
               return;
           }
 
+         let url = "{{ route('coa.updateCode', '__id__') }}".replace('__id__', assetId);
+        
           try {
-              const response = await fetch(`/updateCode/${assetId}`, {
+              const response = await fetch(url, {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/json',

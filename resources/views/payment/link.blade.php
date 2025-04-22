@@ -97,7 +97,9 @@
         <!-- Client Details -->
         <div class="mb-8">
             <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-            <p class="text-sm text-gray-600"></p>
+            <p class="text-sm text-gray-600">
+
+            </p>
             <p class="text-sm text-gray-600"></p>
             <p class="text-sm text-gray-600"></p>
         </div>

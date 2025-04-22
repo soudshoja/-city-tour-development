@@ -362,7 +362,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
-        Route::get('/link/{paymentId}',[PaymentController::class, 'paymentLink'])->name('link');
+        Route::group([
+            'prefix' => 'link',
+            'as' => 'link.',
+        ], function () {
+            Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
+            Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
+            Route::post('/store', [PaymentController::class, 'paymentStore'])->name('store');
+        });
         
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');
         Route::post('/initiate-myfatoorah-payment', [PaymentController::class, 'initiateMyFatoorahPayment'])->name('payment.initiateMyFatoorah');

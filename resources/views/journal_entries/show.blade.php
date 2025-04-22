@@ -5,6 +5,9 @@
                 <a href="{{ route('coa.index') }}" class="customBlueColor hover:underline">Chart of Account</a>
             </li>
             <li class="before:content-['/'] before:mr-1 ">
+                <a href="{{ route('coa.transaction') }}" class="customBlueColor hover:underline">Transactions</a>
+            </li>
+            <li class="before:content-['/'] before:mr-1 ">
                 <span>Ledger</span>
             </li>
         </ul>

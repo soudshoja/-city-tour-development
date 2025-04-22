@@ -21,6 +21,7 @@ use App\Models\Account;
 use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Charge;
+use App\Models\Currency;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Redirect;
@@ -514,6 +515,7 @@ class PaymentController extends Controller
         return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])
             ->with('status', 'Payment successful! Thank you for your payment.');
     }
+    
     public function processMyFatoorah(array $data)
     {
         $focus = $data['Data']['focusTransaction'];
@@ -716,5 +718,41 @@ class PaymentController extends Controller
         }
 
         return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
+    }
+
+    public function paymentLink(){
+        $payments = Payment::all();
+        // $invoice = Invoice::where('id', $payment->invoice_id)->first();
+
+        // if (!$invoice) {
+        //     return redirect()->back()->with('error', 'Invoice not found.');
+        // }
+
+        return view('payment.link.index', compact('payments'));
+    }
+
+    public function paymentCreateLink()
+    {
+        $clients = Client::all();
+        $agents = Agent::all();
+        $invoices = Invoice::all();
+        $payments = Payment::all();
+        $currencies = Currency::all();
+        $paymentGateways = Charge::where('name', 'LIKE', '%Payment Gateway%')
+            ->where('company_id', Auth::user()->company_id)
+            ->get();
+
+        return view('payment.link.create', compact(
+            'payments',
+            'clients',
+            'agents',
+            'invoices',
+            'currencies',
+            'paymentGateways'
+        ));
+    }
+
+    public function storeLink(Request $request)
+    {
     }
 }

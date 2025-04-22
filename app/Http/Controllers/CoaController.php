@@ -18,7 +18,10 @@ use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Sequence;
 use App\Models\SupplierCompany;
+use App\Models\Transaction;
 use Exception;
+use Carbon\Carbon;
+
 use Illuminate\Support\Facades\Auth;
 
 class CoaController extends Controller
@@ -57,7 +60,7 @@ class CoaController extends Controller
         $branches = Branch::where('company_id', $company->id)->get();
 
         // Get  data from the privates function
-        
+
         $assetsAccount = Account::where('name', 'Assets')->first();
         $liabilitiesAccount = Account::where('name', 'Liabilities')->first();
         $incomesAccount = Account::where('name', 'Income')->first();
@@ -68,17 +71,16 @@ class CoaController extends Controller
         $liabilities = $this->childAccount($liabilitiesAccount, 'reverse');
         // dd($liabilities);
         $incomes = $this->childAccount($incomesAccount, 'reverse');
-        $expenses = $this->childAccount($expensesAccount , 'normal');
+        $expenses = $this->childAccount($expensesAccount, 'normal');
         $equities = $this->childAccount($equitiesAccount, 'reverse');
-        
+
         // $assets = $this->getAssets();
         // $liabilities = $this->getLiabilities();
         // $incomes = $this->getIncome();
         // $expenses = $this->getExpenses();
         // $equities = $this->getEquity();
-    
-        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'equities', 'invoices', 'clients', 'suppliers', 'branches', 'agents'));
 
+        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'equities', 'invoices', 'clients', 'suppliers', 'branches', 'agents'));
     }
 
     public function addCategory(Request $request)
@@ -165,12 +167,11 @@ class CoaController extends Controller
 
             if ($debitCreditType == 'normal') {
                 $account->balance = bcsub($totalDebit, $totalCredit, 2);
-            } else if($debitCreditType == 'reverse') {
+            } else if ($debitCreditType == 'reverse') {
                 $account->balance = bcsub($totalCredit, $totalDebit, 2);
             } else {
-                throw New Exception('Invalid debitCreditType');
+                throw new Exception('Invalid debitCreditType');
             }
-
         } else {
             // If it's the last level, calculate debit and credit from journal entries
             $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)->get();
@@ -180,7 +181,7 @@ class CoaController extends Controller
 
             $account->debit = (string)$debit;
             $account->credit = (string)$credit;
-            
+
             if ($debitCreditType == 'normal') {
                 $account->balance = bcsub($debit, $credit, 2);
             } else {
@@ -588,18 +589,33 @@ class CoaController extends Controller
             return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
 
-        $level3Id = $request->input('level3Id');
-        $level4Id = $request->input('level4Id');
+        // Fetch the input dates from the request
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
-        // Retrieve all transactions ordered by date descending
-        $transactions = JournalEntry::orderBy('created_at', 'desc')->get();
+        // Build the query to retrieve transactions
+        $query = Transaction::with('journalEntries')
+            ->where('company_id', $company->id);
 
-        // Group transactions by date (e.g., "2025-01-11")
+        // If a start date is provided, filter by the start date
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        }
+
+        // If an end date is provided, filter by the end date
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        }
+
+        // Execute the query to get the filtered transactions
+        $transactions = $query->get();
+
+        // Group the transactions by the date (using Carbon for formatting)
         $transactionsByDate = $transactions->groupBy(function ($transaction) {
-            return $transaction->created_at->format('Y-m-d');
+            return Carbon::parse($transaction->created_at)->format('Y-m-d');
         });
 
-        // Pass grouped transactions to the view
-        return view('coa.transaction', compact('company', 'transactionsByDate', 'level4Id', 'level3Id'));
+        // Return the view with filtered and grouped data
+        return view('coa.transaction', compact('company', 'transactionsByDate'));
     }
 }

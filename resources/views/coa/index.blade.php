@@ -65,10 +65,10 @@
     <!-- accounts view -->
     <div class="rounded-lg w-full">
         <div class="mb-5 search-item rounded-lg">@include('coa.partials.assets')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-liabilities')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-income')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-expenses')</div>
-        <div class="mb-5 search-item rounded-lg">@include('coa.partials.new-equity')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.liabilities')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.income')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.expenses')</div>
+        <div class="mb-5 search-item rounded-lg">@include('coa.partials.equity')</div>
 
     </div>
     <!-- ./accounts view -->

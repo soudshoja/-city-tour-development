@@ -82,8 +82,8 @@ return [
     'InvoiceValue'       => $order['total'],
     'DisplayCurrencyIso' => $order['currency'],
     'CustomerEmail'      => $order['client_email'],
-    'CallBackUrl'        => route('myfatoorah.callback'),
-    'ErrorUrl'           => route('myfatoorah.callback'),
+    'CallBackUrl' => $callbackURL . '?paymentId={paymentId}', // this is the fix
+    'ErrorUrl' => $callbackURL . '?paymentId={paymentId}',
     'MobileCountryCode'  => '+965',
 'CustomerMobile' => substr(preg_replace('/\D/', '', $order['client_phone']), -11),
     'Language'           => 'en',
@@ -124,7 +124,13 @@ return [
             $data  = $mfObj->getPaymentStatus($paymentId, 'PaymentId');
     
             if ($data->InvoiceStatus === 'Paid' && $data->focusTransaction->TransactionStatus === 'Succss') {
-                return app(PaymentController::class)->processMyFatoorah(json_decode(json_encode(['Data' => $data]), true));
+                app(PaymentController::class)->processMyFatoorah(json_decode(json_encode(['Data' => $data]), true));
+    
+                $invoiceId = $data->CustomerReference;
+                $invoice = \App\Models\Invoice::find($invoiceId);
+                $redirectUrl = route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]);
+    
+                return response()->view('myfatoorah.redirect', ['redirectUrl' => $redirectUrl]);
             }
     
             return redirect()->route('dashboard')->with('error', 'Payment not completed.');

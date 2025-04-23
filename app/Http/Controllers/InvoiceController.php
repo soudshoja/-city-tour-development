@@ -251,7 +251,7 @@ class InvoiceController extends Controller
             $selectedAgent = null;
         }
 
-        
+       $payments = Payment::whereIn('agent_id', $agents->pluck('id'))->get();
          
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
         // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {

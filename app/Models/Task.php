@@ -68,6 +68,15 @@ class Task extends Model
         return $isComplete;
     }
 
+    public function scopeCompleted($query)
+    {
+        return $query->where(function ($q) {
+            foreach ($this->requiredColumn as $column) {
+                $q->whereNotNull($column)->where($column, '!=', '');
+            }
+        });
+    }
+
     public function flightDetails()
     {
         return $this->hasOne(TaskFlightDetail::class, 'task_id');

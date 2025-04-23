@@ -2959,7 +2959,7 @@
             }, 500);
         }
 
-        function lockTasks(){
+        function paymentLink(){
 
         }
 

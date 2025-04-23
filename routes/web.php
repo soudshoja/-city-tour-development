@@ -41,6 +41,7 @@ use App\Http\Controllers\BankPaymentController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
+use App\Http\Controllers\RefundController;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -155,6 +156,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf/flight/{taskId}/download',[TaskController::class, 'flightPdfDownload'])->name('pdf.flight.download');
         Route::get('/pdf/hotel/{taskId}',[TaskController::class, 'hotelPdf'])->name('pdf.hotel');
         Route::get('/pdf/hotel/{taskId}/download',[TaskController::class, 'hotelPdfDownload'])->name('pdf.hotel.download');
+        Route::get('/pdf/receipt',[TaskController::class, 'receiptPdf'])->name('pdf.receipt');
+        Route::get('/pdf/receipt/download',[TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
     });
 
     // SUPPLIERS
@@ -334,6 +337,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [InvoiceController::class, 'create'])->name('create');
         Route::get('/link', [InvoiceController::class, 'link'])->name('link');
         Route::post('/clientAdd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
+        Route::get('/refund/list', [RefundController::class, 'index'])->name('refunds.list');
+        
+        Route::get('/{invoice}/refund', [RefundController::class, 'create'])->name('refunds.create');
+        Route::post('/{invoice}/refund', [RefundController::class, 'store'])->name('refunds.store');
+        
     });
 
 
@@ -366,11 +374,12 @@ Route::middleware(['auth'])->group(function () {
         Route::group([
             'prefix' => 'link',
             'as' => 'link.',
-        ], function () {
-            Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
+        ], function () { 
+            Route::get('/',[PaymentController::class, 'paymentLink'])->name('index');
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
             Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');
             Route::get('/show/{paymentId}',[PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
+            Route::put('/update/{paymentId}',[PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::get('/share/{paymentId}',[PaymentController::class, 'shareLink'])->name('share');
             Route::post('/initiate',[PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
             Route::get('/process',[PaymentController::class, 'paymentLinkProcess'])->name('process');

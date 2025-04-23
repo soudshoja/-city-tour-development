@@ -14,42 +14,63 @@
         </div>
 
         @if ($payments->isEmpty())
-            <p class="text-gray-500">No payment links found.</p>
+        <p class="text-gray-500">No payment links found.</p>
         @else
-            <table class="min-w-full bg-white border border-gray-200 rounded shadow">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Link</th>
-                        <th class="px-4 py-2 text-left">Amount</th>
-                        <th class="px-4 py-2 text-left">Created At</th>
-                        <th class="px-4 py-2 text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($payments as $payments)
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="px-4 py-2">
-                                <a href="{{ $payments->voucher_number }}" target="_blank" class="text-blue-500 hover:underline">{{ $payments->voucher_number }}</a>
-                            </td>
-                            <td class="px-4 py-2">{{ $payments->amount }}</td>
-                            <td class="px-4 py-2">{{ $payments->created_at->format('Y-m-d H:i:s') }}</td>
-                            <td class="px-4 py-2">
-                                <a href="" class="text-blue-500 hover:underline">Edit</a>
-                                <form action="" method="POST" class="inline-block">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:underline">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr>
-                    </tr>
-                </tfoot>
-            </table>
+        <table class="min-w-full bg-white border border-gray-200 rounded shadow">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-4 py-2 text-left">Link</th>
+                    <th class="px-4 py-2 text-left">Client</th>
+                    <th class="px-4 py-2 text-left">Agent</th>
+                    <th class="px-4 py-2 text-left">Notes</th>
+                    <th class="px-4 py-2 text-left">Amount</th>
+                    <th class="px-4 py-2 text-left">Created At</th>
+                    <th class="px-4 py-2 text-left">Link</th>
+                    <th class="px-4 py-2 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($payments as $payment)
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-2">
+                        <a href="{{ $payment->voucher_number }}" target="_blank" class="text-blue-500 hover:underline">{{ $payment->voucher_number }}</a>
+                    </td>
+                    <td class="px-4 py-2"> {{ $payment->client ? $payment->client->name : 'N/A' }} </td>
+                    <td class="px-4 py-2"> {{ $payment->agent ? $payment->agent->name : 'N/A' }} </td>
+                    <td class="px-4 py-2">{{ $payment->notes ?? 'No Notes' }}</td>
+                    <td class="px-4 py-2">{{ $payment->amount }}</td>
+                    <td class="px-4 py-2">{{ $payment->created_at->format('Y-m-d H:i:s') }}</td>
+                    <td class="px-4 py-2">
+                        @if($payment->invoice)
+                        <a href="{{ route('invoice.show', $payment->invoice->invoice_number) }}" target="_blank" class="text-blue-500 hover:underline">
+                            Send Link To Customer
+                        </a>
+                        @else
+                        <a href="{{ route('payment.link.share', $payment->id) }}" target="_blank" class="text-blue-500 hover:underline">
+                            Send Link To Customer
+                        </a>
+                        @endif
+                        <a href="{{ route('payment.link.show', $payment->id) }}" target="_blank" class="text-blue-500 hover:underline">
+                            View Link in PDF
+                        </a>
+                    </td>
+                    <td class="px-4 py-2">
+                        <a href="" class="text-blue-500 hover:underline">Edit</a>
+                        <form action="" method="POST" class="inline-block">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-red-500 hover:underline">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                </tr>
+            </tfoot>
+        </table>
         @endif
-        
+
     </div>
 </x-app-layout>

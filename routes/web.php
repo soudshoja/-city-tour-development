@@ -362,13 +362,19 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
+
         Route::group([
             'prefix' => 'link',
             'as' => 'link.',
         ], function () {
             Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
-            Route::post('/store', [PaymentController::class, 'paymentStore'])->name('store');
+            Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');
+            Route::get('/show/{paymentId}',[PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
+            Route::get('/share/{paymentId}',[PaymentController::class, 'shareLink'])->name('share');
+            Route::post('/initiate',[PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
+            Route::get('/process',[PaymentController::class, 'paymentLinkProcess'])->name('process');
+            Route::post('/webhook',[PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
         });
         
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');

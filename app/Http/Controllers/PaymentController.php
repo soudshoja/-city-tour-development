@@ -743,7 +743,8 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to view payment links.');
         }
 
-        $payments = Payment::with('invoice')->get();
+        $clients = Client::whereIn('agent_id', $agentsId)->get();
+        $payments = Payment::with('invoice')->orderBy('created_at', 'desc')->get();
 
         $payments = $payments->filter(function ($payment) use ($agentsId) {
             if($payment->invoice){
@@ -758,7 +759,11 @@ class PaymentController extends Controller
         //     return redirect()->back()->with('error', 'Invoice not found.');
         // }
 
-        return view('payment.link.index', compact('payments'));
+        return view('payment.link.index', compact(
+            'payments',
+            'clients',
+            'agents'
+        ));
     }
 
     public function paymentCreateLink()
@@ -972,6 +977,18 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
+        $clientController = new ClientController;
+
+        $addCreditResponse = $clientController->addCredit($payment);
+
+        if(isset($addCreditResponse['error'])) {
+            logger('Failed to add credit to client', [
+                'message' => $addCreditResponse['error'],
+                'payment_id' => $paymentId,
+            ]);
+            return redirect()->back()->with('error', 'Payment cannot be updated');
+        }
+
         try {
             $payment->status = 'completed';
             $payment->completed = 1;
@@ -986,6 +1003,19 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment successful!');
+    }
+
+    public function paymentUpdateLink($paymentId, Request $request)
+    {
+        $payment = Payment::find($paymentId);
+
+        if (!$payment) {
+            return redirect()->back()->with('error', 'Payment not found.');
+        }
+
+        $payment->update($request->all());
+        $payment->save();
+        return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
     }
 
     public function shareLink($paymentId)

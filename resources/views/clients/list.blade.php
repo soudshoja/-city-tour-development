@@ -65,10 +65,10 @@
                                 </th> -->
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions
                                 </th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Name</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client's Name</th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Email</th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Phone</th>
-
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent</th>
                             </tr>
                         </thead>
                         <tbody>

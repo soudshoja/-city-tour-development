@@ -1358,22 +1358,28 @@ class TaskController extends Controller
         return $pdf->download('hotel.pdf');
     }
 
-    public function receiptPdf()
+    public function receiptPdf($taskId)
     {
+        $task = Task::with('invoiceDetail', 'invoiceDetail.task', 'invoiceDetail.invoice', 'invoiceDetail.invoice.payment')->findOrFail($taskId);
+        $invoiceDetail = $task->invoiceDetail;
+
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
 
-        return view('tasks.pdfView.receipt-view', compact('companyLogoSrc'));
+        return view('tasks.pdfView.receipt-view', compact('task', 'invoiceDetail', 'companyLogoSrc'));
     }
 
-    public function recceiptPdfDownload($taskId)
+    public function receiptPdfDownload($taskId)
     {
+        $task = Task::with('invoiceDetail', 'invoiceDetail.task', 'invoiceDetail.invoice', 'invoiceDetail.invoice.payment')->findOrFail($taskId);
+        $invoiceDetail = $task->invoiceDetail;
+
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
 
-        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('companyLogoSrc'));
+        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('task', 'invoiceDetail', 'companyLogoSrc'));
 
         return $pdf->download('receipt.pdf');
     }

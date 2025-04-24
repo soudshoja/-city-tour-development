@@ -70,6 +70,8 @@
             margin: 0 0 18px 0;
             font-weight: 600;
             text-align: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
         }
 
         .info-grid {

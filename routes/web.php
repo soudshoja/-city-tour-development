@@ -156,8 +156,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf/flight/{taskId}/download',[TaskController::class, 'flightPdfDownload'])->name('pdf.flight.download');
         Route::get('/pdf/hotel/{taskId}',[TaskController::class, 'hotelPdf'])->name('pdf.hotel');
         Route::get('/pdf/hotel/{taskId}/download',[TaskController::class, 'hotelPdfDownload'])->name('pdf.hotel.download');
-        Route::get('/pdf/receipt',[TaskController::class, 'receiptPdf'])->name('pdf.receipt');
-        Route::get('/pdf/receipt/download',[TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
+        Route::get('/pdf/receipt/{taskId}',[TaskController::class, 'receiptPdf'])->name('pdf.receipt');
+        Route::get('/pdf/receipt/{taskId}/download',[TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
     });
 
     // SUPPLIERS

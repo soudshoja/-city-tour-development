@@ -20,7 +20,7 @@ class Tap
 
         );
 
-        logger($response);
+        logger('Create Charge response',$response);
 
         return $response;
     }
@@ -35,7 +35,7 @@ class Tap
             [],
         );
 
-        logger($response);
+        logger('Get Charge response', $response);
 
         return $response;
     }

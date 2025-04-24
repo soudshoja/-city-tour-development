@@ -341,7 +341,7 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
-                                        <a href="{{ route('tasks.pdf.receipt', ['invoiceNumber' => $invoice->invoice_number]) }}" target="_blank">
+                                        <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
                                             <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
                                         </a>
                                         @else

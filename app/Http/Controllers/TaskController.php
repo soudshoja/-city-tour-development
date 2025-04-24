@@ -1357,4 +1357,24 @@ class TaskController extends Controller
 
         return $pdf->download('hotel.pdf');
     }
+
+    public function receiptPdf()
+    {
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        return view('tasks.pdfView.receipt-view', compact('companyLogoSrc'));
+    }
+
+    public function recceiptPdfDownload($taskId)
+    {
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('companyLogoSrc'));
+
+        return $pdf->download('receipt.pdf');
+    }
 }

@@ -214,7 +214,7 @@
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input"
-                                value={{ $todayDate }} disabled />
+                                value="{{ $todayDate }}" disabled />
                         </div>
 
                         <div class="mt-4 flex items-center">
@@ -414,15 +414,11 @@
                     </div>
                 </div>
 
-                <!-- <div class="panel flex-1 px-6 py-6 lg:mr-6" id="coa-activities-container">
-                    <h3 class="font-bold text-xl mb-4">COA Activities:</h3>
-                    <ul id="coa-activities-list" class="list-disc pl-6 space-y-2"> -->
-                <!-- COA activities will be inserted here by the coaActivites function -->
-                <!-- </ul>
-                </div> -->
-
             </div>
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
+                <!-- <div id="payment-link-container" class="mb-2 p-2 bg-white rounded shadow flex flex-col gap-2">
+                    <p>You dont have any payment link Available</p>
+                </div> -->
                 <div class="panel mb-5">
                     <select id="currency" name="currency" class="form-select">
                         <!-- You can add your options here -->
@@ -1096,6 +1092,7 @@
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
         let toggle = false;
+        let selectedPaymentLink = null;
 
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -1114,6 +1111,7 @@
 
         let selectedAgent = @json($selectedAgent);
         let selectedClient = @json($selectedClient);
+        let payments = @json($payments);
 
         const generateInvoiceButton = document.getElementById('generate-invoice-btn');
         const buttonText = document.getElementById('button-text');
@@ -1126,6 +1124,11 @@
             selectedInvoiceTasks.forEach(task => {
                 selectTask(task);
             });
+        }
+
+        if (selectedPaymentLink !== null) {
+            isSaved = true;
+            updateButtonState()
         }
 
         function checkInvoiceId() {
@@ -1172,7 +1175,7 @@
             }
 
 
-            console.log(invoiceIdInput.value);
+            // console.log(invoiceIdInput.value);
             if (!invoiceIdInput.value) {
                 tabs.forEach(tab => {
                     tab.disabled = true;
@@ -1337,7 +1340,7 @@
         }
 
         function updateField(itemId, fieldId) {
-            console.log('updated', itemId + '-' + fieldId);
+            // console.log('updated', itemId + '-' + fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
             const newValue = inputField.value || NULL;
 
@@ -1367,10 +1370,10 @@
                     calculateSubtotal(); // Recalculate the subtotal
 
                     const nettValue = (item.invprice - item.total);
-                    //console.log(item);
-                    console.log('Supplier price: ' + item.total);
-                    console.log('Invoice price: ' + item.invprice);
-                    console.log('Nett of markup: ' + nettValue);
+                    // console.log(item);
+                    // console.log('Supplier price: ' + item.total);
+                    // console.log('Invoice price: ' + item.invprice);
+                    // console.log('Nett of markup: ' + nettValue);
 
                     let existingAlert = document.getElementById("errorNotification");
 
@@ -1455,7 +1458,7 @@
                           <input
                                 id="invprice-table-${item.id}"
                                 type="number"
-                                class="border border-gray-300 p-2 rounded-md w-full"
+                                class="border border-gray-300 p-2 rounded-md w-full invoice-price-${item.id}"
                                 value="${item.invprice}"
                                 onInput="updateField(${item.id}, 'invprice-table')"
                             />
@@ -1516,6 +1519,7 @@
                                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <input
                                         id="invprice-modal-${item.id}"
+                                        class="invoice-price-${item.id}"
                                         type="number"
                                         name="invprice",
                                         placeholder="Enter Invoice Price",
@@ -1550,262 +1554,262 @@
 
                         <style>
                         .flight-details-container {
-    display: grid;
-    grid-template-columns: 1fr; /* Single column for mobile */
-    gap: 16px;
-    padding: 20px;
-    background-color: #f9fafb; /* Light gray background */
-    border-radius: 10px;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-}
+                            display: grid;
+                            grid-template-columns: 1fr; /* Single column for mobile */
+                            gap: 16px;
+                            padding: 20px;
+                            background-color: #f9fafb; /* Light gray background */
+                            border-radius: 10px;
+                            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+                        }
 
-@media (min-width: 768px) { /* Two columns on medium screens and up */
-    .flight-details-container {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-.flight-details {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr); /* Two columns */
-    gap: 10px;
-    padding: 20px;
-    background-color: #f8f9fa; /* Light background */
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
+                        @media (min-width: 768px) { /* Two columns on medium screens and up */
+                            .flight-details-container {
+                                grid-template-columns: repeat(2, 1fr);
+                            }
+                        }
+                        .flight-details {
+                            display: grid;
+                            grid-template-columns: repeat(2, 1fr); /* Two columns */
+                            gap: 10px;
+                            padding: 20px;
+                            background-color: #f8f9fa; /* Light background */
+                            border-radius: 10px;
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                        }
 
-.flight-details div {
-    background-color: #ffffff; /* White background for items */
-    padding: 10px;
-    border-radius: 5px;
-    border-left: 5px solid #007bff; /* Blue accent */
-    font-weight: bold;
-    font-size: 14px;
-    color: #333;
-}
+                        .flight-details div {
+                            background-color: #ffffff; /* White background for items */
+                            padding: 10px;
+                            border-radius: 5px;
+                            border-left: 5px solid #007bff; /* Blue accent */
+                            font-weight: bold;
+                            font-size: 14px;
+                            color: #333;
+                        }
 
-.flight-details div:nth-child(odd) {
-    background-color: #e3f2fd; /* Light blue for alternating items */
-}
+                        .flight-details div:nth-child(odd) {
+                            background-color: #e3f2fd; /* Light blue for alternating items */
+                        }
 
-.flight-detail {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #ffffff; /* White background */
-    padding: 12px;
-    border-radius: 8px;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease-in-out;
-}
+                        .flight-detail {
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            background: #ffffff; /* White background */
+                            padding: 12px;
+                            border-radius: 8px;
+                            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+                            transition: transform 0.2s ease-in-out;
+                        }
 
-.flight-detail:hover {
-    transform: scale(1.02);
-}
+                        .flight-detail:hover {
+                            transform: scale(1.02);
+                        }
 
-.flight-detail i {
-    color: #4f46e5; /* Indigo color for icons */
-    font-size: 18px;
-}
+                        .flight-detail i {
+                            color: #4f46e5; /* Indigo color for icons */
+                            font-size: 18px;
+                        }
 
-.flight-detail strong {
-    font-weight: bold;
-    color: #1f2937; /* Dark gray text */
-}
+                        .flight-detail strong {
+                            font-weight: bold;
+                            color: #1f2937; /* Dark gray text */
+                        }
 
-.flight-detail span {
-    color: #374151; /* Slightly lighter gray */
-    font-weight: 500;
-}
-                        </style>
-                        
-                     <div class="text-lg font-bold mt-4 flex text-center gap-2">
-    <i class="fas fa-plane-departure text-blue-500"></i>
-    Flight Details
-</div>
-<hr class="my-2"/>
+                        .flight-detail span {
+                            color: #374151; /* Slightly lighter gray */
+                            font-weight: 500;
+                        }
+                                                </style>
+                                                
+                                            <div class="text-lg font-bold mt-4 flex text-center gap-2">
+                            <i class="fas fa-plane-departure text-blue-500"></i>
+                            Flight Details
+                        </div>
+                        <hr class="my-2"/>
 
-<div class="flex flex-row-reverse items-center gap-2">
-    <label class="switch">
-        <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-        <span class="slider round"></span>
-    </label>
-    <strong>Toggle All</strong>
-</div>
+                        <div class="flex flex-row-reverse items-center gap-2">
+                            <label class="switch">
+                                <input type="checkbox" id="" onclick="toggleAll(${item.id})">
+                                <span class="slider round"></span>
+                            </label>
+                            <strong>Toggle All</strong>
+                        </div>
 
-<form>
-    <div class="task-details p-4 rounded-lg shadow-md bg-white">
-        
-        <!-- Ticket Info -->
-        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
-            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
-                <h3 class="font-semibold flex items-center gap-2">
-                    <i class="fas fa-ticket-alt text-green-500"></i> Ticket Info
-                </h3>
-                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
-            </summary>
-            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div><strong>Departure Time:</strong> ${item.flight_details.departure_time}</div>
-                <div><strong>Country From:</strong> ${item.flight_details.country_from.name}</div>
-                <div><strong>Airport From:</strong> ${item.flight_details.airport_from}</div>
-                <div><strong>Terminal From:</strong> ${item.flight_details.terminal_from}</div>
-                <div><strong>Arrival Time:</strong> ${item.flight_details.arrival_time}</div>
-                <div><strong>Country To:</strong> ${item.flight_details.country_to.name}</div>
-                <div><strong>Airport To:</strong> ${item.flight_details.airport_to}</div>
-                <div><strong>Terminal To:</strong> ${item.flight_details.terminal_to}</div>
-                <div><strong>Seat No:</strong> ${item.flight_details.seat_no}</div>
-                <div><strong>Flight Meal:</strong> ${item.flight_details.flight_meal}</div>
-                <div><strong>Equipment:</strong> ${item.flight_details.equipment}</div>
-                <div><strong>Baggage Allowed:</strong> ${item.flight_details.baggage_allowed}</div>
-                <div><strong>Class Type:</strong> ${item.flight_details.class_type}</div>
-                <div><strong>Airline ID:</strong> ${item.flight_details.airline_id}</div>
-            </div>
-        </details>
-        
-        <!-- Route Info -->
-        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
-            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
-                <h3 class="font-semibold flex items-center gap-2">
-                    <i class="fas fa-route text-blue-500"></i> Route Info
-                </h3>
-                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
-            </summary>
-            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <!-- Route details will be added here -->
-            </div>
-        </details>
-        
-        <!-- Fare Info -->
-        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
-            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
-                <h3 class="font-semibold flex items-center gap-2">
-                    <i class="fas fa-dollar-sign text-yellow-500"></i> Fare Info
-                </h3>
-                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
-            </summary>
-            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div><strong>Farebase:</strong> ${item.flight_details.farebase}</div>
-            </div>
-        </details>
-        
-        <!-- Void Info -->
-        <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
-            <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
-                <h3 class="font-semibold flex items-center gap-2">
-                    <i class="fas fa-ban text-red-500"></i> Void Info
-                </h3>
-                <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
-            </summary>
-            <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <!-- Void details will be added here -->
-            </div>
-        </details>
-        
-    </div>
-</form>
+                        <form>
+                            <div class="task-details p-4 rounded-lg shadow-md bg-white">
+                                
+                                <!-- Ticket Info -->
+                                <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
+                                    <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                                        <h3 class="font-semibold flex items-center gap-2">
+                                            <i class="fas fa-ticket-alt text-green-500"></i> Ticket Info
+                                        </h3>
+                                        <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+                                    </summary>
+                                    <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        <div><strong>Departure Time:</strong> ${item.flight_details.departure_time}</div>
+                                        <div><strong>Country From:</strong> ${item.flight_details.country_from.name}</div>
+                                        <div><strong>Airport From:</strong> ${item.flight_details.airport_from}</div>
+                                        <div><strong>Terminal From:</strong> ${item.flight_details.terminal_from}</div>
+                                        <div><strong>Arrival Time:</strong> ${item.flight_details.arrival_time}</div>
+                                        <div><strong>Country To:</strong> ${item.flight_details.country_to.name}</div>
+                                        <div><strong>Airport To:</strong> ${item.flight_details.airport_to}</div>
+                                        <div><strong>Terminal To:</strong> ${item.flight_details.terminal_to}</div>
+                                        <div><strong>Seat No:</strong> ${item.flight_details.seat_no}</div>
+                                        <div><strong>Flight Meal:</strong> ${item.flight_details.flight_meal}</div>
+                                        <div><strong>Equipment:</strong> ${item.flight_details.equipment}</div>
+                                        <div><strong>Baggage Allowed:</strong> ${item.flight_details.baggage_allowed}</div>
+                                        <div><strong>Class Type:</strong> ${item.flight_details.class_type}</div>
+                                        <div><strong>Airline ID:</strong> ${item.flight_details.airline_id}</div>
+                                    </div>
+                                </details>
+                                
+                                <!-- Route Info -->
+                                <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
+                                    <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                                        <h3 class="font-semibold flex items-center gap-2">
+                                            <i class="fas fa-route text-blue-500"></i> Route Info
+                                        </h3>
+                                        <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+                                    </summary>
+                                    <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        <!-- Route details will be added here -->
+                                    </div>
+                                </details>
+                                
+                                <!-- Fare Info -->
+                                <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
+                                    <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                                        <h3 class="font-semibold flex items-center gap-2">
+                                            <i class="fas fa-dollar-sign text-yellow-500"></i> Fare Info
+                                        </h3>
+                                        <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+                                    </summary>
+                                    <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        <div><strong>Farebase:</strong> ${item.flight_details.farebase}</div>
+                                    </div>
+                                </details>
+                                
+                                <!-- Void Info -->
+                                <details class="group border rounded-lg overflow-hidden shadow-sm mb-4">
+                                    <summary class="flex items-center justify-between bg-gray-100 p-3 cursor-pointer">
+                                        <h3 class="font-semibold flex items-center gap-2">
+                                            <i class="fas fa-ban text-red-500"></i> Void Info
+                                        </h3>
+                                        <i class="fas fa-chevron-right transition-transform duration-300 group-open:rotate-90"></i>
+                                    </summary>
+                                    <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        <!-- Void details will be added here -->
+                                    </div>
+                                </details>
+                                
+                            </div>
+                        </form>
 
-                        `;
+                                                `;
 
                     } else if (item.hotel_details !== null) {
 
                         taskDetails.innerHTML += `
-                <div class="text-lg font-bold mt-4">Hotel Details</div>
-<hr/>
-<div class="flex flex-row-reverse items-center">
-    <div class="p-2">
-        <label class="switch">
-            <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-            <span class="slider round"></span>
-        </label>
-    </div>
-    <strong>Toggle All</strong>
-</div>
-<form>
-    <div class="task-details" style="box-sizing: border-box;">
-        <details class="bg-gray-200 p-2 rounded-md group">
-            <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
-                <div class="flex w-10 items-center justify-center">
-                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                </div>
-            </summary>
-            <div class="p-4">
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
-                    </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
-                </div>
-                <div class="flex justify-center items-center">
-                    <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
-                    <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
-                </div>
-            </div>
-        </details>
-        <details class="bg-gray-200 p-2 rounded-md group">
-            <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
-                <div class="flex w-10 items-center justify-center">
-                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                </div>
-            </summary>
-            <div></div>
-        </details>
-        <details class="bg-gray-200 p-2 rounded-md group">
-            <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
-                <div class="flex w-10 items-center justify-center">
-                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                </div>
-            </summary>
-            <div></div>
-        </details>
-        <details class="bg-gray-200 p-2 rounded-md group">
-            <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
-                <div class="flex w-10 items-center justify-center">
-                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                </div>
-            </summary>
-            <div></div>
-        </details>
-        <details class="bg-gray-200 p-2 rounded-md group">
-            <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
-                <div class="flex w-10 items-center justify-center">
-                    <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                </div>
-            </summary>
-            <div></div>
-        </details>
-    </div>
-</form>
+                                        <div class="text-lg font-bold mt-4">Hotel Details</div>
+                        <hr/>
+                        <div class="flex flex-row-reverse items-center">
+                            <div class="p-2">
+                                <label class="switch">
+                                    <input type="checkbox" id="" onclick="toggleAll(${item.id})">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <strong>Toggle All</strong>
+                        </div>
+                        <form>
+                            <div class="task-details" style="box-sizing: border-box;">
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
+                                            </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
+                                        </div>
+                                    </div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                            </div>
+                        </form>
                         `;
                     }
 
@@ -1815,7 +1819,7 @@
                     let modalInvoice = document.querySelector('dialog[data-modal-invoice="' + item.id + '"]');
 
                     openButton.addEventListener('click', function() {
-                        console.log(item.id);
+                        // console.log(item.id);
                         modalInvoice.showModal();
                     });
 
@@ -1915,7 +1919,7 @@
 
         // Function to select a task
         function selectTask(task) {
-            console.log('task selected', task);
+            // console.log('task selected', task);
             items.push({
                 ...task, // Spread the properties of the task object
                 remark: '', // Add default empty remark
@@ -1924,12 +1928,11 @@
                 description: `${task.reference}`, // Custom description format
                 client_name: task.client_name
             });
-            console.log('item selected', items);
-            // Set the selected task name
+            // console.log('item selected', items);
+
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
             updateClientAgent(task.client_id, task.agent_id);
-            // Call a function to update the total, passing the current items array
             //  updateTotal(items);
             renderTaskList(tasks);
             closeTaskModal();
@@ -1986,6 +1989,7 @@
         }
 
         function selectClient(client) {
+            // renderPaymentLink(client.id);
             document.getElementById('clientid').value = client.id;
             document.getElementById('receiverId').value = client.id;
 
@@ -2048,6 +2052,7 @@
         // Call the function with the selectedClient object
         if (selectedClient && selectedAgent) {
             updateFormFields(selectedClient, selectedAgent);
+            // renderPaymentLink(selectedClient.id);
         }
 
         function updateClientAgent(clientId, agentId) {
@@ -2122,7 +2127,11 @@
         });
 
         // Function to update button state (text, loading spinner, disabled state)
-        function updateButtonState() {
+        function updateButtonState(linkToPayment = false) {
+
+            if (linkToPayment) {
+
+            }
 
             if (isSaving) {
                 buttonText.style.display = 'none';
@@ -2959,7 +2968,106 @@
             }, 500);
         }
 
-        function paymentLink(){
+        function renderPaymentLink(clientId = null) {
+
+            let filteredPayments = [];
+            if (clientId) {
+                filteredPayments = payments.filter(payment => payment.client_id === clientId);
+            }
+
+            let paymentLinkContainer = document.getElementById('payment-link-container');
+            paymentLinkContainer.innerHTML = ''; // Clear previous content
+
+            if (filteredPayments.length === 0) {
+                paymentLinkContainer.innerHTML = `<p class="text-blue-500">No payment's link found for this client.</p>`;
+                return;
+            }
+
+            filteredPayments.forEach(payment => {
+                let paymentDiv = document.createElement('button');
+                paymentDiv.className = 'mb-2';
+                paymentDiv.classList.add('payment-link-button', 'p-2', 'border', 'rounded', 'bg-gray-100', 'hover:bg-blue-200');
+                paymentDiv.onclick = function() {
+
+                    paymentDiv.classList.remove('bg-gray-100', 'hover:bg-blue-200');
+                    paymentDiv.classList.add('border-blue-500', 'bg-blue-200');
+
+                    selectedPaymentLink = payment.id;
+                    amount = payment.amount;
+
+                    amount = parseFloat(amount).toFixed(3);
+
+                    let eachInvoicePrice = parseFloat(amount) / items.length;
+
+                    items.forEach(item => {
+                        let invoicePrice;
+                        // if the item is the last one, set the invoice price to the remaining amount
+                        if (item.id === items[items.length - 1].id) {
+                            invoicePrice = parseFloat(amount)
+                        } else {
+                            invoicePrice = eachInvoicePrice;
+                        }
+
+                        item.invoice_price = invoicePrice;
+                        invoicePriceInputs = document.querySelectorAll('.invoice-price-' + item.id);
+
+                        invoicePriceInputs.forEach(input => {
+                            input.value = invoicePrice;
+                        });
+
+                        amount = parseFloat(amount) - eachInvoicePrice;
+                    });
+
+                    isSaved = true;
+                    updateButtonState();
+
+                    removeButton.classList.remove('hidden');
+                };
+                paymentDiv.innerHTML = `
+                     <span>${payment.voucher_number} - ${payment.amount} KWD</span>
+                     `;
+                paymentLinkContainer.appendChild(paymentDiv);
+            });
+
+
+            // Add a button to remove the selected payment link
+            let removeButton = document.createElement('button');
+            removeButton.className = 'mt-2 p-2 border rounded bg-red-500 text-white hover:bg-red-600 hidden';
+            removeButton.innerHTML = 'Remove Selected Payment Link';
+            removeButton.onclick = function() {
+                selectedPaymentLink = null;
+                isSaved = false;
+                updateButtonState();
+
+                items.forEach(item => {
+                    invoicePriceInputs = document.querySelectorAll('.invoice-price-' + item.id);
+                    invoicePriceInputs.forEach(input => {
+                        input.value = '';
+                    });
+                });
+
+                removeButton.classList.add('hidden');
+
+                let paymentLinkButton = document.querySelectorAll('.payment-link-button');
+
+                paymentLinkButton.forEach(button => {
+                    button.classList.remove('border-blue-500', 'bg-blue-200');
+                    button.classList.add('bg-gray-100', 'hover:bg-blue-200');
+                });
+            };
+            paymentLinkContainer.appendChild(removeButton);
+
+            let paymentLinkButton = document.querySelectorAll('.payment-link-button');
+            paymentLinkButton.forEach(button => {
+                button.addEventListener('click', function() {
+                    paymentLinkButton.forEach(btn => {
+                        if (btn !== this) {
+                            btn.classList.remove('border-blue-500', 'bg-blue-200');
+                            btn.classList.add('bg-gray-100', 'hover:bg-blue-200');
+                        }
+                    });
+                });
+            });
 
         }
 

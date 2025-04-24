@@ -525,7 +525,9 @@ class PaymentController extends Controller
         $focus = $data['Data']['focusTransaction'];
         $invoiceId = $data['Data']['CustomerReference']; // You stored this in CustomerReference
         $paymentReference = $focus['PaymentId'];
-        $totalPaidAmount = $focus['TransationValue'];
+        // $totalPaidAmount = $focus['TransationValue'];
+        $totalPaidAmount = floatval(str_replace(',', '', $focus['TransationValue']));
+        $totalPaidAmount = round($totalPaidAmount, 2);
         $paymentGateway = $focus['PaymentGateway'];
         
         // STEP 1: Fetch the invoice

@@ -37,6 +37,7 @@ class InvoiceController extends Controller
 
     public function index()
     {
+ 
         $user = Auth::user();
 
        // Gate::authorize('viewAny', Invoice::class);
@@ -59,10 +60,11 @@ class InvoiceController extends Controller
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
         // $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
-
+     
         $invoices = Invoice::with([
             'agent.branch', 
-            'invoiceDetails.task.supplier', 
+            'invoiceDetails.task.supplier',
+            // 'invoiceDetails.task.hotelDetails.room', 
             'client'
         ])
         ->whereIn('agent_id', $agentIds)
@@ -70,12 +72,12 @@ class InvoiceController extends Controller
             $query->where('company_id', $companyId);
         })
         ->paginate(500);
-
-        // Get clients related to the agents
+    // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
-
+      
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
+
         $suppliers = Supplier::all();
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companyId)->get();
         $types = Task::distinct()->pluck('type');
@@ -251,7 +253,9 @@ class InvoiceController extends Controller
             $selectedAgent = null;
         }
 
-       $payments = Payment::whereIn('agent_id', $agents->pluck('id'))->get();
+       $payments = Payment::whereIn('agent_id', $agents->pluck('id'))
+                ->where('invoice_id', null)
+                ->get();
          
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
         // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
@@ -316,7 +320,8 @@ class InvoiceController extends Controller
             'paymentGateways',
             'todayDate',
             'appUrl',
-            'disableButtons'
+            'disableButtons',
+            'payments'
         ));
     }
 
@@ -518,6 +523,7 @@ class InvoiceController extends Controller
             'tasks.*.supplier_id' => 'required|integer',
             'tasks.*.client_id' => 'required|integer',
             'tasks.*.agent_id' => 'required|integer',
+            'tasks.*.total' => 'required|numeric',
             'invdate' => 'required|date',
             'duedate' => 'nullable|date',
             'subTotal' => 'required|numeric',
@@ -525,6 +531,7 @@ class InvoiceController extends Controller
             'agentId' => 'required|integer',
             'invoiceNumber' => 'required|string',
             'currency' => 'required|string',
+            'payment_id' => 'nullable|integer',
         ]);
 
 

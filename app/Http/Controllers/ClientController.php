@@ -653,5 +653,31 @@ class ClientController extends Controller
         ];
     }
 
+    public function updateCredit($id, $amount)
+    {
+        try{
+            $client = Client::findOrFail($id);
+            $client->credit = $amount;
+            $client->save();
+
+        } catch (Exception $e) {
+            logger('Error updating credit: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to update credit',
+            ];
+        }
+
+        logger('Credit updated successfully for client ID: ' . $id);
+        return [
+            'status' => 'success',
+            'message' => 'Credit updated successfully',
+            'data' => [
+                'client_id' => $client->id,
+                'credit' => $client->credit,
+            ],
+        ];
+    }
+
 
 }

@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold text-gray-700 mb-6">Refund Invoice #{{ $invoice->invoice_number }}</h1>
+        <h1 class="text-3xl font-bold text-gray-700 mb-6">Edit Refund #{{ $refund->refund_number }}</h1>
 
         <div class="bg-white shadow-md rounded-lg p-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -34,153 +34,137 @@
                 </div>
             </div>
 
-            <div class="bg-white shadow-md rounded-lg p-8">
-                <div class="grid grid-cols-1">
-                    @foreach ($tasks as $task)
-                        <div class="mb-5">
-                            <h4>{{ $task->name }}</h4>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">
-                                Reference Number: {{ $task->reference ?? '-' }}</h3>
-                            <p>Branch: {{ $task->agent->branch->name ?? '-' }}</p>
-                            <p>Client: {{ $task->client->name ?? '-' }}</p>
-                            <p>Type: {{ $task->type ?? '-' }}</p>
-                            <p>Info: {{ $task->additional_info ?? '-' }}, {{ $task->venue ?? '-' }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
             <hr class="my-6">
 
-            <form action="{{ route('invoices.refunds.store', $invoice->id) }}" method="POST"
-                class="bg-white p-6 rounded-lg shadow">
+            <form
+                action="{{ route('invoices.refunds.update', ['invoice' => $refund->invoice->id, 'refund' => $refund->id]) }}"
+                method="POST" class="bg-white p-6 rounded-lg shadow">
                 @csrf
+                @method('PUT')
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                    <!-- Date -->
+                    <!-- Date (readonly with grey background) -->
                     <div>
                         <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
                         <input type="date" name="date" id="date"
-                            value="{{ old('date', now()->toDateString()) }}" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            value="{{ old('date', $refund->date ?? now()->toDateString()) }}" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                         @error('date')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
 
-                    <!-- Method -->
+                    <!-- Refund Method (readonly with grey background) -->
                     <div>
                         <label for="method" class="block text-gray-700 font-semibold mb-2">Refund Method</label>
-                        <select name="method" id="method" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        <select name="method" id="method" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             <option value="">Select</option>
-                            <option value="Cash" {{ old('method') == 'Cash' ? 'selected' : '' }}>Cash</option>
-                            <option value="Bank" {{ old('method') == 'Bank' ? 'selected' : '' }}>Bank</option>
-                            <option value="Online" {{ old('method') == 'Online' ? 'selected' : '' }}>Online</option>
+                            <option value="Cash" {{ old('method', $refund->method) == 'Cash' ? 'selected' : '' }}>
+                                Cash</option>
+                            <option value="Bank" {{ old('method', $refund->method) == 'Bank' ? 'selected' : '' }}>
+                                Bank</option>
+                            <option value="Online" {{ old('method', $refund->method) == 'Online' ? 'selected' : '' }}>
+                                Online
+                            </option>
                         </select>
                         @error('method')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
 
-                    <!-- Account Name -->
+                    <!-- COA (Assets) Account (readonly with grey background) -->
                     <div>
                         <label for="account_name" class="block text-gray-700 font-semibold mb-2">COA (Assets)
                             Account</label>
                         <input list="accountList" type="text" name="account_name" id="account_name"
-                            value="{{ old('account_name') }}"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
+                            value="{{ old('account_name', $refund->account->name ?? '') }}" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
                             oninput="setAccountId(this)">
                         <datalist id="accountList">
                             @foreach ($coaAccounts as $account)
                                 <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
                             @endforeach
                         </datalist>
-                        <input type="hidden" name="account_id" id="account_id" value="{{ old('account_id') }}">
+                        <input type="hidden" name="account_id" id="account_id"
+                            value="{{ old('account_id', $refund->account_id ?? '') }}">
                         @error('account_id')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
 
-                    <!-- Reference - Full Width -->
-                    <div class="mb-6">
+                    <!-- Reference -->
+                    <div>
                         <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
                         <input type="text" name="reference" id="reference"
                             value="{{ old('reference', $refund->reference ?? '') }}"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
-
-
-
                 </div>
 
                 <!-- Grouped Fields -->
-                <div class="border border-gray-300 rounded-lg p-6 bg-gray-50">
+                <div class="mt-8 border border-gray-300 rounded-lg p-6 bg-gray-50">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
                         <!-- Airline Nett Fare -->
                         <div>
-                            <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline Nett
+                            <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline
+                                Nett
                                 Fare</label>
-                            <input readonly type="number" step="0.01" name="airline_nett_fare"
-                                id="airline_nett_fare"
-                                value="{{ old('airline_nett_fare', $totals->total_task_price ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                            <input type="number" step="0.01" name="airline_nett_fare" id="airline_nett_fare"
+                                value="{{ old('airline_nett_fare', $refund->airline_nett_fare ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
                         <!-- Airline Refund Charge -->
                         <div>
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
-                                Refund Charge</label>
-                            <input readonly type="number" step="0.01" name="refund_airline_charge"
-                                id="refund_airline_charge" value="10.00"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                Refund
+                                Charge</label>
+                            <input type="number" step="0.01" name="refund_airline_charge" id="refund_airline_charge"
+                                value="{{ old('refund_airline_charge', $refund->refund_airline_charge ?? '') }}"
+                                readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
-                        <!-- Original Task Profit -->
+                        <!-- Original Profit -->
                         <div>
                             <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
-                                Task Profit</label>
-                            <input readonly type="number" step="0.01" name="original_task_profit"
-                                id="original_task_profit"
-                                value="{{ old('original_task_profit', $totals->total_markup_price ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                Task
+                                Profit</label>
+                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
+                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
-
-                        <!-- Service Charge -->
+                        <!-- Total Service Charge -->
                         <div>
-                            <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service Charge
+                            <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service
+                                Charge
                                 Amount</label>
                             <input type="number" step="0.01" name="service_charge" id="service_charge"
-                                value="{{ old('service_charge', $refund->service_charge ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
-                            @error('service_charge')
-                                <span class="text-red-500 text-sm">{{ $message }}</span>
-                            @enderror
+                                value="{{ old('service_charge', $refund->service_charge ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
-                        <!-- Total Nett Refund Amount -->
+                        <!-- Total Refund -->
                         <div>
-                            <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total Nett
-                                Refund Amount</label>
-                            <input readonly type="number" step="0.01" name="total_nett_refund"
-                                id="total_nett_refund"
-                                value="{{ old('total_nett_refund', $refund->total_nett_refund ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
-                            @error('total_nett_refund')
-                                <span class="text-red-500 text-sm">{{ $message }}</span>
-                            @enderror
+                            <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total
+                                Nett
+                                Refund
+                                Amount</label>
+                            <input type="number" step="0.01" name="total_nett_refund" id="total_nett_refund"
+                                value="{{ old('total_nett_refund', $refund->total_nett_refund ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
-
                     </div>
                 </div>
 
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                     <div>
                         <label for="remarks" class="block text-gray-700 font-semibold mb-2">Remarks</label>
-                        <input type="text" name="remarks" id="remarks" value="{{ old('remarks') }}"
+                        <input type="text" name="remarks" id="remarks"
+                            value="{{ old('remarks', $refund->remarks ?? '') }}"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
 
@@ -188,15 +172,15 @@
                         <label for="remarks_internal" class="block text-gray-700 font-semibold mb-2">Internal
                             Remarks</label>
                         <input type="text" name="remarks_internal" id="remarks_internal"
-                            value="{{ old('remarks_internal') }}"
+                            value="{{ old('remarks_internal', $refund->remarks_internal ?? '') }}"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
                 </div>
-                <!-- Reason -->
+
                 <div class="mt-6">
                     <label for="reason" class="block text-gray-700 font-semibold mb-2">Reason</label>
                     <textarea name="reason" id="reason" rows="3"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">{{ old('reason') }}</textarea>
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">{{ old('reason', $refund->reason ?? '') }}</textarea>
                     @error('reason')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
@@ -223,10 +207,8 @@
                             </span>
                             <span id="textSavePaymentVoucher">Save</span>
                         </button>
-
                     </div>
                 </div>
-
 
                 @if ($errors->any())
                     <div class="mt-4 text-red-500 text-sm">
@@ -239,34 +221,11 @@
                 @endif
             </form>
 
+
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const airlineNettFareInput = document.getElementById('airline_nett_fare');
-            const refundAirlineChargeInput = document.getElementById('refund_airline_charge');
-            const originalTaskProfitInput = document.getElementById('original_task_profit');
-            const serviceChargeInput = document.getElementById('service_charge');
-            const totalNettRefundInput = document.getElementById('total_nett_refund');
-
-            function calculateRefund() {
-                const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
-                const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
-                const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
-                const serviceCharge = parseFloat(serviceChargeInput.value) || 0;
-
-                const totalRefund = airlineNettFare - refundAirlineCharge - originalTaskProfit - serviceCharge;
-                totalNettRefundInput.value = totalRefund.toFixed(2);
-            }
-
-            // Initial calculation on page load
-            calculateRefund();
-
-            // Recalculate on service charge input
-            serviceChargeInput.addEventListener('input', calculateRefund);
-        });
-
         function setAccountId(input) {
             const datalist = document.getElementById('accountList');
             const option = [...datalist.options].find(opt => opt.value === input.value);

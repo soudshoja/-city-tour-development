@@ -28,11 +28,15 @@ class ClientFactory extends Factory
         $agents = Agent::all();
 
         return [
-            'user_id' => User::factory(),
             'agent_id' => $agents->random()->id,
             'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'address' => $this->faker->address(),
+            'passport_no' => $this->faker->unique()->numberBetween(1000000, 9999999),
+            'civil_no' => $this->faker->unique()->numberBetween(1000000, 9999999),
+            'date_of_birth' => $this->faker->date(),
             'phone' => $this->faker->phoneNumber(),
-            'status_id' => ClientStatus::inRandomOrder()->first()->id,
+            'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),
         ];

@@ -32,8 +32,9 @@ class Invoice extends Model
         'shipping',
         'accept_payment',
         'payment_type',
-        
+        'is_client_credit',
     ];
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');

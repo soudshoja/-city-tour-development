@@ -269,14 +269,13 @@ class InvoiceController extends Controller
         } else if($user->role_id == Role::BRANCH){
             $agentId = $user->branch->agents->pluck('id');
         } else if($user->role_id == Role::AGENT){
-            $agentId = $user->agent->id;
+            $agentId = (array)$user->agent->id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
         $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
-        $agentId = (array) $agentId;
+        $agentId = is_array($agentId) ? $agentId : [$agentId];
         $clientId = $selectedClient ? $selectedClient->id : null;
-        
         // Log::info('agentId', ['agentId' => $agentId]);
         // dd(gettype($agentId));
         $tasks = $agentId
@@ -347,10 +346,13 @@ class InvoiceController extends Controller
 
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
-
         // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        if($invoice->status == 'paid'){
+            return redirect()->route('invoices.index')->with('error', 'Cannot edit a paid invoice!');
         }
 
         $clients = Client::with(['agent.branch' => function ($query) {
@@ -426,6 +428,7 @@ class InvoiceController extends Controller
             'type' => 'required|string',
             'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
+            'credit' => 'nullable|boolean'
         ]);
 
         $invoiceId = $request->input('invoiceId');
@@ -435,9 +438,20 @@ class InvoiceController extends Controller
         $date = $request->input('date');
         $amount = $request->input('amount');
         $gateway = $request->input('gateway');
+        $credit = $request->input('credit', false); // Default to false if not provided
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
 
+        $client = Client::find($clientId);
+
+        if($amount > $client->credit){
+            return response()->json([
+                'success' => false,
+                'message' => 'Client credit is not enough!',
+            ]);
+        }
+
+        $newAmountCredit = $client->credit - $amount;
 
         try {
 
@@ -446,20 +460,17 @@ class InvoiceController extends Controller
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
                 'amount' => $amount,
-                'status' => 'unpaid',
+                'status' => $credit ? 'paid' : 'unpaid',
                 'expiry_date' => $date,
                 'type' => $type,
                 'payment_gateway' => $gateway,
             ]);
 
             $invoice->payment_type = $type;
+            $invoice->status = $credit ? 'paid' : 'unpaid';
+            $invoice->is_client_credit = $credit;
             $invoice->save();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Invoice Partial created successfully!',
-                'invoiceId' => $invoiceId,
-            ]);
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json([
@@ -467,6 +478,18 @@ class InvoiceController extends Controller
                 'message' => 'Failed to create invoice!',
             ]);
         }
+
+        if ($invoice->is_client_credit == true) {
+            $clientController = new ClientController();
+            $clientController->updateCredit($clientId, $newAmountCredit);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invoice Partial created successfully!',
+            'invoiceId' => $invoiceId,
+        ]);
+     
     }
 
     public function removePartial(Request $request)

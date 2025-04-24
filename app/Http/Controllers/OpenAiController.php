@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
+
+use App\Enums\TaskType;
 use App\AIService;
 use App\Http\Requests\OpenAiRequest;
 use App\Http\Traits\HttpRequestTrait;
@@ -36,7 +39,7 @@ class OpenAiController extends Controller
 {
 
     use HttpRequestTrait;
-    
+
     private $aiService;
 
     public function __construct(AIService $aiService)
@@ -224,10 +227,10 @@ class OpenAiController extends Controller
                 'content' => $content,
             ],
         ]);
-        
+
         if (isset($response['choices'][0]['message']['content'])) {
             $content = $response['choices'][0]['message']['content'];
-            
+
             $type = json_decode($content, true)['type'];
             if ($type !== 'flight' && $type !== 'hotel') {
                 return [
@@ -257,18 +260,20 @@ class OpenAiController extends Controller
 
         $airportList = json_encode(Airport::all()->toArray());
 
+        $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
+
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `status`: Current status of the task. whether it's completed, hold or confirmed or any other status.
+            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'confirmed', 'hold' or 'completed'.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
             - `total`: Total amount for the task in float type. this column is mandatory, please make sure to find the total amount in the pdf., total is sum of price and surcharge.
             - `tax`: Total tax amount in float type.
             - `reference`: Reference code for the task.
-            - `type`: Type of task (e.g., flight).
+            - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
             - `client_name`: name of the client associated with the task.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
@@ -286,6 +291,7 @@ class OpenAiController extends Controller
             - `airport_from`: Airport code or name for departure.
             - `terminal_from`: Departure terminal.
             - `arrival_time`: Arrival time of the flight.
+            - `duration_time`: Duration of the flight in `XhYm` format (e.g., `2h5m`, `1h 45m`, `3h`). Do not return `HH:MM:SS` or timestamps. Only return readable duration in hours and minutes like `2h 5m`.
             - `arrive_to`: Location of arrival, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
             - `airport_to`: Airport code or name for arrival.
             - `terminal_to`: Arrival terminal.
@@ -294,6 +300,7 @@ class OpenAiController extends Controller
             - `class_type`: Class type of the flight.
             - `baggage_allowed`: Baggage allowance.
             - `equipment`: Equipment used in the flight.
+            - `ticket_number`: Ticket number. 
             - `flight_meal`: Meal options during the flight.
             - `seat_no`: Seat number.
         
@@ -338,10 +345,12 @@ class OpenAiController extends Controller
             - line 5: 'N' for class_type, '23FEB' for departure_date, '2120' for departure_time
             - line 5: '0025' for arrival_time, '24FEB' for arrival_date, 'OK01' for status, 'M' for flight_meal
             - line 5: '738' for aircraft_type, '20K' for baggage_allowed, 'FKWD87.000' for fare
+            - line 5: '0205' for duration_time
             - line 6: 'KWD100.350' for price, 'KWD4.000 YQ AC' for tax_1, 'KWD3.100 YR VA' for tax_2, 'KWD1.000 GZ SE' for tax_3
             - line 6: 'KWD2.000 KW AE' for tax_4, 'KWD3.000 N4 CB' for tax_5, 'KWD0.250 YX AP' for tax_6, 'NCMOKW' for farebaes
             - line 8: 'AL MASHAYKHI/SALIM ALI SULTAN MR' for client_name
             - line 12: '3580675462' for atia_invoice_number, 'S2' for segment_2, 'P1' for pax_number, 'FMM0'  for commission
+            - line 12: `3580675462` for ticket_number
             - line 13: 'FPCCCA0000000000002093/0425' for payment_terms
 
             Example JSON Output for Sample 1 =
@@ -360,6 +369,7 @@ class OpenAiController extends Controller
                 'departure_time': '21:20:00',
                 'arrival_time': '00:25:00',
                 'arrival_date': '2025-02-24',
+                'duration_time': '2h 5m',
                 'status': 'OK01',
                 'flight_meal': 'M',
                 'aircraft_type': '738',
@@ -372,6 +382,7 @@ class OpenAiController extends Controller
                 'client_name': 'AL MASHAYKHI/SALIM ALI SULTAN MR',
                 'supplier_name': 'Amadeus',
                 'atia_invoice_number': '3580675462',
+                'ticket_number': '3580675462',
                 'segment_2': 'S2',
                 'pax_number': 'P1',
                 'commission': 'FMM0',
@@ -420,13 +431,14 @@ class OpenAiController extends Controller
             - line 7: '9966SD' for agent_code
             - line 10: 'KWI;KUWAIT' for airport_from, 'BAH;BAHRAIN' for airport_to, 'GF    0214' for flight_number, 'N' for class_type
             - line 10: '25FEB' for departure_date, '1140' for departure_time, '1245' for arrival_time, '25FEB' for arrival_date
-            - line 10: 'OK01' for status, 'S' for flight_meal, '320' for aircraft_type, '25K' for baggage_allowed, 
+            - line 10: 'OK01' for status, 'S' for flight_meal, '320' for aircraft_type, '25K' for baggage_allowed, '0105' for duration_time
+            - line 11: '0105' for duration_time
             - line 12: 'FKWD37.000' for fare, 'KWD81.950' for price
             - line 13: 'KWD28.000   YQ AC' for tax_1, 'KWD1.000    GZ SE' for tax_2, 'KWD2.000    KW AE' for tax_3
             - line 13: 'KWD5.000    N4 CB' for tax_4, 'KWD0.250    YX AP' for tax_5, 'KWD8.250    BH DP' for tax_6, 'KWD0.450    HM AP' for tax_7
             - line 15: 'NCLIT1KW' for farebaes
             - line 19: 'ESMAIEL/HUSSAIN MR' for client_name
-            - line 28: '3580675460' for atia_invoice_number, 'S2-3' for segment_2, 'P1' for pax_number, 'FM*M*0'  for commission
+            - line 28: '3580675460' for atia_invoice_number, 'S2-3' for segment_2, 'P1' for pax_number, 'FM*M*0'  for commission, '3580675460' for ticket_number
             - line 31: 'FPCCCA0000000000002093/0425' for payment_terms
 
         Sample 3: Airfile Details Data Extract (For Mapping Reference)
@@ -469,13 +481,14 @@ class OpenAiController extends Controller
             - line 10: 'KWI;KUWAIT' for airport_from, 'BAH;BAHRAIN' for airport_to, 'GF    0214' for flight_number
             - line 10: 'O' for class_type, '25FEB' for departure_date, '1140' for departure_time
             - line 10: '1245' for arrival_time, '25FEB' for arrival_date, 'OK01' for status, 'S' for flight_meal
-            - line 10: '320' for aircraft_type, '25K' for baggage_allowed
+            - line 10: '320' for aircraft_type, '25K' for baggage_allowed, '0105' for duration_time
+            - line 11: '0105' for duration_time
             - line 12: 'FKWD55.000' for fare, 'KWD99.950' for price
             - line 13: 'KWD28.000   YQ AC' for tax_1, 'KWD1.000    GZ SE' for tax_2, 'KWD2.000    KW AE' for tax_3
             - line 13: 'KWD5.000    N4 CB' for tax_4, 'KWD0.250    YX AP' for tax_5, 'KWD8.250    BH DP' for tax_6, 'KWD0.450    HM AP' for tax_7
             - line 15: 'OCLIT1KW' for farebaes
             - line 19: 'ESMAIEL/ALZAHRAA MS' for client_name
-            - line 25: '3580675461' for atia_invoice_number
+            - line 25: '3580675461' for atia_invoice_number, '3580675461' for ticket_number
             - line 26: 'S2-3' for segment_2, 'P1' for pax_number
             - line 27: 'FM*M*0'  for commission
             - line 28: 'FPCCCA0000000000002093/0425' for payment_terms
@@ -510,6 +523,7 @@ class OpenAiController extends Controller
                 'airport_from': 'KWI',
                 'terminal_from': '1',
                 'arrival_time': '2024-10-16 16:00:00',
+                'duration_time': '2h 5m',
                 'arrive_to': 'Singapore',
                 'airport_to': 'SIN',
                 'terminal_to': '1',
@@ -520,6 +534,7 @@ class OpenAiController extends Controller
                 'equipment': 'equipment',
                 'flight_meal': 'flight meal',
                 'seat_no': 'seat no',
+                'ticket_number': 'ticket number',
             }
         }
 
@@ -538,10 +553,13 @@ class OpenAiController extends Controller
 
         if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
-
+            logger('chat completion flight response: ' . $message);
             $decodedResponse = json_decode($message, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
+                if (isset($decodedResponse['status']) && $decodedResponse['status'] === 'refund') {
+                    Log::info('Refund status detected from AI extraction.');
+                }
                 return [
                     'status' => 'success',
                     'message' => 'Data extracted successfully',
@@ -743,7 +761,7 @@ class OpenAiController extends Controller
      * 
      * @return array ['status', 'message', 'data']
      */
-    public function askOpenAi($content, $userId) : array
+    public function askOpenAi($content, $userId): array
     {
         $user = User::find($userId);
         $conversation = collect();
@@ -751,7 +769,7 @@ class OpenAiController extends Controller
 
         //Check if the message is question or action
         $response = $this->promptOrAction($content);
-        
+
         logger('prompt or action response: ', $response);
 
         if (isset($response['error']) || $response['status'] === 'error') {
@@ -765,7 +783,7 @@ class OpenAiController extends Controller
 
             if ($conversation) {
                 $createNewThread = $conversation->thread_id == null || $conversation->assistant_id == null; // return false or true
-            } 
+            }
 
             if ($createNewThread) {
 
@@ -774,7 +792,7 @@ class OpenAiController extends Controller
                 if ($threadRunResponse['status'] == 'error') {
                     return $threadRunResponse;
                 }
-                
+
                 // one user can only one thread at a time
                 $conversation = Conversation::updateOrCreate(
                     [
@@ -793,11 +811,11 @@ class OpenAiController extends Controller
             //Create message for thread
             $messageResponse = $this->aiService->createMessage($threadId, $content);
 
-            if($messageResponse['status'] == 'error') return $messageResponse;
-            
+            if ($messageResponse['status'] == 'error') return $messageResponse;
+
 
             $messageResponse = $messageResponse['data'];
-            
+
             logger('message response: ', $messageResponse);
 
             $createdMessageId = $this->saveMessagesDB(
@@ -808,30 +826,30 @@ class OpenAiController extends Controller
                 $tokens = []
             );
 
-        $agents = json_encode($this->getAgents($user));
-        $branch = json_encode($this->getBranches($user));
-        $clients = json_encode($this->getClients($user));
-        $invoices = json_encode($this->getInvoices($user));
-        $tasks = json_encode($this->getTasks($user));
+            $agents = json_encode($this->getAgents($user));
+            $branch = json_encode($this->getBranches($user));
+            $clients = json_encode($this->getClients($user));
+            $invoices = json_encode($this->getInvoices($user));
+            $tasks = json_encode($this->getTasks($user));
 
 
-        $data = [
-            'assistant_id' => $assistantId,
-            'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond. My user id is " . $user->id . ".
+            $data = [
+                'assistant_id' => $assistantId,
+                'additional_instructions' => "Address the user as" . $user->name . ", but you don't need to call his name every time you respond. My user id is " . $user->id . ".
                                         Today's date is " . date('Y-m-d') . ".
                                         This is the list of agents for this user: " . $agents . ".
                                         This is the list of branches for this user: " . $branch . ".
                                         This is the list of clients for this user: " . $clients . ".
                                         This is the list of invoices for this user: " . $invoices . ".
                                         This is the list of tasks for this user: " . $tasks . ".",
-            'metadata' => [
-                'user_id' => (string) $user->id,
-            ],
-        ];
+                'metadata' => [
+                    'user_id' => (string) $user->id,
+                ],
+            ];
             //Run thread
             $runResponse = $this->aiService->createRun($threadId, $data);
 
-            if($runResponse['status'] === 'error') return $runResponse; 
+            if ($runResponse['status'] === 'error') return $runResponse;
 
             $runId = $runResponse['data']['id'];
 
@@ -842,20 +860,20 @@ class OpenAiController extends Controller
             //Run status check, if status is complete, get messages and show to user
             $checkRunResponse = $this->aiService->checkRun($threadId, $runId);
 
-            if($checkRunResponse['status'] === 'error') return $checkRunResponse;
-            
+            if ($checkRunResponse['status'] === 'error') return $checkRunResponse;
+
             logger('check run response: ', $checkRunResponse);
 
             $toolOutputs = [];
 
-            if( $checkRunResponse['status']==='requires_action'){
-                foreach($checkRunResponse['data']['required_action']['submit_tool_outputs']['tool_calls'] as $tool){
+            if ($checkRunResponse['status'] === 'requires_action') {
+                foreach ($checkRunResponse['data']['required_action']['submit_tool_outputs']['tool_calls'] as $tool) {
                     $toolId = $tool['id'];
                     $toolName = $tool['function']['name'];
                     $toolArguments = json_decode($tool['function']['arguments'], true);
                     $functionResponse = $this->callFunction($toolName, $toolArguments, $userId);
 
-                    if(isset($functionResponse['error'])) return $functionResponse;
+                    if (isset($functionResponse['error'])) return $functionResponse;
 
                     $toolOutputs[] = [
                         'tool_call_id' => $toolId,
@@ -865,14 +883,14 @@ class OpenAiController extends Controller
 
                 $toolOutputResponse = $this->aiService->submitToolOutputs($threadId, $runId, $toolOutputs);
 
-                if($toolOutputResponse['status'] === 'error') return $toolOutputResponse;
+                if ($toolOutputResponse['status'] === 'error') return $toolOutputResponse;
             }
 
             $tokens = $checkRunResponse['data']['usage'] ?? [];
 
             $messages = $this->aiService->getMessages($threadId, $assistantId, $user);
 
-            if($messages['status'] === 'error') return $messages;
+            if ($messages['status'] === 'error') return $messages;
 
             $latestMessage = $messages['data'][0];
 
@@ -893,9 +911,7 @@ class OpenAiController extends Controller
                 'message' => 'Question asked successfully',
                 'data' => $messages['data'],
             ];
-
-
-        } else if($response['data']['type'] === 'action') {
+        } else if ($response['data']['type'] === 'action') {
 
             return [
                 'status' => 'error',
@@ -975,7 +991,7 @@ class OpenAiController extends Controller
         }
     }
 
- 
+
     /**
      * @param int $conversationId
      * @param string $type of content
@@ -1026,7 +1042,7 @@ class OpenAiController extends Controller
     }
 
     public function addFunctionTool()
-    { 
+    {
         return view('ai.openai.tools');
     }
 
@@ -1039,7 +1055,7 @@ class OpenAiController extends Controller
             'strict' => 'nullable|boolean',
             'parameters' => 'nullable|array',
             'parameters.type' => 'required if parameters|string',
-            'parameters.properties' => 'required if parameters|array', 
+            'parameters.properties' => 'required if parameters|array',
             'additionalProperties' => 'nullable|boolean',
             'required' => 'nullable|array',
         ]);
@@ -1047,7 +1063,7 @@ class OpenAiController extends Controller
         $assistantId = Conversation::where('user_id', auth()->id())->latest()->first()->assistant_id;
         $response = $this->aiService->modifyAssistant($assistantId, $request->all());
 
-        if(isset($response['error'])) {
+        if (isset($response['error'])) {
             logger('error: ', $response['error']);
             return Redirect::back()->with('error', 'Failed to add function tool');
         }
@@ -1056,12 +1072,12 @@ class OpenAiController extends Controller
     }
 
 
-    public function getUserTask(array $arguments,int $userId)
+    public function getUserTask(array $arguments, int $userId)
     {
         $user = User::find($userId);
         $dateFrom = $arguments['date_from'] . ' 00:00:00';
         $dateTo = $arguments['date_to'] . ' 23:59:59';
-        
+
         if ($user->role_id == Role::ADMIN) {
 
             $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
@@ -1071,8 +1087,8 @@ class OpenAiController extends Controller
 
 
         } elseif ($user->role_id == Role::COMPANY) {
-          
-            $agents = Agent::with(['branch'=> function ($query) use ($user) {
+
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
 
@@ -1089,18 +1105,18 @@ class OpenAiController extends Controller
 
         } elseif ($user->role_id == Role::AGENT) {
             $tasks = Task::where('agent_id', $user->id)->get(); // Retrieve tasks for this agent    
- 
-        } 
+
+        }
 
         // if(isset($arguments['task_type'])){
         //     $tasks = $tasks->where('type', $arguments['task_type']);
         // }
 
-        if(isset($arguments['task_status'])){
+        if (isset($arguments['task_status'])) {
             $tasks = $tasks->where('status', $arguments['task_status']);
         }
 
-        if(isset($arguments['task_output'])){
+        if (isset($arguments['task_output'])) {
             $tasks = $arguments['task_output'] == 'list' ? $tasks : $tasks->count();
             logger('count task: ' . (string)$tasks);
             return (string)$tasks;
@@ -1130,7 +1146,7 @@ class OpenAiController extends Controller
             }
         }
 
-            $user = User::find($arguments['user_id']);
+        $user = User::find($arguments['user_id']);
 
         $agents = collect();
         if ($user->role_id == Role::COMPANY) {
@@ -1189,22 +1205,21 @@ class OpenAiController extends Controller
 
 
         return 'invoice created: ' . $invoiceNumber;
-    
     }
 
-    public function callFunction($functionName, $arguments,int $userId)
+    public function callFunction($functionName, $arguments, int $userId)
     {
         switch ($functionName) {
             case 'get_user_tasks':
                 return [
-                    'success' => $this->getUserTask($arguments,$userId),
+                    'success' => $this->getUserTask($arguments, $userId),
                 ];
             case 'get_clients':
                 return [
                     'success' => $this->getClient($arguments),
                 ];
             case 'create_invoice':
-                
+
 
                 return [
                     'success' => $this->createInvoice($arguments),
@@ -1218,18 +1233,17 @@ class OpenAiController extends Controller
     {
         $runsId = [];
         $runs = [];
-        
+
         if ($conversation = Conversation::where('user_id', auth()->id())->latest()->first()) {
             $threadId = $conversation->thread_id;
         }
-        
-        if($threadId){
+
+        if ($threadId) {
             $runsId = $this->aiService->listRun($threadId)['data'];
         }
 
-        if(count($runsId) > 0)
-        {
-            foreach($runsId as $run){
+        if (count($runsId) > 0) {
+            foreach ($runsId as $run) {
                 $runId = $run['id'];
                 $this->aiService->listStep($threadId, $runId);
 
@@ -1238,20 +1252,18 @@ class OpenAiController extends Controller
         }
 
         return view('ai.openai.steps', compact('runs'));
-      
     }
 
     // FUNCTION FOR GETTING INFORMATION
-    public function getAgents(User $user) : array
+    public function getAgents(User $user): array
     {
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             return Agent::get()->select('id', 'name', 'branch_id')->toArray();
-        } else if($user->role_id == Role::COMPANY) {
+        } else if ($user->role_id == Role::COMPANY) {
 
             return Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get()->select('id', 'name', 'branch_id')->toArray();
-
         } else if ($user->role_id == Role::AGENT) {
             return Agent::where('id', $user->agent->id)->get();
         } else {
@@ -1259,11 +1271,11 @@ class OpenAiController extends Controller
         }
     }
 
-    public function getBranches(User $user) : array
+    public function getBranches(User $user): array
     {
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             return Branch::select('id', 'name', 'company_id')->toArray();
-        } else if($user->role_id == Role::COMPANY) {
+        } else if ($user->role_id == Role::COMPANY) {
             return Branch::where('company_id', $user->company->id)->get('id', 'name', 'company_id')->toArray();
         } else if ($user->role_id == Role::BRANCH) {
             return Branch::where('id', $user->branch->id)->get('id', 'name', 'company_id')->toArray();
@@ -1272,53 +1284,52 @@ class OpenAiController extends Controller
         }
     }
 
-    public function getClients(User $user) : array
+    public function getClients(User $user): array
     {
 
-        if($user->role_id == Role::ADMIN){
-            $client = Client::select('id','name')->all();
+        if ($user->role_id == Role::ADMIN) {
+            $client = Client::select('id', 'name')->all();
         } else if ($user->role_id == Role::COMPANY) {
-            $client = Client::select('id','name')->with(['agent.branch' => function ($query) use ($user) {
+            $client = Client::select('id', 'name')->with(['agent.branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }]);
 
 
             $client = $client->get();
         } else if ($user->role_id == Role::BRANCH) {
-            $client = Client::select('id','name')->with(['agent' => function ($query) use ($user) {
+            $client = Client::select('id', 'name')->with(['agent' => function ($query) use ($user) {
                 $query->where('branch_id', $user->branch_id);
             }])->get();
         } else {
-            $client = Client::select('id','name')->where('agent_id', $user->id)->get();
+            $client = Client::select('id', 'name')->where('agent_id', $user->id)->get();
         }
 
         return $client->toArray();
     }
 
-    public function getInvoices(User $user) : array
+    public function getInvoices(User $user): array
     {
 
-        if($user->role_id == Role::ADMIN){
-            return Invoice::with('invoiceDetails','invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails')->toArray();
-        } else if($user->role_id == Role::COMPANY) {
+        if ($user->role_id == Role::ADMIN) {
+            return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails')->toArray();
+        } else if ($user->role_id == Role::COMPANY) {
 
             $agentsId = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get()->pluck('id');
             return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->whereIn('agent_id', $agentsId)->toArray();
-
         } else if ($user->role_id == Role::AGENT) {
             return Invoice::with('invoiceDetails', 'invoicePartials')->get()->select('invoice_number', 'client_id', 'agent_id', 'amount', 'status', 'invoice_date', 'paid_date', 'due_date', 'invoiceDetails', 'invoicePartials')->where('agent_id', $user->agent->id)->toArray();
         } else {
             return [];
         }
-   }
+    }
 
-   public function getTasks(User $user) : array
-   {
-        if($user->role_id == Role::ADMIN){
+    public function getTasks(User $user): array
+    {
+        if ($user->role_id == Role::ADMIN) {
             return Task::get()->select('id', 'agent_id', 'client_id', 'agent_id', 'type', 'status', 'reference', 'price', 'tax', 'total')->toArray();
-        } else if($user->role_id == Role::COMPANY) {
+        } else if ($user->role_id == Role::COMPANY) {
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             }])->get();
@@ -1331,6 +1342,5 @@ class OpenAiController extends Controller
         } else {
             return [];
         }
-   }
-
+    }
 }

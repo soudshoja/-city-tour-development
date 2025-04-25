@@ -104,6 +104,25 @@
                                 value="{{ old('bankpaymentref', $bankPayment->reference_number) }}" type="text"
                                 name="bankpaymentref" class="form-input w-2/3 bg-gray-200 text-gray-700" />
                         </div>
+                        <div class="flex items-center gap-x-4 mt-4">
+                            <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
+                                Payment Type
+                            </label>
+                            <input value="{{ old('reference_type', $bankPayment->reference_type) }}" type="text"
+                                readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-700 border-gray-300"
+                                value="{{ $bankPayment->reference_type }}" />
+                        </div>
+
+                        @if ($bankPayment->reference_type === 'Refund')
+                            <div class="flex items-center gap-x-4 mt-4">
+                                <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
+                                    Refund Number
+                                </label>
+                                <input type="text" readonly
+                                    class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-700 border-gray-300"
+                                    value="{{ trim(\Illuminate\Support\Str::after($bankPayment->description, '|')) }}" />
+                            </div>
+                        @endif
 
                         <div class="flex items-center gap-x-6 mt-4">
                             <label for="branch_id" class="mb-0 flex-1">Branch <span
@@ -159,7 +178,8 @@
                                     <span class="text-red-500">*</span></label>
                                 <input required id="remarks_create" type="text" name="remarks_create"
                                     class="form-input flex-1" placeholder="Enter Remarks"
-                                    value="{{ old('remarks_create', $bankPayment->description) }}" />
+                                    value="{{ old('remarks_create', trim(\Illuminate\Support\Str::before($bankPayment->description, '|'))) }}" />
+
                             </div>
 
                             <div class="mt-4 flex items-center gap-x-4">

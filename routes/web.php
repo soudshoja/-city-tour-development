@@ -360,6 +360,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
+        Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
     });
 
     Route::group([

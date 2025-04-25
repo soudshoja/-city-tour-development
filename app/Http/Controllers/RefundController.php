@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use App\Models\Refund;
 use App\Models\Account;
+use App\Models\Transaction;
 use App\Models\Task;
 use App\Models\JournalEntry;
 use Illuminate\Http\Request;
@@ -18,15 +21,20 @@ class RefundController extends Controller
     public function index()
     {
         if (Auth::user()->role->name == 'company') {
-            $totalRefunds = Refund::where('company_id', Auth::user()->company->id)->count();
-            $refunds = Refund::where('company_id', Auth::user()->company->id)->get();
+            $refunds = Refund::with('invoice.client')
+                ->where('company_id', Auth::user()->company->id)
+                ->orderBy('id', 'desc')
+                ->get();
         } elseif (Auth::user()->role->name == 'branch') {
-            $totalRefunds = Refund::where('branch_id', Auth::user()->branch->id)->count();
-            $refunds = Refund::where('branch_id', Auth::user()->branch->id)->get();
+            $refunds = Refund::with('invoice.client')
+                ->where('branch_id', Auth::user()->branch->id)
+                ->orderBy('id', 'desc')
+                ->get();
         } else {
-            $totalRefunds = 0;
-            $refunds = collect(); 
+            $refunds = collect();
         }
+    
+        $totalRefunds = $refunds->count();
         return view('refunds.index', compact('refunds', 'totalRefunds'));
     }
     
@@ -36,70 +44,336 @@ class RefundController extends Controller
             abort(403, 'Refunds are only allowed for paid invoices.');
         }
     
-        $coaAccounts = Account::where('account_type', 'Asset')->get();
-    
+        $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
+        $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
+        
+        $coaAccounts = Account::doesntHave('children')
+            ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
+                $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+            })
+            ->get();
+
+
         // Get task IDs from invoice details
         $taskIds = $invoice->invoiceDetails()->pluck('task_id')->filter()->unique();
     
         // Fetch tasks using those IDs
-        $tasks = Task::whereIn('id', $taskIds)->first();
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+            ->whereIn('id', $taskIds)
+            ->orderBy('id', 'desc')
+            ->get();
 
-        dd($tasks);
+        $totals = $invoice->invoiceDetails()
+            ->whereIn('task_id', $taskIds)
+            ->selectRaw('SUM(task_price) as total_task_price, SUM(supplier_price) as total_supplier_price, SUM(markup_price) as total_markup_price')
+            ->first();
+
+       // dd($tasks);
     
-        return view('refunds.create', compact('invoice', 'coaAccounts', 'tasks'));
+        return view('refunds.create', compact('invoice', 'coaAccounts', 'tasks', 'totals'));
     }
 
     public function store(Request $request, Invoice $invoice)
     {   
         $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . $invoice->amount],
+            'total_nett_refund' => ['required', 'numeric', 'min:0.01'],
             'reason' => ['required', 'string'],
-            'method' => ['required', 'in:cash,bank,adjustment'],
+            'method' => ['required', 'in:Bank,Cash,Online'],
             'account_id' => ['required', 'exists:accounts,id'],
             'date' => ['required', 'date'],
             'reference' => ['nullable', 'string'],
         ]);
-    
+
         $refund = Refund::create([
+            'refund_number' => 'RF-' . now()->timestamp, 
             'invoice_id' => $invoice->id,
-            'company_id' => $invoice->company_id,
+            'company_id' => $invoice->agent->branch->company_id,
+            'branch_id' => $invoice->agent->branch_id,
             'agent_id' => $invoice->agent_id,
-            'amount' => $request->amount,
+            'remarks' => $request->input('remarks'),
+            'remarks_internal' => $request->input('remarks_internal'),
+            'airline_nett_fare' => $request->input('airline_nett_fare'),
+            'tax_refund' => $request->input('tax_refund'),
+            'refund_airline_charge' => $request->input('refund_airline_charge'),
+            'original_task_profit' => $request->input('original_task_profit'),
+            'new_task_profit' => $request->input('new_task_profit'),
+            'total_nett_refund' => $request->input('total_nett_refund'),
+            'service_charge' => $request->input('service_charge'),
             'reason' => $request->reason,
             'method' => $request->method,
             'account_id' => $request->account_id,
             'date' => $request->date,
             'reference' => $request->reference,
-            'status' => 'approved', 
-            'created_by' => auth()->user->id(),
+            'status' => 'approved',
+            'created_by' => auth()->user()->id,
         ]);
-    
-        // Journal entries...
-        JournalEntry::create([
-            'transaction_date' => $request->date,
-            'account_id' => $invoice->account_id, // Receivable
-            'debit' => $request->amount,
-            'credit' => 0,
-            'voucher_number' => $refund->id,
-            'name' => 'Refund',
-            'type' => 'refund',
+
+        // Create Transaction Record
+        $transaction = Transaction::create([
+            'entity_id' => $invoice->agent->branch->company_id,
+            'entity_type' => 'company',
+            'company_id' => $invoice->agent->branch->company_id,
+            'branch_id' => $invoice->agent->branch_id,
+            'transaction_type' => 'debit',
+            'amount' => $request->input('total_nett_refund'),
+            'date' => $request->date,
+            'description' => 'Refund:'.$invoice->invoice_number.' - '.$request->input('remarks'),
+            'reference_type' => 'Payment',
             'invoice_id' => $invoice->id,
+            'reference_number' => $request->bankpaymentref,
+            'name' => $invoice->client->name,
+            'remarks_internal' => $request->input('remarks_internal'),
+            
         ]);
-    
-        JournalEntry::create([
-            'transaction_date' => $request->date,
-            'account_id' => $request->account_id, // Cash/Bank/Other
-            'debit' => 0,
-            'credit' => $request->amount,
-            'voucher_number' => $refund->id,
-            'name' => 'Refund',
-            'type' => 'refund',
-            'invoice_id' => $invoice->id,
-        ]);
-    
-        return redirect()->route('refunds.list')->with('success', 'Refund processed successfully.');
+
+        $assetsReceivableAccount = Account::where('name', 'Accounts Receivable')->first(); 
+        $invoiceDetails = InvoiceDetail::where('invoice_id', $invoice->id)->get();
+        
+        foreach ($invoiceDetails as $invdetail) {
+            if ($invdetail->task_id) {
+                $supplierName = $invdetail->task->supplier->name;
+                $accountSupplierName = 'Supplier Refunds – ' . $supplierName;
+        
+                // Get or create Supplier Refund Account
+                $supplierRefundAccount = Account::where('name', 'LIKE', $accountSupplierName)
+                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->first();
+        
+                if (!$supplierRefundAccount) {
+                    $supplierRefundAccount = Account::create([
+                        'name' => $accountSupplierName,
+                        'parent_id' => $assetsReceivableAccount->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $assetsReceivableAccount->root_id,
+                        'code' => $assetsReceivableAccount->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $assetsReceivableAccount->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+        
+                $supplierRefundAccountEntry = $supplierRefundAccount->id;
+        
+                // Get or create Supplier Refund Income Account
+                $incomeIndirectIncome = Account::where('name', 'LIKE', '%Indirect Income%')->first();
+                $accountSupplierRefundIncome = 'Supplier Refund Income (Refund Adjustment)';
+        
+                $supplierRefundIncome = Account::where('name', 'LIKE', $accountSupplierRefundIncome)
+                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->first();
+        
+                if (!$supplierRefundIncome) {
+                    $supplierRefundIncome = Account::create([
+                        'name' => $accountSupplierRefundIncome,
+                        'parent_id' => $incomeIndirectIncome->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $incomeIndirectIncome->root_id,
+                        'code' => $incomeIndirectIncome->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $incomeIndirectIncome->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+        
+                $supplierRefundIncomeEntry = $supplierRefundIncome->id;
+        
+                // Step 1: Debit Entry for Supplier Refund
+                JournalEntry::create([
+                    'transaction_date' => $request->date,
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $invoice->agent->branch->company_id,
+                    'branch_id' => $invoice->agent->branch_id,
+                    'account_id' => $supplierRefundAccountEntry,
+                    'description' => $refund->refund_number . ' - Supplier Refund (Assets)',
+                    'debit' => $request->input('airline_nett_fare'),
+                    'credit' => 0,
+                    'voucher_number' => $refund->id,
+                    'name' => 'Refund',
+                    'type' => 'refund',
+                    'invoice_id' => $invoice->id,
+                ]);
+        
+                // Step 2: Credit Entry for Supplier Refund
+                JournalEntry::create([
+                    'transaction_date' => $request->date,
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $invoice->agent->branch->company_id,
+                    'branch_id' => $invoice->agent->branch_id,
+                    'account_id' => $supplierRefundIncomeEntry,
+                    'description' => $refund->refund_number . ' - Supplier Refund (Income)',
+                    'debit' => 0,
+                    'credit' => $request->input('airline_nett_fare'),
+                    'voucher_number' => $refund->id,
+                    'name' => 'Refund',
+                    'type' => 'refund',
+                    'invoice_id' => $invoice->id,
+                ]);
+
+
+                $assetsDirectIncome = Account::where('name', 'Direct Income')->first(); 
+                $accountincomeName = 'Flight Booking Revenue';
+        
+                // Get or create Supplier Refund Account
+                $incomeRefundAccount = Account::where('name', 'LIKE', $accountincomeName)
+                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->first();
+        
+                if (!$incomeRefundAccount) {
+                    $incomeRefundAccount = Account::create([
+                        'name' => $accountincomeName,
+                        'parent_id' => $assetsDirectIncome->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $assetsDirectIncome->root_id,
+                        'code' => $assetsDirectIncome->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $assetsDirectIncome->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+        
+                $incomeRefundAccountEntry = $incomeRefundAccount->id;
+        
+                // Get or create Supplier Refund Income Account
+                $incomeIndirectIncomeRec = Account::where('name', 'LIKE', '%Indirect Income%')->first();
+                $accountincomeRefundIncomeRec = 'Supplier Refund Income (Refund Adjustment)';
+        
+                $incomeRefundIncomeRec = Account::where('name', 'LIKE', $accountincomeRefundIncomeRec)
+                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->first();
+        
+                if (!$incomeRefundIncomeRec) {
+                    $incomeRefundIncomeRec = Account::create([
+                        'name' => $accountincomeRefundIncomeRec,
+                        'parent_id' => $incomeIndirectIncomeRec->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $incomeIndirectIncomeRec->root_id,
+                        'code' => $incomeIndirectIncomeRec->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $incomeIndirectIncomeRec->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+        
+                $incomeRefundIncomeRecEntry = $incomeRefundIncomeRec->id;
+        
+                // Step 3: Debit Entry for Supplier Refund
+                JournalEntry::create([
+                    'transaction_date' => $request->date,
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $invoice->agent->branch->company_id,
+                    'branch_id' => $invoice->agent->branch_id,
+                    'account_id' => $incomeRefundAccountEntry,
+                    'description' => $refund->refund_number . ' - Reverse Profit',
+                    'debit' => $request->input('airline_nett_fare'),
+                    'credit' => 0,
+                    'voucher_number' => $refund->id,
+                    'name' => 'Refund',
+                    'type' => 'refund',
+                    'invoice_id' => $invoice->id,
+                ]);
+        
+                // Step 3: Credit Entry for Supplier Refund
+                JournalEntry::create([
+                    'transaction_date' => $request->date,
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $invoice->agent->branch->company_id,
+                    'branch_id' => $invoice->agent->branch_id,
+                    'account_id' => $incomeRefundIncomeRecEntry,
+                    'description' => $refund->refund_number . ' - Reverse Profit',
+                    'debit' => 0,
+                    'credit' => $request->input('airline_nett_fare'),
+                    'voucher_number' => $refund->id,
+                    'name' => 'Refund',
+                    'type' => 'refund',
+                    'invoice_id' => $invoice->id,
+                ]);
+
+
+
+            }
+        }
+        
+
+        return redirect()->route('invoices.refunds.list')->with('success', 'Refund processed successfully.');
 
         
     }
+
+    public function edit($invoiceId, $refundId)
+    {
+        $invoice = Invoice::with(['client', 'agent'])->findOrFail($invoiceId);
+        $refund = Refund::findOrFail($refundId);
+        $coaAccounts = Account::where('report_type', 'Assets')->get(); // or however you filter them
+
+        // Get task IDs from invoice details
+        $taskIds = $invoice->invoiceDetails()->pluck('task_id')->filter()->unique();
+
+        // Fetch tasks using those IDs
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+            ->whereIn('id', $taskIds)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return view('refunds.edit', compact('invoice', 'refund', 'coaAccounts', 'tasks'));
+    }
+
+    public function update(Request $request, $invoiceId, $refundId)
+    {
+        $refund = Refund::findOrFail($refundId);
+
+        $request->validate([
+            'date' => 'required|date',
+            'method' => 'required|string',
+            'account_id' => 'required|exists:accounts,id',
+            'total_nett_refund' => 'required|numeric|min:0',
+            'refund_airline_charge' => 'nullable|numeric|min:0',
+            'original_task_profit' => 'nullable|numeric|min:0',
+            'new_task_profit' => 'nullable|numeric|min:0',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $refund->update($request->all());
+
+        return redirect()->route('invoices.refunds.edit', [$invoiceId, $refundId])
+            ->with('success', 'Refund updated successfully.');
+    }
+
+
     
 }

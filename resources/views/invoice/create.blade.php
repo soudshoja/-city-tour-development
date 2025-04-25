@@ -419,6 +419,12 @@
                 <!-- <div id="payment-link-container" class="mb-2 p-2 bg-white rounded shadow flex flex-col gap-2">
                     <p>You dont have any payment link Available</p>
                 </div> -->
+                <div id="client-credit" class=" p-2 mb-2 bg-white rounded shadow flex flex-col gap-2 justify-between">
+                    <div class="flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <span class="ml-2 text-gray-700">Loading...</span>
+                    </div>
+                </div>
                 <div class="panel mb-5">
                     <select id="currency" name="currency" class="form-select">
                         <!-- You can add your options here -->
@@ -1093,6 +1099,7 @@
         const appUrl = @json($appUrl);
         let toggle = false;
         let selectedPaymentLink = null;
+        let netTotal = 0;
 
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -1370,6 +1377,8 @@
                     calculateSubtotal(); // Recalculate the subtotal
 
                     const nettValue = (item.invprice - item.total);
+                    netTotal = nettValue;
+
                     // console.log(item);
                     // console.log('Supplier price: ' + item.total);
                     // console.log('Invoice price: ' + item.invprice);
@@ -1990,6 +1999,7 @@
 
         function selectClient(client) {
             // renderPaymentLink(client.id);
+            renderClientCredit(client);
             document.getElementById('clientid').value = client.id;
             document.getElementById('receiverId').value = client.id;
 
@@ -2052,6 +2062,7 @@
         // Call the function with the selectedClient object
         if (selectedClient && selectedAgent) {
             updateFormFields(selectedClient, selectedAgent);
+            renderClientCredit(selectedClient);
             // renderPaymentLink(selectedClient.id);
         }
 
@@ -2749,7 +2760,12 @@
                     checkInvoiceId();
                     // Show COA activities container
                     // document.getElementById("coa-activities-container").style.display = "block";
-                }, 1000);
+                }, 100);
+
+                window.location.href = "{{ route('invoice.edit', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber",
+                    invoiceNumber
+                );
 
             } catch (error) {
                 console.error(error);
@@ -2968,6 +2984,37 @@
             }, 500);
         }
 
+        function renderClientCredit(client){
+            // console.log('renderClientCredit', client);
+            let clientCredit = document.getElementById('client-credit');
+            clientCredit.innerHTML = '';
+
+            let totalAmount = 0;
+
+            items.forEach(item => {
+                totalAmount += parseFloat(item.total);
+            });
+
+            if (client) {
+                clientCredit.innerHTML = `
+                    <p class="text-gray-700">${client.name} Credit: ${client.credit} KWD</p>
+                `;
+            } else {
+                clientCredit.innerHTML = `<p class="text-gray-700">No client selected</p>`;
+            }
+
+            if (totalAmount > client.credit) {
+                clientCredit.innerHTML += `
+                    <p class="text-red-500">Total Amount exceeds ${client.name} Credit</p>
+                `;
+            } else {
+                clientCredit.innerHTML += `
+                    <p class="text-green-500">Total Amount is within Client Credit</p>
+                `;
+            }
+
+        }
+
         function renderPaymentLink(clientId = null) {
 
             let filteredPayments = [];
@@ -3085,6 +3132,7 @@
             // Initialize modals with full data
             renderClientList(clients);
             renderTaskList(tasks);
+            renderClientCredit(selectedClient);
         });
     </script>
 

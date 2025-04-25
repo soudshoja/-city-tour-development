@@ -23,15 +23,7 @@
                         opacity=".5" />
                 </svg>
             </div>
-            <div id="createRefund" data-tooltip="Add new refund request"
-                class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm"
-                onclick="window.location.href='{{ route('invoice.refund.create') }}';">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                    <path fill="#fff"
-                        d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7">
-                    </path>
-                </svg>
-            </div>
+
         </div>
 
 
@@ -72,9 +64,10 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Name</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Refund Type</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Refund Number</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Method</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Total Refund</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                 </tr>
@@ -88,18 +81,32 @@
                                 @else
                                     @foreach ($refunds as $refund)
                                         <tr>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->name }}
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                {{ $refund->refund_number }}
                                             </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->type }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->amount }}
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->description }}</td>
+                                                {{ $refund->invoice->client->name }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                KWD {{ number_format($refund->total_nett_refund, 2) }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                {{ $refund->remarks }}</td>
                                             <td class="p-3 text-sm">
                                                 <div class="flex items-center space-x-2">
-
-
+                                                    <a data-tooltip="Edit"
+                                                        href="{{ route('charges.edit', $refund->id) }}"
+                                                        class="text-sm font-medium text-blue-600 hover:underline">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                            height="20" viewBox="0 0 24 24">
+                                                            <path fill="none" stroke="#00ab55" stroke-linecap="round"
+                                                                stroke-linejoin="round" stroke-width="1.5"
+                                                                d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
+                                                                opacity=".5" />
+                                                        </svg>
+                                                    </a>
                                                 </div>
 
                                             </td>

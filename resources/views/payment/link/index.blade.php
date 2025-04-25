@@ -45,6 +45,7 @@
                         {{ $payment->status }}
                     </td>
                     <td class="px-4 py-2">
+                        @if($payment->status !== 'completed')
                         @if($payment->invoice)
                         <a href="{{ route('invoice.show', $payment->invoice->invoice_number) }}" target="_blank" class="text-blue-500 hover:underline font-medium">
                             Send Link To Customer
@@ -57,30 +58,35 @@
                         <a href="{{ route('payment.link.show', $payment->id) }}" target="_blank" class="text-blue-500 hover:underline font-medium ml-4">
                             View Link in PDF
                         </a>
+                        @else
+                        <p>
+                            Payment has been made
+                        </p>
+                        @endif
                     </td>
                     <td class="px-4 py-2 relative">
                         <div x-data="{ editPaymentLink: false }">
                             <button @click="editPaymentLink = true" class="text-blue-500 hover:underline">Edit</button>
-                            <div 
-                                x-cloak 
-                                x-show="editPaymentLink" 
+                            <div
+                                x-cloak
+                                x-show="editPaymentLink"
                                 class="fixed inset-0 z-10 bg-gray-500 bg-opacity-50 flex items-center justify-center">
                                 <div class="bg-white p-6 rounded shadow-lg w-full max-w-md">
-                                    <form 
-                                        action="{{ route('payment.link.update', $payment->id) }}" 
+                                    <form
+                                        action="{{ route('payment.link.update', $payment->id) }}"
                                         method="POST">
                                         @csrf
                                         @method('PUT')
                                         @unlessrole('agent')
                                         <div class="mb-4">
                                             <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
-                                            <select 
-                                                name="agent_id" 
-                                                id="agent_id" 
+                                            <select
+                                                name="agent_id"
+                                                id="agent_id"
                                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                                 @foreach ($agents as $agent)
-                                                <option 
-                                                    value="{{ $agent->id }}" 
+                                                <option
+                                                    value="{{ $agent->id }}"
                                                     {{ $payment->agent_id == $agent->id ? 'selected' : '' }}>
                                                     {{ $agent->name }}
                                                 </option>
@@ -92,13 +98,13 @@
                                         @endunlessrole
                                         <div class="mb-4">
                                             <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
-                                            <select 
-                                                name="client_id" 
-                                                id="client_id" 
+                                            <select
+                                                name="client_id"
+                                                id="client_id"
                                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                                 @foreach ($clients as $client)
-                                                <option 
-                                                    value="{{ $client->id }}" 
+                                                <option
+                                                    value="{{ $client->id }}"
                                                     {{ $payment->client_id == $client->id ? 'selected' : '' }}>
                                                     {{ $client->name }}
                                                 </option>
@@ -107,22 +113,22 @@
                                         </div>
                                         <div class="mb-4">
                                             <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
-                                            <input 
-                                                type="text" 
-                                                name="amount" 
-                                                id="amount" 
-                                                value="{{ $payment->amount }}" 
+                                            <input
+                                                type="text"
+                                                name="amount"
+                                                id="amount"
+                                                value="{{ $payment->amount }}"
                                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                         </div>
                                         <div class="flex justify-end space-x-4">
-                                            <button 
-                                                @click="editPaymentLink = false" 
-                                                class="text-red-500 hover:underline" 
+                                            <button
+                                                @click="editPaymentLink = false"
+                                                class="text-red-500 hover:underline"
                                                 type="button">
                                                 Cancel
                                             </button>
-                                            <button 
-                                                type="submit" 
+                                            <button
+                                                type="submit"
                                                 class="btn btn-primary">
                                                 Update
                                             </button>

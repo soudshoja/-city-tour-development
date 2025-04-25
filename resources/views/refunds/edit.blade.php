@@ -34,6 +34,21 @@
                 </div>
             </div>
 
+            <div class="bg-white shadow-md rounded-lg p-8">
+                <div class="grid grid-cols-1">
+                    @foreach ($tasks as $task)
+                        <div class="mb-5">
+                            <h4>{{ $task->name }}</h4>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">
+                                Reference Number: {{ $task->reference ?? '-' }}</h3>
+                            <p>Branch: {{ $task->agent->branch->name ?? '-' }}</p>
+                            <p>Client: {{ $task->client->name ?? '-' }}</p>
+                            <p>Type: {{ $task->type ?? '-' }}</p>
+                            <p>Info: {{ $task->additional_info ?? '-' }}, {{ $task->venue ?? '-' }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
             <hr class="my-6">
 
             <form
@@ -44,7 +59,24 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                    <!-- Date (readonly with grey background) -->
+                    <div>
+                        <label for="refund_number" class="block text-gray-700 font-semibold mb-2">Refund Number</label>
+                        <input type="text" name="refund_number" id="refund_number"
+                            value="{{ old('refund_number', $refund->refund_number) }}" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        @error('refund_number')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="status" class="block text-gray-700 font-semibold mb-2">Status</label>
+                        <input type="text" name="status" id="status"
+                            value="{{ old('status', ucfirst($refund->status)) }}" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        @error('status')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
                     <div>
                         <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
                         <input type="date" name="date" id="date"
@@ -121,7 +153,8 @@
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
                                 Refund
                                 Charge</label>
-                            <input type="number" step="0.01" name="refund_airline_charge" id="refund_airline_charge"
+                            <input type="number" step="0.01" name="refund_airline_charge"
+                                id="refund_airline_charge"
                                 value="{{ old('refund_airline_charge', $refund->refund_airline_charge ?? '') }}"
                                 readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
@@ -131,9 +164,10 @@
                             <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
                                 Task
                                 Profit</label>
-                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
-                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}" readonly
-                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                            <input type="number" step="0.01" name="original_task_profit"
+                                id="original_task_profit"
+                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}"
+                                readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
                         <!-- Total Service Charge -->
@@ -196,6 +230,11 @@
                     <!-- Right side: Save and Reset -->
                     <div class="flex gap-4">
                         <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
+                        <button onclick="processCompleted({{ $refund->invoice_id }}, {{ $refund->id }})"
+                            class="btn btn-primary">
+                            Process Completed
+                        </button>
+
                         <button id="save-paymentvoucher-btn" type="submit"
                             class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
                             <span id="iconSavePaymentVoucher" class="mr-2 inline-block">
@@ -207,6 +246,7 @@
                             </span>
                             <span id="textSavePaymentVoucher">Save</span>
                         </button>
+
                     </div>
                 </div>
 
@@ -232,6 +272,31 @@
             if (option) {
                 document.getElementById('account_id').value = option.dataset.id;
             }
+        }
+
+        function processCompleted(invoiceId, refundId) {
+            console.log('Processing refund:', {
+                invoiceId,
+                refundId
+            });
+            fetch(`/invoices/${invoiceId}/refunds/${refundId}/process-completed`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        alert('Something went wrong.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error processing refund.');
+                });
         }
     </script>
 </x-app-layout>

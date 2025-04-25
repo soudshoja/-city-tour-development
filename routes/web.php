@@ -343,6 +343,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{invoice}/refund', [RefundController::class, 'store'])->name('refunds.store');
         Route::get('/{invoice}/refunds/{refund}/edit', [RefundController::class, 'edit'])->name('refunds.edit');
         Route::put('/{invoice}/refunds/{refund}', [RefundController::class, 'update'])->name('refunds.update');
+        Route::post('/{invoice}/refunds/{refund}/process-completed', [RefundController::class, 'complete_process'])->name('refunds.complete_process');
 
         
     });

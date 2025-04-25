@@ -164,10 +164,9 @@
                         <div>
                             <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total Nett
                                 Refund Amount</label>
-                            <input readonly type="number" step="0.01" name="total_nett_refund"
-                                id="total_nett_refund"
+                            <input type="number" step="0.01" name="total_nett_refund" id="total_nett_refund"
                                 value="{{ old('total_nett_refund', $refund->total_nett_refund ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                             @error('total_nett_refund')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
                             @enderror

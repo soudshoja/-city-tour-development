@@ -11,6 +11,7 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Branch;
 use App\Models\Role;
+use App\Models\Refund;
 
 class BankPaymentController extends Controller
 {
@@ -30,14 +31,14 @@ class BankPaymentController extends Controller
             $branchesId = $branch->pluck('id')->toArray(); 
 
             $bankPayments = Transaction::whereIn('branch_id', $branchesId)
-            ->where('reference_type', 'Payment')
             ->whereNotNull('name')
+            ->where('reference_number', 'like', 'PV-%')
             ->latest()
             ->paginate(10);
         
             $totalRecords = Transaction::whereIn('branch_id', $branchesId)
-            ->where('reference_type', 'Payment')
             ->whereNotNull('name')
+            ->where('reference_number', 'like', 'PV-%')
             ->count();
 
         }else{
@@ -55,34 +56,33 @@ class BankPaymentController extends Controller
             $accounts = Account::all();
             $companies = Company::all();
             $branches = Branch::all();
-
-            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-            $parentIds = Account::where(function ($query) {
-                    $query->where('name', 'LIKE', '%Payable%')
-                        ->orWhere('name', 'LIKE', '%Receivable%');
+ 
+            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+            
+            $accpayreceives = Account::doesntHave('children')
+                ->with('root') 
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id');
+                ->get();
 
-            $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
-            
-
-            $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
-            $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
-            
             $lastLevelAccounts = Account::doesntHave('children')
-                ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
-                    $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+                ->with('root') 
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
 
-
-            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
             $suppliers = Account::doesntHave('children')
-                ->whereHas('parent', function ($query) use ($liabilitiesRootId) {
-                    $query->where('root_id', $liabilitiesRootId);
+                ->with('root') 
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
+
+            $refundNumbers = Refund::select('refund_number')->get();
+
 
             
         }elseif ($user->role_id == Role::COMPANY) {
@@ -91,43 +91,48 @@ class BankPaymentController extends Controller
             $branches = $company->branches;
             $companies = $company;
 
-            // $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            // ->orWhere('name', 'LIKE', '%Receivable%')
-            // ->pluck('id');
-
-            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-            $parentIds = Account::where(function ($query) {
-                    $query->where('name', 'LIKE', '%Payable%')
-                        ->orWhere('name', 'LIKE', '%Receivable%');
+            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+            
+            $accpayreceives = Account::doesntHave('children')
+                ->with('root') 
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id');
-
-            $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
-
-            $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
-            $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
+                ->get();
             
             $lastLevelAccounts = Account::doesntHave('children')
-                ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
-                    $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+                ->with('root') 
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
+            
+            // $suppliers = Account::doesntHave('children')
+            //     ->whereHas('parent', function ($query) use ($rootIds) {
+            //         $query->whereIn('root_id', $rootIds);
+            //     })
+            //     ->get();
 
-
-            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
             $suppliers = Account::doesntHave('children')
-                ->whereHas('parent', function ($query) use ($liabilitiesRootId) {
-                    $query->where('root_id', $liabilitiesRootId);
+                ->with('root') 
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
 
+            $refundNumbers = Refund::where('company_id', $user->company->id)
+                ->where('branch_id', $user->branch->id)
+                ->select('refund_number')
+                ->get();
+            
+            
 
         }else{
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts'));
+        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers'));
 
     }
 
@@ -136,35 +141,32 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {   
-        
-       // Fetch all account names and their IDs
-       $assetsRootIdMap = Account::where('name', 'Assets')->value('id');
-       $liabilitiesRootIdMap = Account::where('name', 'Liabilities')->value('id');
-       
-       $accountMap = Account::whereIn('root_id', [$assetsRootIdMap, $liabilitiesRootIdMap])
-           ->pluck('id', 'name')
-           ->toArray();
+        $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+        $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
 
-        // Modify request data: Replace account name with ID
+        $accountMap = Account::doesntHave('children')
+            ->whereHas('parent', function ($query) use ($rootIds) {
+                $query->whereIn('root_id', $rootIds);
+            })
+            ->pluck('id', 'name')
+            ->toArray();
+
         $modifiedItems = collect($request->items)->map(function ($item) use ($accountMap) {
             if (isset($accountMap[$item['ac_code']])) {
-                $item['ac_code'] = $accountMap[$item['ac_code']]; // Replace name with ID
-                //dd($item['ac_code']);
+                $item['ac_code'] = $accountMap[$item['ac_code']];
             }
             return $item;
         })->toArray();
-        
-        
+
         // Replace request data
         $request->merge(['items' => $modifiedItems]);
-
-
 
         $request->validate([
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
-            'bankpaymentref' => 'required|string',
             'docdate' => 'required|date',
+            'bankpaymentref' => 'required|string',
+            'bankpaymenttype' => 'required|string|in:Payment,Refund,Invoice',
             'pay_to' => ['required', 'exists:accounts,name'],
             'remarks_create' => 'required|string',
             'internal_remarks' => 'nullable|string',
@@ -199,10 +201,13 @@ class BankPaymentController extends Controller
                 'transaction_type' => 'debit',
                 'amount' => ($item['credit'] ?? 0) - ($item['debit'] ?? 0),
                 'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                'description' => $request->remarks_create,
-                'reference_type' => 'Payment',
+                'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
+                'description' => $request->bankpaymenttype === 'Refund'
+                ? 'Client Refund Payable - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
+                : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'invoice_id' => null,
                 'reference_number' => $request->bankpaymentref,
+                'reference_type' => $request->bankpaymenttype,
                 'name' => $request->pay_to,
                 'remarks_internal' => $request->internal_remarks,
                 'remarks_fl' => $request->remarks_fl,
@@ -258,17 +263,14 @@ class BankPaymentController extends Controller
             $branches = $companies->flatMap->branches;
             $accounts = $branches->pluck('account')->filter();
 
-            // $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            // ->orWhere('name', 'LIKE', '%Receivable%')
-            // ->pluck('id');
-            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-            $parentIds = Account::where(function ($query) {
-                    $query->where('name', 'LIKE', '%Payable%')
-                        ->orWhere('name', 'LIKE', '%Receivable%');
+            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+            
+            $accpayreceives = Account::doesntHave('children')
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
                 })
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id');
-            $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
+                ->get();
 
             $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
             ->pluck('id');
@@ -281,42 +283,34 @@ class BankPaymentController extends Controller
             $accounts = $company->branches->pluck('account')->filter(); // get accounts from each branch
             $branches = $company->branches;
             $companies = $company;
-            
-            // $parentIds = Account::where('name', 'LIKE', '%Payable%')
-            // ->orWhere('name', 'LIKE', '%Receivable%')
-            // ->pluck('id');
-            $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-            $parentIds = Account::where(function ($query) {
-                    $query->where('name', 'LIKE', '%Payable%')
-                        ->orWhere('name', 'LIKE', '%Receivable%');
-                })
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id');
-            $accpayreceives = Account::whereIn('parent_id', $parentIds)->get();
 
-            $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
-            ->pluck('id');
-            //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
+            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+            
+            $accpayreceives = Account::doesntHave('children')
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
+                })
+                ->get();
+
+            // $suppliers = Account::doesntHave('children')
+            // ->whereHas('parent', function ($query) use ($rootIds) {
+            //     $query->whereIn('root_id', $rootIds);
+            // })
+            // ->get();
+
             $suppliers = Account::doesntHave('children')
-            ->where('company_id', $user->company->id)
+            ->with('root') 
+            ->whereHas('parent', function ($query) use ($rootIds) {
+                $query->whereIn('root_id', $rootIds);
+            })
             ->get();
 
         }else{
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-
-        // return view('bank-payments.edit', compact('bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
-
-        // $bankPayment = Transaction::findOrFail($id);
-        // $accounts = Account::all();
-        // $branches = Branch::all();
-        // $accpayreceives = $this->getPayableReceivableAccounts();
-        // $suppliers = $this->getSupplierAccounts();
-        // $JournalEntrys = JournalEntry::where('transaction_id', $bankPayment->id)->get();
-
         return view('bank-payments.edit', compact('companies','bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
-    
 
     }
 
@@ -354,7 +348,7 @@ class BankPaymentController extends Controller
                 'amount' => collect($request->items)->sum('amount'),
                 'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create,
-                'reference_type' => 'Payment',
+                'reference_type' => $request->bankpaymenttype,
                 'invoice_id' => null,
                 'reference_number' => $request->bankpaymentref,
                 'name' => $request->pay_to,
@@ -369,7 +363,7 @@ class BankPaymentController extends Controller
             $this->storeJournalEntryEntries($request->items, $request, $id);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Bank Payment Updated Successfully.');
+            return redirect()->back()->with('success', 'Payment Voucher Updated Successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();

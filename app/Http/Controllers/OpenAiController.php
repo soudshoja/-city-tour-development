@@ -267,7 +267,7 @@ class OpenAiController extends Controller
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `status`: Current status of the task. If the file contains refund indicator/keyword such as `RF`, make sure to set the status to 'refund'. Other status are 'reissued', 'issued' or 'void'. Do not set the status other than what I already defined.
+            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'confirmed', 'hold' or 'completed'.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
             - `total`: Total amount for the task in float type. this column is mandatory, please make sure to find the total amount in the pdf., total is sum of price and surcharge.

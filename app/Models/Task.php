@@ -30,6 +30,7 @@ class Task extends Model
         'venue',
         'invoice_price',
         'voucher_status',
+        'refund_date',
         'enabled'
     ];
 

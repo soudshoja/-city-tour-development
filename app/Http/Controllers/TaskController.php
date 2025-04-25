@@ -176,6 +176,7 @@ class TaskController extends Controller
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
             'enabled' => 'required|boolean',
+            'refund_date' => 'nullable|date',
             'task_hotel_details' => 'required_if:task_flight_details,null|array|nullable',
             'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
@@ -210,7 +211,7 @@ class TaskController extends Controller
 
             $task = Task::create($taskData);
 
-            if ($task->status !== 'refund') {
+            if ($task->status !== 'refund' && $task->status !== 'void') {
                 if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
                     $this->saveHotelDetails($request->task_hotel_details, $task->id);
                 } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {
@@ -610,10 +611,15 @@ class TaskController extends Controller
             'status' => $response['data']['status'] ?? 'issued',
             'reference' => $response['data']['reference'] ?? 'Unknown',
             'type' => $response['data']['type'] ?? 'Unknown',
+            'refund_date' => $response['data']['refund_date'] ?? null,
+            'total' => isset($response['data']['total']) 
+                ? ($response['data']['status'] === 'void' ? 0 : $response['data']['total'])
+                : 0,
         ]);
+        
 
         $response = $this->store($newRequest);
-
+        
         $response = json_decode($response->getContent(), true);
 
         if ($response['status'] == 'error') {
@@ -954,6 +960,7 @@ class TaskController extends Controller
                 'venue' => $hotel['name'] ?? null,
                 'invoice_price' => null,
                 'voucher_status' => null,
+                'refund_date' => null,
                 'task_hotel_details' => [
                     'hotel_name' => $hotel['name'],
                     'hotel_country' => $hotel['countryId'],
@@ -1253,6 +1260,8 @@ class TaskController extends Controller
                         'venue' =>  $details['HotelDetails']['City'],
                         'invoice_price' => null,
                         'voucher_status' => (string)$details['VoucherStatus'],
+                        'refund_date' => null,
+
                     ]);
                 } catch (Exception $e) {
                     logger('TBO Task Error: ' . $e->getMessage());

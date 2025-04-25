@@ -407,41 +407,85 @@
                         </h2>
                         <input type="hidden" id="paymentTypeSaved" name="payment_type_saved" value="{{ $invoice->payment_type }}">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                            <!-- Full Payment Tab -->
-                            <!-- <input type="radio" id="payment_type_credit" name="payment_type" value="credit"
-                                    onclick="hideModal()" hidden class="peer"
-                                    {{ $invoice->payment_type == 'credit' ? 'checked' : '' }} {{ $invoice->amount > $selectedClient->credit ? 'disabled' : ''}} /> -->
-                            <div x-data="{ clientCreditModal: false }">
-                                <button type="button" @click="clientCreditModal = true"
-                                    class="rounded-full flex flex-col items-center justify-center w-full
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
+                            <div x-data="{ clientCreditModal: false, generateInvoiceWithCreditModal :false }">
+                                @if($invoice->amount < $selectedClient->credit)
+                                    <button type="button" @click="clientCreditModal = true"
+                                        class="rounded-full flex flex-col items-center justify-center w-full
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl"
-                                    {{ $invoice->amount > $selectedClient->credit ? 'disabled' : '' }}>
-                                    <span class="font-medium">{{$selectedClient->name}}: {{$selectedClient->credit}}KWD</span>
-                                    @if($invoice->amount > $selectedClient->credit)
-                                    <span class="text-red-500">Credit Limit Exceeded</span>
-                                    @endif
-                                </button>
-                                <div
-                                    x-cloak
-                                    x-show="clientCreditModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
-                                    <div class="bg-white rounded-lg p-6 shadow-lg">
-                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
-                                        <p class="text-gray-600">The client has a credit limit of {{$selectedClient->credit}} KWD.</p>
-                                        <p>
-                                            <span>After payment: {{ $selectedClient->credit }} - {{ $invoice->amount }} = {{ $selectedClient->credit - $invoice->amount }} KWD</span>
-                                        </p>
-                                        <div class="mt-4 flex justify-end">
-                                            <button @click="savePartial('credit')" class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
-                                            <button @click="clientCreditModal = false" class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                                        {{ $invoice->amount > $selectedClient->credit ? 'disabled' : '' }}>
+                                        <span class="font-medium">{{$selectedClient->name}}: {{$selectedClient->credit}}KWD</span>
+                                        @if($invoice->amount > $selectedClient->credit)
+                                        <span class="text-red-500">Credit Limit Exceeded</span>
+                                        @endif
+                                    </button>
+                                    <div
+                                        x-cloak
+                                        x-show="clientCreditModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+                                        <div class="bg-white rounded-lg p-6 shadow-lg">
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
+                                            <p class="text-gray-600">The client has a credit limit of {{$selectedClient->credit}} KWD.</p>
+                                            <p>
+                                                <span>After payment: {{ $selectedClient->credit }} - {{ $invoice->amount }} = {{ $selectedClient->credit - $invoice->amount }} KWD</span>
+                                            </p>
+                                            <div class="mt-4 flex justify-end">
+                                                <button @click="savePartial('credit')" class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
+                                                <button @click="clientCreditModal = false" class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    @else
+                                    <button type="button" @click="generateInvoiceWithCreditModal = true"
+                                        class="rounded-full flex flex-col items-center justify-center w-full
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
+                                        <span> Still Paying With Client Credit?</span>
+                                        <span> {{$selectedClient->name}}: {{ $selectedClient->credit}} KWD</span>
+                                    </button>
+                                    <div
+                                        x-cloak
+                                        x-show="generateInvoiceWithCreditModal"
+                                        class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-75 transition-opacity">
+                                        <div class="min-h-40 min-w-40 p-3 bg-white rounded shadow" @click.away="generateInvoiceWithCreditModal = false">
+                                            <header>
+                                                Do you want to generate new invoice to add to the client credit?
+                                            </header>
+                                            <main>
+                                                <form action="{{ route('invoice.client-credit') }}" method="POST">
+                                                    @csrf
+                                                    <div class="flex items-center space-x-2">
+                                                        <input type="radio" id="yesRadio" name="choice-invoice" value="yes" class="form-radio choice-invoice h-5 w-5 text-blue-600">
+                                                        <label for="yesRadio" class="text-gray-700">Yes</label>
+                                                        <input type="radio" id="noRadio" name="choice-invoice" value="no" class="form-radio choice-invoice h-5 w-5 text-blue-600 ml-4">
+                                                        <label for="noRadio" class="text-gray-700">No</label>
+                                                    </div>
+                                                    <div id="yes-chosen">
+                                                        <div>
+                                                            <select name="payment_gateway" id="" class="w-full p-2 my-2">
+                                                                @foreach ($paymentGateways as $gateway)
+                                                                <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <input type="hidden" name="invoice_id" value="{{ $invoice->id}}">
+                                                        <x-primary-button>
+                                                            Submit
+                                                        </x-primary-button>
+                                                    </div>
+                                                    <div id="no-chosen">
+                                                        <x-primary-button>
+                                                            Submit
+                                                        </x-primary-button>
+                                                    </div>
+                                                </form>
+                                            </main>
+
                                         </div>
                                     </div>
-
-                                </div>
+                                    @endif
                             </div>
                             <!-- <div
                                     class="rounded-full flex items-center justify-center 
@@ -2791,6 +2835,26 @@
             radios.forEach(radio => {
                 radio.addEventListener('change', function() {
                     paymentTypeSavedInput.value = this.value;
+                });
+            });
+
+            creditClientRadioChoice = document.getElementsByName('choice-invoice')
+
+            yesChosen = document.getElementById('yes-chosen');
+            noChosen = document.getElementById('no-chosen');
+
+            yesChosen.style.display = 'none';
+            noChosen.style.display = 'none';
+
+            creditClientRadioChoice.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'yes') {
+                        yesChosen.style.display = 'block';
+                        noChosen.style.display = 'none';
+                    } else {
+                        yesChosen.style.display = 'none';
+                        noChosen.style.display = 'block';
+                    }
                 });
             });
 

@@ -30,6 +30,7 @@ class Task extends Model
         'venue',
         'invoice_price',
         'voucher_status',
+        'refund_date',
         'enabled'
     ];
 
@@ -66,6 +67,15 @@ class Task extends Model
         }
 
         return $isComplete;
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where(function ($q) {
+            foreach ($this->requiredColumn as $column) {
+                $q->whereNotNull($column)->where($column, '!=', '');
+            }
+        });
     }
 
     public function flightDetails()

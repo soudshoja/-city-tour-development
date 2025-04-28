@@ -65,7 +65,6 @@ class TaskController extends Controller
             $agents = Agent::all();
             $queueTasks = $queueTasks->get();
             $suppliers = Supplier::all();
-
         } elseif ($user->role_id == Role::COMPANY) {
 
             $branches = Branch::where('company_id', $user->company->id)->get();
@@ -162,12 +161,13 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-      
+
         $validatedData = $request->validate([
             'type' => 'required|string',
             'company_id' => 'required|exists:companies,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'reference' => 'required|string',
+            'status' => 'required|string',
             'price' => 'nullable|numeric',
             'total' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
@@ -176,6 +176,7 @@ class TaskController extends Controller
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
             'enabled' => 'required|boolean',
+            'refund_date' => 'nullable|date',
             'task_hotel_details' => 'required_if:task_flight_details,null|array|nullable',
             'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
@@ -184,7 +185,7 @@ class TaskController extends Controller
             ->where('supplier_id', $validatedData['supplier_id'])
             ->where('company_id', $validatedData['company_id'])
             ->first();
-        
+
         if ($existingTask) {
             return response()->json([
                 'status' => 'error',
@@ -201,19 +202,25 @@ class TaskController extends Controller
             ], 404);
         }
 
-        DB::beginTransaction(); 
+        DB::beginTransaction();
 
         try {
-            
+
             $taskData = $validatedData;
-            
+            Log::debug('Task Data:', $taskData);
+
             $task = Task::create($taskData);
-            if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
-                $this->saveHotelDetails($request->task_hotel_details, $task->id);
-            } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {
-                $this->saveFlightDetails($request->task_flight_details, $task->id);
+
+            if ($task->status !== 'refund' && $task->status !== 'void') {
+                if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
+                    $this->saveHotelDetails($request->task_hotel_details, $task->id);
+                } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {
+                    $this->saveFlightDetails($request->task_flight_details, $task->id);
+                } else {
+                    throw new Exception('Invalid task type or missing details.');
+                }
             } else {
-                throw new Exception('Invalid task type or missing details.');
+                Log::info('Refund task created, skipping hotel/flight details saving process.');
             }
 
             $agent = $task->agent;
@@ -221,7 +228,7 @@ class TaskController extends Controller
             if (!$agent) {
                 throw new Exception('Task not linked to an agent.');
             }
-            
+
             $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
                 ->where('company_id', $task->company_id)
                 ->first();
@@ -278,20 +285,8 @@ class TaskController extends Controller
 
             $supplierPayable = collect();
             $supplierCost = collect();
-            
-            if($task->type == 'flight') {
-                $supplierPayable = Account::where('name', $supplier->name)
-                    ->where('company_id', $task->company_id)
-                    ->where('root_id', $liabilities->id)
-                    ->first();
 
-                $supplierCost = Account::where('name', $supplier->name)
-                    ->where('company_id', $task->company_id)
-                    ->where('root_id', $expenses->id)
-                    ->first();    
-
-            } elseif($task->type == 'hotel') {
-
+            if ($task->type == 'flight') {
                 $supplierPayable = Account::where('name', $supplier->name)
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $liabilities->id)
@@ -301,12 +296,23 @@ class TaskController extends Controller
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $expenses->id)
                     ->first();
-                }
+            } elseif ($task->type == 'hotel') {
+
+                $supplierPayable = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->first();
+
+                $supplierCost = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $expenses->id)
+                    ->first();
+            }
 
             if (!$supplierCost || !$supplierPayable) {
                 throw new Exception('Supplier account not found.');
             }
-           
+
 
             $transaction = Transaction::create([
                 'branch_id' => $task->agent->branch_id,
@@ -370,7 +376,7 @@ class TaskController extends Controller
             //     'type' => 'receivable',
             // ]);
 
-            DB::commit(); 
+            DB::commit();
 
             return response()->json([
                 'status' => 'success',
@@ -378,7 +384,7 @@ class TaskController extends Controller
                 'data' => $task,
             ], 201);
         } catch (Exception $e) {
-            DB::rollBack(); 
+            DB::rollBack();
 
             Log::error('Task creation failed: ' . $e->getMessage());
             return response()->json([
@@ -522,9 +528,8 @@ class TaskController extends Controller
                 $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total', 'status']));
                 $task->client_name = $client->name;
                 $task->save();
-                
-                $transaction = Transaction::with('journalEntries')->where('description', 'like', '%'. $task->reference . '%')->first();
-                
+
+                $transaction = Transaction::with('journalEntries')->where('description', 'like', '%' . $task->reference . '%')->first();
             } catch (Exception $e) {
                 return redirect()->back()->with('error', 'Task update failed.');
             }
@@ -548,9 +553,9 @@ class TaskController extends Controller
     public function upload(Request $request)
     {
         $user = Auth::user();
-   
 
-        if($user->role_id == Role::COMPANY) {
+
+        if ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
         } elseif ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company_id;
@@ -564,7 +569,7 @@ class TaskController extends Controller
             'task_file' => 'required|mimes:pdf,txt',
             'agent_id' => 'required|exists:agents,id',
         ]);
-        
+
         $file = $request->file('task_file')->store('public/tasks');
         if ($file) {
             $content = $this->extractTaskFromFile($file);
@@ -603,10 +608,18 @@ class TaskController extends Controller
             'agent_id' => $request->agent_id,
             'supplier_id' => $supplier->id,
             'company_id' => $companyId,
+            'status' => $response['data']['status'] ?? 'issued',
+            'reference' => $response['data']['reference'] ?? 'Unknown',
+            'type' => $response['data']['type'] ?? 'Unknown',
+            'refund_date' => $response['data']['refund_date'] ?? null,
+            'total' => isset($response['data']['total']) 
+                ? ($response['data']['status'] === 'void' ? 0 : $response['data']['total'])
+                : 0,
         ]);
+        
 
         $response = $this->store($newRequest);
-
+        
         $response = json_decode($response->getContent(), true);
 
         if ($response['status'] == 'error') {
@@ -709,11 +722,13 @@ class TaskController extends Controller
                 'airport_from' => $data['airport_from'] ?? null,
                 'terminal_from' => $data['terminal_from'] ?? null,
                 'arrival_time' => $data['arrival_time'] ?? null,
+                'duration_time' => $data['duration_time'] ?? null,
                 'country_id_to' => $countryTo->id ?? null,
                 'airport_to' => $data['airport_to'] ?? null,
                 'terminal_to' => $data['terminal_to'] ?? null,
                 'airline_id' => $airline->id ?? null,
                 'flight_number' => $data['flight_number'] ?? null,
+                'ticket_number' => $data['ticket_number'] ?? null,
                 'class_type' => $data['class_type'] ?? null,
                 'baggage_allowed' => $data['baggage_allowed'] ?? null,
                 'equipment' => $data['equipment'] ?? null,
@@ -769,7 +784,6 @@ class TaskController extends Controller
             ];
 
             TaskHotelDetail::create($hotelDetails);
-
         } catch (Exception $e) {
             throw $e;
         }
@@ -878,7 +892,7 @@ class TaskController extends Controller
 
         $cancellationPolicy = json_encode($cancellationPolicy);
         $supplier = Supplier::where('name', 'Magic Holiday')->first();
-       
+
         if (!$supplier) {
             Log::channel('magic_holidays')->error('Supplier not found: Magic Holiday');
             return [
@@ -946,6 +960,7 @@ class TaskController extends Controller
                 'venue' => $hotel['name'] ?? null,
                 'invoice_price' => null,
                 'voucher_status' => null,
+                'refund_date' => null,
                 'task_hotel_details' => [
                     'hotel_name' => $hotel['name'],
                     'hotel_country' => $hotel['countryId'],
@@ -983,8 +998,8 @@ class TaskController extends Controller
 
             $response = json_decode($response->getContent(), true);
             logger('Task created: ', $response);
-            
-            if($response['status'] == 'error') {
+
+            if ($response['status'] == 'error') {
                 Log::channel('magic_holidays')->error('Error creating task: ' . $response['message']);
                 return [
                     'status' => 'error',
@@ -993,7 +1008,7 @@ class TaskController extends Controller
             }
 
             $task = Task::with('hotelDetails')->find($response['data']['id']);
-            
+
             if (!$task) {
                 Log::channel('magic_holidays')->error('Task not found after creation: ' . $response['data']['id']);
                 return [
@@ -1245,6 +1260,8 @@ class TaskController extends Controller
                         'venue' =>  $details['HotelDetails']['City'],
                         'invoice_price' => null,
                         'voucher_status' => (string)$details['VoucherStatus'],
+                        'refund_date' => null,
+
                     ]);
                 } catch (Exception $e) {
                     logger('TBO Task Error: ' . $e->getMessage());
@@ -1356,5 +1373,25 @@ class TaskController extends Controller
         $pdf = Pdf::loadView('tasks.pdf.hotel', compact('task', 'hotelDetails', 'companyLogoSrc'));
 
         return $pdf->download('hotel.pdf');
+    }
+
+    public function receiptPdf()
+    {
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        return view('tasks.pdfView.receipt-view', compact('companyLogoSrc'));
+    }
+
+    public function recceiptPdfDownload($taskId)
+    {
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('companyLogoSrc'));
+
+        return $pdf->download('receipt.pdf');
     }
 }

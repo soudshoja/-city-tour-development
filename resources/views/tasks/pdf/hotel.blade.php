@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -8,165 +8,175 @@
     <title>Hotel Booking</title>
     <style>
         :root {
-            --gray100: #f4f4f4;
-            --gray200: #ddd;
-            --gray300: #888;
-            --blue50: #eff6ff;
-            --blue100: #dbeafe;
-            --blue200: #bfdbfe;
-            --blue300: #93c5fd;
-            --blue400: #60a5fa;
-            --blue500: #3b82f6;
-            --blue600: #2563eb;
-            --blue700: #1d4ed8;
-            --blue800: #1e40af;
-            --blue900: #1e3a8a;
-            --blue950: #172554;
+            --primary-bg: #ffffff;
+            --accent-bg: #f4f6f8;
+            --section-bg: #fbfbfb;
+            --text-dark: #1f2937;
+            --text-muted: #4b5563;
+            --highlight: rgb(182, 196, 209);
+            --border: #e5e7eb;
+        }
 
-        }
-        header {
-            background-color: var(--gray200);
-            padding: 0.8em;
-            text-align: center;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1em;
-        }
         body {
-            font-family: sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 32px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--accent-bg);
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #f4f4f4;
         }
 
         .container {
             width: 600px;
-            background-color: white;
-            padding: 1em;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
+            background: var(--primary-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .voucher-details {
-            padding: 0.5em;
+        header {
+            background: var(--highlight);
+            color: white;
+            padding: 20px 32px;
             display: flex;
             justify-content: space-between;
-            gap: 2;
-            border: 1px solid var(--gray200);
-            border-radius: 8px;
-            margin-bottom: 0.5em;
+            align-items: center;
         }
 
-        .booking-details,
+        header img {
+            height: 48px;
+        }
 
-        .booking-details div,
-        .client-agent-info div {
+        header h1 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        main {
+            padding: 28px 32px;
+        }
+
+        .section {
+            background: var(--section-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section h2 {
+            font-size: 16px;
+            color: var(--text-dark);
+            margin: 0 0 18px 0;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .info-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .info-box {
             flex: 1;
         }
 
-        .booking-details h2,
-        .client-agent-info h2 {
-            font-size: 1.2em;
-            color: #333;
-            margin-bottom: 10px;
+        .info-box p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: var(--text-muted);
         }
 
-        .booking-details p,
-        .client-agent-info p {
-            margin: 5px 0;
-            font-size: 0.9em;
-            color: #666;
+        .info-box strong {
+            color: var(--text-dark);
         }
 
-        .booking-table {
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            font-size: 14px;
         }
 
-        .booking-table th,
-        .booking-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
+        table thead {
+            background: var(--accent-bg);
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            border: 1px solid var(--border);
             text-align: left;
+            color: var(--text-dark);
         }
 
-        .booking-table th {
-            background-color: #f2f2f2;
-        }
-        .additional-info {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            color: #666;
+        footer {
+            background: var(--accent-bg);
+            font-size: 12px;
+            padding: 16px;
+            text-align: center;
+            color: var(--text-muted);
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-
         <header>
-            <img src="{{ $companyLogoSrc }}" alt="City Travelers" width="100">
-            <h3 class="voucher-title">Booking Voucher:<strong>{{ $hotelDetails->room_reference }}</strong></h3>
+            <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers Logo">
+            <h1>Booking Voucher: <strong>{{ $hotelDetails->room->reference }}</strong></h1>
         </header>
+
         <main>
-            <div class="voucher-details">
-                <div class="client-agent-info">
-                    <h4>Client Information</h4>
-                    <p> {{ $task->client->name }}</p>
-                    @if($task->client->email)
-                    <p><a href="mailto:{{ $task->client->email }}">{{ $task->client->email }}</a></p>
-                    @endif
+            <div class="section">
+                <h2>Guest & Agent Information</h2>
+                <div class="info-grid">
+                    <div class="info-box">
+                        <p><strong>Client Name:</strong> {{ $task->client->name }}</p>
+                        <p><strong>Email: </strong><a href="mailto:{{ $task->client->email }}">{{ $task->client->email }}</a></p>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>Booked By:</strong> {{ $task->agent->name }}</p>
+                        <p><strong>Email: </strong><a href="mailto:{{ $task->agent->email }}">{{ $task->agent->email }}</a></p>
+                    </div>
                 </div>
-                <div class="client-agent-info">
-                    <h4>Booked By</h4>
-                    <p> {{ $task->agent->name }}</p>
-                    @if($task->agent->email)
-                    <p><a href="mailto:{{ $task->agent->email }}">{{ $task->agent->email }}</a></p>
-                    @endif
-                </div>
+            </div>
+
+            <div class="section">
+                <h2>Room Details</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Room Amount</th>
+                            <th>Description</th>
+                            <th>Adult Quantity</th>
+                            <th>Child Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>{{ $hotelDetails->room->name ?? 'n/a' }}</td>
+                            <td>{{ $hotelDetails->room->adult_quantity ?? 0 }}</td>
+                            <td>{{ $hotelDetails->room->child_quantity ?? 0 }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>Additional Information</h2>
+                <ul style="padding-left: 18px; margin: 0; list-style-type: disc; color: #1f2937;">
+                    <li style="margin-bottom: 4px;">Check-in from <strong>1 PM</strong>, check-out by <strong>11 AM</strong>.</li>
+                    <li>Free parking is available on site.</li>
+                </ul>
             </div>
         </main>
 
-        <table class="booking-table">
-            <thead>
-                <tr>
-                    <th>Room Amount</th>
-                    <th>Description</th>
-                    <th>Adult Quantity</th>
-                    <th>Child Quantity</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td> {{ $hotelDetails->room->name }} </td>
-                    <td> {{ $hotelDetails->room->adult_quantity }} </td>
-                    <td> {{ $hotelDetails->room->child_quantity }} </td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="total-amount">
-            <!-- <p style="font-size: 0.8em;">*VAT: 7.50%</p> -->
-        </div>
-
-        <div class="additional-info">
-            <h2>Additional Information</h2>
-            <p>Check in from 1 PM, check-out until 11 AM.</p>
-            <p>Free parking on site.</p>
-        </div>
+        <footer>
+            For inquiries, contact our support team or visit <a href="https://google.com">citytravelers.com</a>.
+        </footer>
     </div>
 </body>
 

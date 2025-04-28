@@ -205,7 +205,7 @@
                             <input id="duedate" type="date" name="duedate" value={{ $dueDate }}
                                 class="w-full form-input" />
                         </div>
-                        
+
 
                     </div>
                     <!--./invoice details -->
@@ -399,9 +399,105 @@
 
                     <!-- Payment Type Section -->
                     <div id="paymentMethod" class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Payment Type : <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span></h2>
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">
+                            <span> Payment Type : </span>
+                            <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span>
+                            <span>
+                            </span>
+                        </h2>
                         <input type="hidden" id="paymentTypeSaved" name="payment_type_saved" value="{{ $invoice->payment_type }}">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
+                            <div x-data="{ clientCreditModal: false, generateInvoiceWithCreditModal :false }">
+                                @if($invoice->amount < $selectedClient->credit)
+                                    <button type="button" @click="clientCreditModal = true"
+                                        class="rounded-full flex flex-col items-center justify-center w-full
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl"
+                                        {{ $invoice->amount > $selectedClient->credit ? 'disabled' : '' }}>
+                                        <span class="font-medium">{{$selectedClient->name}}: {{$selectedClient->credit}}KWD</span>
+                                        @if($invoice->amount > $selectedClient->credit)
+                                        <span class="text-red-500">Credit Limit Exceeded</span>
+                                        @endif
+                                    </button>
+                                    <div
+                                        x-cloak
+                                        x-show="clientCreditModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+                                        <div class="bg-white rounded-lg p-6 shadow-lg">
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
+                                            <p class="text-gray-600">The client has a credit limit of {{$selectedClient->credit}} KWD.</p>
+                                            <p>
+                                                <span>After payment: {{ $selectedClient->credit }} - {{ $invoice->amount }} = {{ $selectedClient->credit - $invoice->amount }} KWD</span>
+                                            </p>
+                                            <div class="mt-4 flex justify-end">
+                                                <button @click="savePartial('credit')" class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
+                                                <button @click="clientCreditModal = false" class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    @else
+                                    <button type="button" @click="generateInvoiceWithCreditModal = true"
+                                        class="rounded-full flex flex-col items-center justify-center w-full
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
+                                        <span> Still Paying With Client Credit?</span>
+                                        <span> {{$selectedClient->name}}: {{ $selectedClient->credit}} KWD</span>
+                                    </button>
+                                    <div
+                                        x-cloak
+                                        x-show="generateInvoiceWithCreditModal"
+                                        class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-75 transition-opacity">
+                                        <div class="min-h-40 min-w-40 p-3 bg-white rounded shadow" @click.away="generateInvoiceWithCreditModal = false">
+                                            <header>
+                                                Do you want to generate new invoice to add to the client credit?
+                                            </header>
+                                            <main>
+                                                <form action="{{ route('invoice.client-credit') }}" method="POST">
+                                                    @csrf
+                                                    <div class="flex items-center space-x-2">
+                                                        <input type="radio" id="yesRadio" name="choice-invoice" value="yes" class="form-radio choice-invoice h-5 w-5 text-blue-600">
+                                                        <label for="yesRadio" class="text-gray-700">Yes</label>
+                                                        <input type="radio" id="noRadio" name="choice-invoice" value="no" class="form-radio choice-invoice h-5 w-5 text-blue-600 ml-4">
+                                                        <label for="noRadio" class="text-gray-700">No</label>
+                                                    </div>
+                                                    <div id="yes-chosen">
+                                                        <div>
+                                                            <select name="payment_gateway" id="" class="w-full p-2 my-2">
+                                                                @foreach ($paymentGateways as $gateway)
+                                                                <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <input type="hidden" name="invoice_id" value="{{ $invoice->id}}">
+                                                        <x-primary-button>
+                                                            Submit
+                                                        </x-primary-button>
+                                                    </div>
+                                                    <div id="no-chosen">
+                                                        <x-primary-button>
+                                                            Submit
+                                                        </x-primary-button>
+                                                    </div>
+                                                </form>
+                                            </main>
+
+                                        </div>
+                                    </div>
+                                    @endif
+                            </div>
+                            <!-- <div
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        {{ $invoice->amount > $selectedClient->credit ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500 hover:text-white hover:shadow-xl' }}">
+                                    <span class="font-medium">{{$selectedClient->name}}: {{$selectedClient->credit}}KWD</span>
+                                </div> -->
+
                             <!-- Full Payment Tab -->
                             <label class="cursor-pointer rounded-full shadow">
                                 <input type="radio" id="payment_type_full" name="payment_type" value="full"
@@ -1076,7 +1172,7 @@
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
-        console.log('invoice', invoice);
+        // console.log('invoice', invoice);
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
         const addTabButton = document.getElementById('addTabButton');
@@ -1120,7 +1216,7 @@
         function checkInvoiceId() {
             const tabs = document.querySelectorAll('input[name="payment_type"]');
             const paymentType = invoice.payment_type;
-            console.log('paymenttype', paymentType);
+            // console.log('paymenttype', paymentType);
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
             const additionalActions = document.getElementById('additional-actions');
 
@@ -1297,7 +1393,7 @@
         }
 
         function updateField(itemId, fieldId) {
-            console.log('updated', itemId + '-' + fieldId);
+            // console.log('updated', itemId + '-' + fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
             const newValue = inputField.value || NULL;
 
@@ -1326,16 +1422,16 @@
                     }
 
                     const nettValue = (item.invprice - item.price);
-                    //console.log(item);
-                    console.log('Supplier price: ' + item.total);
-                    console.log('Invoice price: ' + item.invprice);
-                    console.log('Nett of markup: ' + nettValue);
+                    // console.log(item);
+                    // console.log('Supplier price: ' + item.total);
+                    // console.log('Invoice price: ' + item.invprice);
+                    // console.log('Nett of markup: ' + nettValue);
                     calculateSubtotal(); // Recalculate the subtotal
 
                     let existingAlert = document.getElementById("errorNotification");
 
                     if (nettValue <= 0) {
-                        console.log("The Invoice Price must be higher than the Task Price.");
+                        // console.log("The Invoice Price must be higher than the Task Price.");
 
                         if (!existingAlert) {
                             let errorNotification = document.createElement('div');
@@ -1938,12 +2034,12 @@
         }
 
         if (Array.isArray(items)) {
-            console.log('selected task', selectedTasks1);
-            console.log('items1', items);
+            // console.log('selected task', selectedTasks1);
+            // console.log('items1', items);
             // Iterate over the array and select each task
             selectedTasks1.forEach(task => selectTask(task));
         } else {
-            console.log('tow', items);
+            // console.log('tow', items);
             // If it's a single task object, select it directly
             selectTask(items);
             tasks = tasks.filter(task => task.id !== items.id);
@@ -1951,14 +2047,14 @@
 
 
         function renderTaskList(taskData) {
-            console.log('items', items);
+            // console.log('items', items);
 
             taskData = taskData.filter(task =>
                 !items.some(selectedTask => selectedTask.id === task.id)
             );
 
 
-            console.log('items2', taskData);
+            // console.log('items2', taskData);
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = '';
             if (taskData.length == 0) {
@@ -1980,7 +2076,7 @@
 
         // Call the function with the selectedClient object
         if (selectedClient && selectedAgent) {
-            console.log('helloooooo');
+            // console.log('helloooooo');
             updateFormFields(selectedClient, selectedAgent);
         }
 
@@ -2080,8 +2176,7 @@
                 }, 500);
 
 
-            } else
-            if (mode === 'split') {
+            } else if (mode === 'split') {
                 // Collect Split Payment Data
                 const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
                 const splitInto = parseInt(document.getElementById('split-into').value) || 0;
@@ -2106,12 +2201,12 @@
                     });
                 });
 
-                console.log('Split Payment Data:', {
-                    totalAmount,
-                    splitInto,
-                    description,
-                    splitData
-                });
+                // console.log('Split Payment Data:', {
+                //     totalAmount,
+                //     splitInto,
+                //     description,
+                //     splitData
+                // });
                 save('split', splitData);
 
 
@@ -2161,10 +2256,8 @@
                     });
                 });
 
-                console.log('Partial Payment Data:', partialData);
+                // console.log('Partial Payment Data:', partialData);
                 save('partial', partialData);
-
-
 
                 const buttonPartial = document.getElementById('partialbutton');
                 const iconPartial = document.getElementById('button-icon-partial');
@@ -2192,14 +2285,49 @@
                     console.error('One or more elements (button, icon, text) not found in the DOM');
                 }
 
+            } else if (mode === 'credit') {
+                const gateway = document.getElementById('payment_gateway').value;
+                const date = document.getElementById('duedate').value;
+                const amount = document.getElementById('subTotal').value;
+                const fullData = [];
 
+                fullData.push({
+                    date,
+                    amount,
+                    gateway
+                });
+                save('credit', fullData);
+
+                const button = document.getElementById('update-invoice-btn');
+                const icon = document.getElementById('button-icon-full');
+                const text = document.getElementById('button-text-full');
+
+                button.disabled = true;
+
+                // Replace icon with spinner
+                icon.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+                text.textContent = 'Saving...';
+
+                displaySuccessMessage("Invoice saved and paid successfully!");
+
+                setTimeout(() => {
+                    icon.innerHTML = '';
+                    text.textContent = 'Saved ✅';
+                    window.location.href = "{{ route('invoices.index') }}";
+                }, 1000);
 
             }
         }
 
         async function save(type, data) {
-            console.log(data)
-            const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
+            // console.log(data)
+            // const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
 
             const invoiceUrl = "{{ route('invoice.partial') }}";
 
@@ -2253,8 +2381,7 @@
                     afterPaymentType();
                     hideModal();
                 }
-            } else
-            if (type === 'split') {
+            } else if (type === 'split') {
                 let button = document.getElementById("splitbutton");
                 button.disabled = true;
                 button.innerText = "Saving..."; // Change text while saving
@@ -2271,9 +2398,9 @@
                             gateway
                         } = item;
 
-                        console.log(invoiceId, clientId, type, date, amount);
-                        console.log(csrfToken);
-                        console.log(clientName);
+                        // console.log(invoiceId, clientId, type, date, amount);
+                        // console.log(csrfToken);
+                        // console.log(clientName);
                         // Send POST request for each client
                         const response = await fetch(invoiceUrl, {
                             method: 'POST',
@@ -2292,7 +2419,7 @@
                             }),
                         });
 
-                        console.log(response);
+                        // console.log(response);
                         if (!response.ok) {
                             throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
                         }
@@ -2353,6 +2480,48 @@
                     afterPaymentType();
                     hideModal();
                 }
+            } else if (type === 'credit') {
+                // Handle credit payment as before
+                const clientId = document.getElementById('receiverId').value;
+
+                try {
+
+                    for (const item of data) {
+                        const {
+                            date,
+                            amount,
+                            gateway
+                        } = item;
+
+                        const response = await fetch(invoiceUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                invoiceId,
+                                invoiceNumber,
+                                clientId,
+                                type: 'full',
+                                date,
+                                amount,
+                                gateway,
+                                credit: true
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error("Failed to generate partial invoice.");
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error generating invoice:', error);
+                    displayErrorMessage("Error generating invoice. Please try again.");
+                } finally {
+                    afterPaymentType();
+                    hideModal();
+                }
             }
         }
 
@@ -2360,6 +2529,19 @@
             const alert = document.createElement('div');
             alert.innerHTML = `
                   <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                      ${message}
+                      <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
+                          <span aria-hidden="true">&times;</span>
+                      </button>
+                  </div>
+              `;
+            document.body.appendChild(alert);
+        }
+
+        function displaySuccessMessage(message) {
+            const alert = document.createElement('div');
+            alert.innerHTML = `
+                  <div class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
                       ${message}
                       <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
                           <span aria-hidden="true">&times;</span>
@@ -2415,11 +2597,11 @@
             // Show loading state
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
-            console.log(
-                'clientId:', clientId,
-                'agentId:', agentId,
-                'tasksLength:', tasks.length,
-            );
+            // console.log(
+            //     'clientId:', clientId,
+            //     'agentId:', agentId,
+            //     'tasksLength:', tasks.length,
+            // );
             if (!clientId || !agentId || !tasks.length) {
                 console.error("Required data is missing.");
                 let errorNotification = document.createElement('div');
@@ -2464,7 +2646,7 @@
                 const {
                     invoiceId
                 } = result;
-                console.log(invoiceId);
+                // console.log(invoiceId);
 
                 document.getElementById('invoiceId').value = invoiceId;
                 const generatedLink = appUrl + '/invoice/' + invoiceNumber;
@@ -2571,7 +2753,7 @@
             navigator.clipboard.writeText(fetchUrl).then(() => {
                 alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here
                 copyFeedback.classList.remove('hidden');
-                console.log(fetchUrl);
+                // console.log(fetchUrl);
                 setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
 
                 fetch(fetchUrl, {
@@ -2653,6 +2835,26 @@
             radios.forEach(radio => {
                 radio.addEventListener('change', function() {
                     paymentTypeSavedInput.value = this.value;
+                });
+            });
+
+            creditClientRadioChoice = document.getElementsByName('choice-invoice')
+
+            yesChosen = document.getElementById('yes-chosen');
+            noChosen = document.getElementById('no-chosen');
+
+            yesChosen.style.display = 'none';
+            noChosen.style.display = 'none';
+
+            creditClientRadioChoice.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'yes') {
+                        yesChosen.style.display = 'block';
+                        noChosen.style.display = 'none';
+                    } else {
+                        yesChosen.style.display = 'none';
+                        noChosen.style.display = 'block';
+                    }
                 });
             });
 

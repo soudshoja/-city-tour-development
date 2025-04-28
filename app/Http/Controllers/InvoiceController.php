@@ -37,6 +37,7 @@ class InvoiceController extends Controller
 
     public function index()
     {
+ 
         $user = Auth::user();
 
        // Gate::authorize('viewAny', Invoice::class);
@@ -59,10 +60,11 @@ class InvoiceController extends Controller
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
         // $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
-
+     
         $invoices = Invoice::with([
             'agent.branch', 
-            'invoiceDetails.task.supplier', 
+            'invoiceDetails.task.supplier',
+            // 'invoiceDetails.task.hotelDetails.room', 
             'client'
         ])
         ->whereIn('agent_id', $agentIds)
@@ -70,12 +72,12 @@ class InvoiceController extends Controller
             $query->where('company_id', $companyId);
         })
         ->paginate(500);
-
-        // Get clients related to the agents
+    // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
-
+      
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
+
         $suppliers = Supplier::all();
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companyId)->get();
         $types = Task::distinct()->pluck('type');
@@ -251,7 +253,9 @@ class InvoiceController extends Controller
             $selectedAgent = null;
         }
 
-        
+       $payments = Payment::whereIn('agent_id', $agents->pluck('id'))
+                ->where('invoice_id', null)
+                ->get();
          
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
         // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
@@ -265,14 +269,13 @@ class InvoiceController extends Controller
         } else if($user->role_id == Role::BRANCH){
             $agentId = $user->branch->agents->pluck('id');
         } else if($user->role_id == Role::AGENT){
-            $agentId = $user->agent->id;
+            $agentId = (array)$user->agent->id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
         $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
-        $agentId = (array) $agentId;
+        $agentId = is_array($agentId) ? $agentId : [$agentId];
         $clientId = $selectedClient ? $selectedClient->id : null;
-        
         // Log::info('agentId', ['agentId' => $agentId]);
         // dd(gettype($agentId));
         $tasks = $agentId
@@ -316,7 +319,8 @@ class InvoiceController extends Controller
             'paymentGateways',
             'todayDate',
             'appUrl',
-            'disableButtons'
+            'disableButtons',
+            'payments'
         ));
     }
 
@@ -342,10 +346,13 @@ class InvoiceController extends Controller
 
         // Retrieve the invoice based on the invoice number
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
-
         // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        if($invoice->status == 'paid'){
+            return redirect()->route('invoices.index')->with('error', 'Cannot edit a paid invoice!');
         }
 
         $clients = Client::with(['agent.branch' => function ($query) {
@@ -421,6 +428,7 @@ class InvoiceController extends Controller
             'type' => 'required|string',
             'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
+            'credit' => 'nullable|boolean'
         ]);
 
         $invoiceId = $request->input('invoiceId');
@@ -430,9 +438,20 @@ class InvoiceController extends Controller
         $date = $request->input('date');
         $amount = $request->input('amount');
         $gateway = $request->input('gateway');
+        $credit = $request->input('credit', false); // Default to false if not provided
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
 
+        $client = Client::find($clientId);
+
+        if ($credit) {
+            if ($amount > $client->credit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Client credit is not enough!',
+                ]);
+            }
+        }
 
         try {
 
@@ -441,20 +460,17 @@ class InvoiceController extends Controller
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
                 'amount' => $amount,
-                'status' => 'unpaid',
+                'status' => $credit ? 'paid' : 'unpaid',
                 'expiry_date' => $date,
                 'type' => $type,
                 'payment_gateway' => $gateway,
             ]);
 
             $invoice->payment_type = $type;
+            $invoice->status = $credit ? 'paid' : 'unpaid';
+            $invoice->is_client_credit = $credit;
             $invoice->save();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Invoice Partial created successfully!',
-                'invoiceId' => $invoiceId,
-            ]);
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json([
@@ -462,6 +478,20 @@ class InvoiceController extends Controller
                 'message' => 'Failed to create invoice!',
             ]);
         }
+
+
+        if ($invoice->is_client_credit == true) {
+            $newAmountCredit = $client->credit - $amount;
+            $clientController = new ClientController();
+            $clientController->updateCredit($clientId, $newAmountCredit);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invoice Partial created successfully!',
+            'invoiceId' => $invoiceId,
+        ]);
+     
     }
 
     public function removePartial(Request $request)
@@ -518,6 +548,7 @@ class InvoiceController extends Controller
             'tasks.*.supplier_id' => 'required|integer',
             'tasks.*.client_id' => 'required|integer',
             'tasks.*.agent_id' => 'required|integer',
+            'tasks.*.total' => 'required|numeric',
             'invdate' => 'required|date',
             'duedate' => 'nullable|date',
             'subTotal' => 'required|numeric',
@@ -525,6 +556,7 @@ class InvoiceController extends Controller
             'agentId' => 'required|integer',
             'invoiceNumber' => 'required|string',
             'currency' => 'required|string',
+            'payment_id' => 'nullable|integer',
         ]);
 
 
@@ -1193,5 +1225,89 @@ class InvoiceController extends Controller
         }
 
         return response()->json(['status' => $invoiceDetail->paid]);
+    }
+
+    public function createInvoiceLinkWithClientCredit(Request $request)
+    {
+        $request->validate([
+            'invoice_id' => 'required|integer',
+            'payment_gateway' => 'required|string',
+        ]);
+
+        $invoiceId = $request->input('invoice_id');
+        $gateway = $request->input('payment_gateway');
+
+        $invoice = Invoice::find($invoiceId);
+
+        if (!$invoice) {
+            logger('Invoice not found', ['invoiceId' => $invoiceId]);
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        if (!$invoice->client) {
+            logger('Client not found in this invoice', ['invoiceId' => $invoiceId]);
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        $amount = $invoice->amount;
+        $client = $invoice->client;
+        $agent = $invoice->agent;
+
+        $balance = $amount - $client->credit;
+
+        try{
+            $client->credit = 0;
+            $client->save();
+
+            $invoicePartial = InvoicePartial::create([
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'client_id' => $client->id,
+                'agent_id' => $agent->id,
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'type' => 'full',
+                'payment_gateway' => $gateway,
+            ]);
+
+        } catch (Exception $e) {
+            logger('Failed to create invoice link: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        $request  = new Request([
+            'client_id' => $client->id,
+            'agent_id' => $agent->id,
+            'invoice_id' => $invoice->id,
+            'amount' => $balance,
+            'type' => 'full',
+            'payment_gateway' => $gateway,
+            'notes' => 'Payment link created for invoice: ' . $invoice->invoice_number . ' with balance of: ' . $balance,
+        ]);
+
+        $paymentController = new PaymentController();
+        $response = $paymentController->paymentStoreLinkProcess($request);
+
+        if ($response['status'] == 'error'){
+            $invoicePartial->delete();
+            return redirect()->back()->with('error', 'Failed to create invoice link!');
+        }
+
+        $payment = $response['data'];
+
+        if(!$payment){
+            logger('Payment not found', ['invoiceId' => $invoiceId]);
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        return redirect()->route('payment.link.show', $payment->id)->with('status', 'Invoice link created successfully!');
+    }
+
+    public function createInvoiceWithLoss(Request $request)
+    {
+        $request->validate([
+            'invoice_id' => 'required|integer',
+            'payment_gateway' => 'required|string',
+        ]);
     }
 }

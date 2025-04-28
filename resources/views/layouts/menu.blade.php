@@ -114,6 +114,9 @@
             <menuitem><a href="{{ route('payment.link.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Link</a>
             </menuitem>
+            <menuitem><a href="{{ route('invoices.refunds.list') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Refund</a>
+            </menuitem>
         </menu>
         </menuitem>
 

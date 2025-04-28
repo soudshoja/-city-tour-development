@@ -181,11 +181,18 @@ class TaskController extends Controller
             'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
 
-        $existingTask = Task::where('reference', $validatedData['reference'])
-            ->where('supplier_id', $validatedData['supplier_id'])
-            ->where('company_id', $validatedData['company_id'])
-            ->first();
+        $queryChkExistTask = Task::query(); // <- make sure it's a query builder
 
+        $queryChkExistTask->where('reference', $validatedData['reference'])
+            ->where('supplier_id', $validatedData['supplier_id'])
+            ->where('company_id', $validatedData['company_id']);
+
+        if (isset($validatedData['status']) && $validatedData['status'] !== 'refund') {
+            $queryChkExistTask->where('status', $validatedData['status']);
+        }
+        
+        $existingTask = $queryChkExistTask->first();
+        
         if ($existingTask) {
             return response()->json([
                 'status' => 'error',

@@ -247,14 +247,14 @@
                             <thead>
                                 <tr>
                                     @can('create', 'App\Models\Invoice')
-                                    <th>
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
-                                            <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
-                                            </svg>
-                                        </label>
-                                    </th>
+                                        <th>
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
+                                                <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                    <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
+                                                </svg>
+                                            </label>
+                                        </th>
                                     @endcan
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Enable/Disable</th> <!-- New column header -->
@@ -284,14 +284,25 @@
                                     data-price="{{ $task->price }}" data-supplier-id="{{ $task->supplier->id }}"
                                     data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}" data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}" data-type="{{ $task->type }}" data-client-id="{{ $task->client ? $task->client->id : null }}" data-task-id="{{ $task->id }}" class="taskRow">
                                     @can('create', 'App\Models\Invoice')
-                                    <td>
-                                        <label class="custom-checkbox" data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'select task' }}">
-                                            <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ ($task->invoiceDetail || !$task->is_complete )? 'disabled' : '' }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg checkbox-border">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
-                                            </svg>
-                                        </label>
-                                    </td>
+                                        @if($task->status !== 'refund')
+                                            <td>
+                                                <label class="custom-checkbox" data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select task' }}">
+                                                    <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ ($task->invoiceDetail || !$task->is_complete )? 'disabled' : '' }}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg checkbox-border">
+                                                        <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
+                                                    </svg>
+                                                </label>
+                                            </td>
+                                         @elseif($task->status === 'refund')
+                                            <td>
+                                                <label class="custom-checkbox" data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select refund task' }}">
+                                                    <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" value="{{ $task->id }}" {{ ($task->invoiceDetail || !$task->is_complete) ? 'disabled' : '' }}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg checkbox-border">
+                                                        <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
+                                                    </svg>
+                                                </label>
+                                            </td>
+                                        @endif
                                     @endcan
                                     <td class="p-3 text-sm flex gap-3 justify-center">
                                         <a data-tooltip="see task"
@@ -314,64 +325,123 @@
                                                 x-show="editTaskModal_{{ $task->id }}"
                                                 x-cloak
                                                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                                                <form id="edit-task-form-{{ $task->id }}" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-2 items-center">
-                                                    <div
-                                                        @click.away="editTaskModal_{{ $task->id }}  = false"
-                                                        class="bg-white rounded-md border-2w-80">
-                                                        <div class="flex justify-between p-4">
-                                                            <p class="font-semibold">
-                                                                Update the following information if needed
-                                                            </p>
-                                                            <button
-                                                                type="button"
-                                                                @click="editTaskModal_{{ $task->id }} = false"
-                                                                class="text-red-500 font-bold">
-                                                                &times;
-                                                            </button>
+                                                
+                                                <form id="edit-task-form-{{ $task->id }}" action="{{ route('tasks.update', $task->id)}}" method="post" class="inline-flex flex-col gap-4 items-center">
+                                                        <div @click.away="editTaskModal_{{ $task->id }} = false" class="bg-white rounded-md border-2 w-full sm:w-120"> <!-- Responsive modal width -->
+                                                            <div class="flex justify-between p-4">
+                                                                <p class="font-semibold text-lg">
+                                                                    Update the following information if needed
+                                                                </p>
+                                                                <button type="button" @click="editTaskModal_{{ $task->id }} = false" class="text-red-500 font-bold">
+                                                                    &times;
+                                                                </button>
+                                                            </div>
+                                                            <hr>
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <div class="p-4 inline-flex flex-col gap-4">
+                                                                
+                                                                <!-- Reference Field -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="reference" class="w-2/4 sm:w-1/3 text-left text-base">Reference:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->reference }}" readonly>
+                                                                </div>
+
+                                                                <!-- Status Field -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="status" class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
+                                                                    <select name="status" id="status" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                        <option value="">Set Status</option>
+                                                                        <option value="Confirmed" {{ $task->status === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
+                                                                        <option value="Ticketed" {{ $task->status === 'ticketed' ? 'selected' : '' }}>Ticketed</option>
+                                                                        <option value="Refund" {{ $task->status === 'refund' ? 'selected' : '' }}>Refund</option>
+                                                                    </select>
+                                                                </div>
+
+                                                                <!-- Additional Info and Venue -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="additional_info" class="w-2/4 sm:w-1/3 text-left text-base">Additional Info:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
+                                                                </div>
+
+                                                                <!-- Supplier Name -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="supplier" class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->supplier->name }}" readonly>
+                                                                </div>
+
+                                                                <!-- Price -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="price" class="w-2/4 sm:w-1/3 text-left text-base">Price:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->price }}" readonly>
+                                                                </div>
+
+                                                                <!-- Tax -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="tax" class="w-2/4 sm:w-1/3 text-left text-base">Tax:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->tax }}" placeholder="Tax" readonly>
+                                                                </div>
+
+                                                                <!-- Surcharge -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="surcharge" class="w-2/4 sm:w-1/3 text-left text-base">Surcharge:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->surcharge }}" placeholder="Surcharge" readonly>
+                                                                </div>
+
+                                                                <!-- Total -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="total" class="w-2/4 sm:w-1/3 text-left text-base">Total:</label>
+                                                                    <input type="text" name="total" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3" value="{{ $task->total }}" placeholder="Total">
+                                                                </div>
+
+                                                                <!-- Task Type -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="type" class="w-2/4 sm:w-1/3 text-left text-base">Task Type:</label>
+                                                                    <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200" value="{{ $task->type }}" readonly>
+                                                                </div>
+
+                                                                <!-- Client Selection -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
+                                                                    <select name="client_id" id="tasks_client_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                        <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>
+                                                                        @foreach($clients as $client)
+                                                                            <option value="{{ $client->id }}" {{ $task->client ? $task->client->id === $client->id ? 'selected' : '' : ''}}>{{ $client->name }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+
+                                                                <!-- Agent Selection (Role-based) -->
+                                                                @unlessrole('agent')
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="agent_id" class="w-2/4 sm:w-1/3 text-left text-base">Agent:</label>
+                                                                        <select name="agent_id" id="agent_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            <option value="" {{$task->agent ?? 'selected'}}>Choose Agent</option>
+                                                                            @foreach($agents as $agent)
+                                                                                <option value="{{ $agent->id }}" {{ $task->agent ? $task->agent->id === $agent->id ? 'selected' : '' : ''}}>{{ $agent->name }}</option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                @else
+                                                                    <input type="hidden" name="agent_id" id="agent_id_{{ $task->id }}" value="{{ Auth()->user()->agent->id }}">
+                                                                @endunlessrole
+
+                                                                <!-- Supplier Selection -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <label for="supplier_id" class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
+                                                                    <select name="supplier_id" id="supplier_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                        <option value="" {{$task->supplier ?? 'selected'}}>Choose Supplier</option>
+                                                                        @foreach($suppliers as $supplier)
+                                                                            <option value="{{ $supplier->id }}" {{ $task->supplier ? $task->supplier->id === $supplier->id ? 'selected' : '' : ''}}>{{ $supplier->name }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <hr>
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <div class="p-4 inline-flex flex-col gap-2">
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->reference }}" readonly>
-                                                            <select name="status" id="" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                <option value="">Set Status</option>
-                                                                <option value="Pending" {{ $task->status === 'Pending' ? 'selected' : '' }}>Pending</option>
-                                                                <option value="Completed" {{ $task->status === 'Completed' ? 'selected' : '' }}>Completed</option>
-                                                            </select>
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->additional_info }} - {{ $task->venue }}" readonly>
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->supplier->name }}" readonly>
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->price }}" readonly>
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->tax }}" placeholder="Tax" readonly>
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->surcharge }}" placeholder="Surcharge" readonly>
-                                                            <input type="text" name="total" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->total }}" placeholder="Total">
-                                                            <input type="text" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full" value="{{ $task->type }}" readonly>
-                                                            <select name="client_id" id="tasks_client_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                <option value="" {{$task->client ?? 'selected'}}>Choose Client</option>
-                                                                @foreach($clients as $client)
-                                                                <option value="{{ $client->id }}" {{$task->client ? $task->client->id === $client->id ? 'selected' : '' : ''}}>{{ $client->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            @unlessrole('agent')
-                                                            <select name="agent_id" id="agent_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                <option value="" {{$task->agent ?? 'selected'}}>Choose Agent</option>
-                                                                @foreach($agents as $agent)
-                                                                <option value="{{ $agent->id }}" {{$task->agent ? $task->agent->id === $agent->id ? 'selected' : '' : ''}}>{{ $agent->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            @else
-                                                            <input type="hidden" name="agent_id" id="agent_id_{{ $task->id }}" value="{{ Auth()->user()->agent->id }}">
-                                                            @endunlessrole
-                                                            <select name="supplier_id" id="supplier_id_{{ $task->id }}" class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                <option value="" {{$task->supplier ?? 'selected'}}>Choose Supplier</option>
-                                                                @foreach($suppliers as $supplier)
-                                                                <option value="{{ $supplier->id }}" {{ $task->supplier ? $task->supplier->id === $supplier->id ? 'selected' : '' : ''}}>{{ $supplier->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <x-primary-button type="submit" class="min-w-72 mt-4 justify-center" form="edit-task-form-{{ $task->id }}"> Update </x-primary-button>
-                                                </form>
+                                                        <x-primary-button type="submit" class="min-w-72 mt-4 justify-center px-12 py-3 text-lg" form="edit-task-form-{{ $task->id }}"> Update </x-primary-button> 
+                                                    </form>
+                                                
+
                                             </div>
                                         </div>
 
@@ -421,15 +491,16 @@
                                     @endcan
                                     <td>
                                         <span class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
-            {{ $task->status === 'Completed' ? 'badge-outline-success' : '' }}
-            {{ $task->status === 'Assigned' ? 'badge-outline-assigned' : '' }}
-            {{ $task->status === 'Booked' ? 'badge-outline-booked' : '' }}
-            {{ $task->status === 'Pending' ? 'badge-outline-danger' : '' }}
-            {{ $task->status === 'Confirmed' ? 'badge-outline-primary' : '' }}
-            {{ $task->status === 'Cancelled' ? 'badge-outline-danger' : '' }}
-            {{ $task->status === 'Hold' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === 'ticketed' ? 'badge-outline-success' : '' }}
+            {{ $task->status === 'assigned' ? 'badge-outline-assigned' : '' }}
+            {{ $task->status === 'booked' ? 'badge-outline-booked' : '' }}
+            {{ $task->status === 'pending' ? 'badge-outline-primary' : '' }}
+            {{ $task->status === 'confirmed' ? 'badge-outline-primary' : '' }}
+            {{ $task->status === 'refund' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === 'cancelled' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === 'hold' ? 'badge-outline-danger' : '' }}
             {{ $task->status === null ? 'badge-outline-danger' : '' }}">
-                                            {{ $task->status  === null ? 'Not Set' : $task->status }}
+                                            {{ $task->status  === null ? 'Not Set' : ucwords($task->status) }}
                                         </span>
                                     </td>
                                     <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">{{ $task->supplier->name }}</td>
@@ -498,6 +569,26 @@
             </div>
         </div>
     </div>
+
+    <div>
+        <div id="floatingActionsRefund" class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-50 p-3">
+
+            <div class="flex justify-between gap-5 items-center h-full">
+                <button id="createInvoiceBtn" data-route="{{ route('invoices.refunds.create') }}" class="flex px-5 py-3 gap-3 btn-success hover:bg-[#00ab5599] rounded-lg shadow-sm items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#ffffff" d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
+                    </svg>
+                    <span class="text-sm">Proceed Refund</span>
+                </button>
+            </div>
+            <div id="closeTaskFloatingActionsRefund" class="flex cursor-pointer items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
+                    <path fill="#E53935" d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+    
     <div id="taskInvoicePlaceholder" class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
         <div id="invoiceModalContent">
             <div id="invoiceModalBody" class="rounded-t-md bg-white">
@@ -522,30 +613,80 @@
         });
     });
 
-    let invoicesModal = document.querySelectorAll('.invoiceModal');
+    document.querySelectorAll('.taskRow').forEach(taskRow => {
+        let taskStatus = taskRow.getAttribute('data-task-status');
 
-    invoicesModal.forEach(invoice => {
-        invoice.addEventListener('click', function() {
+        if (taskStatus !== 'refund') {
+            let invoicesModal = taskRow.querySelectorAll('.invoiceModal');
+            invoicesModal.forEach(invoice => {
+                invoice.addEventListener('click', function() {
+                    let invoiceNumber = invoice.getAttribute('data-invoice-number');
+                    let url = "{{ route('invoices.refunds.create', ['invoice' => '__invoiceNumber__']) }}";
+                    url = url.replace('__invoiceNumber__', invoiceNumber);
 
-            let invoiceNumber = invoice.getAttribute('data-invoice-number');
-            let url = `{{ route('invoice.show', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
+                    let modalRefund = document.getElementById('taskRefundPlaceholder');
+                    let refundBody = document.getElementById('refundModalBody');
 
-            let modalInvoice = document.getElementById('taskInvoicePlaceholder');
-            let invoiceBody = document.getElementById('invoiceModalBody');
+                    fetch(url)
+                        .then(response => response.text())
+                        .then(data => {
+                            refundBody.innerHTML = data;
+                            modalRefund.classList.remove('hidden');
 
-            fetch(url)
-                .then(response => response.text())
-                .then(data => {
-                    invoiceBody.innerHTML = data;
-                    modalInvoice.classList.remove('hidden');
+                            let refundFooter = document.getElementById('refundFooter');
+                            refundFooter.querySelector('button').addEventListener('click', function() {
+                                window.location.href = `{{ route('invoices.refunds.edit', ['invoice' => '__invoiceNumber__', 'refund' => '__refundNumber__']) }}`.replace('__invoiceNumber__', invoiceNumber).replace('__refundNumber__', refundNumber);
+                            });
+                        });
+                });
+            });
+        } else {
+            let refundModal = taskRow.querySelectorAll('.refundModal');
+            refundModal.forEach(refund => {
+                refund.addEventListener('click', function() {
+                    let refundNumber = refund.getAttribute('data-refund-number');
+                    let invoiceNumber = refund.getAttribute('data-invoice-number');
+                    let url = "{{ route('invoices.refunds.create', $task->id) }}";
+                    url = url.replace('__invoiceNumber__', invoiceNumber);
 
-                    let invoiceFooter = document.getElementById('invoiceFooter');
-                    invoiceFooter.querySelector('button').addEventListener('click', function() {
-                        window.location.href = `{{ route('invoice.edit', '__invoiceNumber__') }}`.replace('__invoiceNumber__', invoiceNumber);
-                    });
-                })
-        });
+                    let modalRefund = document.getElementById('taskRefundPlaceholder');
+                    let refundBody = document.getElementById('refundModalBody');
+
+                    fetch(url)
+                        .then(response => response.text())
+                        .then(data => {
+                            refundBody.innerHTML = data;
+                            modalRefund.classList.remove('hidden');
+
+                            let refundFooter = document.getElementById('refundFooter');
+                            refundFooter.querySelector('button').addEventListener('click', function() {
+                                window.location.href = `{{ route('invoices.refunds.edit', ['invoice' => '__invoiceNumber__', 'refund' => '__refundNumber__']) }}`.replace('__invoiceNumber__', invoiceNumber).replace('__refundNumber__', refundNumber);
+                            });
+                        });
+                });
+            });
+        }
     });
+
+    // Close modals when clicking outside
+    document.addEventListener('click', function(event) {
+        let modalInvoice = document.getElementById('taskInvoicePlaceholder');
+        let invoiceBody = document.getElementById('invoiceModalBody');
+
+        // Close the invoice modal if clicking outside
+        if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
+            modalInvoice.classList.add('hidden');
+        }
+
+        let modalRefund = document.getElementById('taskRefundPlaceholder');
+        let refundBody = document.getElementById('refundModalBody');
+
+        // Close the refund modal if clicking outside
+        if (!refundBody.contains(event.target) && !event.target.closest('.refundModal')) {
+            modalRefund.classList.add('hidden');
+        }
+    });
+
 
     // document.getElementById('upload-task').addEventListener('change', function() {
     //     submitBtn = document.querySelector('#upload-task-submit');
@@ -601,12 +742,22 @@
         }
 
     });
+    // Close modals when clicking outside
     document.addEventListener('click', function(event) {
         let modalInvoice = document.getElementById('taskInvoicePlaceholder');
         let invoiceBody = document.getElementById('invoiceModalBody');
 
+        // Close the invoice modal if clicking outside
         if (!invoiceBody.contains(event.target) && !event.target.closest('.invoiceModal')) {
             modalInvoice.classList.add('hidden');
+        }
+
+        let modalRefund = document.getElementById('taskRefundPlaceholder');
+        let refundBody = document.getElementById('refundModalBody');
+
+        // Close the refund modal if clicking outside
+        if (!refundBody.contains(event.target) && !event.target.closest('.refundModal')) {
+            modalRefund.classList.add('hidden');
         }
     });
 

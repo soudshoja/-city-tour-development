@@ -364,6 +364,20 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
     });
 
+
+       // REFUND
+       Route::group([
+        'prefix' => 'refunds',
+        'as' => 'refunds.',
+    ], function () {
+        Route::get('/list', [RefundController::class, 'index'])->name('refunds.list');
+        Route::get('/refund', [RefundController::class, 'create'])->name('refunds.create');
+        Route::post('/refund', [RefundController::class, 'store'])->name('refunds.store');
+        Route::get('/{refund}/edit', [RefundController::class, 'edit'])->name('refunds.edit');
+        Route::put('/{refund}', [RefundController::class, 'update'])->name('refunds.update');
+        Route::post('/{refund}/process-completed', [RefundController::class, 'complete_process'])->name('refunds.complete_process');     
+    });
+
     Route::group([
         'prefix' => 'payment',
         'as' => 'payment.',

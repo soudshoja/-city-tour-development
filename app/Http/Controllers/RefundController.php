@@ -39,41 +39,77 @@ class RefundController extends Controller
         $totalRefunds = $refunds->count();
         return view('refunds.index', compact('refunds', 'totalRefunds'));
     }
-    
-    public function create(Invoice $invoice)
+
+    public function create(Task $task)
     {
-        if ($invoice->status !== 'paid') {
-            abort(403, 'Refunds are only allowed for paid invoices.');
-        }
-    
+        // Check if the related invoice status is 'paid'
+        $invoice = $task->invoiceDetail->invoice;
+
+        // Get the root IDs for Assets and Liabilities accounts
         $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
         $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
         
+        // Fetch the COA accounts (Chart of Accounts) for the Assets and Liabilities roots
         $coaAccounts = Account::doesntHave('children')
             ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
                 $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
             })
             ->get();
 
-
-        // Get task IDs from invoice details
-        $taskIds = $invoice->invoiceDetails()->pluck('task_id')->filter()->unique();
-    
-        // Fetch tasks using those IDs
+        // Get task IDs from invoice details related to the current task
+        $taskIds = $task->id;
+        
+        // Fetch tasks related to the invoice and its details
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
             ->whereIn('id', $taskIds)
             ->orderBy('id', 'desc')
             ->get();
 
+        // Get the totals for the invoice details related to the tasks
         $totals = $invoice->invoiceDetails()
             ->whereIn('task_id', $taskIds)
             ->selectRaw('SUM(task_price) as total_task_price, SUM(supplier_price) as total_supplier_price, SUM(markup_price) as total_markup_price')
             ->first();
 
-       // dd($tasks);
-    
+        // Return the view with the necessary data
         return view('refunds.create', compact('invoice', 'coaAccounts', 'tasks', 'totals'));
     }
+
+
+    // public function create(Invoice $invoice)
+    // {
+    //     if ($invoice->status !== 'paid') {
+    //         abort(403, 'Refunds are only allowed for paid invoices.');
+    //     }
+    
+    //     $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
+    //     $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
+        
+    //     $coaAccounts = Account::doesntHave('children')
+    //         ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
+    //             $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+    //         })
+    //         ->get();
+
+
+    //     // Get task IDs from invoice details
+    //     $taskIds = $invoice->invoiceDetails()->pluck('task_id')->filter()->unique();
+    
+    //     // Fetch tasks using those IDs
+    //     $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+    //         ->whereIn('id', $taskIds)
+    //         ->orderBy('id', 'desc')
+    //         ->get();
+
+    //     $totals = $invoice->invoiceDetails()
+    //         ->whereIn('task_id', $taskIds)
+    //         ->selectRaw('SUM(task_price) as total_task_price, SUM(supplier_price) as total_supplier_price, SUM(markup_price) as total_markup_price')
+    //         ->first();
+
+    //    // dd($tasks);
+    
+    //     return view('refunds.create', compact('invoice', 'coaAccounts', 'tasks', 'totals'));
+    // }
 
     public function store(Request $request, Invoice $invoice)
     {   

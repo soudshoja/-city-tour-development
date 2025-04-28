@@ -20,6 +20,8 @@ use App\Models\Sequence;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
 use Exception;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Carbon\Carbon;
 
 use Illuminate\Support\Facades\Auth;
@@ -576,46 +578,56 @@ class CoaController extends Controller
         return $currentBalance + ($debit - $credit);
     }
 
-
     public function transaction(Request $request)
     {
         $user = Auth::user();
-
-        // Retrieve the company associated with the user
+    
         $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists before proceeding
+    
         if (!$company) {
             return redirect()->route('dashboard')->with('error', 'Company not found.');
         }
-
-        // Fetch the input dates from the request
+    
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-
-        // Build the query to retrieve transactions
+    
         $query = Transaction::with('journalEntries')
             ->where('company_id', $company->id);
-
-        // If a start date is provided, filter by the start date
+    
         if ($startDate) {
             $query->whereDate('created_at', '>=', Carbon::parse($startDate)->startOfDay());
         }
-
-        // If an end date is provided, filter by the end date
+    
         if ($endDate) {
             $query->whereDate('created_at', '<=', Carbon::parse($endDate)->endOfDay());
         }
-
-        // Execute the query to get the filtered transactions
+    
         $transactions = $query->get();
-
-        // Group the transactions by the date (using Carbon for formatting)
-        $transactionsByDate = $transactions->groupBy(function ($transaction) {
-            return Carbon::parse($transaction->created_at)->format('Y-m-d');
+    
+        $grouped = $transactions->groupBy(function ($item) {
+            return Carbon::parse($item->created_at)->format('Y-m-d');
         });
-
-        // Return the view with filtered and grouped data
-        return view('coa.transaction', compact('company', 'transactionsByDate'));
+    
+        $perPage = 5;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $dateKeys = $grouped->keys();
+        $paginatedKeys = $dateKeys->slice(($currentPage - 1) * $perPage, $perPage);
+    
+        $paginatedGroups = $paginatedKeys->mapWithKeys(function ($date) use ($grouped) {
+            return [$date => $grouped[$date]];
+        });
+    
+        $paginated = new LengthAwarePaginator(
+            $paginatedGroups,
+            $grouped->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+    
+        return view('coa.transaction', [
+            'company' => $company,
+            'transactionsByDate' => $paginated
+        ]);
     }
 }

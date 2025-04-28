@@ -12,8 +12,14 @@ use Exception;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
+use App\Models\Account;
 use App\Models\Branch;
+use App\Models\Charge;
+use App\Models\JournalEntry;
+use App\Models\Payment;
 use App\Models\Role;
+use App\Models\Transaction;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
@@ -25,10 +31,11 @@ class ClientController extends Controller
     use Converter;
 
     public function index()
-    {
+    {   
         $user = Auth::user();
         if ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $agent = Agent::whereIn('branch_id', $branch)->first();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
             $clientsCount = Client::whereIn('agent_id', $agentIds)->count();
         } elseif ($user->role_id == Role::AGENT) {
@@ -40,13 +47,14 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
-
+            $agent = Agent::whereIn('branch_id', $branch)->first();
             // retrieve client that has the latest task
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
             )->get();
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $agent = Agent::whereIn('branch_id', $branch)->first();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
 
             // retrieve client that has the latest task
@@ -61,8 +69,8 @@ class ClientController extends Controller
                 Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
             )->get();
         }
-
-        return view('clients.index', compact('clients', 'clientsCount'));
+        //dd($agent->name);
+        return view('clients.index', compact('agent', 'clients', 'clientsCount'));
     }
 
     public function list()
@@ -508,7 +516,168 @@ class ClientController extends Controller
         ]);
     }
     
-    
+    public function addCredit(Payment $payment)
+    {
+
+        $client = Client::findOrFail($payment->client_id);
+
+        if (!$client) {
+            return [
+                'status' => 'error',
+                'message' => 'Client not found',
+            ];
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $chargeRecord = Charge::where('name', 'LIKE', '%Tap%')
+                ->where('company_id', $client->agent->branch->company->id)
+                ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
+                ->first();
+
+            if ($chargeRecord) {
+                $defaultPaymentGatewayFee = $chargeRecord->amount;
+                $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
+                $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
+                $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
+
+                $tapAccount = Account::where('id', $coaFeeIdRec)
+                    ->where('company_id', $client->agent->branch->company->id)
+                    ->first();
+
+                $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
+                    ->where('company_id', $client->agent->branch->company->id)
+                    ->first();
+            }
+
+            $transaction = Transaction::create([
+                'branch_id' =>  $client->agent->branch->id,
+                'company_id' =>  $client->agent->branch->company->id,
+                'entity_id' =>  $client->agent->branch->company->id,
+                'entity_type' => 'client',
+                'transaction_type' => 'debit',
+                'amount' => $payment->amount,
+                'date' => Carbon::now(),
+                'description' => 'Client Credit of ' . $client->name,
+                'invoice_id' => null,
+                'reference_type' => 'Payment',
+                'reference_number' => $payment->voucher_number,
+            ]);
+
+            $receivableAccount = Account::where('name', 'Clients')->first();
+            $receivableAccountId = $receivableAccount->id;
+
+            if ($bankPaymentFee) {
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $client->agent->branch->id,
+                    'company_id' => $client->agent->branch->company->id,
+                    'account_id' =>  $receivableAccountId,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->name,
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                    'balance' => null,
+                    'name' =>  $client->name,
+                    'type' => 'receivable',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $receivableAccountId
+                ]);
+
+
+                // Create record to payment_gateway assets coa account (OK)
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $client->agent->branch->company->id,
+                    'branch_id' => $client->agent->branch->id,
+                    'account_id' =>  $bankPaymentFee->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Client Pays by ' . $client->name . ' via (Assets): ' . $bankPaymentFee->name,
+                    'debit' => $payment->amount - $defaultPaymentGatewayFee,
+                    'credit' => 0,
+                    'name' =>  $bankPaymentFee->name,
+                    'type' => 'bank',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $bankPaymentFee->id
+                ]);
+
+                $bankPaymentFee->actual_balance += $payment->amount - $defaultPaymentGatewayFee;
+                $bankPaymentFee->save();
+            }
+
+            $tapAccount->actual_balance += $defaultPaymentGatewayFee;
+
+            if ($tapAccount) {
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $client->agent->branch->company->id,
+                    'branch_id' => $client->agent->branch->id,
+                    'account_id' =>  $tapAccount->id,
+                    'voucher_number' => $payment->voucher_number,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Record Payment Gateway Charge (Expenses): ' . $tapAccount->name,
+                    'debit' => $defaultPaymentGatewayFee,
+                    'credit' => 0,
+                    'balance' => $tapAccount->actual_balance,
+                    'name' =>  $tapAccount->name,
+                    'type' => 'charges',
+                    'type_reference_id' => $tapAccount->id
+                ]);
+
+                $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
+                $tapAccount->save();
+            }
+
+
+            $client->credit += $payment->amount;
+            $client->save();
+        } catch (Exception $e) {
+            DB::rollBack();
+            logger('Error adding credit: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to add credit',
+            ];
+        }
+
+        DB::commit();
+        return [
+            'status' => 'success',
+            'message' => 'Credit added successfully',
+            'data' => [
+                'client_id' => $client->id,
+                'credit' => $client->credit,
+            ],
+        ];
+    }
+
+    public function updateCredit($id, $amount)
+    {
+        try{
+            $client = Client::findOrFail($id);
+            $client->credit = $amount;
+            $client->save();
+
+        } catch (Exception $e) {
+            logger('Error updating credit: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to update credit',
+            ];
+        }
+
+        logger('Credit updated successfully for client ID: ' . $id);
+        return [
+            'status' => 'success',
+            'message' => 'Credit updated successfully',
+            'data' => [
+                'client_id' => $client->id,
+                'credit' => $client->credit,
+            ],
+        ];
+    }
 
 
 }

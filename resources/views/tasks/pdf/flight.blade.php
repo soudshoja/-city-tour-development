@@ -1,112 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width: 600px, initial-scale=1.0"> 
-    <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Flight Voucher: {{ $task->reference }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
     <style>
         :root {
-            --gray100: #f4f4f4;
-            --gray200: #ddd;
-            --gray300: #888;
-            --blue100: #dbeafe;
-            --blue200: #bfdbfe;
-            --blue300: #93c5fd;
-            --blue400: #60a5fa;
-            --blue500: #3b82f6;
-            --blue600: #2563eb;
-            --blue700: #1d4ed8;
-            --blue800: #1e40af;
-            --blue900: #1e3a8a;
-            --blue950: #172554;
+            --primary-bg: #ffffff;
+            --accent-bg: #f4f6f8;
+            --section-bg: #fbfbfb;
+            --text-dark: #1f2937;
+            --text-muted: #4b5563;
+            --highlight: rgb(182, 196, 209);
+            --border: #e5e7eb;
         }
 
         body {
-            font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 32px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--accent-bg);
             display: flex;
             justify-content: center;
-            background-color: #f4f4f4;
         }
 
         .container {
-            width: 600px; /* Container width to match viewport */
-            background-color: white;
-            padding: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            background: var(--primary-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
         }
 
         header {
-            background-color: var(--gray200);
-            padding: 20px;
-            text-align: center;
+            background: var(--highlight);
+            color: white;
+            padding: 20px 32px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+        }
+
+        header img {
+            height: 48px;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 500;
         }
 
         main {
-            background-color: var(--gray100);
-            padding: 1em;
-            display: flex;
-            flex-direction: column;
+            padding: 28px 32px;
         }
 
-        /* section {
-            background-color: var(--gray200);
-            padding: 0;
-        } */
+        .section {
+            background: var(--section-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
 
-        footer {
-            background-color: var(--gray200);
-            padding: 10px;
+        .section h2 {
+            font-size: 16px;
+            color: var(--text-dark);
+            margin: 0 0 18px 0;
+            font-weight: 600;
             text-align: center;
         }
 
-        section > p {
-            padding: 0;
+        .section p,
+        .items {
+            margin: 6px 0;
+            font-size: 14px;
+            color: var(--text-muted);
         }
 
-        .voucher-title {
-            font-size: 1.25em;
-            font-weight: 300;
+        .highlight {
+            font-weight: 600;
+            color: var(--text-dark);
         }
 
-        .voucher-details {
-            margin: 10px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+        .info-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: center;
         }
 
-        .voucher-details > .items {
+        .info-box {
+            flex: 1;
+        }
+
+        .info-box p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .info-box strong {
+            color: var(--text-dark);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            row-gap: 10px;
+            column-gap: 32px;
+        }
+
+        .details-grid div {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .details-grid div span {
+            display: block;
+        }
+
+        .label {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .spacer {
+            height: 16px;
+            border-top: 1px dashed var(--border);
+            margin: 16px 0;
+        }
+
+        .items {
             display: flex;
             justify-content: space-between;
         }
 
-        .voucher-details h1 {
-            font-size: 1.2em;
-        }
-        .voucher-details h2 {
-            font-size: 1em;
-            margin-top: 0;
-        }
-
-        .voucher-details p {
-            margin: 5px 0;
-        }
-
-        .text-right {
-            padding: 1em;
-            margin: 0px;
-            text-align: right;
-        }
-
-        .footer {
-            text-align: center;
+        footer {
+            background: var(--accent-bg);
             font-size: 12px;
-            color: #888;
+            padding: 16px;
+            text-align: center;
+            color: var(--text-muted);
         }
     </style>
 </head>
@@ -114,47 +150,72 @@
 <body>
     <div class="container">
         <header>
-            <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers" width="100">
-            <h1 class="voucher-title">Flight Voucher:<strong>{{ $task->reference }}</strong></h1>
+            <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers">
+            <h1>Flight Voucher: <strong>{{ $task->reference }}</strong></h1>
         </header>
+
         <main>
-            <div class="voucher-details">
+            <div class="section">
                 <h2>Passenger Information</h2>
-                <p><strong>Name:</strong> {{ $task->client->name }}</p>
-                <p><strong>Email:</strong> {{ $task->client->email }}</p>
+                <div class="info-grid">
+                    <div class="info-box">
+                        <p><strong>Name:</strong> {{ $task->client->name }}</p>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>Email: </strong><a href="mailto:{{ $task->client->email }}">{{ $task->client->email }}</a></p>
+                    </div>
+                </div>
             </div>
-            <div class="voucher-details">
-                <h1>Flight Information</h1>
-                <h2> Kuwait Airways </h2>
-                <p><strong>Flight:</strong> Flight 123</p>
-                <p><strong>Departure: </strong> {{ $task->flightDetails->departure_place_time }}</p>
-                <p><strong>Arrival: </strong>{{ $task->flightDetails->arrival_place_time}}</p>
-                <hr>
-                <div class="items">
-                    <p>Duration </p>
-                    <p> {{ $task->duration ?? $task->flightDetails->duration_by_calculate }} </p>
+            <div class="section">
+                <h2>Flight Information</h2>
+                <div class="details-grid">
+                    <div>
+                        <span class="label">Airline:</span>
+                        <span>Kuwait Airways</span>
+                    </div>
+                    <div>
+                        <span class="label">Flight:</span>
+                        <span>{{ $task->flightDetails->flight_number }}</span>
+                    </div>
+
+                    <div>
+                        <span class="label">Departure:</span>
+                        <span>{{ $task->flightDetails->departure_place_time }}</span>
+                    </div>
+                    <div>
+                        <span class="label">Arrival:</span>
+                        <span>{{ $task->flightDetails->arrival_place_time }}</span>
+                    </div>
                 </div>
-                <div class="items">
-                    <p>Booking Status</p>
-                    <p>Confirmed</p>
-                </div>
-                <div class="items">
-                    <p>Class</p>
-                    <p>Economy</p>
-                </div>
-                <div class="items">
-                    <p>Equipment</p>
-                    <p>AIRBUS A220-300</p>
-                </div>
-                <div class="items">
-                    <p> Flight Meal </p>
-                    <p> Food and beverages for purchase</p>
+                <div class="spacer"></div>
+                <div class="details-grid">
+                    <div>
+                        <span class="label">Duration:</span>
+                        <span>{{ $task->duration ?? $task->flightDetails->duration_by_calculate }}</span>
+                    </div>
+                    <div>
+                        <span class="label">Booking Status:</span>
+                        <span>Confirmed</span>
+                    </div>
+                    <div>
+                        <span class="label">Class:</span>
+                        <span>Economy</span>
+                    </div>
+                    <div>
+                        <span class="label">Equipment:</span>
+                        <span>AIRBUS A220-300</span>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <span class="label">Flight Meal:</span>
+                        <span>Food and beverages for purchase</span>
+                    </div>
                 </div>
             </div>
         </main>
-        <footer class="footer">
-            <p>This voucher is valid for the specified flight only. Please present it at the check-in counter.</p>
+        <footer>
+            This voucher is valid for the specified flight only. Please present it at the check-in counter.
         </footer>
     </div>
 </body>
+
 </html>

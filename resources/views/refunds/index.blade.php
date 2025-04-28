@@ -1,13 +1,17 @@
 <x-app-layout>
+
+    <!-- page title -->
     <div class="flex justify-between items-center gap-5 my-3 ">
+
+
         <div class="flex items-center gap-5 ">
-            <h2 class="text-3xl font-bold">Payment Voucher</h2>
-            <div data-tooltip="number of Charges"
+            <h2 class="text-3xl font-bold">Refunds</h2>
+            <div data-tooltip="number of refunds"
                 class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
-                <span class="text-xl font-bold text-white">{{ $totalRecords }}</span>
+                <span class="text-xl font-bold text-white">{{ $totalRefunds }}</span>
             </div>
         </div>
-        <!-- add new Invoice & refresh page -->
+        <!-- add new refund & refresh page -->
         <div class="flex items-center gap-5">
             <div data-tooltip="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
@@ -20,23 +24,7 @@
                 </svg>
             </div>
 
-
-            <!-- add new records -->
-            <a href="{{ route('bank-payments.create') }}">
-                <div data-tooltip="Create Payment Voucher"
-                    class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
-
-
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#fff"
-                            d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
-                    </svg>
-
-                </div>
-            </a>
-
         </div>
-
 
 
     </div>
@@ -63,8 +51,7 @@
                             xmlns="http://www.w3.org/2000/svg">
                             <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
                                 opacity="0.5"></circle>
-                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round">
-                            </path>
+                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
                         </svg>
                     </button>
                 </div>
@@ -73,60 +60,61 @@
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
                     <!-- table -->
-                    <div class="dataTable2-container h-max">
-                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full">
+                    <div class="dataTable-container h-max">
+                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Payment Ref</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Pay To</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Doc Date</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Refund Number</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Method</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Total Refund</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Registered</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Registered Date</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @if ($bankPayments->isEmpty())
+                                @if ($refunds->isEmpty())
                                     <tr>
-                                        <td colspan="5" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                             No data for now.... Create new!</td>
                                     </tr>
                                 @else
-                                    @foreach ($bankPayments as $bankpayment)
+                                    @foreach ($refunds as $refund)
                                         <tr>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->reference_number }}
+                                                {{ $refund->refund_number }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->reference_type }}
+                                                {{ $refund->invoice->invoice_number }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->name }}
+                                                {{ $refund->invoice->client->name }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ \Carbon\Carbon::parse($bankpayment->date)->format('Y-m-d') }}
+                                                KWD {{ number_format($refund->total_nett_refund, 2) }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->description }}
-                                            </td>
+                                                {{ $refund->remarks }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $bankpayment->created_at }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                <a data-tooltip="View Payment Voucher"
-                                                    href="{{ route('bank-payments.edit', $bankpayment->id) }}"
-                                                    class="text-blue-500 hover:underline">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20"
-                                                        height="20" viewBox="0 0 24 24">
-                                                        <g fill="none" stroke="currentColor" stroke-width="1">
-                                                            <path
-                                                                d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
-                                                                opacity=".5"></path>
-                                                            <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
-                                                        </g>
-                                                    </svg>
-                                                </a>
+                                                {{ $refund->created_at }}</td>
+                                            <td class="p-3 text-sm">
+                                                <div class="flex items-center space-x-2">
+                                                    <a data-tooltip="Edit"
+                                                        href="{{ route('invoices.refunds.edit', [$refund->invoice->id, $refund->id]) }}"
+                                                        class="text-sm font-medium text-blue-600 hover:underline">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                            height="20" viewBox="0 0 24 24">
+                                                            <path fill="none" stroke="#00ab55" stroke-linecap="round"
+                                                                stroke-linejoin="round" stroke-width="1.5"
+                                                                d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
+                                                                opacity=".5" />
+                                                        </svg>
+                                                    </a>
+                                                </div>
 
                                             </td>
 
@@ -215,9 +203,9 @@
                 <!-- ./export -->
             </div>
             <div class="mt-5 ">
-                <!-- display charge details here-->
-                <div id="chargeDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div>
-                <!-- display charge details here-->
+                <!-- display details here-->
+                <div id="refundDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div>
+                <!-- display details here-->
 
             </div>
         </div>

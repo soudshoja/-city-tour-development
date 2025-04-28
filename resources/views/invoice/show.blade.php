@@ -215,7 +215,7 @@
                         <tr class="text-sm text-gray-700">
 
                             <td class="px-4 py-2 border">
-                                <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id. '/' . $partial->id) }}"
+                                <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
                                     class="text-blue-500 underline" target="_blank">
                                     View Details
                                 </a>
@@ -256,16 +256,16 @@
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
-                @if(auth()->check())
-                <form action="{{ route('whatsapp.send') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="client" value='{{ $invoice->client }}'>
-                    <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
-                    <button type="submit"
-                        class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                        Send Invoice To Client
-                    </button>
-                </form>
+                @if (auth()->check())
+                    <form action="{{ route('whatsapp.send') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="client" value='{{ $invoice->client }}'>
+                        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
+                        <button type="submit"
+                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                            Send Invoice To Client
+                        </button>
+                    </form>
                 @endif
                 <form id="paymentForm"
                     action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
@@ -280,12 +280,12 @@
                     <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
 
                     <div class="flex items-center gap-2">
-                    @if ($invoice->payment_type !== 'split')
-                        <button type="submit" id="payNowBtn"
-                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                            Pay Now
-                        </button>
-                    @endif
+                        @if ($invoice->payment_type !== 'split')
+                            <button type="submit" id="payNowBtn"
+                                class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                Pay Now
+                            </button>
+                        @endif
                         <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
                             {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
                         </span>
@@ -310,7 +310,16 @@
                     </div>
                 @endif
             @else
-                <span class="text-green-600 font-bold">PAID</span>
+                <div class="flex items-center gap-2">
+                    <p><span class="text-green-600 font-bold">PAID</span></p>
+                    @if ($invoice->status_next !== 'refund')
+                        <p><a href="{{ route('invoices.refunds.create', $invoice->id) }}"
+                                class="city-light-yellow hover:text-black rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                Refund Invoice
+                            </a></p>
+                    @endif
+                </div>
+
             @endif
         </div>
         <!-- Payment pdf -->
@@ -380,58 +389,68 @@
             </div>
         </div>
     </div>
-    @if ($invoice->status === 'paid' || $invoice->status === 'partial')
-        <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
-            <div class="invoice">
-                <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
-                    <h3 class="text-xl font-semibold text-green-700 mb-2">Payment Receipt</h3>
-                </div>
+    @if ($invoice->is_client_credit)
+        <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6 text-center">
+            <p class="text-lg font-semibold text-green-500">
+                This is invoice paid by client credit.
+            </p>
+        </div>
+    @else
+        @if ($invoice->status === 'paid' || $invoice->status === 'partial')
+            <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
+                <div class="invoice">
+                    <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
+                        <h3 class="text-xl font-semibold text-green-700 mb-2">Payment Receipt</h3>
+                    </div>
 
-                <table class="min-w-full mb-8 border border-gray-200">
-                    <thead>
-                        <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                            <th class="px-4 py-2 border">Receipt #</th>
-                            <th class="px-4 py-2 border">Reference</th>
-                            <th class="px-4 py-2 border">Payment Date</th>
-                            <th class="px-4 py-2 border">Payment Gateway</th>
-                            <th class="px-4 py-2 border">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($paidPartials as $partial)
-                            <tr class="text-sm text-gray-700">
-                                <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
-                                <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
-                                <td class="px-4 py-2 border">
-                                    {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : 'N/A' }}
-                                </td>
-                                <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
-                                <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                    <table class="min-w-full mb-8 border border-gray-200">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                                <th class="px-4 py-2 border">Receipt #</th>
+                                <th class="px-4 py-2 border">Reference</th>
+                                <th class="px-4 py-2 border">Payment Date</th>
+                                <th class="px-4 py-2 border">Payment Gateway</th>
+                                <th class="px-4 py-2 border">Amount</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($paidPartials as $partial)
+                                <tr class="text-sm text-gray-700">
+                                    <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
+                                    <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}
+                                    </td>
+                                    <td class="px-4 py-2 border">
+                                        {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : 'N/A' }}
+                                    </td>
+                                    <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                                    <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
 
-                <div class="flex justify-end mb-8">
-                    <div class="w-1/3 text-sm">
-                        <div class="flex justify-between py-2 border-b border-gray-200">
-                            <span>Balance:</span>
-                            <span id="balance"></span>
+                    <div class="flex justify-end mb-8">
+                        <div class="w-1/3 text-sm">
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span>Balance:</span>
+                                <span id="balance"></span>
+                            </div>
                         </div>
+                    </div>
+
+
+                    <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
+                        <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
+                        <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been
+                            sent to
+                            your address.</p>
                     </div>
                 </div>
 
 
-                <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
-                    <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
-                    <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been sent to
-                        your address.</p>
-                </div>
+
             </div>
-
-
-
-        </div>
+        @endif
     @endif
 
     <script>

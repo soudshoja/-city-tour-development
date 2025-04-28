@@ -77,7 +77,7 @@
                             <tbody>
                                 @if ($refunds->isEmpty())
                                     <tr>
-                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        <td colspan="8" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                             No data for now.... Create new!</td>
                                     </tr>
                                 @else
@@ -104,7 +104,7 @@
                                             <td class="p-3 text-sm">
                                                 <div class="flex items-center space-x-2">
                                                     <a data-tooltip="Edit"
-                                                        href="{{ route('invoices.refunds.edit', [$refund->invoice->id, $refund->id]) }}"
+                                                        href="{{ route('refunds.edit', [$task->id, $refund->id]) }}"
                                                         class="text-sm font-medium text-blue-600 hover:underline">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                                             height="20" viewBox="0 0 24 24">

@@ -29,9 +29,9 @@ class Refund extends Model
         'created_by',
     ];
     
-    public function invoice()
+    public function task()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Task::class);
     }
 
     public function account()

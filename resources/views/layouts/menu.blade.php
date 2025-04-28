@@ -50,7 +50,8 @@
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
                 <menuitem><a href="{{ route('bank-payments.index') }}"
-                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Voucher</a>
+                    class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment
+                    Voucher</a>
                 </menuitem>
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
@@ -109,12 +110,14 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices
                 List</a></menuitem>
             <menuitem><a href="{{ route('invoices.link') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices Link</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices
+                Link</a>
             </menuitem>
             <menuitem><a href="{{ route('payment.link.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Link</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment
+                Link</a>
             </menuitem>
-            <menuitem><a href="{{ route('invoices.refunds.list') }}"
+            <menuitem><a href="{{ route('refunds.list') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Refund</a>
             </menuitem>
         </menu>

@@ -22,13 +22,13 @@ class RefundController extends Controller
 
     public function index()
     {
-        if (Auth::user()->role->name == 'company') {
-            $refunds = Refund::with('invoice.client')
+        if (Auth::user()->role->name === 'company') {
+            $refunds = Refund::with('task.client', 'task.agent')
                 ->where('company_id', Auth::user()->company->id)
                 ->orderBy('id', 'desc')
                 ->get();
-        } elseif (Auth::user()->role->name == 'branch') {
-            $refunds = Refund::with('invoice.client')
+        } elseif (Auth::user()->role->name === 'branch') {
+            $refunds = Refund::with('task.client', 'task.agent')
                 ->where('branch_id', Auth::user()->branch->id)
                 ->orderBy('id', 'desc')
                 ->get();
@@ -37,44 +37,38 @@ class RefundController extends Controller
         }
     
         $totalRefunds = $refunds->count();
+    
         return view('refunds.index', compact('refunds', 'totalRefunds'));
     }
-
+    
     public function create(Task $task)
     {
-        // Check if the related invoice status is 'paid'
-        $invoice = $task->invoiceDetail->invoice;
-
+        // Get the task with its related agent, branch, and client
+        $tasks = Task::with('agent.branch', 'client')
+            ->where('id', $task->id)
+            ->first();
+    
+        // If no task is found, redirect back with an error
+        if (!$tasks) {
+            return redirect()->back()->withErrors('Task not found.');
+        }
+    
         // Get the root IDs for Assets and Liabilities accounts
-        $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
-        $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
+        $assetsRootId = Account::where('name', 'Assets')->value('id');
+        $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
         
-        // Fetch the COA accounts (Chart of Accounts) for the Assets and Liabilities roots
+        // Fetch COA accounts (leaf nodes) under Assets and Liabilities
         $coaAccounts = Account::doesntHave('children')
-            ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
-                $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
+            ->whereHas('parent', function ($query) use ($assetsRootId, $liabilitiesRootId) {
+                $query->whereIn('root_id', [$assetsRootId, $liabilitiesRootId]);
             })
             ->get();
-
-        // Get task IDs from invoice details related to the current task
-        $taskIds = $task->id;
-        
-        // Fetch tasks related to the invoice and its details
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
-            ->whereIn('id', $taskIds)
-            ->orderBy('id', 'desc')
-            ->get();
-
-        // Get the totals for the invoice details related to the tasks
-        $totals = $invoice->invoiceDetails()
-            ->whereIn('task_id', $taskIds)
-            ->selectRaw('SUM(task_price) as total_task_price, SUM(supplier_price) as total_supplier_price, SUM(markup_price) as total_markup_price')
-            ->first();
-
-        // Return the view with the necessary data
-        return view('refunds.create', compact('invoice', 'coaAccounts', 'tasks', 'totals'));
+    
+        return view('refunds.create', compact('coaAccounts', 'tasks'));
     }
-
+    
+    
+    
 
     // public function create(Invoice $invoice)
     // {
@@ -444,14 +438,13 @@ class RefundController extends Controller
         
     }
 
-    public function edit($invoiceId, $refundId)
+    public function edit(Task $task, Refund $refund)
     {
-        $invoice = Invoice::with(['client', 'agent'])->findOrFail($invoiceId);
-        $refund = Refund::findOrFail($refundId);
-        $coaAccounts = Account::where('report_type', 'Assets')->get(); // or however you filter them
+        // Fetch accounts
+        $coaAccounts = Account::where('report_type', 'Assets')->get();
 
         // Get task IDs from invoice details
-        $taskIds = $invoice->invoiceDetails()->pluck('task_id')->filter()->unique();
+        $taskIds = $task->id;
 
         // Fetch tasks using those IDs
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
@@ -459,13 +452,12 @@ class RefundController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        return view('refunds.edit', compact('invoice', 'refund', 'coaAccounts', 'tasks'));
+        return view('refunds.edit', compact('refund', 'coaAccounts', 'tasks'));
     }
 
-    public function update(Request $request, $invoiceId, $refundId)
+    public function update(Request $request, Task $task, Refund $refund)
     {
-        $refund = Refund::findOrFail($refundId);
-
+        // Validate the incoming data
         $request->validate([
             'date' => 'required|date',
             'method' => 'required|string',
@@ -477,33 +469,40 @@ class RefundController extends Controller
             'reason' => 'nullable|string|max:1000',
         ]);
 
+        // Update the refund with validated data
         $refund->update($request->all());
 
-        return redirect()->route('invoices.refunds.edit', [$invoiceId, $refundId])
-            ->with('success', 'Refund updated successfully.');
+        // Redirect back with success message
+        return redirect()->route('refunds.edit', [
+            'task' => $task->id,
+            'refund' => $refund->id,
+        ])
+        ->with('success', 'Refund updated successfully.');
     }
 
-
-    public function complete_process(Refund $refund)
+    // Complete refund process
+    public function complete_process(Task $task, Refund $refund)
     {
         try {
-            \Log::info("Starting refund process for ID: {$refund->id}");
-    
-            $updateStatus = Refund::where('id', $refund->id)->update([
+            \Log::info("Starting refund process for Task ID: {$task->id}, Refund ID: {$refund->id}");
+
+            // Update the status to 'completed'
+            $updateStatus = $refund->update([
                 'status' => 'completed',
                 'updated_at' => now(),
             ]);
-    
+
             \Log::info("Refund status update: " . json_encode($updateStatus));
         } catch (\Exception $e) {
             \Log::error('Refund processing failed', [
+                'task_id' => $task->id ?? 'N/A',
                 'refund_id' => $refund->id ?? 'N/A',
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
             return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
         }
-    
+
         return response()->json(['message' => 'Refund processed successfully.']);
     }
     

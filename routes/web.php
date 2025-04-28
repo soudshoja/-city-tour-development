@@ -336,16 +336,7 @@ Route::middleware(['auth'])->group(function () {
         // Route::get('/sale-invoice', [InvoiceController::class, 'salelist'])->name('salelist');
         Route::get('/create', [InvoiceController::class, 'create'])->name('create');
         Route::get('/link', [InvoiceController::class, 'link'])->name('link');
-        Route::post('/clientAdd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');
-        Route::get('/refund/list', [RefundController::class, 'index'])->name('refunds.list');
-        
-        Route::get('/{invoice}/refund', [RefundController::class, 'create'])->name('refunds.create');
-        Route::post('/{invoice}/refund', [RefundController::class, 'store'])->name('refunds.store');
-        Route::get('/{invoice}/refunds/{refund}/edit', [RefundController::class, 'edit'])->name('refunds.edit');
-        Route::put('/{invoice}/refunds/{refund}', [RefundController::class, 'update'])->name('refunds.update');
-        Route::post('/{invoice}/refunds/{refund}/process-completed', [RefundController::class, 'complete_process'])->name('refunds.complete_process');
-
-        
+        Route::post('/clientAdd', [InvoiceController::class, 'clientAdd'])->name('clientAdd');        
     });
 
 
@@ -365,18 +356,19 @@ Route::middleware(['auth'])->group(function () {
     });
 
 
-       // REFUND
-       Route::group([
+    // REFUND
+    Route::group([
         'prefix' => 'refunds',
         'as' => 'refunds.',
     ], function () {
-        Route::get('/list', [RefundController::class, 'index'])->name('refunds.list');
-        Route::get('/refund', [RefundController::class, 'create'])->name('refunds.create');
-        Route::post('/refund', [RefundController::class, 'store'])->name('refunds.store');
-        Route::get('/{refund}/edit', [RefundController::class, 'edit'])->name('refunds.edit');
-        Route::put('/{refund}', [RefundController::class, 'update'])->name('refunds.update');
-        Route::post('/{refund}/process-completed', [RefundController::class, 'complete_process'])->name('refunds.complete_process');     
+        Route::get('/list', [RefundController::class, 'index'])->name('list');
+        Route::get('/{task}/create', [RefundController::class, 'create'])->name('create');
+        Route::post('/{task}', [RefundController::class, 'store'])->name('store');
+        Route::get('/{task}/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
+        Route::put('/{task}/{refund}', [RefundController::class, 'update'])->name('update');
+        Route::post('/{task}/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');
     });
+
 
     Route::group([
         'prefix' => 'payment',

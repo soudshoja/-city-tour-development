@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('tasks', function (Blueprint $table) {
             $table->enum('status', ['refund', 'issued', 'reissued', 'void'])->change();
-            $table->date('refund_date')->nullable()->after('enabled')->change();
+            $table->date('refund_date')->nullable()->after('enabled'); // just add it, no change()
         });
     }
 

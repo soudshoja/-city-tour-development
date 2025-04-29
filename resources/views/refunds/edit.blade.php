@@ -6,18 +6,26 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <!-- Invoice Info -->
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Invoice Info
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Task Info
                     </h3>
-                    <p class="mb-2"><strong>Invoice Number:</strong> {{ $invoice->invoice_number }}</p>
-                    <p class="mb-2"><strong>Paid Date:</strong> {{ $invoice->paid_date }}</p>
-                    <p class="mb-2"><strong>Amount:</strong> KWD{{ number_format($invoice->amount, 2) }}</p>
+                    <p class="mb-2"><strong>Task Ref Number:</strong> {{ $refund->task->reference }}</p>
+                    <p class="mb-2"><strong>Info:</strong> {{ $refund->task->additional_info }}</p>
+                    <p class="mb-2"><strong>Date:</strong> {{ $refund->date }}</p>
+                    <p class="mb-2"><strong>Total Refund:</strong> KWD{{ number_format($refund->task->total, 2) }}</p>
                     <p class="mb-2">
                         <strong>Status:</strong>
                         <span
-                            class="inline-block px-2 py-1 rounded text-sm font-medium 
-                            {{ $invoice->status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                            {{ ucfirst($invoice->status) }}
+                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                {{ $refund->status === 'completed' ? 'badge-outline-success' : '' }}
+                                {{ $refund->status === 'processed' ? 'badge-outline-assigned' : '' }}
+                                {{ $refund->status === 'approved' ? 'badge-outline-success' : '' }}
+                                {{ $refund->status === 'declined' ? 'badge-outline-danger' : '' }}
+                                {{ $refund->status === 'pending' ? 'badge-outline-warning' : '' }}
+                                {{ $refund->status === null ? 'badge-outline-danger' : '' }}">
+                            {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
+
                         </span>
+
                     </p>
                 </div>
 
@@ -25,34 +33,19 @@
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Client Info
                     </h3>
-                    <p class="mb-2"><strong>Name:</strong> {{ $invoice->client->name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $invoice->client->email ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Name:</strong> {{ $refund->task->client->name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $refund->task->client->email ?? 'N/A' }}</p>
                     <br>
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Agent Info</h3>
-                    <p class="mb-2"><strong>Name:</strong> {{ $invoice->agent->name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $invoice->agent->email ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Name:</strong> {{ $refund->agent->name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $refund->agent->email ?? 'N/A' }}</p>
                 </div>
             </div>
 
-            <div class="bg-white shadow-md rounded-lg p-8">
-                <div class="grid grid-cols-1">
-                    @foreach ($tasks as $task)
-                        <div class="mb-5">
-                            <h4>{{ $task->name }}</h4>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">
-                                Reference Number: {{ $task->reference ?? '-' }}</h3>
-                            <p>Branch: {{ $task->agent->branch->name ?? '-' }}</p>
-                            <p>Client: {{ $task->client->name ?? '-' }}</p>
-                            <p>Type: {{ $task->type ?? '-' }}</p>
-                            <p>Info: {{ $task->additional_info ?? '-' }}, {{ $task->venue ?? '-' }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
+
             <hr class="my-6">
 
-            <form
-                action="{{ route('invoices.refunds.update', ['invoice' => $refund->invoice->id, 'refund' => $refund->id]) }}"
+            <form action="{{ route('refunds.update', ['task' => $refund->task_id, 'refund' => $refund->id]) }}"
                 method="POST" class="bg-white p-6 rounded-lg shadow">
                 @csrf
                 @method('PUT')
@@ -153,8 +146,7 @@
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
                                 Refund
                                 Charge</label>
-                            <input type="number" step="0.01" name="refund_airline_charge"
-                                id="refund_airline_charge"
+                            <input type="number" step="0.01" name="refund_airline_charge" id="refund_airline_charge"
                                 value="{{ old('refund_airline_charge', $refund->refund_airline_charge ?? '') }}"
                                 readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
@@ -222,19 +214,14 @@
 
                 <div class="mt-6 flex justify-between px-4">
                     <!-- Left side: Cancel button -->
-                    <a href="{{ url('/invoices/refund/list') }}"
+                    <a href="{{ url('/refunds/') }}"
                         class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
                         Cancel
                     </a>
 
-                    <!-- Right side: Save and Reset -->
+
                     <div class="flex gap-4">
                         <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
-                        <button onclick="processCompleted({{ $refund->invoice_id }}, {{ $refund->id }})"
-                            class="btn btn-primary">
-                            Process Completed
-                        </button>
-
                         <button id="save-paymentvoucher-btn" type="submit"
                             class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
                             <span id="iconSavePaymentVoucher" class="mr-2 inline-block">
@@ -248,6 +235,7 @@
                         </button>
 
                     </div>
+
                 </div>
 
                 @if ($errors->any())
@@ -272,31 +260,6 @@
             if (option) {
                 document.getElementById('account_id').value = option.dataset.id;
             }
-        }
-
-        function processCompleted(invoiceId, refundId) {
-            console.log('Processing refund:', {
-                invoiceId,
-                refundId
-            });
-            fetch(`/invoices/${invoiceId}/refunds/${refundId}/process-completed`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                    } else {
-                        alert('Something went wrong.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error processing refund.');
-                });
         }
     </script>
 </x-app-layout>

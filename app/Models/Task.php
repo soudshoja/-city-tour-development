@@ -93,6 +93,11 @@ class Task extends Model
         return $this->hasOne(InvoiceDetail::class, 'task_id');
     }
 
+    public function refundDetail()
+    {
+        return $this->hasOne(Refund::class, 'task_id');
+    }
+
     public function agent()
     {
         return $this->belongsTo(Agent::class, 'agent_id');

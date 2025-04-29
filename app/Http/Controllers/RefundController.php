@@ -45,6 +45,20 @@ class RefundController extends Controller
     
     public function create(Task $task)
     {
+        //search invoice based on original task
+        $invoiceDetails = InvoiceDetail::with('task')
+            ->where('task_description', $task->reference)
+            ->first();
+
+        //dd($invoiceDetails->invoice->status);
+        if (!$invoiceDetails) {
+            return redirect()->back()->withErrors(['error' => 'No reference of original task']);
+        }else{
+            if ($invoiceDetails->invoice->status==="unpaid") {
+                return redirect()->back()->withErrors(['error' => 'The invoice from original task still pending']);
+            }
+        }
+
         // Get the task with its related agent, branch, and client
         $tasks = Task::with('agent', 'client')
             ->where('id', $task->id)
@@ -65,7 +79,7 @@ class RefundController extends Controller
             })
             ->get();
     
-        return view('refunds.create', compact('coaAccounts', 'tasks'));
+        return view('refunds.create', compact('coaAccounts', 'tasks', 'invoiceDetails'));
     }
     
 
@@ -125,7 +139,11 @@ class RefundController extends Controller
         
         //foreach ($invoiceDetails as $invdetail) {
             if ($task->id) {
+                
                 $accountSupplierName = 'Supplier Refunds';
+                if (!empty($task->supplier?->name)) {
+                    $accountSupplierName .= ' - ' . $task->supplier->name;
+                }
 
                 // Get or create Supplier Refund Account
                 $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')

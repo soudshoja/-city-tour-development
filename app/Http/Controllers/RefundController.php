@@ -72,7 +72,7 @@ class RefundController extends Controller
     public function store(Request $request, Task $task)
     {   
         $request->validate([
-            'total_nett_refund' => ['required', 'numeric', 'min:0.01'],
+            'total_nett_refund' => ['required', 'numeric', 'min:-999999.99'],
             'reason' => ['required', 'string'],
             'method' => ['required', 'in:Bank,Cash,Online'],
             'account_id' => ['required', 'exists:accounts,id'],

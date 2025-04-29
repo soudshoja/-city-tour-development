@@ -112,7 +112,7 @@
                                                 </span>
                                                 @if ($refund->status !== 'completed')
                                                     <span
-                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success"
+                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary"
                                                         onclick="confirmProcessCompleted({{ $refund->task->id }}, {{ $refund->id }})">
                                                         Mark as Completed
                                                     </span>

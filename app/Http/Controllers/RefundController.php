@@ -35,6 +35,8 @@ class RefundController extends Controller
         } else {
             $refunds = collect();
         }
+
+
     
         $totalRefunds = $refunds->count();
     
@@ -44,7 +46,7 @@ class RefundController extends Controller
     public function create(Task $task)
     {
         // Get the task with its related agent, branch, and client
-        $tasks = Task::with('agent.branch', 'client')
+        $tasks = Task::with('agent', 'client')
             ->where('id', $task->id)
             ->first();
     
@@ -67,45 +69,8 @@ class RefundController extends Controller
         return view('refunds.create', compact('coaAccounts', 'tasks'));
     }
     
-    
-    
 
-    // public function create(Invoice $invoice)
-    // {
-    //     if ($invoice->status !== 'paid') {
-    //         abort(403, 'Refunds are only allowed for paid invoices.');
-    //     }
-    
-    //     $assetsRootIdAssets = Account::where('name', 'Assets')->value('id');
-    //     $liabilitiesRootIdLiabilities = Account::where('name', 'Liabilities')->value('id');
-        
-    //     $coaAccounts = Account::doesntHave('children')
-    //         ->whereHas('parent', function ($query) use ($assetsRootIdAssets, $liabilitiesRootIdLiabilities) {
-    //             $query->whereIn('root_id', [$assetsRootIdAssets, $liabilitiesRootIdLiabilities]);
-    //         })
-    //         ->get();
-
-
-    //     // Get task IDs from invoice details
-    //     $taskIds = $invoice->invoiceDetails()->pluck('task_id')->filter()->unique();
-    
-    //     // Fetch tasks using those IDs
-    //     $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
-    //         ->whereIn('id', $taskIds)
-    //         ->orderBy('id', 'desc')
-    //         ->get();
-
-    //     $totals = $invoice->invoiceDetails()
-    //         ->whereIn('task_id', $taskIds)
-    //         ->selectRaw('SUM(task_price) as total_task_price, SUM(supplier_price) as total_supplier_price, SUM(markup_price) as total_markup_price')
-    //         ->first();
-
-    //    // dd($tasks);
-    
-    //     return view('refunds.create', compact('invoice', 'coaAccounts', 'tasks', 'totals'));
-    // }
-
-    public function store(Request $request, Invoice $invoice)
+    public function store(Request $request, Task $task)
     {   
         $request->validate([
             'total_nett_refund' => ['required', 'numeric', 'min:0.01'],
@@ -118,10 +83,10 @@ class RefundController extends Controller
 
         $refund = Refund::create([
             'refund_number' => 'RF-' . now()->timestamp, 
-            'invoice_id' => $invoice->id,
-            'company_id' => $invoice->agent->branch->company_id,
-            'branch_id' => $invoice->agent->branch_id,
-            'agent_id' => $invoice->agent_id,
+            'task_id' => $task->id,
+            'company_id' => $task->company_id,
+            'branch_id' => $task->agent->branch_id,
+            'agent_id' => $task->agent_id,
             'remarks' => $request->input('remarks'),
             'remarks_internal' => $request->input('remarks_internal'),
             'airline_nett_fare' => $request->input('airline_nett_fare'),
@@ -142,48 +107,31 @@ class RefundController extends Controller
 
         // Create Transaction Record
         $transaction = Transaction::create([
-            'entity_id' => $invoice->agent->branch->company_id,
+            'entity_id' => $task->company_id,
             'entity_type' => 'company',
-            'company_id' => $invoice->agent->branch->company_id,
-            'branch_id' => $invoice->agent->branch_id,
+            'company_id' => $task->company_id,
+            'branch_id' => $task->agent->branch_id,
             'transaction_type' => 'debit',
             'amount' => $request->input('total_nett_refund'),
             'date' => $request->date,
-            'description' => 'Refund: '.$invoice->invoice_number.' ('.$refund->refund_number.') - '.$request->input('remarks'),
+            'description' => 'Refund',
             'reference_type' => 'Refund',
-            'invoice_id' => $invoice->id,
             'reference_number' => $request->bankpaymentref,
-            'name' => $invoice->client->name,
+            'name' => $task->client_name,
             'remarks_internal' => $request->input('remarks_internal'),
             
         ]);
-
        
-        try {
-            $updateInvoiceRec = Invoice::where('id', $invoice->id)->update([
-                'status_next' => 'refund',
-                'status_next_date' => Carbon::now(),
-            ]);
-        } catch (Exception $e) {
-            Log::error('Failed to update invoice status', [
-                'invoice_id' => $invoice->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-        
         $assetsReceivableAccount = Account::where('name', 'Accounts Receivable')->first(); 
-        $invoiceDetails = InvoiceDetail::where('invoice_id', $invoice->id)->get();
         
-        foreach ($invoiceDetails as $invdetail) {
-            if ($invdetail->task_id) {
-                $supplierName = $invdetail->task->supplier->name;
-                $accountSupplierName = 'Supplier Refunds – ' . $supplierName;
-        
-                // Get or create Supplier Refund Account
-                $supplierRefundAccount = Account::where('name', 'LIKE', $accountSupplierName)
-                    ->where('company_id', $invoice->agent->branch->company->id)
-                    ->first();
+        //foreach ($invoiceDetails as $invdetail) {
+            if ($task->id) {
+                $accountSupplierName = 'Supplier Refunds';
 
+                // Get or create Supplier Refund Account
+                $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')
+                    ->where('company_id', $task->company_id)
+                    ->first();
                 
                 if (!$supplierRefundAccount) {
                     $supplierRefundAccountId = Account::create([
@@ -218,7 +166,7 @@ class RefundController extends Controller
                 $accountSupplierRefundIncome = 'Supplier Refund Income (Refund Adjustment)';
         
                 $supplierRefundIncome = Account::where('name', 'LIKE', $accountSupplierRefundIncome)
-                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->where('company_id', $task->company_id)
                     ->first();
         
                 if (!$supplierRefundIncome) {
@@ -250,8 +198,8 @@ class RefundController extends Controller
                 JournalEntry::create([
                     'transaction_date' => $request->date,
                     'transaction_id' => $transaction->id,
-                    'company_id' => $invoice->agent->branch->company_id,
-                    'branch_id' => $invoice->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
                     'account_id' => $supplierRefundAccountEntry->id,
                     'description' => $refund->refund_number . ' - Record Refund Due From Supplier (Assets) ('.$supplierRefundAccountEntry->name.')',
                     'debit' => $request->input('airline_nett_fare'),
@@ -259,15 +207,14 @@ class RefundController extends Controller
                     'voucher_number' => $refund->id,
                     'name' => $supplierRefundAccountEntry->name,
                     'type' => 'refund',
-                    'invoice_id' => $invoice->id,
                 ]);
         
                 // Step 2: Credit Entry for Supplier Refund
                 JournalEntry::create([
                     'transaction_date' => $request->date,
                     'transaction_id' => $transaction->id,
-                    'company_id' => $invoice->agent->branch->company_id,
-                    'branch_id' => $invoice->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
                     'account_id' => $supplierRefundIncomeEntry->id,
                     'description' => $refund->refund_number . ' - Record Refund Due From Supplier (Income) ('.$supplierRefundIncomeEntry->name.')',
                     'debit' => 0,
@@ -275,7 +222,6 @@ class RefundController extends Controller
                     'voucher_number' => $refund->id,
                     'name' => $supplierRefundIncomeEntry->name,
                     'type' => 'refund',
-                    'invoice_id' => $invoice->id,
                 ]);
 
 
@@ -284,7 +230,7 @@ class RefundController extends Controller
         
                 // Get or create Supplier Refund Account
                 $incomeRefundAccount = Account::where('name', 'LIKE', $accountincomeName)
-                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->where('company_id', $task->company_id)
                     ->first();
         
                 if (!$incomeRefundAccount) {
@@ -317,7 +263,7 @@ class RefundController extends Controller
                 $accountincomeRefundIncomeRec = 'Refund Adjustment (Revenue Reversal)';
         
                 $incomeRefundIncomeRec = Account::where('name', 'LIKE', $accountincomeRefundIncomeRec)
-                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->where('company_id', $task->company_id)
                     ->first();
         
                 if (!$incomeRefundIncomeRec) {
@@ -349,8 +295,8 @@ class RefundController extends Controller
                 JournalEntry::create([
                     'transaction_date' => $request->date,
                     'transaction_id' => $transaction->id,
-                    'company_id' => $invoice->agent->branch->company_id,
-                    'branch_id' => $invoice->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
                     'account_id' => $incomeRefundAccountEntry->id,
                     'description' => $refund->refund_number . ' - Reverse Original Profit (Income) ('.$incomeRefundAccountEntry->name.')',
                     'debit' => $request->input('original_task_profit'),
@@ -358,15 +304,14 @@ class RefundController extends Controller
                     'voucher_number' => $refund->id,
                     'name' => $incomeRefundAccountEntry->name,
                     'type' => 'refund',
-                    'invoice_id' => $invoice->id,
                 ]);
         
                 // Step 4: Credit Entry for Supplier Refund
                 JournalEntry::create([
                     'transaction_date' => $request->date,
                     'transaction_id' => $transaction->id,
-                    'company_id' => $invoice->agent->branch->company_id,
-                    'branch_id' => $invoice->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
                     'account_id' => $incomeRefundIncomeAccEntry->id,
                     'description' => $refund->refund_number . ' - Reverse Original Profit (Income) ('.$incomeRefundIncomeAccEntry->name.')',
                     'debit' => 0,
@@ -374,7 +319,6 @@ class RefundController extends Controller
                     'voucher_number' => $refund->id,
                     'name' => $incomeRefundIncomeAccEntry->name,
                     'type' => 'refund',
-                    'invoice_id' => $invoice->id,
                 ]);
 
 
@@ -384,7 +328,7 @@ class RefundController extends Controller
                 $incomeIndirectRefundChargesRec = 'Refund Charges';
         
                 $incomeIndirectRefundChargesRecQuery = Account::where('name', 'LIKE', $incomeIndirectRefundChargesRec)
-                    ->where('company_id', $invoice->agent->branch->company->id)
+                    ->where('company_id', $task->company_id)
                     ->first();
         
                 if (!$incomeIndirectRefundChargesRecQuery) {
@@ -416,24 +360,23 @@ class RefundController extends Controller
                 JournalEntry::create([
                     'transaction_date' => $request->date,
                     'transaction_id' => $transaction->id,
-                    'company_id' => $invoice->agent->branch->company_id,
-                    'branch_id' => $invoice->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
                     'account_id' => $incomeIndirectRefundChargesRecEntry->id,
-                    'description' => $refund->refund_number . ' - Refund Service Charges to Client ('.$invoice->client->name.')',
+                    'description' => $refund->refund_number . ' - Refund Service Charges to Client ('.$task->client_name.')',
                     'debit' => $request->input('total_nett_refund'),
                     'credit' => 0,
                     'voucher_number' => $refund->id,
                     'name' => $incomeIndirectRefundChargesRecEntry->name,
                     'type' => 'refund',
-                    'invoice_id' => $invoice->id,
                 ]);
 
 
             }
-        }
+        //}
         
 
-        return redirect()->route('invoices.refunds.list')->with('success', 'Refund processed successfully.');
+        return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
 
         
     }
@@ -444,15 +387,15 @@ class RefundController extends Controller
         $coaAccounts = Account::where('report_type', 'Assets')->get();
 
         // Get task IDs from invoice details
-        $taskIds = $task->id;
+        $taskIds = [$task->id]; 
 
         // Fetch tasks using those IDs
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+        $tasks = Task::with('agent.branch', 'client')
             ->whereIn('id', $taskIds)
             ->orderBy('id', 'desc')
             ->get();
 
-        return view('refunds.edit', compact('refund', 'coaAccounts', 'tasks'));
+        return view('refunds.edit', compact('refund', 'coaAccounts', 'tasks', 'task'));
     }
 
     public function update(Request $request, Task $task, Refund $refund)
@@ -480,30 +423,20 @@ class RefundController extends Controller
         ->with('success', 'Refund updated successfully.');
     }
 
-    // Complete refund process
-    public function complete_process(Task $task, Refund $refund)
+    public function complete_process(Request $request, Task $task, Refund $refund)
     {
-        try {
-            \Log::info("Starting refund process for Task ID: {$task->id}, Refund ID: {$refund->id}");
-
-            // Update the status to 'completed'
-            $updateStatus = $refund->update([
-                'status' => 'completed',
-                'updated_at' => now(),
-            ]);
-
-            \Log::info("Refund status update: " . json_encode($updateStatus));
-        } catch (\Exception $e) {
-            \Log::error('Refund processing failed', [
-                'task_id' => $task->id ?? 'N/A',
-                'refund_id' => $refund->id ?? 'N/A',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
+        if ($refund->task_id !== $task->id) {
+            return response()->json(['error' => 'Invalid Task or Refund.'], 400);
         }
-
-        return response()->json(['message' => 'Refund processed successfully.']);
+    
+        try {
+            $refund->update(['status' => 'completed']);
+            return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('refunds.index')->with('error', 'Refund processing failed.');
+        }
     }
+    
+    
     
 }

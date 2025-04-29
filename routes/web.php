@@ -361,7 +361,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'refunds',
         'as' => 'refunds.',
     ], function () {
-        Route::get('/list', [RefundController::class, 'index'])->name('list');
+        Route::get('/', [RefundController::class, 'index'])->name('index');
         Route::get('/{task}/create', [RefundController::class, 'create'])->name('create');
         Route::post('/{task}', [RefundController::class, 'store'])->name('store');
         Route::get('/{task}/{refund}/edit', [RefundController::class, 'edit'])->name('edit');

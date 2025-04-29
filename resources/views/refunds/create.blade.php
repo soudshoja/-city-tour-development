@@ -112,7 +112,8 @@
                             <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline Nett
                                 Fare</label>
                             <input readonly type="number" step="0.01" name="airline_nett_fare"
-                                id="airline_nett_fare" value="{{ old('airline_nett_fare', $tasks->price ?? '') }}"
+                                id="airline_nett_fare"
+                                value="{{ old('airline_nett_fare', $invoiceDetails->supplier_price ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
@@ -130,7 +131,8 @@
                             <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
                                 Task Profit</label>
                             <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
-                                value="0.00" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                value="{{ old('original_task_profit', $invoiceDetails->markup_price ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         </div>
 
 
@@ -138,8 +140,8 @@
                         <div>
                             <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service Charge
                                 Amount</label>
-                            <input type="number" step="0.01" name="service_charge" id="service_charge"
-                                value="{{ old('tax', $tasks->tax ?? '') }}"
+                            <input type="number" step="0.01" min="-999999.99" name="service_charge"
+                                id="service_charge" value="{{ old('tax', $tasks->tax ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             @error('service_charge')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -236,7 +238,12 @@
             const serviceChargeInput = document.getElementById('service_charge');
             const totalNettRefundInput = document.getElementById('total_nett_refund');
 
-            function calculateRefund() {
+            let isUpdating = false;
+
+            function calculateRefundFromServiceCharge() {
+                if (isUpdating) return;
+                isUpdating = true;
+
                 const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
                 const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
                 const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
@@ -244,13 +251,31 @@
 
                 const totalRefund = airlineNettFare - refundAirlineCharge - originalTaskProfit - serviceCharge;
                 totalNettRefundInput.value = totalRefund.toFixed(2);
+
+                isUpdating = false;
             }
 
-            // Initial calculation on page load
-            calculateRefund();
+            function calculateServiceChargeFromRefund() {
+                if (isUpdating) return;
+                isUpdating = true;
 
-            // Recalculate on service charge input
-            serviceChargeInput.addEventListener('input', calculateRefund);
+                const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
+                const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
+                const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
+                const totalRefund = parseFloat(totalNettRefundInput.value) || 0;
+
+                const serviceCharge = airlineNettFare - refundAirlineCharge - originalTaskProfit - totalRefund;
+                serviceChargeInput.value = serviceCharge.toFixed(2);
+
+                isUpdating = false;
+            }
+
+            // Initial calculation
+            calculateRefundFromServiceCharge();
+
+            serviceChargeInput.addEventListener('input', calculateRefundFromServiceCharge);
+            totalNettRefundInput.addEventListener('input', calculateServiceChargeFromRefund);
+            originalTaskProfitInput.addEventListener('input', calculateRefundFromServiceCharge);
         });
 
         function setAccountId(input) {
@@ -261,4 +286,5 @@
             }
         }
     </script>
+
 </x-app-layout>

@@ -214,7 +214,7 @@
 
                 <div class="mt-6 flex justify-between px-4">
                     <!-- Left side: Cancel button -->
-                    <a href="{{ url('/refunds/list') }}"
+                    <a href="{{ url('/refunds/') }}"
                         class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
                         Cancel
                     </a>

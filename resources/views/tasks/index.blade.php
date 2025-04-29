@@ -322,10 +322,19 @@
                                                 <td>
                                                     <label class="custom-checkbox"
                                                         data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select task' }}">
-                                                        <input type="checkbox"
-                                                            class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                            value="{{ $task->id }}"
-                                                            {{ $task->invoiceDetail || !$task->is_complete ? 'disabled' : '' }}>
+
+                                                        @if ($task->status !== 'refund')
+                                                            <input type="checkbox"
+                                                                class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                                value="{{ $task->id }}"
+                                                                {{ $task->invoiceDetail || !$task->is_complete ? 'disabled' : '' }}>
+                                                        @else
+                                                            <input type="checkbox"
+                                                                class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                                value="{{ $task->id }}"
+                                                                {{ $task->refundDetail ? 'disabled' : '' }}>
+                                                        @endif
+
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18"
                                                             height="18" viewBox="0 0 24 24"
                                                             class="checkbox-svg checkbox-border">

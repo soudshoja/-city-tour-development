@@ -150,7 +150,8 @@
                         <div>
                             <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total Nett
                                 Refund Amount</label>
-                            <input type="text" name="total_nett_refund" id="total_nett_refund"
+                            <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
+                                id="total_nett_refund"
                                 value="{{ old('total_nett_refund', $refund->total_nett_refund ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                             @error('total_nett_refund')

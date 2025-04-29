@@ -14,10 +14,13 @@
                     <p class="mb-2">
                         <strong>Status:</strong>
                         <span
-                            class="inline-block px-2 py-1 rounded text-sm font-medium 
-                            {{ $tasks->status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                            {{ ucfirst($tasks->status) }}
+                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                 {{ $tasks->status === 'refund' ? 'badge-outline-danger' : '' }}
+                                {{ $tasks->status === null ? 'badge-outline-danger' : '' }}">
+                            {{ $tasks->status === null ? 'Not Set' : ucwords($tasks->status) }}
+
                         </span>
+
                     </p>
                 </div>
 
@@ -186,7 +189,7 @@
 
                 <div class="mt-6 flex justify-between px-4">
                     <!-- Left side: Cancel button -->
-                    <a href="{{ url('/taskss/refund/list') }}"
+                    <a href="{{ url('/refunds/') }}"
                         class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
                         Cancel
                     </a>

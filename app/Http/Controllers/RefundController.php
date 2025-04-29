@@ -50,11 +50,10 @@ class RefundController extends Controller
             ->where('id', $task->id)
             ->first();
     
-        // If no task is found, redirect back with an error
         if (!$tasks) {
             return redirect()->back()->withErrors('Task not found.');
         }
-    
+
         // Get the root IDs for Assets and Liabilities accounts
         $assetsRootId = Account::where('name', 'Assets')->value('id');
         $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');

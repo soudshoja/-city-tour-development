@@ -113,8 +113,8 @@
                                                 @if ($refund->status !== 'completed')
                                                     <span
                                                         class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success"
-                                                        onclick="processCompleted({{ $refund->task->id }}, {{ $refund->id }})">
-                                                        Marked as Completed
+                                                        onclick="confirmProcessCompleted({{ $refund->task->id }}, {{ $refund->id }})">
+                                                        Mark as Completed
                                                     </span>
                                                 @endif
                                             </td>
@@ -230,6 +230,18 @@
     </div>
     <!--./page content-->
     <script>
+        function confirmProcessCompleted(taskId, refundId) {
+            if (confirm('Are you sure you want to mark this refund as completed?')) {
+                if (confirm('This action cannot be undone. Do you want to proceed?')) {
+                    processCompleted(taskId, refundId);
+                } else {
+                    saveUpdate(taskId, refundId);
+                }
+            } else {
+                saveUpdate(taskId, refundId);
+            }
+        }
+
         function processCompleted(taskId, refundId) {
             fetch(`/refunds/${taskId}/${refundId}/complete-process`, {
                     method: 'POST',

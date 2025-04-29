@@ -312,12 +312,6 @@
             @else
                 <div class="flex items-center gap-2">
                     <p><span class="text-green-600 font-bold">PAID</span></p>
-                    @if ($invoice->status_next !== 'refund')
-                        <p><a href="{{ route('invoices.refunds.create', $invoice->id) }}"
-                                class="city-light-yellow hover:text-black rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                                Refund Invoice
-                            </a></p>
-                    @endif
                 </div>
 
             @endif

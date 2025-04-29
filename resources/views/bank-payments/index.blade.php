@@ -89,7 +89,7 @@
                             <tbody>
                                 @if ($bankPayments->isEmpty())
                                     <tr>
-                                        <td colspan="5" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                             No data for now.... Create new!</td>
                                     </tr>
                                 @else

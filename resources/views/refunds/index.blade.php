@@ -65,19 +65,19 @@
                             <thead>
                                 <tr>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Refund Number</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Method</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Total Refund</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Registered Date</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @if ($refunds->isEmpty())
                                     <tr>
-                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        <td colspan="8" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                             No data for now.... Create new!</td>
                                     </tr>
                                 @else
@@ -86,13 +86,10 @@
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $refund->refund_number }}
                                             </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->invoice->invoice_number }}
-                                            </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->invoice->client->name }}
+                                                {{ $refund->task->client->name }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 KWD {{ number_format($refund->total_nett_refund, 2) }}
@@ -101,10 +98,30 @@
                                                 {{ $refund->remarks }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $refund->created_at }}</td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                <span
+                                                    class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                                        {{ $refund->status === 'completed' ? 'badge-outline-success' : '' }}
+                                                        {{ $refund->status === 'processed' ? 'badge-outline-assigned' : '' }}
+                                                        {{ $refund->status === 'approved' ? 'badge-outline-success' : '' }}
+                                                        {{ $refund->status === 'declined' ? 'badge-outline-danger' : '' }}
+                                                        {{ $refund->status === 'pending' ? 'badge-outline-warning' : '' }}
+                                                        {{ $refund->status === null ? 'badge-outline-danger' : '' }}">
+                                                    {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
+
+                                                </span>
+                                                @if ($refund->status !== 'completed')
+                                                    <span
+                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success"
+                                                        onclick="confirmProcessCompleted({{ $refund->task->id }}, {{ $refund->id }})">
+                                                        Mark as Completed
+                                                    </span>
+                                                @endif
+                                            </td>
                                             <td class="p-3 text-sm">
                                                 <div class="flex items-center space-x-2">
                                                     <a data-tooltip="Edit"
-                                                        href="{{ route('invoices.refunds.edit', [$refund->invoice->id, $refund->id]) }}"
+                                                        href="{{ route('refunds.edit', [$refund->task_id, $refund->id]) }}"
                                                         class="text-sm font-medium text-blue-600 hover:underline">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                                             height="20" viewBox="0 0 24 24">
@@ -212,5 +229,28 @@
         <!-- ./right -->
     </div>
     <!--./page content-->
+    <script>
+        function confirmProcessCompleted(taskId, refundId) {
+            if (confirm('Are you sure you want to mark this refund as completed?')) {
+                if (confirm('This action cannot be undone. Do you want to proceed?')) {
+                    processCompleted(taskId, refundId);
+                } else {
+                    saveUpdate(taskId, refundId);
+                }
+            } else {
+                saveUpdate(taskId, refundId);
+            }
+        }
 
+        function processCompleted(taskId, refundId) {
+            fetch(`/refunds/${taskId}/${refundId}/complete-process`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.ok ? window.location.href = '/refunds' : alert('Something went wrong.'))
+                .catch(() => alert('Error processing refund.'));
+        }
+    </script>
 </x-app-layout>

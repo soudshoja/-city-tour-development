@@ -332,7 +332,7 @@
                                                             <input type="checkbox"
                                                                 class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
                                                                 value="{{ $task->id }}"
-                                                                {{ $task->refundDetail ? 'disabled' : '' }}>
+                                                                {{ $task->refundDetail || !$task->is_complete ? 'disabled' : '' }}>
                                                         @endif
 
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18"

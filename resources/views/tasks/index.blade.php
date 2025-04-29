@@ -398,18 +398,28 @@
                                                                         <label for="status"
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
                                                                         <select name="status" id="status"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
+                                                                            @if ($task->status === 'refund') disabled @endif>
                                                                             <option value="">Set Status</option>
                                                                             <option value="Confirmed"
                                                                                 {{ $task->status === 'confirmed' ? 'selected' : '' }}>
-                                                                                Confirmed</option>
+                                                                                Confirmed
+                                                                            </option>
                                                                             <option value="Ticketed"
                                                                                 {{ $task->status === 'ticketed' ? 'selected' : '' }}>
-                                                                                Ticketed</option>
+                                                                                Ticketed
+                                                                            </option>
                                                                             <option value="Refund"
                                                                                 {{ $task->status === 'refund' ? 'selected' : '' }}>
-                                                                                Refund</option>
+                                                                                Refund
+                                                                            </option>
                                                                         </select>
+
+                                                                        @if ($task->status === 'refund')
+                                                                            <input type="hidden" name="status"
+                                                                                value="Refund">
+                                                                        @endif
+
                                                                     </div>
 
                                                                     <!-- Additional Info and Venue -->
@@ -755,14 +765,12 @@
                 const createInvoiceBtnText = document.getElementById('createInvoiceBtnText');
 
                 if (this.checked) {
-                    // 1. Uncheck all other checkboxes (only allow one selected)
                     document.querySelectorAll('.rowCheckbox').forEach(cb => {
                         if (cb !== this) {
                             cb.checked = false;
                         }
                     });
 
-                    // 2. Show floating actions
                     floatingActions.classList.remove('hidden');
 
                     if (taskStatus === 'refund') {
@@ -783,7 +791,6 @@
                         createInvoiceBtn.classList.add('btn-success');
                     }
 
-                    // Update button attributes
                     createInvoiceBtn.setAttribute('data-task-id', taskId);
                     createInvoiceBtn.setAttribute('data-task-status', taskStatus);
 

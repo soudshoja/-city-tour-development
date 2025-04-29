@@ -303,6 +303,7 @@
                                 </tr>
                             </thead>
                             <tbody>
+
                                 @if ($tasks->isEmpty())
                                     <tr>
                                         <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No
@@ -318,43 +319,23 @@
                                             data-client-id="{{ $task->client ? $task->client->id : null }}"
                                             data-task-id="{{ $task->id }}" class="taskRow">
                                             @can('create', 'App\Models\Invoice')
-                                                @if ($task->status !== 'refund')
-                                                    <td>
-                                                        <label class="custom-checkbox"
-                                                            data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select task' }}">
-                                                            <input type="checkbox"
-                                                                class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                                value="{{ $task->id }}"
-                                                                {{ $task->invoiceDetail || !$task->is_complete ? 'disabled' : '' }}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18"
-                                                                height="18" viewBox="0 0 24 24"
-                                                                class="checkbox-svg checkbox-border">
-                                                                <rect width="18" height="18" x="3" y="3"
-                                                                    fill="none" stroke="currentColor"
-                                                                    stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="1" rx="4" />
-                                                            </svg>
-                                                        </label>
-                                                    </td>
-                                                @elseif($task->status === 'refund')
-                                                    <td>
-                                                        <label class="custom-checkbox"
-                                                            data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select refund task' }}">
-                                                            <input type="checkbox"
-                                                                class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                                value="{{ $task->id }}"
-                                                                {{ $task->invoiceDetail || !$task->is_complete ? 'disabled' : '' }}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18"
-                                                                height="18" viewBox="0 0 24 24"
-                                                                class="checkbox-svg checkbox-border">
-                                                                <rect width="18" height="18" x="3" y="3"
-                                                                    fill="none" stroke="currentColor"
-                                                                    stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="1" rx="4" />
-                                                            </svg>
-                                                        </label>
-                                                    </td>
-                                                @endif
+                                                <td>
+                                                    <label class="custom-checkbox"
+                                                        data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select task' }}">
+                                                        <input type="checkbox"
+                                                            class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                            value="{{ $task->id }}"
+                                                            {{ $task->invoiceDetail || !$task->is_complete ? 'disabled' : '' }}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                            height="18" viewBox="0 0 24 24"
+                                                            class="checkbox-svg checkbox-border">
+                                                            <rect width="18" height="18" x="3" y="3"
+                                                                fill="none" stroke="currentColor"
+                                                                stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="1" rx="4" />
+                                                        </svg>
+                                                    </label>
+                                                </td>
                                             @endcan
                                             <td class="p-3 text-sm flex gap-3 justify-center">
                                                 <a data-tooltip="see task" href="javascript:void(0);"
@@ -562,16 +543,22 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <x-primary-button type="submit"
-                                                                class="min-w-72 mt-4 justify-center px-12 py-3 text-lg"
-                                                                form="edit-task-form-{{ $task->id }}"> Update
-                                                            </x-primary-button>
+                                                            <div class="flex space-x-4 mt-2">
+                                                                <!-- Update Button -->
+                                                                <x-primary-button type="submit"
+                                                                    class="w-[200px] justify-center px-12 py-10 text-lg"
+                                                                    form="edit-task-form-{{ $task->id }}">
+                                                                    Update
+                                                                </x-primary-button>
+                                                            </div>
                                                         </form>
 
 
                                                     </div>
                                                 </div>
 
+
+                                            </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 <label class="switch">
                                                     <input type="checkbox" class="toggle-task-status"
@@ -643,16 +630,69 @@
             {{ $task->status === 'hold' ? 'badge-outline-danger' : '' }}
             {{ $task->status === null ? 'badge-outline-danger' : '' }}">
                                                     {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
+
                                                 </span>
                                             </td>
                                             <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->supplier->name }}</td>
+
                                         </tr>
                                     @endforeach
                                 @endif
                             </tbody>
                         </table>
 
+                    </div>
+
+
+
+                    <div id="floatingActions"
+                        class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-50 p-3">
+
+                        <div class="flex justify-between gap-5 items-center h-full">
+                            <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
+                                class="flex px-5 py-3 gap-3 btn-success hover:bg-[#8b0000c2] rounded-lg shadow-sm items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                    viewBox="0 0 24 24">
+                                    <path fill="#ffffff"
+                                        d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
+                                </svg>
+                                <span id="createInvoiceBtnText" class="text-sm">Create Invoice</span>
+                            </button>
+                        </div>
+                        <div id="closeTaskFloatingActions" class="flex cursor-pointer items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                viewBox="0 0 12 12">
+                                <path fill="#E53935"
+                                    d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
+                            </svg>
+                        </div>
+                    </div>
+
+
+
+                    <div id="taskInvoicePlaceholder"
+                        class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+                        <div id="invoiceModalContent">
+                            <div id="invoiceModalBody" class="rounded-t-md bg-white">
+                            </div>
+                            <div id="invoiceFooter"
+                                class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
+                                <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="taskRefundPlaceholder"
+                        class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+                        <div id="refundModalContent">
+                            <div id="refundModalBody" class="rounded-t-md bg-white">
+                            </div>
+                            <div id="refundFooter"
+                                class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
+                                <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- <div class="dataTable-bottom justify-center">
@@ -688,70 +728,14 @@
         </div>
     </div>
 
-    <div>
-        <div id="floatingActions"
-            class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-50 p-3">
 
-            <div class="flex justify-between gap-5 items-center h-full">
-                @if ($task->status !== 'refund')
-                    <!-- Create Invoice button (if status is not 'refund') -->
-                    <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
-                        class="flex px-5 py-3 gap-3 btn-success hover:bg-[#00ab5599] rounded-lg shadow-sm items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="#ffffff"
-                                d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
-                        </svg>
-                        <span class="text-sm">Create Invoice</span>
-                    </button>
-                @else
-                    <!-- Proceed Refund button (if status is 'refund') -->
-                    <button id="createRefundBtn" data-route="{{ route('refunds.create', $task->id) }}"
-                        class="flex px-5 py-3 gap-3 btn-success hover:bg-[#00ab5599] rounded-lg shadow-sm items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="#ffffff"
-                                d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
-                        </svg>
-                        <span class="text-sm">Proceed Refund</span>
-                    </button>
-                @endif
-            </div>
-            <div id="closeTaskFloatingActions" class="flex cursor-pointer items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
-                    <path fill="#E53935"
-                        d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
-                </svg>
-            </div>
-        </div>
-    </div>
-
-
-    <div id="taskInvoicePlaceholder"
-        class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-        <div id="invoiceModalContent">
-            <div id="invoiceModalBody" class="rounded-t-md bg-white">
-            </div>
-            <div id="invoiceFooter" class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
-                <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
-            </div>
-        </div>
-    </div>
-
-    <div id="taskRefundPlaceholder"
-        class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-        <div id="refundModalContent">
-            <div id="refundModalBody" class="rounded-t-md bg-white">
-            </div>
-            <div id="refundFooter" class="inline-flex justify-center bg-white w-full p-3 rounded-b-md">
-                <x-primary-button class="font-bold text-lg">Edit</x-primary-button>
-            </div>
-        </div>
-    </div>
 
 </x-app-layout>
 @vite('resources/js/tasks.js')
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+
         const viewTaskLinks = document.querySelectorAll(".viewTask");
         viewTaskLinks.forEach(link => {
             link.addEventListener("click", function() {
@@ -760,65 +744,86 @@
             });
         });
 
-        document.querySelectorAll('.taskRow').forEach(taskRow => {
-            const taskStatus = taskRow.getAttribute('data-task-status');
+        document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const taskRow = this.closest('.taskRow');
+                const taskId = taskRow.getAttribute('data-task-id');
+                const taskStatus = taskRow.getAttribute('data-status');
 
-            // If the task status is not 'refund', show the Invoice modal when clicking the Invoice button
-            if (taskStatus !== 'refund') {
-                taskRow.querySelectorAll('.invoiceModal').forEach(invoice => {
-                    invoice.addEventListener('click', function() {
-                        const taskId = invoice.getAttribute('data-task-id');
-                        const url =
-                            "{{ route('invoices.create', ['task' => '__taskId__']) }}"
-                            .replace('__taskId__', taskId);
+                const floatingActions = document.getElementById('floatingActions');
+                const createInvoiceBtn = document.getElementById('createInvoiceBtn');
+                const createInvoiceBtnText = document.getElementById('createInvoiceBtnText');
 
-                        const modalInvoice = document.getElementById(
-                            'taskInvoicePlaceholder');
-                        const invoiceBody = document.getElementById('invoiceModalBody');
-
-                        // Fetch invoice creation content from the server
-                        fetch(url)
-                            .then(response => response.text())
-                            .then(data => {
-                                invoiceBody.innerHTML = data;
-                                modalInvoice.classList.remove(
-                                    'hidden'); // Show invoice modal
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                            });
+                if (this.checked) {
+                    // 1. Uncheck all other checkboxes (only allow one selected)
+                    document.querySelectorAll('.rowCheckbox').forEach(cb => {
+                        if (cb !== this) {
+                            cb.checked = false;
+                        }
                     });
-                });
+
+                    // 2. Show floating actions
+                    floatingActions.classList.remove('hidden');
+
+                    if (taskStatus === 'refund') {
+                        createInvoiceBtnText.innerText = 'Proceed Refund';
+                        createInvoiceBtn.setAttribute('data-route',
+                            `/refunds/${taskId}/create`);
+
+                        // Set button background to red
+                        createInvoiceBtn.classList.remove('btn-success');
+                        createInvoiceBtn.classList.add('btn-danger');
+                    } else {
+                        createInvoiceBtnText.innerText = 'Create Invoice';
+                        createInvoiceBtn.setAttribute('data-route',
+                            `/invoices/create?task=${taskId}`);
+
+                        // Set button background to green
+                        createInvoiceBtn.classList.remove('btn-danger');
+                        createInvoiceBtn.classList.add('btn-success');
+                    }
+
+                    // Update button attributes
+                    createInvoiceBtn.setAttribute('data-task-id', taskId);
+                    createInvoiceBtn.setAttribute('data-task-status', taskStatus);
+
+                } else {
+                    // If unchecked, hide floating button if no others selected
+                    const anyChecked = Array.from(document.querySelectorAll('.rowCheckbox'))
+                        .some(cb => cb.checked);
+                    if (!anyChecked) {
+                        floatingActions.classList.add('hidden');
+                    }
+                }
+            });
+        });
+
+        // Button click handler
+        document.getElementById('createInvoiceBtn').addEventListener('click', function() {
+            const route = this.getAttribute('data-route');
+            const taskStatus = this.getAttribute('data-task-status');
+
+            if (taskStatus === 'refund') {
+                window.location.href = route;
             } else {
-                // If the task status is 'refund', show the Refund modal when clicking the Refund button
-                taskRow.querySelectorAll('.refundModal').forEach(refund => {
-                    refund.addEventListener('click', function() {
-                        const taskId = refund.getAttribute('data-task-id');
-                        const refundNumber = refund.getAttribute('data-refund-number');
+                // For invoice, optionally append multiple task IDs if multiple selected
+                const selectedTaskIds = Array.from(document.querySelectorAll('.rowCheckbox:checked'))
+                    .map(cb => cb.value);
 
-                        let url =
-                            "{{ route('refunds.edit', ['task' => '__taskId__', 'refund' => '__refundId__']) }}";
-                        url = url.replace('__taskId__', taskId).replace('__refundId__',
-                            refundNumber);
-
-                        const modalRefund = document.getElementById(
-                            'taskRefundPlaceholder');
-                        const refundBody = document.getElementById('refundModalBody');
-
-                        // Fetch refund edit content from the server
-                        fetch(url)
-                            .then(response => response.text())
-                            .then(data => {
-                                refundBody.innerHTML = data;
-                                modalRefund.classList.remove(
-                                    'hidden'); // Show refund modal
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                            });
-                    });
-                });
+                if (selectedTaskIds.length > 0) {
+                    window.location.href = `/invoices/create?task_ids=${selectedTaskIds.join(',')}`;
+                } else {
+                    window.location.href = route;
+                }
             }
+        });
+
+
+        // Handle create invoice button click
+        document.getElementById('createInvoiceBtn').addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            console.log('Creating invoice for task ID:', taskId);
+            // Redirect or open modal logic
         });
 
         // Add event listeners to close modals when clicked outside or on close buttons
@@ -923,18 +928,7 @@
                             // Update the task row's data-status to reflect the new status
                             taskRow.setAttribute('data-status', data.task_status);
 
-                            // Get the buttons for invoice and refund
-                            const invoiceButton = taskRow.querySelector('.invoiceModal');
-                            const refundButton = taskRow.querySelector('.refundModal');
 
-                            // Toggle visibility based on task status
-                            if (data.task_status === 'refund') {
-                                invoiceButton.classList.add('hidden');
-                                refundButton.classList.remove('hidden');
-                            } else {
-                                invoiceButton.classList.remove('hidden');
-                                refundButton.classList.add('hidden');
-                            }
                         } else {
                             alert('Failed to update task status');
                         }

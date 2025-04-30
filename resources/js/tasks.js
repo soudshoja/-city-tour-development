@@ -60,8 +60,8 @@ function toggleTasksDetails(taskId, url) {
             // console.log('data : ' ,data)
 
             if (data && data.client_name) {
-                    data.type === "flight"
-                        ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                data.type === "flight"
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                     <path fill="#1e40af" fill-rule="evenodd"
                                         d="m14.014 17l-.006 2.003c-.001.47-.002.705-.149.851s-.382.146-.854.146h-3.01c-3.78 0-5.67 0-6.845-1.172c-.81-.806-1.061-1.951-1.14-3.817c-.015-.37-.023-.556.046-.679c.07-.123.345-.277.897-.586a1.999 1.999 0 0 0 0-3.492c-.552-.308-.828-.463-.897-.586s-.061-.308-.045-.679c.078-1.866.33-3.01 1.139-3.817C4.324 4 6.214 4 9.995 4h3.51a.5.5 0 0 1 .501.499L14.014 7c0 .552.449 1 1.002 1v2c-.553 0-1.002.448-1.002 1v2c0 .552.449 1 1.002 1v2c-.553 0-1.002.448-1.002 1"
                                         clip-rule="evenodd" />
@@ -69,14 +69,14 @@ function toggleTasksDetails(taskId, url) {
                                         d="M15.017 16c.553 0 1.002.448 1.002 1v1.976c0 .482 0 .723.155.87c.154.148.39.138.863.118c1.863-.079 3.007-.331 3.814-1.136c.809-.806 1.06-1.952 1.139-3.818c.015-.37.023-.555-.046-.678c-.069-.124-.345-.278-.897-.586a1.999 1.999 0 0 1 0-3.492c.552-.309.828-.463.897-.586c.07-.124.061-.309.046-.679c-.079-1.866-.33-3.011-1.14-3.818c-.877-.875-2.154-1.096-4.322-1.152a.497.497 0 0 0-.509.497V7c0 .552-.449 1-1.002 1v2a1 1 0 0 1 1.002 1v2c0 .552-.449 1-1.002 1z"
                                         opacity=".5" />
                                 </svg>`
-                        : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                    : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                     <path fill="#1e40af"
                                         d="M17 19h2v-8h-6v8h2v-6h2zM3 19V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v5h2v10h1v2H2v-2zm4-8v2h2v-2zm0 4v2h2v-2zm0-8v2h2V7z" />
                                 </svg>`;
 
-                    data.type === "flight"
-                        ? `${data.country_from} ------->> ${data.country_to}`
-                        : data.hotel_name || "Hotel Name/ City";
+                data.type === "flight"
+                    ? `${data.country_from} ------->> ${data.country_to}`
+                    : data.hotel_name || "Hotel Name/ City";
 
                 // Populate task details
                 console.log("data : ", data);
@@ -152,9 +152,7 @@ function toggleTasksDetails(taskId, url) {
    <div class="task-container">
     <div class="header">
         <h3 class="supplier-name">
-            <i class="fas fa-warehouse"></i> ${
-                data.supplier?.name || "N/A"
-            }
+            <i class="fas fa-warehouse"></i> ${data.supplier?.name || "N/A"}
         </h3>
     </div>
 
@@ -170,7 +168,11 @@ function toggleTasksDetails(taskId, url) {
                 data.agent?.name || "N/A"
             }</p>
             <p><i class="fas fa-user blue-icon"></i> <strong>Client:</strong> 
-            ${data.client_name !== undefined && data.client_name !== null ? data.client_name : "N/A"}</p>
+            ${
+                data.client_name !== undefined && data.client_name !== null
+                    ? data.client_name
+                    : "N/A"
+            }</p>
 
         </div>
     </div>
@@ -205,6 +207,9 @@ function toggleTasksDetails(taskId, url) {
             <p><i class="fas fa-ticket-alt blue-icon"></i> <strong>Flight:</strong> ${
                 data.flight_details?.flight_number || "N/A"
             } - ${data.flight_details?.class_type || "N/A"}</p>
+            <p><i class="fas fa-ticket-alt blue-icon"></i> <strong>Ticket Number:</strong> ${
+                data.flight_details?.ticket_number || "N/A"
+            }</p>
             <p><i class="fas fa-suitcase blue-icon"></i> <strong>Baggage:</strong> ${
                 data.flight_details?.baggage_allowed || "N/A"
             }</p>
@@ -231,6 +236,9 @@ function toggleTasksDetails(taskId, url) {
             }</p>
             <p><i class="fas fa-star blue-icon"></i> <strong>Rating:</strong> ${
                 data.hotel_details?.hotel?.rating || "N/A"
+            }</p>
+            <p><i class="fas fa-star blue-icon"></i> <strong>Room Reference:</strong> ${
+                data.hotel_details?.hotel?.room_reference || "N/A"
             }</p>
             <p><i class="fas fa-bed blue-icon"></i> <strong>Room:</strong> ${
                 data.hotel_details?.room_type || "N/A"
@@ -269,7 +277,6 @@ function toggleTasksDetails(taskId, url) {
         });
 }
 
-
 const taskListContainer = document.querySelector(".content-70"); // Main task list container
 
 function showSidebar(contentId) {
@@ -287,7 +294,7 @@ function showSidebar(contentId) {
 
 function hideSidebar() {
     currentlyDisplayed = null;
-    
+
     taskListContainer.classList.remove("shrink");
 
     showRightDiv.classList.remove("visible");

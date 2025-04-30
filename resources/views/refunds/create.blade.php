@@ -9,7 +9,16 @@
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Tasks Info
                     </h3>
                     <p class="mb-2"><strong>Tasks:</strong> {{ $tasks->reference }}</p>
-                    <p class="mb-2"><strong>Refund Date:</strong> {{ $tasks->refund_date }}</p>
+                    <p class="mb-2"><strong>Type:</strong> {{ ucwords($tasks->type) }}</p>
+                    @if ($tasks->type === 'flight')
+                        <p class="mb-2"><strong>Ticket Number:</strong>
+                            {{ optional($tasks->flightDetails)->ticket_number }}
+                        @elseif($tasks->type === 'hotel')
+                        <p class="mb-2"><strong>Room Ref:</strong>
+                            {{ optional($tasks->hotelDetails)->room_reference }}
+                    @endif
+                    </p>
+                    <p class="mb-2"><strong>Refund Date:</strong> {{ now()->format('d-m-Y') }}</p>
                     <p class="mb-2"><strong>Amount:</strong> KWD{{ number_format($tasks->price, 2) }}</p>
                     <p class="mb-2">
                         <strong>Status:</strong>

@@ -30,6 +30,7 @@ class Task extends Model
         'venue',
         'invoice_price',
         'voucher_status',
+        'refund_date',
         'enabled'
     ];
 
@@ -90,6 +91,11 @@ class Task extends Model
     public function invoiceDetail()
     {
         return $this->hasOne(InvoiceDetail::class, 'task_id');
+    }
+
+    public function refundDetail()
+    {
+        return $this->hasOne(Refund::class, 'task_id');
     }
 
     public function agent()

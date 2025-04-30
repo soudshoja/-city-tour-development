@@ -444,14 +444,14 @@ class InvoiceController extends Controller
 
         $client = Client::find($clientId);
 
-        if($amount > $client->credit){
-            return response()->json([
-                'success' => false,
-                'message' => 'Client credit is not enough!',
-            ]);
+        if ($credit) {
+            if ($amount > $client->credit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Client credit is not enough!',
+                ]);
+            }
         }
-
-        $newAmountCredit = $client->credit - $amount;
 
         try {
 
@@ -479,7 +479,9 @@ class InvoiceController extends Controller
             ]);
         }
 
+
         if ($invoice->is_client_credit == true) {
+            $newAmountCredit = $client->credit - $amount;
             $clientController = new ClientController();
             $clientController->updateCredit($clientId, $newAmountCredit);
         }
@@ -1223,5 +1225,89 @@ class InvoiceController extends Controller
         }
 
         return response()->json(['status' => $invoiceDetail->paid]);
+    }
+
+    public function createInvoiceLinkWithClientCredit(Request $request)
+    {
+        $request->validate([
+            'invoice_id' => 'required|integer',
+            'payment_gateway' => 'required|string',
+        ]);
+
+        $invoiceId = $request->input('invoice_id');
+        $gateway = $request->input('payment_gateway');
+
+        $invoice = Invoice::find($invoiceId);
+
+        if (!$invoice) {
+            logger('Invoice not found', ['invoiceId' => $invoiceId]);
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        if (!$invoice->client) {
+            logger('Client not found in this invoice', ['invoiceId' => $invoiceId]);
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        $amount = $invoice->amount;
+        $client = $invoice->client;
+        $agent = $invoice->agent;
+
+        $balance = $amount - $client->credit;
+
+        try{
+            $client->credit = 0;
+            $client->save();
+
+            $invoicePartial = InvoicePartial::create([
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'client_id' => $client->id,
+                'agent_id' => $agent->id,
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'type' => 'full',
+                'payment_gateway' => $gateway,
+            ]);
+
+        } catch (Exception $e) {
+            logger('Failed to create invoice link: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        $request  = new Request([
+            'client_id' => $client->id,
+            'agent_id' => $agent->id,
+            'invoice_id' => $invoice->id,
+            'amount' => $balance,
+            'type' => 'full',
+            'payment_gateway' => $gateway,
+            'notes' => 'Payment link created for invoice: ' . $invoice->invoice_number . ' with balance of: ' . $balance,
+        ]);
+
+        $paymentController = new PaymentController();
+        $response = $paymentController->paymentStoreLinkProcess($request);
+
+        if ($response['status'] == 'error'){
+            $invoicePartial->delete();
+            return redirect()->back()->with('error', 'Failed to create invoice link!');
+        }
+
+        $payment = $response['data'];
+
+        if(!$payment){
+            logger('Payment not found', ['invoiceId' => $invoiceId]);
+            return redirect()->back()->with('error', 'Something went wrong!');
+        }
+
+        return redirect()->route('payment.link.show', $payment->id)->with('status', 'Invoice link created successfully!');
+    }
+
+    public function createInvoiceWithLoss(Request $request)
+    {
+        $request->validate([
+            'invoice_id' => 'required|integer',
+            'payment_gateway' => 'required|string',
+        ]);
     }
 }

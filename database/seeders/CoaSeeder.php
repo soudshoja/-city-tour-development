@@ -88,6 +88,9 @@ class CoaSeeder extends Seeder
             ['code' => '2520', 'name' => 'Unsecured Loans',             'level' => 3, 'parent' => 'Loans (Liabilities)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2530', 'name' => 'Bank Overdraft Account',      'level' => 3, 'parent' => 'Loans (Liabilities)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
         
+            ['code' => '2600', 'name' => 'Refund Payable',              'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '2610', 'name' => 'Clients',                     'level' => 3, 'parent' => 'Refund Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+
             // Equity (Level 2)
             ['code' => '3100', 'name' => 'Capital Stock',               'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '3200', 'name' => 'Dividends Paid',              'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -141,6 +144,7 @@ class CoaSeeder extends Seeder
             ['code' => '5219', 'name' => 'Exchange Gain/Loss',                   'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5220', 'name' => 'Gain/Loss on Asset Disposal',          'level' => 3, 'parent' => 'Indirect Expenses (Operating Expenses)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
 
+            ['code' => '5300', 'name' => 'Refund Clearing / Payable Allocation', 'level' => 2, 'parent' => 'Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
         ];
 
         $parentMap = [];

@@ -479,8 +479,9 @@ class PaymentController extends Controller
                     $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
                     $tapAccount->save();
 
-                    $selectedtask->status = 'Completed';
-                    $selectedtask->save();
+                        //$selectedtask->status = 'Completed';
+                        $selectedtask->status = 'ticketed';
+                        $selectedtask->save();
 
                 }
 
@@ -828,15 +829,15 @@ class PaymentController extends Controller
         ));
     }
 
-    public function paymentStoreLink(Request $request)
+    public function paymentStoreLinkProcess(Request $request)
     {
-        $request->validate([
-            'payment_gateway' => 'required',
-            'amount' => 'required|numeric',
-            'notes' => 'nullable|string|max:255',
-            'client_id' => 'required',
-            'agent_id' => 'nullable'
-        ]);
+      $request->validate([
+        'payment_gateway' => 'required',
+        'amount' => 'required|numeric',
+        'notes' => 'nullable|string|max:255',
+        'client_id' => 'required',
+        'agent_id' => 'nullable'
+      ]); 
 
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
 
@@ -850,13 +851,19 @@ class PaymentController extends Controller
         $client = Client::where('id', $request->client_id)->first();
 
         if(!$client) {
-            return redirect()->back()->with('error', 'Client not found.');
+            return [
+                'status' => 'error',
+                'message' => 'Client cannot be found',
+            ];
         }
 
         $agent = Agent::where('id', $request->agent_id)->first();
 
         if(!$agent) {
-            return redirect()->back()->with('error', 'Agent not found.');
+            return [
+                'status' => 'error',
+                'message' => 'Agent cannot be found'
+            ];
         }
 
         $currentSequence = $voucherSequence->current_sequence;
@@ -869,30 +876,50 @@ class PaymentController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->back()->with('error', 'Something went wrong' );
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ];
         }
 
         try{
             $payment = Payment::create([
-                'voucher_number' => $voucherNumber,
-                'from' => $client->name,
-                'pay_to' => $agent->branch->company->name,
-                'currency' => $request->currency,
-                'payment_date' => Carbon::now(),
-                'amount' => $request->amount,
-                'payment_method' => $request->payment_gateway,
-                'status' => 'pending',
+               'voucher_number' => $voucherNumber,
+               'from' => $client->name,
+               'pay_to' => $agent->branch->company->name,
+               'currency' => $request->currency,
+               'payment_date' => Carbon::now(),
+               'amount' => $request->amount,
+               'payment_method' => $request->payment_gateway,
+               'status' => 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
-            ]);
+           ]);
        
         } catch (Exception $e){
             logger('Failed to create payment', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->back()->with('error', 'Payment cannot be created' );
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Payment Link Created',
+            'data' => $payment
+        ];
+    }
+
+    public function paymentStoreLink(Request $request)
+    {
+        $response = $this->paymentStoreLinkProcess($request);
+        if ($response['status'] === 'error') {
+            return redirect()->back()->with('error', $response['message']);
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
@@ -923,12 +950,16 @@ class PaymentController extends Controller
             'payment_id' => 'required|exists:payments,id',
         ]);
 
-        $payment = Payment::find($request->payment_id);
+        $payment = Payment::with('invoice')->find($request->payment_id);
 
         if (!$payment) {
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
+        $process = 'topup';
+        if($payment->invoice){
+            $process = 'invoice';
+        }
         $paymentMethod = $payment->payment_method;
 
         if (strtolower($paymentMethod) === 'tap') {
@@ -943,11 +974,12 @@ class PaymentController extends Controller
                 'source' => [
                     'id' => 'src_all',
                 ],
-                'description' => 'Payment for order ',
+                'description' => 'Payment for' . $payment->voucher_number,
                 'metadata' => [
                     'voucher_number' => $payment->voucher_number,
                     'payment_id' => $payment->id,
                     'payment_gateway' => $paymentMethod,
+                    'process' => $process,
                 ],
                 'redirect' => [
                     'url' => route('payment.link.process'),
@@ -981,7 +1013,6 @@ class PaymentController extends Controller
 
         $response = $tap->getCharge($tapId);
 
-
         if (isset($response['errors'])) {
             return redirect()->back()->with('error', $response['errors'][0]['description']);
         }
@@ -992,7 +1023,8 @@ class PaymentController extends Controller
 
         $paymentId = $response['metadata']['payment_id'];
 
-        $payment = Payment::find($paymentId);
+        $payment = Payment::with('invoice')->find($paymentId);
+
 
         if (!$payment) {
             logger('Payment id returned from tap not found', [
@@ -1002,23 +1034,42 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
-        $clientController = new ClientController;
+        $process = $response['metadata']['process'];
 
-        $addCreditResponse = $clientController->addCredit($payment);
+        if($process == 'topup'){
+            $clientController = new ClientController;
+    
+            $addCreditResponse = $clientController->addCredit($payment);
+            
+            if(isset($addCreditResponse['error'])) {
+                logger('Failed to add credit to client', [
+                    'message' => $addCreditResponse['error'],
+                    'payment_id' => $paymentId,
+                ]);
+                return redirect()->back()->with('error', 'Payment cannot be updated');
+            }
+        } else if ($process == 'invoice'){
+            $invoice = Invoice::where('id', $payment->invoice_id)->first();
+            if (!$invoice) {
+                return redirect()->back()->with('error', 'Invoice not found.');
+            }
+        } else {
+            return redirect()->back()->with('error', 'Invalid process type.');
 
-        if(isset($addCreditResponse['error'])) {
-            logger('Failed to add credit to client', [
-                'message' => $addCreditResponse['error'],
-                'payment_id' => $paymentId,
-            ]);
-            return redirect()->back()->with('error', 'Payment cannot be updated');
         }
-
+        
         try {
             $payment->status = 'completed';
             $payment->completed = 1;
             $payment->payment_reference = $response['id'];
             $payment->save();
+
+            if($process == 'invoice'){
+                $invoice->status = 'paid';
+                $invoice->paid_date = now();
+                $invoice->save();
+            }
+
         } catch (Exception $e) {
             logger('Failed to update payment status', [
                 'message' => $e->getMessage(),

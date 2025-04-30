@@ -411,7 +411,7 @@
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
                                                                         <select name="status" id="status"
                                                                             class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
-                                                                            @if ($task->status === 'refund' || $task->status === 'issued') disabled @endif>
+                                                                            @if ($task->status === 'refund') disabled @endif>
                                                                             <option value="">Set Status</option>
                                                                             <option value="Confirmed"
                                                                                 {{ $task->status === 'confirmed' ? 'selected' : '' }}>

@@ -836,7 +836,8 @@ class PaymentController extends Controller
         'amount' => 'required|numeric',
         'notes' => 'nullable|string|max:255',
         'client_id' => 'required',
-        'agent_id' => 'nullable'
+        'agent_id' => 'nullable',
+        'invoice_id' => 'nullable'
       ]); 
 
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
@@ -883,19 +884,25 @@ class PaymentController extends Controller
         }
 
         try{
-            $payment = Payment::create([
-               'voucher_number' => $voucherNumber,
-               'from' => $client->name,
-               'pay_to' => $agent->branch->company->name,
-               'currency' => $request->currency,
-               'payment_date' => Carbon::now(),
-               'amount' => $request->amount,
-               'payment_method' => $request->payment_gateway,
-               'status' => 'pending',
+            $data = [
+                'voucher_number' => $voucherNumber,
+                'from' => $client->name,
+                'pay_to' => $agent->branch->company->name,
+                'currency' => 'KWD',
+                'payment_date' => Carbon::now(),
+                'amount' => $request->amount,
+                'payment_method' => $request->payment_gateway,
+                'status' => 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
-           ]);
+            ];
+
+            if ($request->invoice_id !== null) {
+                $data['invoice_id'] = $request->invoice_id;
+            }
+
+            $payment = Payment::create($data);
        
         } catch (Exception $e){
             logger('Failed to create payment', [

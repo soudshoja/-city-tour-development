@@ -77,7 +77,8 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full">
                             <thead>
                                 <tr>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Payment Ref</th>    
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Payment Ref</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Pay To</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Doc Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
@@ -88,7 +89,7 @@
                             <tbody>
                                 @if ($bankPayments->isEmpty())
                                     <tr>
-                                        <td colspan="5" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                             No data for now.... Create new!</td>
                                     </tr>
                                 @else
@@ -96,6 +97,9 @@
                                         <tr>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->reference_number }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                {{ $bankpayment->reference_type }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->name }}

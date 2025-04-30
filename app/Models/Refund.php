@@ -7,6 +7,7 @@ class Refund extends Model
 {
     protected $fillable = [
         'refund_number',
+        'task_id',
         'invoice_id',
         'company_id',
         'branch_id',
@@ -27,30 +28,32 @@ class Refund extends Model
         'reference',
         'status',
         'created_by',
+        'updated_at',
     ];
     
-    public function invoice()
+    public function task()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Task::class, 'task_id');
     }
-
+    
     public function account()
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'account_id');
     }
 
     public function company()
     {
-        return $this->belongsTo(Company::class);
+        return $this->belongsTo(Company::class, 'company_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     public function agent()
     {
-        return $this->belongsTo(User::class, 'agent_id'); // or Agent model if separate
+        return $this->belongsTo(Agent::class, 'agent_id'); // or Agent model if separate
     }
 
-    public function creator()
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
 }

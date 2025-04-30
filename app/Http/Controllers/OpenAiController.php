@@ -267,7 +267,8 @@ class OpenAiController extends Controller
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'confirmed', 'hold' or 'completed'.
+            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database
+            - `refund_date`: Date of refund if applicable.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
             - `total`: Total amount for the task in float type. this column is mandatory, please make sure to find the total amount in the pdf., total is sum of price and surcharge.
@@ -493,6 +494,49 @@ class OpenAiController extends Controller
             - line 27: 'FM*M*0'  for commission
             - line 28: 'FPCCCA0000000000002093/0425' for payment_terms
 
+        Sample 4: Airfile Details Data Extract (For Mapping Reference)
+            AIR-BLK206;RF;;189;0000000000;1A1272352;001001
+            AMD 2900245361;1/1;    29MAR;MAAS
+            1A1495898;1A1272352
+            MUC1A          ;  01;KWIKT2843;42212122;;;;;KWIKT2843;42212122;05;;;;;;;;;;;;;;;;;;;;
+            B-TRFP
+            C-7906/ 0010MAAS-0010MAAS-I-
+            D-250324;250329;250329
+            RFD ;24MAR25;I;KWD50.000;0.000;50.000;;;;;;XT49.450;99.450
+            KRF ;QKWD6.350    AE   ;QKWD3.800    F6   ;QKWD1.000    GZ   ;QKWD2.000    KW   ;QKWD5.000    N4   ;QKWD0.450    TP   ;QKWD29.700   YQ   ;QKWD0.250    YX   ;QKWD0.900    ZR   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            I-001;01ALHASHIMI/SAFAA MRS;;;;
+            T-E607-3580878696
+            R-607-3580878696;29MAR25
+            SAC607STJAVR28O8
+            FM0.00P
+            FPCASH/KWD99.450
+            RM*REFUND NOT GUARANTEED, CHECK PE IN FARE NOTES
+            ENDX
+            
+            **Field Binding Example for Sample 4**:  
+            - line 1: 'RF' for status 'refund'
+            - line 8: 'KWD50.00' is for price, '49.45' is for tax, '99.45' is for the total
+            - line 10: 'ALHASHIMI/SAFAA MRS' for client_name
+            - line 12: '3580878696' for ticket_number
+            - line 12: '29MAR25' for refund_date
+            - line 15: 'CASH' for payment_type
+
+        Sample 5 Airfile Details Data Extract (For Mapping Reference)
+            AIR-BLK206;MA;;226;0000000000;1A1272352;001001
+            AMD 2600245262;1/1;VOID26MAR;MAAS
+            ;1A1272352
+            MUC1A LSAJUM030;0201;KWIKT2843;42212122;KWIKT2843;42212122;KWIKT2843;42212122;KWIKT2843;42212122;05;;;;;;;;;;;;;;;;;;;;KU LSAJUM
+            I-002;01ALFAILAKAWI/KHALED MR;;APKWI +965 55211491// ALHASHMI ////N-M+96555211491/AR//N-E+OPS@CITYTRAVELERS.CO;;
+            T-K229-2832916865
+            FPCASH
+            ENDX
+            
+            **Field Binding Example for Sample 5**:  
+            - line 2: 'VOID' for status 'void'
+            - line 4: 'LSAJUM030' for gds_reference
+            - line 5: 'ALFAILAKAWI/KHALED MR' is for client_name
+            - line 7:  'CASH' is for payment_type
+        
         The venue field is populated using the airport_to field from the file, which contains codes like 'DXB'. 
         These codes are matched against $airportList and the corresponding location data from the list is used to update the venue field.
         
@@ -553,7 +597,6 @@ class OpenAiController extends Controller
 
         if (isset($response['choices'][0]['message']['content'])) {
             $message = $response['choices'][0]['message']['content'];
-            logger('chat completion flight response: ' . $message);
             $decodedResponse = json_decode($message, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {

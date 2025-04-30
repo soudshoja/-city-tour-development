@@ -11,7 +11,22 @@
         }
     </style>
     <div class="">
-        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mt-3">
+        @php
+            //dd(auth()->user()->hasRole('company'));
+            if (auth()->user()->hasRole('admin')) {
+                $gridCols = 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3';
+            } elseif (auth()->user()->hasRole('company')) {
+                $gridCols = 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3';
+            } elseif (auth()->user()->hasRole('branch')) {
+                $gridCols = 'sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2';
+            } elseif (auth()->user()->hasRole('client')) {
+                $gridCols = 'sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-1';
+            } else {
+                $gridCols = 'sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-1';
+            }
+        @endphp
+
+        <div class="grid {{ $gridCols }} gap-3 mt-3">
             @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin'))
                 <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
                     <div class="w-full">
@@ -53,6 +68,50 @@
                 </div>
             @endcan
         </div>
+
+
+        {{-- <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mt-3">
+            @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin'))
+                <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
+                    <div class="w-full">
+                        <h1 class="text-2xl font-bold text-green-800 dark:text-green-300">{{ $companies->count() }}</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Companies</p>
+                    </div>
+                    <div class="mt-4 w-full text-center">
+                    </div>
+                </div>
+            @endcan
+            @can('viewAny', App\Models\Branch::class)
+                <div class="p-4 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg shadow-md w-full flex">
+                    <div class="w-full">
+                        <h1 class="text-2xl font-bold text-blue-800 dark:text-blue-300">{{ $branches->count() }}</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Branches</p>
+                    </div>
+                    <div class="mt-4 w-full text-center">
+                    </div>
+                </div>
+            @endcan
+            @can('viewAny', App\Models\Agent::class)
+                <div class="p-4 bg-red-100/50 dark:bg-red-900/50 rounded-lg shadow-md w-full flex">
+                    <div class="w-full">
+                        <h1 class="text-2xl font-bold text-red-800 dark:text-red-300">{{ $agents->count() }}</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Agents</p>
+                    </div>
+                    <div class="mt-4 w-full text-center">
+                    </div>
+                </div>
+            @endcan
+            @can('viewAny', App\Models\Client::class)
+                <div class="p-4 bg-yellow-100/50 dark:bg-yellow-900/50 rounded-lg shadow-md w-full flex">
+                    <div class="w-full">
+                        <h1 class="text-2xl font-bold text-yellow-800 dark:text-yellow-300">{{ $clients->count() }}</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"> Total Clients</p>
+                    </div>
+                    <div class="mt-4 w-full text-center">
+                    </div>
+                </div>
+            @endcan
+        </div> --}}
 
         @if (auth()->user()->company && auth()->user()->hasRole('company'))
             <div class="my-5 w-full">
@@ -102,7 +161,8 @@
                         <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
                 </div> -->
-                    <div class="p-10 pt-2 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">
+                    <div
+                        class="p-10 pt-10 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full lg:w-1/2">
                         <h1>
                             {{ $pieChartTitle }}
                         </h1>

@@ -66,6 +66,7 @@
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions
                                 </th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client's Name</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Credit (KWD)</th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Email</th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Phone</th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent</th>
@@ -121,11 +122,17 @@
                                                 class="block">{{ $client->name }}</a> -->
                                                 {{ $client->name }}
                                         </td>
+                                        <td>
+                                            {{ $client->credit ? $client->credit : 'N/A' }}
+                                        </td>
                                         <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                             {{ $client->email ? $client->email : 'N/A' }}
                                         </td>
                                         <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                             {{ $client->phone ? $client->phone : 'N/A' }}
+                                        </td>
+                                        <td>
+                                            {{ $client->agent ? $client->agent->name : 'N/A' }}
                                         </td>
                                     </tr>
                                 @endforeach

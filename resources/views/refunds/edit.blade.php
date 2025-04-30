@@ -6,18 +6,26 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <!-- Invoice Info -->
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Invoice Info
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Task Info
                     </h3>
-                    <p class="mb-2"><strong>Invoice Number:</strong> {{ $invoice->invoice_number }}</p>
-                    <p class="mb-2"><strong>Paid Date:</strong> {{ $invoice->paid_date }}</p>
-                    <p class="mb-2"><strong>Amount:</strong> KWD{{ number_format($invoice->amount, 2) }}</p>
+                    <p class="mb-2"><strong>Task Ref Number:</strong> {{ $refund->task->reference }}</p>
+                    <p class="mb-2"><strong>Info:</strong> {{ $refund->task->additional_info }}</p>
+                    <p class="mb-2"><strong>Date:</strong> {{ $refund->date }}</p>
+                    <p class="mb-2"><strong>Total Refund:</strong> KWD{{ number_format($refund->task->total, 2) }}</p>
                     <p class="mb-2">
                         <strong>Status:</strong>
                         <span
-                            class="inline-block px-2 py-1 rounded text-sm font-medium 
-                            {{ $invoice->status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                            {{ ucfirst($invoice->status) }}
+                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                {{ $refund->status === 'completed' ? 'badge-outline-success' : '' }}
+                                {{ $refund->status === 'processed' ? 'badge-outline-assigned' : '' }}
+                                {{ $refund->status === 'approved' ? 'badge-outline-success' : '' }}
+                                {{ $refund->status === 'declined' ? 'badge-outline-danger' : '' }}
+                                {{ $refund->status === 'pending' ? 'badge-outline-warning' : '' }}
+                                {{ $refund->status === null ? 'badge-outline-danger' : '' }}">
+                            {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
+
                         </span>
+
                     </p>
                 </div>
 
@@ -25,26 +33,43 @@
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Client Info
                     </h3>
-                    <p class="mb-2"><strong>Name:</strong> {{ $invoice->client->name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $invoice->client->email ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Name:</strong> {{ $refund->task->client->name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $refund->task->client->email ?? 'N/A' }}</p>
                     <br>
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Agent Info</h3>
-                    <p class="mb-2"><strong>Name:</strong> {{ $invoice->agent->name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $invoice->agent->email ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Name:</strong> {{ $refund->agent->name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $refund->agent->email ?? 'N/A' }}</p>
                 </div>
             </div>
 
+
             <hr class="my-6">
 
-            <form
-                action="{{ route('invoices.refunds.update', ['invoice' => $refund->invoice->id, 'refund' => $refund->id]) }}"
+            <form action="{{ route('refunds.update', ['task' => $refund->task_id, 'refund' => $refund->id]) }}"
                 method="POST" class="bg-white p-6 rounded-lg shadow">
                 @csrf
                 @method('PUT')
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                    <!-- Date (readonly with grey background) -->
+                    <div>
+                        <label for="refund_number" class="block text-gray-700 font-semibold mb-2">Refund Number</label>
+                        <input type="text" name="refund_number" id="refund_number"
+                            value="{{ old('refund_number', $refund->refund_number) }}" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        @error('refund_number')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="status" class="block text-gray-700 font-semibold mb-2">Status</label>
+                        <input type="text" name="status" id="status"
+                            value="{{ old('status', ucfirst($refund->status)) }}" readonly
+                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                        @error('status')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
                     <div>
                         <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
                         <input type="date" name="date" id="date"
@@ -131,9 +156,10 @@
                             <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
                                 Task
                                 Profit</label>
-                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
-                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}" readonly
-                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                            <input type="number" step="0.01" name="original_task_profit"
+                                id="original_task_profit"
+                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}"
+                                readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
                         <!-- Total Service Charge -->
@@ -188,12 +214,12 @@
 
                 <div class="mt-6 flex justify-between px-4">
                     <!-- Left side: Cancel button -->
-                    <a href="{{ url('/invoices/refund/list') }}"
+                    <a href="{{ url('/refunds/') }}"
                         class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
                         Cancel
                     </a>
 
-                    <!-- Right side: Save and Reset -->
+
                     <div class="flex gap-4">
                         <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
                         <button id="save-paymentvoucher-btn" type="submit"
@@ -207,7 +233,9 @@
                             </span>
                             <span id="textSavePaymentVoucher">Save</span>
                         </button>
+
                     </div>
+
                 </div>
 
                 @if ($errors->any())

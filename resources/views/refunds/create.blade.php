@@ -1,23 +1,26 @@
 <x-app-layout>
     <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold text-gray-700 mb-6">Refund Invoice #{{ $invoice->invoice_number }}</h1>
+        <h1 class="text-3xl font-bold text-gray-700 mb-6">Refund tasks #{{ $tasks->reference }}</h1>
 
         <div class="bg-white shadow-md rounded-lg p-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- Invoice Info -->
+                <!-- tasks Info -->
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Invoice Info
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Tasks Info
                     </h3>
-                    <p class="mb-2"><strong>Invoice Number:</strong> {{ $invoice->invoice_number }}</p>
-                    <p class="mb-2"><strong>Paid Date:</strong> {{ $invoice->paid_date }}</p>
-                    <p class="mb-2"><strong>Amount:</strong> KWD{{ number_format($invoice->amount, 2) }}</p>
+                    <p class="mb-2"><strong>Tasks:</strong> {{ $tasks->reference }}</p>
+                    <p class="mb-2"><strong>Refund Date:</strong> {{ $tasks->refund_date }}</p>
+                    <p class="mb-2"><strong>Amount:</strong> KWD{{ number_format($tasks->price, 2) }}</p>
                     <p class="mb-2">
                         <strong>Status:</strong>
                         <span
-                            class="inline-block px-2 py-1 rounded text-sm font-medium 
-                            {{ $invoice->status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                            {{ ucfirst($invoice->status) }}
+                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                 {{ $tasks->status === 'refund' ? 'badge-outline-danger' : '' }}
+                                {{ $tasks->status === null ? 'badge-outline-danger' : '' }}">
+                            {{ $tasks->status === null ? 'Not Set' : ucwords($tasks->status) }}
+
                         </span>
+
                     </p>
                 </div>
 
@@ -25,33 +28,19 @@
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Client Info
                     </h3>
-                    <p class="mb-2"><strong>Name:</strong> {{ $invoice->client->name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $invoice->client->email ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Name:</strong> {{ $tasks->client_name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $tasks->client_name ?? 'N/A' }}</p>
                     <br>
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Agent Info</h3>
-                    <p class="mb-2"><strong>Name:</strong> {{ $invoice->agent->name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $invoice->agent->email ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Name:</strong> {{ $tasks->agent->name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $tasks->agent->email ?? 'N/A' }}</p>
                 </div>
             </div>
 
-            <div class="bg-white shadow-md rounded-lg p-8">
-                <div class="grid grid-cols-1">
-                    @foreach ($tasks as $task)
-                        <div class="mb-5">
-                            <h4>{{ $task->name }}</h4>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">
-                                Reference Number: {{ $task->reference ?? '-' }}</h3>
-                            <p>Branch: {{ $task->agent->branch->name ?? '-' }}</p>
-                            <p>Client: {{ $task->client->name ?? '-' }}</p>
-                            <p>Type: {{ $task->type ?? '-' }}</p>
-                            <p>Info: {{ $task->additional_info ?? '-' }}, {{ $task->venue ?? '-' }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
+
             <hr class="my-6">
 
-            <form action="{{ route('invoices.refunds.store', $invoice->id) }}" method="POST"
+            <form action="{{ route('refunds.store', $tasks->id) }}" method="POST"
                 class="bg-white p-6 rounded-lg shadow">
                 @csrf
 
@@ -124,7 +113,7 @@
                                 Fare</label>
                             <input readonly type="number" step="0.01" name="airline_nett_fare"
                                 id="airline_nett_fare"
-                                value="{{ old('airline_nett_fare', $totals->total_task_price ?? '') }}"
+                                value="{{ old('airline_nett_fare', $invoiceDetails->supplier_price ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
@@ -141,10 +130,9 @@
                         <div>
                             <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
                                 Task Profit</label>
-                            <input readonly type="number" step="0.01" name="original_task_profit"
-                                id="original_task_profit"
-                                value="{{ old('original_task_profit', $totals->total_markup_price ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
+                                value="{{ old('original_task_profit', $invoiceDetails->markup_price ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         </div>
 
 
@@ -152,8 +140,8 @@
                         <div>
                             <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service Charge
                                 Amount</label>
-                            <input type="number" step="0.01" name="service_charge" id="service_charge"
-                                value="{{ old('service_charge', $refund->service_charge ?? '') }}"
+                            <input type="number" step="0.01" min="-999999.99" name="service_charge"
+                                id="service_charge" value="{{ old('tax', $tasks->tax ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             @error('service_charge')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -164,10 +152,10 @@
                         <div>
                             <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total Nett
                                 Refund Amount</label>
-                            <input readonly type="number" step="0.01" name="total_nett_refund"
+                            <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
                                 id="total_nett_refund"
                                 value="{{ old('total_nett_refund', $refund->total_nett_refund ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                             @error('total_nett_refund')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
                             @enderror
@@ -204,7 +192,7 @@
 
                 <div class="mt-6 flex justify-between px-4">
                     <!-- Left side: Cancel button -->
-                    <a href="{{ url('/invoices/refund/list') }}"
+                    <a href="{{ url('/refunds/') }}"
                         class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
                         Cancel
                     </a>
@@ -250,7 +238,12 @@
             const serviceChargeInput = document.getElementById('service_charge');
             const totalNettRefundInput = document.getElementById('total_nett_refund');
 
-            function calculateRefund() {
+            let isUpdating = false;
+
+            function calculateRefundFromServiceCharge() {
+                if (isUpdating) return;
+                isUpdating = true;
+
                 const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
                 const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
                 const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
@@ -258,13 +251,31 @@
 
                 const totalRefund = airlineNettFare - refundAirlineCharge - originalTaskProfit - serviceCharge;
                 totalNettRefundInput.value = totalRefund.toFixed(2);
+
+                isUpdating = false;
             }
 
-            // Initial calculation on page load
-            calculateRefund();
+            function calculateServiceChargeFromRefund() {
+                if (isUpdating) return;
+                isUpdating = true;
 
-            // Recalculate on service charge input
-            serviceChargeInput.addEventListener('input', calculateRefund);
+                const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
+                const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
+                const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
+                const totalRefund = parseFloat(totalNettRefundInput.value) || 0;
+
+                const serviceCharge = airlineNettFare - refundAirlineCharge - originalTaskProfit - totalRefund;
+                serviceChargeInput.value = serviceCharge.toFixed(2);
+
+                isUpdating = false;
+            }
+
+            // Initial calculation
+            calculateRefundFromServiceCharge();
+
+            serviceChargeInput.addEventListener('input', calculateRefundFromServiceCharge);
+            totalNettRefundInput.addEventListener('input', calculateServiceChargeFromRefund);
+            originalTaskProfitInput.addEventListener('input', calculateRefundFromServiceCharge);
         });
 
         function setAccountId(input) {
@@ -275,4 +286,5 @@
             }
         }
     </script>
+
 </x-app-layout>

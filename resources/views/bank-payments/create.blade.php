@@ -101,10 +101,35 @@
                             <div class="flex items-center gap-x-4">
                                 <label for="bankpaymentref" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Payment
                                     Ref <span class="text-red-500">*</span></label>
-                                <input required readonly id="bankpaymentref" value="PV-{{ now()->timestamp }}"
-                                    type="text" name="bankpaymentref"
-                                    class="form-input w-2/3 lg:w-[250px] bg-gray-200 text-gray-700"
-                                    placeholder="ref#" />
+                                <input type="text" readonly value="PV-{{ now()->timestamp }}"
+                                    class="form-input w-2/3 lg:w-[250px]  bg-gray-200" />
+                                <input type="hidden" name="bankpaymentref" value="PV-{{ now()->timestamp }}" required>
+
+                            </div>
+                            <div class="flex items-center gap-x-4 mt-4">
+                                <label for="bankpaymenttype" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
+                                    Payment Type <span class="text-red-500">*</span>
+                                </label>
+                                <select required id="bankpaymenttype" name="bankpaymenttype"
+                                    class="form-select w-2/3 lg:w-[250px] bg-white text-gray-700 border-gray-300"
+                                    onchange="toggleRefundDatalist()">
+                                    <option value="">Choose One</option>
+                                    <option value="Payment">Payment</option>
+                                    <option value="Refund">Refund</option>
+                                </select>
+                            </div>
+                            <div id="refundNumberField" class="flex items-center gap-x-4 mt-4 hidden">
+                                <label for="refund_number" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
+                                    Refund Number <span class="text-red-500">*</span>
+                                </label>
+                                <input required list="refundList" name="refund_number" id="refund_number"
+                                    class="form-input w-2/3 lg:w-[250px] bg-white text-gray-700 border border-gray-300"
+                                    placeholder="Search refund number..." />
+                                <datalist id="refundList">
+                                    @foreach ($refundNumbers as $refund)
+                                        <option value="{{ $refund->refund_number }}"></option>
+                                    @endforeach
+                                </datalist>
                             </div>
                             <div class="flex items-center gap-x-4 mt-4">
                                 <label for="branch_id" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">Branch <span
@@ -137,10 +162,12 @@
                                     <label for="pay_to_payee" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Pay To <span
                                             class="text-red-500">*</span></label>
                                     <input required id="pay_to" type="text" name="pay_to"
-                                        class="form-input flex-1" list="supplierList" placeholder="Enter Payee Name" />
+                                        class="form-input flex-1" list="supplierList"
+                                        placeholder="Search payee name..." />
                                     <datalist id="supplierList">
                                         @foreach ($suppliers as $supplier)
-                                            <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
+                                            <option value="{{ $supplier->name }}">
+                                                [{{ $supplier->root->name ?? 'N/A' }}] [{{ $supplier->code }}]
                                                 {{ $supplier->name }} </option>
                                         @endforeach
                                     </datalist>
@@ -166,8 +193,8 @@
                                 <div class="mt-4 flex items-center gap-x-4">
                                     <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
                                         FL</label>
-                                    <input id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1"
-                                        placeholder="Enter Remarks FL" />
+                                    <input id="remarks_fl" type="text" name="remarks_fl"
+                                        class="form-input flex-1" placeholder="Enter Remarks FL" />
                                 </div>
                             </div>
 
@@ -395,15 +422,16 @@
                             class="form-control form-control-sm" 
                             name="items[${index}][ac_code]" 
                             value="${item.ac_code}" 
+                            placeholder="Search..."
                             oninput="updateField(${index}, 'ac_code', this.value); selectedAccName(this, ${index});">
                         
-                        <datalist id="accountList_${index}">
-                            ${lastLevelAccounts.map(accpayreceive => 
-                                `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                                                                                                                                                                                                                [${accpayreceive.id}] ${accpayreceive.name}
-                                                                                                                                                                                                                                                                            </option>`
-                            ).join('')}
-                        </datalist>
+                            <datalist id="accountList_${index}">
+                                ${lastLevelAccounts.map(accpayreceive => 
+                                    `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
+                                                                                        [${accpayreceive.root ? accpayreceive.root.name : 'No Root'}] [${accpayreceive.code}] ${accpayreceive.name}
+                                                                                    </option>`
+                                ).join('')}
+                            </datalist>
 
                     <small id="selectedAccName_${index}" class="text-muted">
                         ${(() => {
@@ -456,38 +484,47 @@
 
             const saveBtn = document.getElementById('save-paymentvoucher-btn');
 
-                if (saveBtn) {
-                    saveBtn.addEventListener('click', handleSaveClick);
-                }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', handleSaveClick);
+            }
 
-                function handleSaveClick(event) {
-                    event.preventDefault(); // Prevent form from submitting immediately
+            function handleSaveClick(event) {
+                event.preventDefault(); // Prevent form from submitting immediately
 
-                    const button = document.getElementById('save-paymentvoucher-btn');
-                    const icon = document.getElementById('iconSavePaymentVoucher');
-                    const text = document.getElementById('textSavePaymentVoucher');
+                const button = document.getElementById('save-paymentvoucher-btn');
+                const icon = document.getElementById('iconSavePaymentVoucher');
+                const text = document.getElementById('textSavePaymentVoucher');
 
-                    // Disable the button
-                    button.disabled = true;
+                // Disable the button
+                button.disabled = true;
 
-                    // Show loading spinner
-                    icon.innerHTML = `
+                // Show loading spinner
+                icon.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
                     `;
-                    text.textContent = 'Saving...';
+                text.textContent = 'Saving...';
 
-                    // Submit the form after delay (simulate AJAX or save effect)
-                    setTimeout(() => {
-                        button.closest('form').submit(); // Actually submit the form
-                    }, 500);
-                }
+                // Submit the form after delay (simulate AJAX or save effect)
+                setTimeout(() => {
+                    button.closest('form').submit(); // Actually submit the form
+                }, 500);
+            }
 
 
         });
 
+        function toggleRefundDatalist() {
+            const type = document.getElementById('bankpaymenttype').value;
+            const field = document.getElementById('refundNumberField');
+            if (type === 'Refund') {
+                field.classList.remove('hidden');
+            } else {
+                field.classList.add('hidden');
+            }
+        }
     </script>
 
 </x-app-layout>

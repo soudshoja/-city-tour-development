@@ -327,13 +327,16 @@
                                                             <input type="checkbox"
                                                                 class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
                                                                 value="{{ $task->id }}"
+                                                                data-status="{{ $task->status }}"
                                                                 {{ $task->invoiceDetail || !$task->is_complete ? 'disabled' : '' }}>
                                                         @else
                                                             <input type="checkbox"
                                                                 class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
                                                                 value="{{ $task->id }}"
+                                                                data-status="{{ $task->status }}"
                                                                 {{ $task->refundDetail || !$task->is_complete ? 'disabled' : '' }}>
                                                         @endif
+
 
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18"
                                                             height="18" viewBox="0 0 24 24"
@@ -408,7 +411,7 @@
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
                                                                         <select name="status" id="status"
                                                                             class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
-                                                                            @if ($task->status === 'refund') disabled @endif>
+                                                                            @if ($task->status === 'refund' || $task->status === 'ticketed') disabled @endif>
                                                                             <option value="">Set Status</option>
                                                                             <option value="Confirmed"
                                                                                 {{ $task->status === 'confirmed' ? 'selected' : '' }}>
@@ -418,11 +421,16 @@
                                                                                 {{ $task->status === 'ticketed' ? 'selected' : '' }}>
                                                                                 Ticketed
                                                                             </option>
-                                                                            <option value="Refund"
-                                                                                {{ $task->status === 'refund' ? 'selected' : '' }}>
-                                                                                Refund
-                                                                            </option>
+
+                                                                            @if (!empty($task->status) && $task->status !== 'confirmed')
+                                                                                <option value="Refund"
+                                                                                    {{ $task->status === 'refund' ? 'selected' : '' }}>
+                                                                                    Refund
+                                                                                </option>
+                                                                            @endif
                                                                         </select>
+
+
 
                                                                         @if ($task->status === 'refund')
                                                                             <input type="hidden" name="status"
@@ -774,15 +782,27 @@
                 const createInvoiceBtnText = document.getElementById('createInvoiceBtnText');
 
                 if (this.checked) {
-                    document.querySelectorAll('.rowCheckbox').forEach(cb => {
-                        if (cb !== this) {
-                            cb.checked = false;
-                        }
-                    });
+                    const isRefund = taskStatus === 'refund';
+
+                    if (isRefund) {
+                        // Uncheck all others if refund
+                        document.querySelectorAll('.rowCheckbox').forEach(cb => {
+                            if (cb !== this) {
+                                cb.checked = false;
+                            }
+                        });
+                    } else {
+                        // If not refund, uncheck all refund checkboxes
+                        document.querySelectorAll('.rowCheckbox').forEach(cb => {
+                            if (cb !== this && cb.dataset.status === 'refund') {
+                                cb.checked = false;
+                            }
+                        });
+                    }
 
                     floatingActions.classList.remove('hidden');
 
-                    if (taskStatus === 'refund') {
+                    if (isRefund) {
                         createInvoiceBtnText.innerText = 'Proceed Refund';
                         createInvoiceBtn.setAttribute('data-route',
                             `/refunds/${taskId}/create`);
@@ -804,13 +824,13 @@
                     createInvoiceBtn.setAttribute('data-task-status', taskStatus);
 
                 } else {
-                    // If unchecked, hide floating button if no others selected
                     const anyChecked = Array.from(document.querySelectorAll('.rowCheckbox'))
                         .some(cb => cb.checked);
                     if (!anyChecked) {
                         floatingActions.classList.add('hidden');
                     }
                 }
+
             });
         });
 

@@ -86,7 +86,7 @@ class RefundController extends Controller
     
         // Make sure there's at least one other task with the same reference and status "ticketed"
         $hasTicketedReference = Task::where('id', '!=', $task->id)
-            ->where('status', 'ticketed')
+            ->where('status', 'issued')
             ->when($task->type === 'flight', function ($query) use ($referenceValue) {
                 $query->whereHas('flightDetails', function ($sub) use ($referenceValue) {
                     $sub->where('ticket_number', $referenceValue);

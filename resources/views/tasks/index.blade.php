@@ -411,15 +411,15 @@
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
                                                                         <select name="status" id="status"
                                                                             class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
-                                                                            @if ($task->status === 'refund' || $task->status === 'ticketed') disabled @endif>
+                                                                            @if ($task->status === 'refund' || $task->status === 'issued') readonly @endif>
                                                                             <option value="">Set Status</option>
                                                                             <option value="Confirmed"
                                                                                 {{ $task->status === 'confirmed' ? 'selected' : '' }}>
                                                                                 Confirmed
                                                                             </option>
-                                                                            <option value="Ticketed"
-                                                                                {{ $task->status === 'ticketed' ? 'selected' : '' }}>
-                                                                                Ticketed
+                                                                            <option value="Issued"
+                                                                                {{ $task->status === 'issued' ? 'selected' : '' }}>
+                                                                                Issued
                                                                             </option>
 
                                                                             @if (!empty($task->status) && $task->status !== 'confirmed')
@@ -647,12 +647,13 @@
                                             <td>
                                                 <span
                                                     class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
-            {{ $task->status === 'ticketed' ? 'badge-outline-success' : '' }}
+            {{ $task->status === 'issued' ? 'badge-outline-success' : '' }}
             {{ $task->status === 'assigned' ? 'badge-outline-assigned' : '' }}
             {{ $task->status === 'booked' ? 'badge-outline-booked' : '' }}
             {{ $task->status === 'pending' ? 'badge-outline-primary' : '' }}
             {{ $task->status === 'confirmed' ? 'badge-outline-primary' : '' }}
             {{ $task->status === 'refund' ? 'badge-outline-danger' : '' }}
+            {{ $task->status === 'void' ? 'badge-outline-danger' : '' }}
             {{ $task->status === 'cancelled' ? 'badge-outline-danger' : '' }}
             {{ $task->status === 'hold' ? 'badge-outline-danger' : '' }}
             {{ $task->status === null ? 'badge-outline-danger' : '' }}">

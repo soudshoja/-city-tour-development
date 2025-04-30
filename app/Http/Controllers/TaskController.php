@@ -39,6 +39,7 @@ use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use App\Models\Payment;
 
 // use Carbon\Carbon;
 
@@ -230,6 +231,32 @@ class TaskController extends Controller
                 Log::info('Refund task created, skipping hotel/flight details saving process.');
             }
 
+            if ($task->status === 'void') {
+                $issuedTask = Task::where('reference', $task->reference)
+                    ->where('status', 'issued')
+                    // ->whereIn('status', ['issued', 'ticketed'])
+                    ->where('company_id', $task->company_id)
+                    ->first();
+            
+                if ($issuedTask) {
+                    $payment = Payment::whereHas('partials.invoice.invoiceDetails', function ($query) use ($task) {
+                        $query->where('task_id', $task->id);
+                    })
+                    ->whereHas('partials', function ($query) {
+                        $query->where('status', 'paid');
+                    })
+                    ->first();
+            
+                    if ($payment && $payment->client_id) {
+                        $this->voidTask($task, $issuedTask, $payment);
+                    } else {
+                        Log::warning('No payment found to refund for voided task: ' . $task->reference);
+                    }
+                } else {
+                    Log::warning('No previously issued task found for voided task: ' . $task->reference);
+                }
+            }            
+
             $agent = $task->agent;
 
             if (!$agent) {
@@ -399,6 +426,64 @@ class TaskController extends Controller
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function voidTask(Task $task, Task $issuedTask, Payment $payment)
+    {
+        $client = Client::find($payment->client_id);
+
+        if (!$client) {
+            throw new \Exception("Client not found for payment ID: {$payment->id}");
+            Log::warning("Client not found for payment [{$payment->id}] during void refund.");
+        }
+
+        $oldCredit = $client->credit;
+
+        $client->credit += $payment->amount;
+        $client->save();
+
+        Log::info("Void for task [{$task->reference}]: Client credit before = {$oldCredit}, after = {$client->credit}");
+
+        $voidTransaction = Transaction::create([
+            'branch_id'        => $client->agent->branch_id,
+            'company_id'       => $client->agent->branch->company_id,
+            'entity_id'        => $client->id,
+            'entity_type'      => 'client',
+            'transaction_type' => 'debit',
+            'amount'           => $payment->amount,
+            'date'             => now(),
+            'description'      => 'Void task: ' . $task->reference,
+            'reference_type'   => 'Refund',
+            'reference_number' => $payment->voucher_number,
+        ]);
+
+        if (!$voidTransaction) {
+            throw new \Exception("Failed to create refund transaction.");
+        }
+
+        $entries = JournalEntry::whereHas('invoiceDetail', function ($query) use ($task) {
+            $query->where('task_description', $task->reference);
+        })->get();
+
+        foreach ($entries as $entry) {
+            JournalEntry::create([
+                'transaction_id'   => $voidTransaction->id,
+                'company_id'       => $entry->company_id,
+                'branch_id'        => $entry->branch_id,
+                'account_id'       => $entry->account_id,
+                'task_id'          => $issuedTask->id,
+                'transaction_date' => now(),
+                'description'      => 'Void: ' . $entry->description,
+                'debit'            => $entry->credit,
+                'credit'           => $entry->debit,
+                'balance'          => ($entry->balance ?? 0) * -1,
+                'type'             => $entry->type,
+                'name'             => $entry->name,
+                'voucher_number'   => $entry->voucher_number,
+            ]);
+        }
+
+        Log::info('Voided task refunded and reversed: ' . $task->reference);
     }
 
     public function voucher($id = null)
@@ -946,13 +1031,18 @@ class TaskController extends Controller
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
 
+            if($reservation['service']['status'] ?? null){
+                $statusMagicTask = $reservation['service']['status'] == 'OK' ? 'issued' : 'confirmed';
+            } else {
+                throw new Exception('Status not found');
+            }
 
             $taskData = [
                 'client_id' => null,
                 'agent_id' => $agentId,
                 'company_id' => $companyId,
                 'type' => 'hotel',
-                'status' => $reservation['service']['status'] ?? null,
+                'status' => $statusMagicTask,
                 'client_name' => $clientName,
                 'reference' => (string)$reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,

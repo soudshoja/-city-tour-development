@@ -455,7 +455,8 @@ class PaymentController extends Controller
                         $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
                         $tapAccount->save();
 
-                        $selectedtask->status = 'Completed';
+                        //$selectedtask->status = 'Completed';
+                        $selectedtask->status = 'ticketed';
                         $selectedtask->save();
 
                     }

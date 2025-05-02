@@ -247,13 +247,6 @@ class OpenAiController extends Controller
         ];
     }
 
-    /**
-     * Extract flight data from the content
-     * 
-     * @param string $content
-     * 
-     * @return array from saveTasks()
-     */
     public function extractFlightData($content)
     {
         $supplierList = json_encode(Supplier::all()->toArray());
@@ -267,16 +260,16 @@ class OpenAiController extends Controller
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `ticket_number`: Ticket number. 
-            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database
+            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
             - `refund_date`: Date of refund if applicable.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
-            - `total`: Total amount for the task in float type. this column is mandatory, please make sure to find the total amount in the pdf., total is sum of price and surcharge.
+            - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
             - `refund_charge`: Sum of tax F6, GZ, KW and N4.
             - `reference`: Reference code for the task.
+            - `gds_office_id`: GDS office ID, if available.
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
             - `client_name`: name of the client associated with the task.
@@ -304,9 +297,12 @@ class OpenAiController extends Controller
             - `class_type`: Class type of the flight.
             - `baggage_allowed`: Baggage allowance.
             - `equipment`: Equipment used in the flight.
-            - `ticket_number`: Ticket number. 
+            - `ticket_number`: flight ticket number. 
             - `flight_meal`: Meal options during the flight.
             - `seat_no`: Seat number.
+        
+        CHEAT SHEET:
+        - MUC1A [GDS_PNR+Ref];[Session];[GDS_PCC];[AgentNo];[GDS_PCC];[AgentNo]... ; [CouponCount] ; ... ; [AirlineCode] [AirlinePNR]
         
         Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
         if some of the fields are not available, you can set them to null.
@@ -316,230 +312,7 @@ class OpenAiController extends Controller
         Analyze the uploaded file to locate and extract relevant fields.
         If the file type is (.air) but the structure doesn't match the reference example, reject the file.
         If the uploaded file type is (.air), set it to amedeus as per supplier's list that i gave you,
-        then bind the data to the `tasks` and `task_flight_details` models in JSON format, following the provided mapping examples. 
-
-        Sample 1: Airfile Details Data Extract (For Mapping Reference)
-           The following is a sample file extract for reference, demonstrating how to locate and map data to JSON fields.
-            AIR-BLK207;7A;;233;0000000000;1A1437915;001001 AMD 2300000011;1/1; 
-            1A1437915;1A1437915 MUC1A
-            WW5BY4006;0101;KWIKT211N;42230215;KWIKT211N;42230215;KWIKT211N;42230215;KWIKT211N;
-            42230215;PR;;;;;;;;;;;;;;;;;;;;;WY JAUNNU A-OMAN AIR;WY 9100 B-TTP/RT C-7906/ 9966SDSU-9966SDSU-I-0-- D-250223;250223;250223 G-X ;;
-            KWIMCT; H-001;002OKWI;KUWAIT ;MCT;MUSCAT ;WY 0648 N N 23FEB2120 0025 24FEB;OK01;HK01;M ;0;738;;;20K;1 ;;ET;0205 ;N;747;KW;OM; K-FKWD87.000 ;;;;;;;;;;;;
-            KWD100.350 ;;; KFTF; KWD4.000 YQ AC; KWD3.100 YR VA; KWD1.000 GZ SE; KWD2.000 KW AE; KWD3.000 N4 CB; KWD0.250 YX AP ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; L- M-NCMOKW 
-            N-NUC281.47 O-23FEB23FEB;LD23FEB252359 Q-KWI WY MCT281.47NUC281.47END
-            ROE0.309091;FXB I-001;01AL MASHAYKHI/SALIM ALI SULTAN MR;;APKWI +965 55524870 
-            // SAEID //;; SSR CTCM WY HK1/96555524870 SSR CTCE WY 
-            HK1/OPS//CITYTRAVELERS.CO SSR OTHS 1A /REF IATA PRVD PAX EMAIL N MBL CTC IN 
-            SSR CTCE OR CTCM SSR OTHS 1A /REF IATA UPDATE SSR CTCR IF PAX REFUSING TO 
-            PRVD CTC SSR OTHS 1A /ADTK BY 1626 23FEB25 KWI LT ELSE WY WILL XXL T-K910-3580675462 FEVALIDONWY;S2;P1 FMM0 
-            FPCCCA0000000000002093/0425/A452524;S2;P1 FVWY;S2;P1 TKOK23FEB/KWIKT211N//ETWY ENDX
-
-            #### Field Mapping Instructions
-            Analyze the file's structure to locate the field data.
-            Extract and map the fields to the corresponding JSON keys, following the binding example provided below.
-            Ensure the gds_reference contains exactly six words.
-            Format the price field consistently to two decimal points.
-            Make sure that the supplier_name is set to 'Amadeus' only.
-
-            **Field Binding Example for Sample 1**:  
-            - line 3: 'WW5BY4' for gds_reference
-            - line 4: 'JAUNNU' for airline_reference, 'A-OMAN AIR' for 'airline_name', 'WY' for aita_code
-            - line 4: '910' for airline_code, '9966SD' for agent_code
-            - line 5: 'KWI;KUWAIT' for airport_from, 'MCT;MUSCAT' for airport_to, 'WY 0648' for flight_number
-            - line 5: 'N' for class_type, '23FEB' for departure_date, '2120' for departure_time
-            - line 5: '0025' for arrival_time, '24FEB' for arrival_date, 'OK01' for status, 'M' for flight_meal
-            - line 5: '738' for aircraft_type, '20K' for baggage_allowed, 'FKWD87.000' for fare
-            - line 5: '0205' for duration_time
-            - line 6: 'KWD100.350' for price, 'KWD4.000 YQ AC' for tax_1, 'KWD3.100 YR VA' for tax_2, 'KWD1.000 GZ SE' for tax_3
-            - line 6: 'KWD2.000 KW AE' for tax_4, 'KWD3.000 N4 CB' for tax_5, 'KWD0.250 YX AP' for tax_6, 'NCMOKW' for farebaes
-            - line 8: 'AL MASHAYKHI/SALIM ALI SULTAN MR' for client_name
-            - line 12: '3580675462' for atia_invoice_number, 'S2' for segment_2, 'P1' for pax_number, 'FMM0'  for commission
-            - line 12: `3580675462` for ticket_number
-            - line 13: 'FPCCCA0000000000002093/0425' for payment_terms
-
-            Example JSON Output for Sample 1 =
-            {
-                'gds_reference': 'WW5BY4',
-                'airline_reference': 'JAUNNU',
-                'airline_name': 'A-OMAN AIR',
-                'aita_code': 'WY',
-                'airline_code': 910,
-                'agent_code': '9966SD',
-                'airport_from': 'KWI;KUWAIT',
-                'airport_to': 'MCT;MUSCAT',
-                'flight_number': 'WY 0648',
-                'class_type': 'N',
-                'departure_date': '2025-02-23',
-                'departure_time': '21:20:00',
-                'arrival_time': '00:25:00',
-                'arrival_date': '2025-02-24',
-                'duration_time': '2h 5m',
-                'status': 'OK01',
-                'flight_meal': 'M',
-                'aircraft_type': '738',
-                'baggage_allowed': '20K',
-                'fare': 'FKWD87.000',
-                'price': 'KWD100.350',
-                'tax_1': 'KWD4.000 YQ AC',
-                'tax_2': 'KWD3.100 YR VA',
-                'fare_base': 'NCMOKW',
-                'client_name': 'AL MASHAYKHI/SALIM ALI SULTAN MR',
-                'supplier_name': 'Amadeus',
-                'atia_invoice_number': '3580675462',
-                'ticket_number': '3580675462',
-                'segment_2': 'S2',
-                'pax_number': 'P1',
-                'commission': 'FMM0',
-                'payment_terms': 'FPCCCA0000000000002093/0425'
-            }
-
-        Sample 2: Airfile Details Data Extract (For Mapping Reference)
-            AIR-BLK207;7A;;233;0000000000;1A1437915;001001
-            AMD 0600000009;1/1;              
-            1A1437915;1A1437915
-            MUC1A KK6WB5008;0101;KWIKT211N;42230215;KWIKT211N;42230215;KWIKT211N;42230215;KWIKT211N;42230215;PR;;;;;;;;;;;;;;;;;;;;;GF MASBGE
-            A-GULF AIR;GF 0722
-            B-TTP/RT
-            C-7906/ 9966SDSU-9966SDSU-I-0--
-            D-250205;250206;250206
-            G-X  ;;KWIKWI;
-            H-001;002OKWI;KUWAIT           ;BAH;BAHRAIN          ;GF    0214 N N 25FEB1140 1245 25FEB;OK01;HK01;S ;0;320;;;25K;1 ;;ET;0105 ;N;261;KW;BH;
-            H-003;003OBAH;BAHRAIN          ;KWI;KUWAIT           ;GF    0215 W W 27FEB1705 1810 27FEB;OK01;HK01;S ;0;320;;;25K;;;ET;0105 ;N;261;BH;KW;1 
-            K-FKWD37.000     ;;;;;;;;;;;;KWD81.950     ;;;
-            KFTF; KWD28.000   YQ AC; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD8.250    BH DP; KWD0.450    HM AP;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            L-
-            M-NCLIT1KW       ;WCLIT1KW       
-            N-NUC72.79;45.29
-            O-25FEB25FEB;27FEB27FEB;LD25FEB252359
-            Q-KWI GF BAH72.79GF KWI45.29NUC118.08END ROE0.309091;FXB
-            I-001;01ESMAIEL/HUSSAIN MR;;APKWI +965 55524870 // SAEID ////KWI +965 55524870 // SAEID //;;
-            FQV GF  FQTV-GF11451682;S2;P1
-            FQV GF  FQTV-GF11451682;S3;P1
-            SSR CTCM GF  HK1/96555524870
-            SSR CTCE GF  HK1/OPS//CITYTRAVELERS.CO
-            SSR DOCS GF  HK1/P/KWT/P05348062/KWT/04DEC54/M/16JAN28/ESMAIEL/HUSSAIN/P;P1
-            SSR OTHS 1A  /ISSUE TICKETS FOR GF FLIGHTS BY 06FEB25 1320GMT
-            SSR OTHS 1A  /OR GF WILL CANCEL WITHOUT FURTHER NOTICE
-            SSR OTHS 1A  /GF DO NOT ACCEPT TKNM
-            T-K072-3580675460
-            FEVALID ON GF ONLY/NON ENDO;S2-3;P1
-            FM*M*0
-            FPCCCA0000000000002093/0425/A327351;S2-3;P1
-            FVGF;S2-3;P1
-            TKOK05FEB/KWIKT211N//ETGF
-            ENDX
-
-            **Field Binding Example for Sample 2**:  
-            - line 4: 'KK6WB5' for gds_reference, 'MASBGE' for airline_reference
-            - line 5: 'A-GULF AIR' for 'airline_name', 'GF' for aita_code, '072' for airline_code
-            - line 7: '9966SD' for agent_code
-            - line 10: 'KWI;KUWAIT' for airport_from, 'BAH;BAHRAIN' for airport_to, 'GF    0214' for flight_number, 'N' for class_type
-            - line 10: '25FEB' for departure_date, '1140' for departure_time, '1245' for arrival_time, '25FEB' for arrival_date
-            - line 10: 'OK01' for status, 'S' for flight_meal, '320' for aircraft_type, '25K' for baggage_allowed, '0105' for duration_time
-            - line 11: '0105' for duration_time
-            - line 12: 'FKWD37.000' for fare, 'KWD81.950' for price
-            - line 13: 'KWD28.000   YQ AC' for tax_1, 'KWD1.000    GZ SE' for tax_2, 'KWD2.000    KW AE' for tax_3
-            - line 13: 'KWD5.000    N4 CB' for tax_4, 'KWD0.250    YX AP' for tax_5, 'KWD8.250    BH DP' for tax_6, 'KWD0.450    HM AP' for tax_7
-            - line 15: 'NCLIT1KW' for farebaes
-            - line 19: 'ESMAIEL/HUSSAIN MR' for client_name
-            - line 28: '3580675460' for atia_invoice_number, 'S2-3' for segment_2, 'P1' for pax_number, 'FM*M*0'  for commission, '3580675460' for ticket_number
-            - line 31: 'FPCCCA0000000000002093/0425' for payment_terms
-
-        Sample 3: Airfile Details Data Extract (For Mapping Reference)
-            AIR-BLK207;7A;;233;0000000000;1A1437915;001001
-            AMD 0900000010;1/1;              
-            1A1437915;1A1437915
-            MUC1A TQG8QU006;0101;KWIKT211N;42230215;KWIKT211N;42230215;KWIKT211N;42230215;KWIKT211N;42230215;PR;;;;;;;;;;;;;;;;;;;;;GF KZZZUJ
-            A-GULF AIR;GF 0722
-            B-TTP/RT
-            C-7906/ 9966SDSU-9966SDSU-I-0--
-            D-250208;250209;250209
-            G-X  ;;KWIKWI;
-            H-003;002OKWI;KUWAIT           ;BAH;BAHRAIN          ;GF    0214 O O 25FEB1140 1245 25FEB;OK01;HK01;S ;0;320;;;25K;1 ;;ET;0105 ;N;261;KW;BH;
-            H-004;003OBAH;BAHRAIN          ;KWI;KUWAIT           ;GF    0215 O O 27FEB1705 1810 27FEB;OK01;HK01;S ;0;320;;;25K;;;ET;0105 ;N;261;BH;KW;1 
-            K-FKWD55.000     ;;;;;;;;;;;;KWD99.950     ;;;
-            KFTF; KWD28.000   YQ AC; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD8.250    BH DP; KWD0.450    HM AP;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            L-
-            M-OCLIT1KW       ;OCLIT1KW       
-            N-NUC88.97;88.97
-            O-25FEB25FEB;27FEB27FEB;LD25FEB252359
-            Q-KWI GF BAH88.97GF KWI88.97NUC177.94END ROE0.309091;FXB
-            I-001;01ESMAIEL/ALZAHRAA MS;;APKWI +965 55524870 // SAEID //;;
-            SSR CTCM GF  HK1/96555524870
-            SSR CTCE GF  HK1/OPS//CITYTRAVELERS.CO
-            SSR OTHS 1A  /ISSUE TICKETS FOR GF FLIGHTS BY 10FEB25 1425GMT
-            SSR OTHS 1A  /OR GF WILL CANCEL WITHOUT FURTHER NOTICE
-            SSR OTHS 1A  /GF DO NOT ACCEPT TKNM
-            T-K072-3580675461
-            FEVALID ON GF ONLY/NON ENDO;S2-3;P1
-            FM*M*0
-            FPCCCA0000000000002093/0425/A350967;S2-3;P1
-            FVGF;S2-3;P1
-            TKOK09FEB/KWIKT211N//ETGF
-            ENDX
-            
-            **Field Binding Example for Sample 3**:  
-            - line 4: 'TQG8QU' for gds_reference, 'KZZZUJ' for airline_reference
-            - line 5: 'A-GULF AIR' for 'airline_name', 'GF' for aita_code, '072' for airline_code
-            - line 7: '9966SD' for agent_code
-            - line 10: 'KWI;KUWAIT' for airport_from, 'BAH;BAHRAIN' for airport_to, 'GF    0214' for flight_number
-            - line 10: 'O' for class_type, '25FEB' for departure_date, '1140' for departure_time
-            - line 10: '1245' for arrival_time, '25FEB' for arrival_date, 'OK01' for status, 'S' for flight_meal
-            - line 10: '320' for aircraft_type, '25K' for baggage_allowed, '0105' for duration_time
-            - line 11: '0105' for duration_time
-            - line 12: 'FKWD55.000' for fare, 'KWD99.950' for price
-            - line 13: 'KWD28.000   YQ AC' for tax_1, 'KWD1.000    GZ SE' for tax_2, 'KWD2.000    KW AE' for tax_3
-            - line 13: 'KWD5.000    N4 CB' for tax_4, 'KWD0.250    YX AP' for tax_5, 'KWD8.250    BH DP' for tax_6, 'KWD0.450    HM AP' for tax_7
-            - line 15: 'OCLIT1KW' for farebaes
-            - line 19: 'ESMAIEL/ALZAHRAA MS' for client_name
-            - line 25: '3580675461' for atia_invoice_number, '3580675461' for ticket_number
-            - line 26: 'S2-3' for segment_2, 'P1' for pax_number
-            - line 27: 'FM*M*0'  for commission
-            - line 28: 'FPCCCA0000000000002093/0425' for payment_terms
-
-        Sample 4: Airfile Details Data Extract (For Mapping Reference)
-            AIR-BLK206;RF;;189;0000000000;1A1272352;001001
-            AMD 2900245361;1/1;    29MAR;MAAS
-            1A1495898;1A1272352
-            MUC1A          ;  01;KWIKT2843;42212122;;;;;KWIKT2843;42212122;05;;;;;;;;;;;;;;;;;;;;
-            B-TRFP
-            C-7906/ 0010MAAS-0010MAAS-I-
-            D-250324;250329;250329
-            RFD ;24MAR25;I;KWD50.000;0.000;50.000;;;;;;XT49.450;99.450
-            KRF ;QKWD6.350    AE   ;QKWD3.800    F6   ;QKWD1.000    GZ   ;QKWD2.000    KW   ;QKWD5.000    N4   ;QKWD0.450    TP   ;QKWD29.700   YQ   ;QKWD0.250    YX   ;QKWD0.900    ZR   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            I-001;01ALHASHIMI/SAFAA MRS;;;;
-            T-E607-3580878696
-            R-607-3580878696;29MAR25
-            SAC607STJAVR28O8
-            FM0.00P
-            FPCASH/KWD99.450
-            RM*REFUND NOT GUARANTEED, CHECK PE IN FARE NOTES
-            ENDX
-            
-            **Field Binding Example for Sample 4**:  
-            - line 1: 'RF' for status 'refund'
-            - line 8: 'RFD' is for Refund. 'KWD50.00' is for price, '49.45' is for tax, '99.45' is for the total
-            - line 9:  'KRF: KWD6.350, AE: KWD3.800, F6: KWD1.000, GZ: KWD2.000, KW: KWD5.000, N4: KWD0.450, TP: KWD29.700, YQ: KWD0.250, YX: KWD0.900' is for 'taxes_record'. Sum of 'F6','GZ','KW','N4' is for 'refund_charge'.
-            - line 10: 'ALHASHIMI/SAFAA MRS' for client_name
-            - line 12: '3580878696' for ticket_number.
-            - line 12: '29MAR25' for refund_date
-            - line 15: 'CASH' for payment_type
-
-        Sample 5 Airfile Details Data Extract (For Mapping Reference)
-            AIR-BLK206;MA;;226;0000000000;1A1272352;001001
-            AMD 2600245262;1/1;VOID26MAR;MAAS
-            ;1A1272352
-            MUC1A LSAJUM030;0201;KWIKT2843;42212122;KWIKT2843;42212122;KWIKT2843;42212122;KWIKT2843;42212122;05;;;;;;;;;;;;;;;;;;;;KU LSAJUM
-            I-002;01ALFAILAKAWI/KHALED MR;;APKWI +965 55211491// ALHASHMI ////N-M+96555211491/AR//N-E+OPS@CITYTRAVELERS.CO;;
-            T-K229-2832916865
-            FPCASH
-            ENDX
-            
-            **Field Binding Example for Sample 5**:  
-            - line 2: 'VOID' for status 'void'
-            - line 4: 'LSAJUM' for gds_reference
-            - line 5: 'ALFAILAKAWI/KHALED MR' is for client_name
-            - line 7:  'CASH' is for payment_type
+        then bind the data to the `tasks` and `task_flight_details` models in JSON format. 
         
         The venue field is populated using the airport_to field from the file, which contains codes like 'DXB'. 
         These codes are matched against $airportList and the corresponding location data from the list is used to update the venue field.
@@ -555,11 +328,12 @@ class OpenAiController extends Controller
             'status': 'completed'/ 'hold' / 'confirmed',
             'price': 100.00,
             'surcharge': 10.00,
-            'total': 110.00,
             'tax': 5.00,
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
+            'penalty_fee': '10.00',
             'refund_charge': '10.00',
             'reference': 'gds_reference',
+            'gds_office_id': 'gds_office_id',
             'type': 'flight',
             'agent_name': 'agent name',
             'client_name': 'client name',
@@ -585,7 +359,7 @@ class OpenAiController extends Controller
                 'equipment': 'equipment',
                 'flight_meal': 'flight meal',
                 'seat_no': 'seat no',
-                'ticket_number': 'ticket number',
+                'ticket_number': 'K381-3580878589', //example of ticket flight number with the airline code
             }
         }
 

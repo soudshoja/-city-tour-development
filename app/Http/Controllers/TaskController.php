@@ -56,7 +56,8 @@ class TaskController extends Controller
         $taskCount = 0;
         $clients = collect();
         $agents = collect();
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail')->orderBy('id', 'desc');
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
+
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
             ->withoutGlobalScope('enabled')
             ->where('enabled', false)
@@ -170,10 +171,11 @@ class TaskController extends Controller
             'company_id' => 'required|exists:companies,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'reference' => 'required|string',
+            'gds_office_id' => 'nullable|string',
             'status' => 'required|string',
             'price' => 'nullable|numeric',
-            'total' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
+            'penalty_fee' => 'nullable|numeric',
             'client_name' => 'nullable|string',
             'agent_id' => 'required|exists:agents,id',
             'client_id' => 'nullable|exists:clients,id',
@@ -193,7 +195,8 @@ class TaskController extends Controller
 
         $queryChkExistTask->where('reference', $validatedData['reference'])
             ->where('supplier_id', $validatedData['supplier_id'])
-            ->where('company_id', $validatedData['company_id']);
+            ->where('company_id', $validatedData['company_id'])
+            ->where('status', $validatedData['status']);
 
         if (isset($validatedData['status']) && $validatedData['status'] !== 'refund') {
             $queryChkExistTask->where('status', $validatedData['status']);
@@ -217,14 +220,35 @@ class TaskController extends Controller
             ], 404);
         }
 
+        $penaltyFee = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
+
+        if($validatedData['status'] == 'reissued'){
+            $originalTask = Task::where('reference', $validatedData['reference'])
+                ->where('supplier_id', $validatedData['supplier_id'])
+                ->where('company_id', $validatedData['company_id'])
+                ->where('status', 'issued')
+                ->first();
+            
+            if (!$originalTask) {
+                Log::warning('Original task not found for reference: ' , $validatedData);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This is reissued ticket, but original ticket not found.',
+                ], 404);
+            }
+
+            $validatedData['original_task_id'] = $originalTask->id; 
+        }
+
+        $validatedData['total'] = $validatedData['price'] + $validatedData['tax'] + $penaltyFee;
+
         DB::beginTransaction();
 
         try {
 
-            $taskData = $validatedData;
-            Log::debug('Task Data:', $taskData);
+            Log::debug('Task Data:', $validatedData);
 
-            $task = Task::create($taskData);
+            $task = Task::create($validatedData);
 
             if ($task->status !== 'refund' && $task->status !== 'void') {
                 if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
@@ -438,6 +462,11 @@ class TaskController extends Controller
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function reissuedTask(array $task)
+    {
+        
     }
 
     public function voidTask(Task $task, Task $issuedTask, Payment $payment)

@@ -422,7 +422,7 @@
                                                                                 Issued
                                                                             </option>
 
-                                                                            @if (!empty($task->status) && $task->status !== 'confirmed')
+                                                                            @if (!empty($task->status) && $task->status !== 'issued')
                                                                                 <option value="Refund"
                                                                                     {{ $task->status === 'refund' ? 'selected' : '' }}>
                                                                                     Refund

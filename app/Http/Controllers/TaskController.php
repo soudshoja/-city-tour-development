@@ -179,6 +179,7 @@ class TaskController extends Controller
             'additional_info' => 'nullable|string',
             'enabled' => 'required|boolean',
             'refund_date' => 'nullable|date',
+            'refund_charge' => 'nullable|numeric',
             'task_hotel_details' => 'required_if:task_flight_details,null|array|nullable',
             'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
@@ -220,7 +221,7 @@ class TaskController extends Controller
 
             $task = Task::create($taskData);
 
-            if ($task->status !== 'refund' && $task->status !== 'void') {
+            if ($task->status !== 'void') {
                 if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
                     $this->saveHotelDetails($request->task_hotel_details, $task->id);
                 } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {

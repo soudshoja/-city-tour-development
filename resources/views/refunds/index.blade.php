@@ -89,7 +89,7 @@
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->task->client->name }}
+                                                {{ $refund->task->client->name ?? '' }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 KWD {{ number_format($refund->total_nett_refund, 2) }}

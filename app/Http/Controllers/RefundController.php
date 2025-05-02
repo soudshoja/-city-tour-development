@@ -87,23 +87,23 @@ class RefundController extends Controller
         }
     
         // Make sure there's at least one other task with the same reference and status "issued"
-        $hasTicketedReference = Task::where('id', '!=', $task->id)
-            ->where('status', 'issued')
-            ->when($task->type === 'flight', function ($query) use ($referenceValue) {
-                $query->whereHas('flightDetails', function ($sub) use ($referenceValue) {
-                    $sub->where('ticket_number', $referenceValue);
-                });
-            })
-            ->when($task->type === 'hotel', function ($query) use ($referenceValue) {
-                $query->whereHas('hotelDetails', function ($sub) use ($referenceValue) {
-                    $sub->where('room_reference', $referenceValue);
-                });
-            })
-            ->exists();
+        // $hasTicketedReference = Task::where('id', '!=', $task->id)
+        //     ->where('status', 'issued')
+        //     ->when($task->type === 'flight', function ($query) use ($referenceValue) {
+        //         $query->whereHas('flightDetails', function ($sub) use ($referenceValue) {
+        //             $sub->where('ticket_number', $referenceValue);
+        //         });
+        //     })
+        //     ->when($task->type === 'hotel', function ($query) use ($referenceValue) {
+        //         $query->whereHas('hotelDetails', function ($sub) use ($referenceValue) {
+        //             $sub->where('room_reference', $referenceValue);
+        //         });
+        //     })
+        //     ->exists();
     
-        if (!$hasTicketedReference) {
-            return redirect()->back()->withErrors(['error' => 'No matching issued task found for this reference.']);
-        }
+        // if (!$hasTicketedReference) {
+        //     return redirect()->back()->withErrors(['error' => 'No matching issued task found for this reference.']);
+        // }
     
         // Get the root IDs for Assets and Liabilities accounts
         $assetsRootId = Account::where('name', 'Assets')->value('id');
@@ -171,7 +171,7 @@ class RefundController extends Controller
             'transaction_type' => 'debit',
             'amount' => $request->input('total_nett_refund'),
             'date' => $request->date,
-            'description' => 'Refund',
+            'description' => 'Refund Task Uploaded',
             'reference_type' => 'Refund',
             'reference_number' => $request->bankpaymentref,
             'name' => $task->client_name,

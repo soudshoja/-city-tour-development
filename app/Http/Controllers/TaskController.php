@@ -234,126 +234,29 @@ class TaskController extends Controller
 
             if ($task->status === 'void') {
                 Log::info('Check for invoice created for this task.');
-            
+
                 $originalTask = Task::where('reference', $task->reference)
                     ->where('supplier_id', $task->supplier_id)
                     ->where('company_id', $task->company_id)
                     ->where('status', '!=', 'void')
                     ->first();
-            
+
                 if (!$originalTask) {
                     Log::warning('Original task not found for reference: ' . $task->reference);
                     throw new Exception('Original task not found.');
                 }
-            
+
                 $invoice = InvoiceDetail::where('task_id', $originalTask->id)->first();
-            
+
                 if ($invoice && $invoice->status === 'paid') {
                     Log::info('Invoice is already paid. Skipping reversal.');
                     throw new Exception('Invoice is already paid.');
                 }
-            
-                Log::info('Invoice not paid or not found. Proceeding with reversal.');
-            
-                
-                // Step 2: Fetch related accounts
-                $liabilities = Account::where('name', 'like', '%Liabilities%')
-                    ->where('company_id', $originalTask->company_id)
-                    ->first();
-            
-                $expenses = Account::where('name', 'like', '%Expenses%')
-                    ->where('company_id', $originalTask->company_id)
-                    ->first();
-            
-                $supplier = Supplier::find($originalTask->supplier_id);
-                $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
-                    ->where('company_id', $originalTask->company_id)
-                    ->first();
-            
-                $supplierPayable = Account::where('name', $supplier->name)
-                    ->where('company_id', $originalTask->company_id)
-                    ->where('root_id', $liabilities->id)
-                    ->first();
-            
-                $supplierCost = Account::where('name', $supplier->name)
-                    ->where('company_id', $originalTask->company_id)
-                    ->where('root_id', $expenses->id)
-                    ->first();
-            
-                if (!$supplierPayable || !$supplierCost) {
-                    Log::error('Missing required accounts for reversal.', [
-                        'payable' => $supplierPayable,
-                        'cost' => $supplierCost
-                    ]);
-                    throw new Exception('Missing required accounts for reversal.');
-                }
-            
-            
-                try {
-                    Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
-            
-                    $transaction = Transaction::create([
-                        'branch_id' => $originalTask->agent->branch_id,
-                        'company_id' => $originalTask->company_id,
-                        'entity_id' => $originalTask->company_id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'debit',
-                        'amount' => $originalTask->total,
-                        'date' => now(),
-                        'task_id' => $originalTask->id,
-                        'description' => 'Void reversal for: ' . $originalTask->reference,
-                        'reference_type' => 'Payment',
-                    ]);
-            
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $originalTask->company_id,
-                        'branch_id' => $originalTask->agent->branch_id,
-                        'account_id' => $supplierCost->id,
-                        'task_id' => $originalTask->id,
-                        'transaction_date' => now(),
-                        'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
-                        'name' => $supplierCompany->supplier->name,
-                        'debit' => 0,
-                        'credit' => $originalTask->total,
-                        'balance' => $originalTask->total,
-                        'type' => 'payable',
-                    ]);
-            
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $originalTask->company_id,
-                        'branch_id' => $originalTask->agent->branch_id,
-                        'account_id' => $supplierPayable->id,
-                        'task_id' => $originalTask->id,
-                        'transaction_date' => now(),
-                        'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
-                        'name' => $supplierCompany->supplier->name,
-                        'debit' => $originalTask->total,
-                        'credit' => 0,
-                        'balance' => $originalTask->total,
-                        'type' => 'payable',
-                    ]);
+                Log::info('Invoice for the void task is not paid nor found. Proceeding with reversal.');
 
-               
-                 
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    Log::error('Void reversal failed: ' . $e->getMessage());
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Void reversal failed: ' . $e->getMessage(),
-                    ], 500);
-                }
-       
-                Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
-                DB::commit();
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Void task reversal journal completed.',
-                    'data' => $task,
-                ], 201);
+                return $this->ReverseUnpaidVoidedTask($originalTask);
             }
+
             $agent = $task->agent;
 
             if (!$agent) {
@@ -750,15 +653,14 @@ class TaskController extends Controller
 
 
         $responseWithoutJson = $this->store($newRequest);
-        
+
         $response = json_decode($responseWithoutJson->getContent(), true);
         if ($response['status'] == 'error') {
-        // dd('i do know man', 'response '. $response);
+            // dd('i do know man', 'response '. $response);
 
             return $response;
         }
         // dd('idk man', $response);
-        logger('imported task: ', $response['data']);
         $existingTask = Cache::get('imported_task');
 
         if ($existingTask) {
@@ -1525,5 +1427,91 @@ class TaskController extends Controller
         $pdf = Pdf::loadView('tasks.pdf.receipt', compact('companyLogoSrc'));
 
         return $pdf->download('receipt.pdf');
+    }
+
+    public function ReverseUnpaidVoidedTask(Task $originalTask)
+    {
+        $liabilities = Account::where('name', 'like', '%Liabilities%')
+            ->where('company_id', $originalTask->company_id)
+            ->first();
+
+        $expenses = Account::where('name', 'like', '%Expenses%')
+            ->where('company_id', $originalTask->company_id)
+            ->first();
+
+        $supplier = Supplier::find($originalTask->supplier_id);
+        $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
+            ->where('company_id', $originalTask->company_id)
+            ->first();
+
+        $supplierPayable = Account::where('name', $supplier->name)
+            ->where('company_id', $originalTask->company_id)
+            ->where('root_id', $liabilities->id)
+            ->first();
+
+        $supplierCost = Account::where('name', $supplier->name)
+            ->where('company_id', $originalTask->company_id)
+            ->where('root_id', $expenses->id)
+            ->first();
+
+        if (!$supplierPayable || !$supplierCost) {
+            Log::error('Missing required accounts for reversal.', [
+                'payable' => $supplierPayable,
+                'cost' => $supplierCost
+            ]);
+            throw new Exception('Missing required accounts for reversal.');
+        }
+
+        Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
+
+        $transaction = Transaction::create([
+            'branch_id' => $originalTask->agent->branch_id,
+            'company_id' => $originalTask->company_id,
+            'entity_id' => $originalTask->company_id,
+            'entity_type' => 'company',
+            'transaction_type' => 'debit',
+            'amount' => $originalTask->total,
+            'date' => now(),
+            'task_id' => $originalTask->id,
+            'description' => 'Void reversal for: ' . $originalTask->reference,
+            'reference_type' => 'Payment',
+        ]);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $originalTask->company_id,
+            'branch_id' => $originalTask->agent->branch_id,
+            'account_id' => $supplierCost->id,
+            'task_id' => $originalTask->id,
+            'transaction_date' => now(),
+            'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
+            'name' => $supplierCompany->supplier->name,
+            'debit' => 0,
+            'credit' => $originalTask->total,
+            'balance' => $originalTask->total,
+            'type' => 'payable',
+        ]);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $originalTask->company_id,
+            'branch_id' => $originalTask->agent->branch_id,
+            'account_id' => $supplierPayable->id,
+            'task_id' => $originalTask->id,
+            'transaction_date' => now(),
+            'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
+            'name' => $supplierCompany->supplier->name,
+            'debit' => $originalTask->total,
+            'credit' => 0,
+            'balance' => $originalTask->total,
+            'type' => 'payable',
+        ]);
+
+        Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
+        DB::commit();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Void task reversal journal completed.',
+        ], 201);
     }
 }

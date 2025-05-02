@@ -45,33 +45,67 @@ class RefundController extends Controller
     
     public function create(Task $task)
     {
-        //search invoice based on original task
-        $invoiceDetails = InvoiceDetail::with('task')
-            ->where('task_description', $task->reference)
-            ->first();
-
-        //dd($invoiceDetails->invoice->status);
-        if (!$invoiceDetails) {
-            return redirect()->back()->withErrors(['error' => 'No reference of original task']);
-        }else{
-            if ($invoiceDetails->invoice->status==="unpaid") {
-                return redirect()->back()->withErrors(['error' => 'The invoice from original task still pending']);
-            }
+        // Get reference value based on task type
+        $referenceValue = null;
+        if ($task->type === 'flight') {
+            $referenceValue = optional($task->flightDetails)->ticket_number;
+        } elseif ($task->type === 'hotel') {
+            $referenceValue = optional($task->hotelDetails)->room_reference;
         }
-
-        // Get the task with its related agent, branch, and client
-        $tasks = Task::with('agent', 'client')
-            ->where('id', $task->id)
-            ->first();
     
-        if (!$tasks) {
-            return redirect()->back()->withErrors('Task not found.');
+        // Fail early if reference is missing
+        if (!$referenceValue) {
+            return redirect()->back()->withErrors(['error' => 'No valid reference (ticket number or room reference) found for this task.']);
         }
-
+    
+        // Ensure the invoice and its detail exists
+        $invoiceDetails = null;
+        if ($task->type === 'flight' && $referenceValue) {
+            $invoiceDetails = InvoiceDetail::with('invoice', 'task')
+                ->whereHas('task.flightDetails', function ($query) use ($referenceValue) {
+                    $query->where('ticket_number', $referenceValue);
+                })
+                ->first();
+        } elseif ($task->type === 'hotel' && $referenceValue) {
+            $invoiceDetails = InvoiceDetail::with('invoice', 'task')
+                ->whereHas('task.hotelDetails', function ($query) use ($referenceValue) {
+                    $query->where('room_reference', $referenceValue);
+                })
+                ->first();
+        }
+    
+        // Check if invoiceDetails exists before continuing
+        if (!$invoiceDetails || !$invoiceDetails->invoice) {
+            return redirect()->back()->withErrors(['error' => 'Original invoice not found.']);
+        }
+    
+        // Ensure invoice is paid
+        if ($invoiceDetails->invoice->status === 'unpaid') {
+            return redirect()->back()->withErrors(['error' => 'The invoice from the original task is still unpaid.']);
+        }
+    
+        // Make sure there's at least one other task with the same reference and status "ticketed"
+        $hasTicketedReference = Task::where('id', '!=', $task->id)
+            ->where('status', 'issued')
+            ->when($task->type === 'flight', function ($query) use ($referenceValue) {
+                $query->whereHas('flightDetails', function ($sub) use ($referenceValue) {
+                    $sub->where('ticket_number', $referenceValue);
+                });
+            })
+            ->when($task->type === 'hotel', function ($query) use ($referenceValue) {
+                $query->whereHas('hotelDetails', function ($sub) use ($referenceValue) {
+                    $sub->where('room_reference', $referenceValue);
+                });
+            })
+            ->exists();
+    
+        if (!$hasTicketedReference) {
+            return redirect()->back()->withErrors(['error' => 'No matching ticketed task found for this reference.']);
+        }
+    
         // Get the root IDs for Assets and Liabilities accounts
         $assetsRootId = Account::where('name', 'Assets')->value('id');
         $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-        
         // Fetch COA accounts (leaf nodes) under Assets and Liabilities
         $coaAccounts = Account::doesntHave('children')
             ->whereHas('parent', function ($query) use ($assetsRootId, $liabilitiesRootId) {
@@ -79,8 +113,16 @@ class RefundController extends Controller
             })
             ->get();
     
-        return view('refunds.create', compact('coaAccounts', 'tasks', 'invoiceDetails'));
-    }
+        // Load task with agent and client
+        $taskWithRelations = Task::with('agent', 'client')->find($task->id);
+    
+        return view('refunds.create', [
+            'tasks' => $taskWithRelations,
+            'invoiceDetails' => $invoiceDetails,
+            'hasTicketedTasksWithReference' => $hasTicketedReference,
+            'coaAccounts' => $coaAccounts,
+        ]);
+    }    
     
 
     public function store(Request $request, Task $task)

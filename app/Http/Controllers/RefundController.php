@@ -52,6 +52,8 @@ class RefundController extends Controller
         } elseif ($task->type === 'hotel') {
             $referenceValue = optional($task->hotelDetails)->room_reference;
         }
+
+        //dd($referenceValue);
     
         // Fail early if reference is missing
         if (!$referenceValue) {
@@ -84,7 +86,7 @@ class RefundController extends Controller
             return redirect()->back()->withErrors(['error' => 'The invoice from the original task is still unpaid.']);
         }
     
-        // Make sure there's at least one other task with the same reference and status "ticketed"
+        // Make sure there's at least one other task with the same reference and status "issued"
         $hasTicketedReference = Task::where('id', '!=', $task->id)
             ->where('status', 'issued')
             ->when($task->type === 'flight', function ($query) use ($referenceValue) {
@@ -100,7 +102,7 @@ class RefundController extends Controller
             ->exists();
     
         if (!$hasTicketedReference) {
-            return redirect()->back()->withErrors(['error' => 'No matching ticketed task found for this reference.']);
+            return redirect()->back()->withErrors(['error' => 'No matching issued task found for this reference.']);
         }
     
         // Get the root IDs for Assets and Liabilities accounts

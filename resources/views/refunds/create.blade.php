@@ -131,7 +131,8 @@
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
                                 Refund Charge</label>
                             <input readonly type="number" step="0.01" name="refund_airline_charge"
-                                id="refund_airline_charge" value="10.00"
+                                id="refund_airline_charge"
+                                value="{{ old('refund_charge', $tasks->refund_charge ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 

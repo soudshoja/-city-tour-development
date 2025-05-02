@@ -231,6 +231,7 @@
     <!--./page content-->
     <script>
         function confirmProcessCompleted(taskId, refundId) {
+            console.log(taskId, refundId);
             if (confirm('Are you sure you want to mark this refund as completed?')) {
                 if (confirm('This action cannot be undone. Do you want to proceed?')) {
                     processCompleted(taskId, refundId);
@@ -251,6 +252,7 @@
                 })
                 .then(response => response.ok ? window.location.href = '/refunds' : alert('Something went wrong.'))
                 .catch(() => alert('Error processing refund.'));
+            console.log(taskId, refundId);
         }
     </script>
 </x-app-layout>

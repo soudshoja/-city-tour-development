@@ -18,123 +18,101 @@
         }
 
         body {
-            margin: 0;
-            padding: 32px 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--accent-bg);
-            display: flex;
-            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
         }
 
         .container {
-            width: 600px;
+            max-width: 600px;
+            margin: auto;
             background: var(--primary-bg);
-            border-radius: 10px;
+            border-radius: 12px;
+            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
             overflow: hidden;
-            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
         }
 
-        header {
+        .header {
             background: var(--highlight);
             color: white;
-            padding: 20px 32px;
+            padding: 24px 32px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        header img {
+        .header img {
             height: 48px;
         }
 
-        header h1 {
+        .header h1 {
             font-size: 18px;
-            font-weight: 500;
-        }
-
-        main {
-            padding: 28px 32px;
+            font-weight: 600;
+            margin: 0;
         }
 
         .section {
-            background: var(--section-bg);
+            padding: 24px 32px;
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 24px;
         }
 
-        .section h2 {
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section.gray {
+            background: var(--section-bg);
+        }
+
+        .section-title {
             font-size: 16px;
-            color: var(--text-dark);
-            margin: 0 0 18px 0;
             font-weight: 600;
-            text-align: center;
-        }
-
-        .section p,
-        .items {
-            margin: 6px 0;
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .highlight {
-            font-weight: 600;
+            margin-bottom: 20px;
             color: var(--text-dark);
         }
 
-        .info-grid {
+        .row {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
-            gap: 20px;
-            align-items: center;
         }
 
         .info-box {
-            flex: 1;
+            width: 48%;
+            margin-bottom: 12px;
         }
 
-        .info-box p {
-            margin: 4px 0;
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .info-box strong {
-            color: var(--text-dark);
-        }
-
-        .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            row-gap: 10px;
-            column-gap: 32px;
-        }
-
-        .details-grid div {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .details-grid div span {
-            display: block;
+        .info-box.full {
+            width: 100%;
         }
 
         .label {
             font-weight: 600;
-            color: var(--text-dark);
+            font-size: 14px;
+            color: #374151;
         }
 
-        .spacer {
-            height: 16px;
-            border-top: 1px dashed var(--border);
-            margin: 16px 0;
+        .value {
+            font-size: 14px;
+            color: #4b5563;
         }
 
-        .items {
+        .inline-details {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
+            gap: 24px;
+        }
+
+        .inline-details div {
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .inline-details>div {
+            flex: 1 1 auto;
+            min-width: 120px;
         }
 
         footer {
@@ -144,74 +122,97 @@
             text-align: center;
             color: var(--text-muted);
         }
+
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers">
-            <h1>Flight Voucher: <strong>{{ $task->reference }}</strong></h1>
-        </header>
+        <div class="header">
+            <img src="{{ asset('images/CityLogo.png') }}" alt="City Travelers">
+            <h1>Flight Voucher: {{ $task->reference }}</h1>
+        </div>
 
-        <main>
-            <div class="section">
-                <h2>Passenger Information</h2>
-                <div class="info-grid">
-                    <div class="info-box">
-                        <p><strong>Name:</strong> {{ $task->client->name }}</p>
-                    </div>
-                    <div class="info-box">
-                        <p><strong>Email: </strong><a href="mailto:{{ $task->client->email }}">{{ $task->client->email }}</a></p>
-                    </div>
+        <div class="section gray">
+            <div class="section-title">Passenger Information</div>
+            <div class="row">
+                <div class="info-box">
+                    <div class="label">Name</div>
+                    <div class="value">{{ $task->client->name }}</div>
+                </div>
+                <div class="info-box">
+                    <div class="label">Email</div>
+                    <div class="value"><a href="mailto:{{ $task->client->email }}">{{ $task->client->email }}</a></div>
                 </div>
             </div>
-            <div class="section">
-                <h2>Flight Information</h2>
-                <div class="details-grid">
-                    <div>
-                        <span class="label">Airline:</span>
-                        <span>Kuwait Airways</span>
-                    </div>
-                    <div>
-                        <span class="label">Flight:</span>
-                        <span>{{ $task->flightDetails->flight_number }}</span>
-                    </div>
-
-                    <div>
-                        <span class="label">Departure:</span>
-                        <span>{{ $task->flightDetails->departure_place_time }}</span>
-                    </div>
-                    <div>
-                        <span class="label">Arrival:</span>
-                        <span>{{ $task->flightDetails->arrival_place_time }}</span>
-                    </div>
+        </div>
+        <div class="section">
+            <div class="section-title">Flight Details</div>
+            <div class="row">
+                <div class="info-box">
+                    <div class="label">Airline</div>
+                    <div class="value">{{ $task->flightDetails->airline->name ?? 'Kuwait Airways' }}</div>
                 </div>
-                <div class="spacer"></div>
-                <div class="details-grid">
-                    <div>
-                        <span class="label">Duration:</span>
-                        <span>{{ $task->duration ?? $task->flightDetails->duration_by_calculate }}</span>
-                    </div>
-                    <div>
-                        <span class="label">Booking Status:</span>
-                        <span>Confirmed</span>
-                    </div>
-                    <div>
-                        <span class="label">Class:</span>
-                        <span>Economy</span>
-                    </div>
-                    <div>
-                        <span class="label">Equipment:</span>
-                        <span>AIRBUS A220-300</span>
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <span class="label">Flight Meal:</span>
-                        <span>Food and beverages for purchase</span>
-                    </div>
+                <div class="info-box">
+                    <div class="label">Flight</div>
+                    <div class="value">{{ $task->flightDetails->flight_number }}</div>
+                </div>
+                <div class="info-box">
+                    <div class="label">Class</div>
+                    <div class="value">{{ $task->flightDetails->class_type }}</div>
+                </div>
+                <div class="info-box">
+                    <div class="label">Seat No</div>
+                    <div class="value">{{ $task->flightDetails->seat_no }}</div>
                 </div>
             </div>
-        </main>
+        </div>
+        <div class="section gray">
+            <div class="section-title">Departure</div>
+            <div class="inline-details">
+                <div><strong>Time:</strong> {{ $task->flightDetails->departure_time }}</div>
+                @if ($task->flightDetails->airport_from)
+                <div><strong>Airport:</strong> {{ $task->flightDetails->airport_from }}</div>
+                @endif
+                @if ($task->flightDetails->terminal_from)
+                <div><strong>Terminal:</strong> {{ $task->flightDetails->terminal_from }}</div>
+                @endif
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-title">Arrival</div>
+            <div class="inline-details">
+                <div><strong>Time:</strong> {{ $task->flightDetails->arrival_time }}</div>
+                @if ($task->flightDetails->airport_to)
+                <div><strong>Airport:</strong> {{ $task->flightDetails->airport_to }}</div>
+                @endif
+                @if ($task->flightDetails->terminal_to)
+                <div><strong>Terminal:</strong> {{ $task->flightDetails->terminal_to }}</div>
+                @endif
+            </div>
+        </div>
+        <div class="section gray">
+            <div class="section-title">Additional Information</div>
+            <div class="inline-details">
+                @if ($task->flightDetails->baggage_allowed)
+                <div><strong>Baggage:</strong> {{ $task->flightDetails->baggage_allowed }}</div>
+                @endif
+                @if ($task->flightDetails->equipment)
+                <div><strong>Equipment:</strong> {{ $task->flightDetails->equipment }}</div>
+                @endif
+                @if ($task->flightDetails->flight_meal)
+                <div><strong>Meal:</strong> {{ $task->flightDetails->flight_meal }}</div>
+                @endif
+            </div>
+        </div>
         <footer>
             This voucher is valid for the specified flight only. Please present it at the check-in counter.
         </footer>

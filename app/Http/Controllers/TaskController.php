@@ -38,7 +38,10 @@ use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
+use App\Models\InvoiceDetail;
+use Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\DB;
+use App\Models\Payment;
 
 // use Carbon\Carbon;
 
@@ -175,12 +178,17 @@ class TaskController extends Controller
             'agent_id' => 'required|exists:agents,id',
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
+            'taxes_record' => 'nullable|string',
             'enabled' => 'required|boolean',
             'refund_date' => 'nullable|date',
+            'ticket_number' => 'nullable|string',
+            'refund_charge' => 'nullable|numeric',
             'task_hotel_details' => 'required_if:task_flight_details,null|array|nullable',
             'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
 
+        //dd($request->task_flight_details['ticket_number']);
+        //dd($request);
         $queryChkExistTask = Task::query(); // <- make sure it's a query builder
 
         $queryChkExistTask->where('reference', $validatedData['reference'])
@@ -190,9 +198,9 @@ class TaskController extends Controller
         if (isset($validatedData['status']) && $validatedData['status'] !== 'refund') {
             $queryChkExistTask->where('status', $validatedData['status']);
         }
-        
+
         $existingTask = $queryChkExistTask->first();
-        
+
         if ($existingTask) {
             return response()->json([
                 'status' => 'error',
@@ -228,6 +236,37 @@ class TaskController extends Controller
                 }
             } else {
                 Log::info('Refund task created, skipping hotel/flight details saving process.');
+            }
+
+            if ($task->status === 'void') {
+                Log::info('Check for invoice created for this task.');
+
+                $originalTask = Task::where('reference', $task->reference)
+                    ->where('supplier_id', $task->supplier_id)
+                    ->where('company_id', $task->company_id)
+                    ->where('status', '!=', 'void')
+                    ->first();
+
+                if (!$originalTask) {
+                    Log::warning('Original task not found for reference: ' . $task->reference);
+                    throw new Exception('Original task not found.');
+                }
+
+                $payment = Payment::whereHas('partials.invoice.invoiceDetails', function ($query) use ($originalTask) {
+                    $query->where('task_id', $originalTask->id);
+                })
+                ->whereHas('partials', function ($query) {
+                    $query->where('status', 'paid');
+                })
+                ->first();
+
+                if ($payment && $payment->client_id) {
+                    Log::info('Invoice is already paid. Skipping reversal.');
+                    return $this->voidTask($task, $originalTask, $payment);
+                }
+                Log::info('Invoice for the void task is not paid nor found. Proceeding with reversal.');
+
+                return $this->ReverseUnpaidVoidedTask($originalTask);
             }
 
             $agent = $task->agent;
@@ -399,6 +438,71 @@ class TaskController extends Controller
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function voidTask(Task $task, Task $issuedTask, Payment $payment)
+    {
+        $client = Client::find($payment->client_id);
+
+        if (!$client) {
+            throw new \Exception("Client not found for payment ID: {$payment->id}");
+            Log::warning("Client not found for payment [{$payment->id}] during void refund.");
+        }
+
+        $oldCredit = $client->credit;
+
+        $client->credit += $payment->amount;
+        $client->save();
+
+        Log::info("Void for task [{$task->reference}]: Client credit before = {$oldCredit}, after = {$client->credit}");
+
+        $voidTransaction = Transaction::create([
+            'branch_id'        => $client->agent->branch_id,
+            'company_id'       => $client->agent->branch->company_id,
+            'entity_id'        => $client->id,
+            'entity_type'      => 'client',
+            'transaction_type' => 'debit',
+            'amount'           => $payment->amount,
+            'date'             => now(),
+            'description'      => 'Void task: ' . $task->reference,
+            'reference_type'   => 'Refund',
+            'reference_number' => $payment->voucher_number,
+        ]);
+
+        if (!$voidTransaction) {
+            throw new \Exception("Failed to create refund transaction.");
+        }
+
+        $entries = JournalEntry::whereHas('invoiceDetail', function ($query) use ($task) {
+            $query->where('task_description', $task->reference);
+        })->get();
+
+        foreach ($entries as $entry) {
+            JournalEntry::create([
+                'transaction_id'   => $voidTransaction->id,
+                'company_id'       => $entry->company_id,
+                'branch_id'        => $entry->branch_id,
+                'account_id'       => $entry->account_id,
+                'task_id'          => $issuedTask->id,
+                'transaction_date' => now(),
+                'description'      => 'Void: ' . $entry->description,
+                'debit'            => $entry->credit,
+                'credit'           => $entry->debit,
+                'balance'          => ($entry->balance ?? 0) * -1,
+                'type'             => $entry->type,
+                'name'             => $entry->name,
+                'voucher_number'   => $entry->voucher_number,
+            ]);
+        }
+
+        Log::info('Voided task refunded and reversed: ' . $task->reference);
+
+        DB::commit();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Paid void task reversal journal completed.',
+            'data' => $issuedTask,
+        ], 201);
     }
 
     public function voucher($id = null)
@@ -625,15 +729,12 @@ class TaskController extends Controller
         ]);
         
 
-        $response = $this->store($newRequest);
-        
-        $response = json_decode($response->getContent(), true);
+        $responseWithoutJson = $this->store($newRequest);
 
+        $response = json_decode($responseWithoutJson->getContent(), true);
         if ($response['status'] == 'error') {
             return $response;
         }
-
-        logger('imported task: ', $response['data']);
         $existingTask = Cache::get('imported_task');
 
         if ($existingTask) {
@@ -946,13 +1047,18 @@ class TaskController extends Controller
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
 
+            if($reservation['service']['status'] ?? null){
+                $statusMagicTask = $reservation['service']['status'] == 'OK' ? 'issued' : 'confirmed';
+            } else {
+                throw new Exception('Status not found');
+            }
 
             $taskData = [
                 'client_id' => null,
                 'agent_id' => $agentId,
                 'company_id' => $companyId,
                 'type' => 'hotel',
-                'status' => $reservation['service']['status'] ?? null,
+                'status' => $statusMagicTask,
                 'client_name' => $clientName,
                 'reference' => (string)$reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,
@@ -1382,23 +1488,116 @@ class TaskController extends Controller
         return $pdf->download('hotel.pdf');
     }
 
-    public function receiptPdf()
+    public function receiptPdf($taskId)
     {
+        $task = Task::with('invoiceDetail', 'invoiceDetail.task', 'invoiceDetail.invoice', 'invoiceDetail.invoice.payment')->findOrFail($taskId);
+        $invoiceDetail = $task->invoiceDetail;
+
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
 
-        return view('tasks.pdfView.receipt-view', compact('companyLogoSrc'));
+        return view('tasks.pdfView.receipt-view', compact('task', 'invoiceDetail', 'companyLogoSrc'));
     }
 
-    public function recceiptPdfDownload($taskId)
+    public function receiptPdfDownload($taskId)
     {
+        $task = Task::with('invoiceDetail', 'invoiceDetail.task', 'invoiceDetail.invoice', 'invoiceDetail.invoice.payment')->findOrFail($taskId);
+        $invoiceDetail = $task->invoiceDetail;
+
         $companyLogoPath = public_path('images/CityLogo.png');
         $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
         $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
 
-        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('companyLogoSrc'));
+        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('task', 'invoiceDetail', 'companyLogoSrc'));
 
         return $pdf->download('receipt.pdf');
+    }
+
+    public function ReverseUnpaidVoidedTask(Task $originalTask)
+    {
+        $liabilities = Account::where('name', 'like', '%Liabilities%')
+            ->where('company_id', $originalTask->company_id)
+            ->first();
+
+        $expenses = Account::where('name', 'like', '%Expenses%')
+            ->where('company_id', $originalTask->company_id)
+            ->first();
+
+        $supplier = Supplier::find($originalTask->supplier_id);
+        $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
+            ->where('company_id', $originalTask->company_id)
+            ->first();
+
+        $supplierPayable = Account::where('name', $supplier->name)
+            ->where('company_id', $originalTask->company_id)
+            ->where('root_id', $liabilities->id)
+            ->first();
+
+        $supplierCost = Account::where('name', $supplier->name)
+            ->where('company_id', $originalTask->company_id)
+            ->where('root_id', $expenses->id)
+            ->first();
+
+        if (!$supplierPayable || !$supplierCost) {
+            Log::error('Missing required accounts for reversal.', [
+                'payable' => $supplierPayable,
+                'cost' => $supplierCost
+            ]);
+            throw new Exception('Missing required accounts for reversal.');
+        }
+
+        Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
+
+        $transaction = Transaction::create([
+            'branch_id' => $originalTask->agent->branch_id,
+            'company_id' => $originalTask->company_id,
+            'entity_id' => $originalTask->company_id,
+            'entity_type' => 'company',
+            'transaction_type' => 'debit',
+            'amount' => $originalTask->total,
+            'date' => now(),
+            'task_id' => $originalTask->id,
+            'description' => 'Void reversal for: ' . $originalTask->reference,
+            'reference_type' => 'Payment',
+        ]);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $originalTask->company_id,
+            'branch_id' => $originalTask->agent->branch_id,
+            'account_id' => $supplierCost->id,
+            'task_id' => $originalTask->id,
+            'transaction_date' => now(),
+            'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
+            'name' => $supplierCompany->supplier->name,
+            'debit' => 0,
+            'credit' => $originalTask->total,
+            'balance' => $originalTask->total,
+            'type' => 'payable',
+        ]);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction->id,
+            'company_id' => $originalTask->company_id,
+            'branch_id' => $originalTask->agent->branch_id,
+            'account_id' => $supplierPayable->id,
+            'task_id' => $originalTask->id,
+            'transaction_date' => now(),
+            'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
+            'name' => $supplierCompany->supplier->name,
+            'debit' => $originalTask->total,
+            'credit' => 0,
+            'balance' => $originalTask->total,
+            'type' => 'payable',
+        ]);
+
+        Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
+        DB::commit();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Unpaid void task reversal journal completed.',
+            'data' => $originalTask,
+        ], 201);
     }
 }

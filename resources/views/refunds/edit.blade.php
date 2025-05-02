@@ -166,7 +166,7 @@
                         <div>
                             <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service
                                 Charge
-                                Amount</label>
+                                Amount (*New Profit)</label>
                             <input type="number" step="0.01" name="service_charge" id="service_charge"
                                 value="{{ old('service_charge', $refund->service_charge ?? '') }}" readonly
                                 class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">

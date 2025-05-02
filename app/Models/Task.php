@@ -31,7 +31,10 @@ class Task extends Model
         'invoice_price',
         'voucher_status',
         'refund_date',
-        'enabled'
+        'enabled',
+        'taxes_record',
+        'refund_charge',
+        'ticket_number',
     ];
 
 

@@ -59,4 +59,9 @@ class Payment extends Model
     {
         return $this->hasMany(InvoicePartial::class);
     }
+
+    public function tapPayment()
+    {
+        return $this->hasOne(TapPayment::class);
+    }
 }

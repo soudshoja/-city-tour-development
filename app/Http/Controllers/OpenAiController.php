@@ -533,7 +533,7 @@ class OpenAiController extends Controller
             
             **Field Binding Example for Sample 5**:  
             - line 2: 'VOID' for status 'void'
-            - line 4: 'LSAJUM030' for gds_reference
+            - line 4: 'LSAJUM' for gds_reference
             - line 5: 'ALFAILAKAWI/KHALED MR' is for client_name
             - line 7:  'CASH' is for payment_type
         

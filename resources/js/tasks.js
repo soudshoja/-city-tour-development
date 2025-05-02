@@ -186,6 +186,9 @@ function toggleTasksDetails(taskId, url) {
             <p><i class="fas fa-tag blue-icon"></i> <strong>Type:</strong> ${
                 data.type
             }</p>
+            <p><i class="fas fa-ticket-alt blue-icon"></i> <strong>Ticket Number:</strong> ${
+                data.ticket_number || "N/A"
+            }</p>
         </div>
     </div>
 
@@ -207,9 +210,6 @@ function toggleTasksDetails(taskId, url) {
             <p><i class="fas fa-ticket-alt blue-icon"></i> <strong>Flight:</strong> ${
                 data.flight_details?.flight_number || "N/A"
             } - ${data.flight_details?.class_type || "N/A"}</p>
-            <p><i class="fas fa-ticket-alt blue-icon"></i> <strong>Ticket Number:</strong> ${
-                data.ticket_number || "N/A"
-            }</p>
             <p><i class="fas fa-suitcase blue-icon"></i> <strong>Baggage:</strong> ${
                 data.flight_details?.baggage_allowed || "N/A"
             }</p>

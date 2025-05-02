@@ -1512,6 +1512,7 @@ class TaskController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Void task reversal journal completed.',
+            'data' => $originalTask,
         ], 201);
     }
 }

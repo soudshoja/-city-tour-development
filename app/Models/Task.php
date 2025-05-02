@@ -17,13 +17,16 @@ class Task extends Model
         'supplier_id',
         'type',
         'status',
+        'original_task_id',
         'client_name',
         'reference',
+        'gds_office_id',
         'duration',
         'payment_type',
         'price',
         'tax',
         'surcharge',
+        'penalty_fee',
         'total',
         'cancellation_policy',
         'additional_info',
@@ -114,5 +117,15 @@ class Task extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    public function originalTask()
+    {
+        return $this->belongsTo(Task::class, 'original_task_id');
+    }
+
+    public function linkedTask()
+    {
+        return $this->hasOne(Task::class, 'original_task_id');
     }
 }

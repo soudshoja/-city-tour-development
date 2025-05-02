@@ -44,13 +44,13 @@ class RefundController extends Controller
     }
     
     public function create(Task $task)
-    {
+    {   
         // Get reference value based on task type
         $referenceValue = null;
         if ($task->type === 'flight') {
-            $referenceValue = optional($task->flightDetails)->ticket_number;
+            $referenceValue = $task->ticket_number;
         } elseif ($task->type === 'hotel') {
-            $referenceValue = optional($task->hotelDetails)->room_reference;
+            $referenceValue = $task->ticket_number;
         }
 
         //dd($referenceValue);
@@ -64,14 +64,14 @@ class RefundController extends Controller
         $invoiceDetails = null;
         if ($task->type === 'flight' && $referenceValue) {
             $invoiceDetails = InvoiceDetail::with('invoice', 'task')
-                ->whereHas('task.flightDetails', function ($query) use ($referenceValue) {
+                ->whereHas('task', function ($query) use ($referenceValue) {
                     $query->where('ticket_number', $referenceValue);
                 })
                 ->first();
         } elseif ($task->type === 'hotel' && $referenceValue) {
             $invoiceDetails = InvoiceDetail::with('invoice', 'task')
-                ->whereHas('task.hotelDetails', function ($query) use ($referenceValue) {
-                    $query->where('room_reference', $referenceValue);
+                ->whereHas('task', function ($query) use ($referenceValue) {
+                    $query->where('ticket_number', $referenceValue);
                 })
                 ->first();
         }
@@ -491,6 +491,71 @@ class RefundController extends Controller
         }
     
         try {
+
+            // Create Transaction Record
+            $transaction = Transaction::create([
+                'entity_id' => $task->company_id,
+                'entity_type' => 'company',
+                'company_id' => $task->company_id,
+                'branch_id' => $task->agent->branch_id,
+                'transaction_type' => 'debit',
+                'amount' => $request->input('total_nett_refund'),
+                'date' => $request->date,
+                'description' => 'Refund',
+                'reference_type' => 'Refund',
+                'reference_number' => $request->bankpaymentref,
+                'name' => $task->client_name,
+                'remarks_internal' => $request->input('remarks_internal'),
+                
+            ]);
+
+            $incomeIndirectIncome = Account::where('name', 'LIKE', '%Indirect Income%')->first();
+            $accountSupplierRefundIncome = 'Adjusted Profit (Manual Profit on Refund)';
+    
+            $supplierRefundIncome = Account::where('name', 'LIKE', $accountSupplierRefundIncome)
+                ->where('company_id', $task->company_id)
+                ->first();
+    
+            if (!$supplierRefundIncome) {
+                $supplierRefundIncomeId = Account::create([
+                    'name' => $accountSupplierRefundIncome,
+                    'parent_id' => $incomeIndirectIncome->id,
+                    'company_id' => Auth::user()->company->id,
+                    'branch_id' => Auth::user()->branch_id,
+                    'root_id' => $incomeIndirectIncome->root_id,
+                    'code' => $incomeIndirectIncome->code + 1,
+                    'account_type' => 'asset',
+                    'report_type' => 'balance sheet',
+                    'level' => $incomeIndirectIncome->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => 'KWD',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $supplierRefundDirectIncomeEntry =  $supplierRefundIncomeId;
+            } else {
+                $supplierRefundDirectIncomeEntry =  $supplierRefundIncome;
+            }
+    
+            // Step 1: Debit Entry for Supplier Refund
+            JournalEntry::create([
+                'transaction_date' => $request->date,
+                'transaction_id' => $transaction->id,
+                'company_id' => $task->company_id,
+                'branch_id' => $task->agent->branch_id,
+                'account_id' => $supplierRefundDirectIncomeEntry->id,
+                'description' => $refund->refund_number . ' - Record Refund Due From Supplier (Assets) ('.$supplierRefundDirectIncomeEntry->name.')',
+                'debit' => $request->input('airline_nett_fare'),
+                'credit' => 0,
+                'voucher_number' => $refund->id,
+                'name' => $supplierRefundDirectIncomeEntry->name,
+                'type' => 'refund',
+            ]);
+
             $refund->update(['status' => 'completed']);
             return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
         } catch (\Exception $e) {

@@ -34,6 +34,7 @@ class Task extends Model
         'enabled',
         'taxes_record',
         'refund_charge',
+        'ticket_number',
     ];
 
 

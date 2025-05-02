@@ -267,14 +267,15 @@ class OpenAiController extends Controller
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
+            - `ticket_number`: Ticket number. 
             - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database
             - `refund_date`: Date of refund if applicable.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
             - `total`: Total amount for the task in float type. this column is mandatory, please make sure to find the total amount in the pdf., total is sum of price and surcharge.
             - `tax`: Total tax amount in float type.
-            - `taxes_record`: KRF,CJ,F6,GZ,KW,N4,RN,VV,YQ,YX with the value
-            - `refund_charge`: Sum of F6+GZ+KW+N4
+            - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
+            - `refund_charge`: Sum of tax F6, GZ, KW and N4.
             - `reference`: Reference code for the task.
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
@@ -518,10 +519,9 @@ class OpenAiController extends Controller
             **Field Binding Example for Sample 4**:  
             - line 1: 'RF' for status 'refund'
             - line 8: 'RFD' is for Refund. 'KWD50.00' is for price, '49.45' is for tax, '99.45' is for the total
-            - line 9:  'KRF: KWD6.350, AE: KWD3.800, F6: KWD1.000, GZ: KWD2.000, KW: KWD5.000, N4: KWD0.450, TP: KWD29.700, YQ: KWD0.250, YX: KWD0.900' is for 'taxes_record'.
-                        Sum of 'F6 + GZ + KW + N4' is for 'refund_charge'.
+            - line 9:  'KRF: KWD6.350, AE: KWD3.800, F6: KWD1.000, GZ: KWD2.000, KW: KWD5.000, N4: KWD0.450, TP: KWD29.700, YQ: KWD0.250, YX: KWD0.900' is for 'taxes_record'. Sum of 'F6','GZ','KW','N4' is for 'refund_charge'.
             - line 10: 'ALHASHIMI/SAFAA MRS' for client_name
-            - line 12: '3580878696' for ticket_number
+            - line 12: '3580878696' for ticket_number.
             - line 12: '29MAR25' for refund_date
             - line 15: 'CASH' for payment_type
 
@@ -551,6 +551,7 @@ class OpenAiController extends Controller
         example answer = 
         {
             'additional_info': 'additional info',
+            'ticket_number': 'ticket number',
             'status': 'completed'/ 'hold' / 'confirmed',
             'price': 100.00,
             'surcharge': 10.00,
@@ -704,7 +705,7 @@ class OpenAiController extends Controller
             'total': 110.00,
             'tax': 5.00,
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
-            'refund_charge': 10.00,
+            'refund_charge': 18.65,
             'reference': 'relevant reference',
             'type': 'hotel',
             'agent_name': 'agent name',

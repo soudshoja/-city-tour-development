@@ -178,13 +178,17 @@ class TaskController extends Controller
             'agent_id' => 'required|exists:agents,id',
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
+            'taxes_record' => 'nullable|string',
             'enabled' => 'required|boolean',
             'refund_date' => 'nullable|date',
+            'ticket_number' => 'nullable|string',
             'refund_charge' => 'nullable|numeric',
             'task_hotel_details' => 'required_if:task_flight_details,null|array|nullable',
             'task_flight_details' => 'required_if:task_hotel_details,null|array|nullable',
         ]);
 
+        //dd($request->task_flight_details['ticket_number']);
+        //dd($request);
         $queryChkExistTask = Task::query(); // <- make sure it's a query builder
 
         $queryChkExistTask->where('reference', $validatedData['reference'])
@@ -222,7 +226,7 @@ class TaskController extends Controller
 
             $task = Task::create($taskData);
 
-            if ($task->status !== 'void') {
+            if ($task->status !== 'refund' && $task->status !== 'void') {
                 if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
                     $this->saveHotelDetails($request->task_hotel_details, $task->id);
                 } elseif ($task->type === 'flight' && $request->has('task_flight_details')) {

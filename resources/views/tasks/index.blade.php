@@ -409,28 +409,28 @@
                                                                     <div class="flex items-center gap-4">
                                                                         <label for="status"
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
-                                                                        <select name="status" id="status"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
-                                                                            @if ($task->status === 'refund' || $task->status === 'issued') readonly @endif>
-                                                                            <option value="">Set Status</option>
-                                                                            <option value="Confirmed"
-                                                                                {{ $task->status === 'confirmed' ? 'selected' : '' }}>
-                                                                                Confirmed
-                                                                            </option>
-                                                                            <option value="Issued"
-                                                                                {{ $task->status === 'issued' ? 'selected' : '' }}>
-                                                                                Issued
-                                                                            </option>
-
-                                                                            @if (!empty($task->status) && $task->status !== 'issued')
-                                                                                <option value="Refund"
-                                                                                    {{ $task->status === 'refund' ? 'selected' : '' }}>
+                                                                            @if ($task->status === 'refund')
+                                                                            <select name="status" id="status"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base" disabled>
+                                                                                <option value="refund" selected>Refund</option>
+                                                                            </select>
+                                                                            <input type="hidden" name="status" value="refund">
+                                                                        @else
+                                                                            <select name="status" id="status"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                                <option value="">Set Status</option>
+                                                                                <option value="Confirmed" {{ $task->status === 'confirmed' ? 'selected' : '' }}>
+                                                                                    Confirmed
+                                                                                </option>
+                                                                                <option value="Issued" {{ $task->status === 'issued' ? 'selected' : '' }}>
+                                                                                    Issued
+                                                                                </option>
+                                                                                <option value="Refund" {{ $task->status === 'refund' ? 'selected' : '' }}>
                                                                                     Refund
                                                                                 </option>
-                                                                            @endif
-                                                                        </select>
-
-
+                                                                            </select>
+                                                                        @endif
+                                                                        
 
                                                                         @if ($task->status === 'refund')
                                                                             <input type="hidden" name="status"

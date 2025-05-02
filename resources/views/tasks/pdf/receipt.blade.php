@@ -5,86 +5,105 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
-    <title>Payment Receipt: 510888027013</title>
+    <title>Payment Receipt: {{ $invoiceDetail->invoice->payment->voucher_number }}</title>
     <style>
+        :root {
+            --primary-bg: #ffffff;
+            --accent-bg: #f4f6f8;
+            --section-bg: #fbfbfb;
+            --text-dark: #1f2937;
+            --text-muted: #4b5563;
+            --highlight: rgb(182, 196, 209);
+            --border: #e5e7eb;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            background-color: #fdfaf6;
+            padding: 32px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--accent-bg);
             display: flex;
             justify-content: center;
-            padding: 30px;
         }
 
         .container {
             width: 600px;
-            background: white;
+            background: var(--primary-bg);
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
         }
 
         header {
-            background-color: #d4b996;
-            color: #1e3a8a;
+            background: var(--highlight);
+            color: white;
+            padding: 20px 32px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 20px;
-            font-size: 16px;
+            align-items: center;
         }
 
         header img {
-            height: 50px;
+            height: 48px;
         }
 
         header h1 {
             font-size: 18px;
-            font-weight: normal;
+            font-weight: 500;
         }
 
         main {
-            padding: 20px;
+            padding: 28px 32px;
         }
 
         .section {
-            margin-bottom: 20px;
-            border: 1px solid #e0e0e0;
+            background: var(--section-bg);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 16px;
-            background-color: #fafafa;
+            margin-bottom: 20px;
         }
 
         .section h2 {
             font-size: 16px;
-            margin-bottom: 10px;
-            color: #1e3a8a;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 5px;
+            color: var(--text-dark);
+            margin: 0 0 18px 0;
+            font-weight: 600;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
         }
 
-        .items {
-            display: flex;
-            justify-content: space-between;
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            row-gap: 12px;
+            column-gap: 24px;
             font-size: 14px;
-            margin: 6px 0;
+        }
+
+        .label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .value {
+            color: var(--text-dark);
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .value a {
+            color: var(--primary);
+            text-decoration: none;
         }
 
         footer {
-            background: #f0f0f0;
+            background: var(--accent-bg);
             font-size: 12px;
-            padding: 12px;
+            padding: 16px;
             text-align: center;
-            color: #666;
-        }
-
-        .highlight {
-            font-weight: bold;
-        }
-
-        a {
-            color: #1e3a8a;
-            text-decoration: none;
+            color: var(--text-muted);
         }
     </style>
 </head>
@@ -93,29 +112,51 @@
     <div class="container">
         <header>
             <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers">
-            <h1>Payment Receipt: <strong>510888027013</strong></h1>
+            <h1>Payment Receipt: <strong>{{ $invoiceDetail->invoice->payment->voucher_number }}</strong></h1>
         </header>
-
         <main>
+            <div class="section" style="text-align: center; padding: 24px;">
+                <h2 style="margin-bottom: 8px; font-size: 22px; font-weight: 700;">{{ $invoiceDetail->invoice->payment->currency }} {{ $invoiceDetail->invoice->payment->amount }}</h2>
+                <!-- <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Paid on {{ $invoiceDetail->invoice->payment->payment_date }}</p> -->
+                <p style="margin: 0; color: var(--text-muted); font-size: 14px;">
+                    Paid on {{ \Carbon\Carbon::parse($invoiceDetail->invoice->payment->payment_date)->format('d/m/Y \a\t H:i:s A') }}
+                </p>
+            </div>
             <div class="section">
-                <h2>Transaction Details</h2>
-                <div class="items"><span class="highlight">Payment Gateway:</span><span>Knet</span></div>
-                <div class="items"><span class="highlight">Result:</span><span>Captured</span></div>
-                <div class="items"><span class="highlight">Amount:</span><span>KWD 44.000</span></div>
-                <div class="items"><span class="highlight">Transaction ID:</span><span>510888007288140</span></div>
-                <div class="items"><span class="highlight">Merchant Track ID:</span><span>847756_flight_22909</span></div>
-                <div class="items"><span class="highlight">Reference ID:</span><span>510888027013</span></div>
-                <div class="items"><span class="highlight">Payment ID:</span><span>109510874000285086</span></div>
-                <div class="items"><span class="highlight">Date:</span><span>18/04/2025 07:12:08 PM</span></div>
-                <div class="items"><span class="highlight">Authorize ID:</span><span>079699</span></div>
-                <div class="items"><span class="highlight">Mobile Number:</span><span><a href="tel:+96551117579">51117579</a></span></div>
+                <h2>Payment Summary</h2>
+                <div class="data-grid">
+                    <div class="label">Payment Gateway:</div>
+                    <div class="value">{{ $invoiceDetail->invoice->payment->payment_method }}</div>
+                    <div class="label">Result:</div>
+                    <div class="value">{{ $invoiceDetail->invoice->payment->status }}</div>
+                    <div class="label">Authorization ID:</div>
+                    <div class="value">{{ $invoiceDetail->invoice->payment->tapPayment->authorization_id }}</div>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Reference Details</h2>
+                <div class="data-grid">
+                    <div class="label">Receipt ID:</div>
+                    <div class="value">{{ $invoiceDetail->invoice->payment->tapPayment->receipt_id }}</div>
+                    <div class="label">Merchant Track ID:</div>
+                    <div class="value">847756_flight_22909</div>
+                    <div class="label">Reference ID:</div>
+                    <div class="value">510888027013</div>
+                    <div class="label">Payment ID:</div>
+                    <div class="value">{{ $invoiceDetail->invoice->payment->payment_reference }}</div>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Customer Contact</h2>
+                <div class="data-grid">
+                    <div class="label">Mobile Number:</div>
+                    <div class="value"><a href="https://wa.me/{{ $invoiceDetail->invoice->payment->client->phone }}">{{ $invoiceDetail->invoice->payment->client->phone }}</a></div>
+                </div>
             </div>
         </main>
-
         <footer>
-            If you have any questions or concerns, please do not hesitate to contact our customer care number at
-            <a href="tel:+96522204264">+965 22204264</a><br>
-            Thank you — <a href="https://citytour.com">citytour.com</a>
+            If you have any questions or concerns. Call us at <a href="https://wa.me/+96522204264">+965 22204264</a>.<br>
+            Thank you for choosing us. Visit us at <a href="https://citytour.com">citytour.com</a>.
         </footer>
     </div>
 </body>

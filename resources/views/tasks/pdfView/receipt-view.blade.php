@@ -23,10 +23,10 @@
     }
 </style>
 <div class="download">
-    <a href="{{ route('tasks.pdf.receipt.download') }}" target="_blank">
+    <a href="{{ route('tasks.pdf.receipt.download', ['taskId' => $task->id]) }}" target="_blank">
         Download PDF
     </a>
 </div>
 <body>
-    @include('tasks.pdf.receipt')
+    @include('tasks.pdf.receipt', ['task' => $task, 'invoiceDetail' => $invoiceDetail])
 </body>

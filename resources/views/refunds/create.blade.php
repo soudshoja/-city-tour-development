@@ -131,7 +131,8 @@
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
                                 Refund Charge</label>
                             <input readonly type="number" step="0.01" name="refund_airline_charge"
-                                id="refund_airline_charge" value="10.00"
+                                id="refund_airline_charge"
+                                value="{{ old('refund_charge', $tasks->refund_charge ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
@@ -148,7 +149,7 @@
                         <!-- Service Charge -->
                         <div>
                             <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service Charge
-                                Amount</label>
+                                Amount (*New Profit)</label>
                             <input type="number" step="0.01" min="-999999.99" name="service_charge"
                                 id="service_charge" value="{{ old('tax', $tasks->tax ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">

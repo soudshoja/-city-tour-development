@@ -81,7 +81,7 @@
                         @enderror
                     </div>
 
-                    <!-- Account Name -->
+                    {{-- <!-- Account Name -->
                     <div>
                         <label for="account_name" class="block text-gray-700 font-semibold mb-2">COA (Assets)
                             Account</label>
@@ -98,7 +98,7 @@
                         @error('account_id')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
-                    </div>
+                    </div> --}}
 
                     <!-- Reference - Full Width -->
                     <div class="mb-6">
@@ -274,7 +274,7 @@
                 const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
                 const serviceCharge = parseFloat(serviceChargeInput.value) || 0;
 
-                const totalRefund = airlineNettFare - refundAirlineCharge - taxRefund - originalTaskProfit -
+                const totalRefund = airlineNettFare - refundAirlineCharge - originalTaskProfit -
                     serviceCharge;
                 totalNettRefundInput.value = totalRefund.toFixed(2);
 
@@ -291,7 +291,7 @@
                 const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
                 const totalRefund = parseFloat(totalNettRefundInput.value) || 0;
 
-                const serviceCharge = airlineNettFare - refundAirlineCharge - taxRefund - originalTaskProfit -
+                const serviceCharge = airlineNettFare - refundAirlineCharge - originalTaskProfit -
                     totalRefund;
                 serviceChargeInput.value = serviceCharge.toFixed(2);
 

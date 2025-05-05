@@ -464,9 +464,35 @@ class TaskController extends Controller
         }
     }
 
-    public function reissuedTask(array $task)
+    public function reissuedTask(Task $task)
     {
-        
+        $originalTask = Task::where('id', $task->original_task_id);
+
+        if (!$originalTask) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Original task not found.',
+            ], 404);
+        }
+
+        $clientId = $originalTask->client_id;
+
+        $client = Client::find($clientId);
+
+        try{
+            $client->credit += $originalTask->total;
+            $client->save();
+        } catch(Exception $e) {
+            Log::error('Failed to update client credit: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update client credit: ' . $e->getMessage(),
+            ], 500);
+        }
+
+
+
+
     }
 
     public function voidTask(Task $task, Task $issuedTask, Payment $payment)

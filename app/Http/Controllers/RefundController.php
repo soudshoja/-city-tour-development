@@ -117,11 +117,14 @@ class RefundController extends Controller
     
         // Load task with agent and client
         $taskWithRelations = Task::with('agent', 'client')->find($task->id);
-    
+        if (!$taskWithRelations) {
+            return redirect()->back()->withErrors(['error' => 'The selected task has no tied to agent/ client.']);
+        }
+
         return view('refunds.create', [
             'tasks' => $taskWithRelations,
             'invoiceDetails' => $invoiceDetails,
-            'hasTicketedTasksWithReference' => $hasTicketedReference,
+            // 'hasTicketedTasksWithReference' => $hasTicketedReference,
             'coaAccounts' => $coaAccounts,
         ]);
     }    

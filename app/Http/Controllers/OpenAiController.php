@@ -260,6 +260,7 @@ class OpenAiController extends Controller
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
+            - `ticket_number`: Ticket number. 
             - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
             - `refund_date`: Date of refund if applicable.
             - `price`: Price of the task in float type.
@@ -324,7 +325,7 @@ class OpenAiController extends Controller
         example answer = 
         {
             'additional_info': 'additional info',
-            'ticket_number': 'ticket number',
+            'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
             'status': 'completed'/ 'hold' / 'confirmed',
             'price': 100.00,
             'surcharge': 10.00,
@@ -433,8 +434,8 @@ class OpenAiController extends Controller
             - `surcharge`: Any surcharge applied in float type.
             - `total`: Total amount for the task in float type.
             - `tax`: Total tax amount in float type.
-            - 'taxes_record': The tax code with value of KRF,CJ,F6,GZ,KW,N4,RN,VV,YQ,YX for 'taxes_record' in any type.
-            - 'refund_charge': Sum of tax code 'F6','GZ','KW','N4' for 'refund_charge' in float type.
+            - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
+            - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
             - `reference`: Reference code for the task.
             - `type`: Type of task (e.g., flight).
             - `agent_name`: name of the agent handling the task.
@@ -479,7 +480,7 @@ class OpenAiController extends Controller
             'total': 110.00,
             'tax': 5.00,
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
-            'refund_charge': 18.65,
+            'refund_charge': '0.250+0.900',
             'reference': 'relevant reference',
             'type': 'hotel',
             'agent_name': 'agent name',

@@ -145,10 +145,18 @@
                         <div>
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
                                 Refund
-                                Charge</label>
+                                Charge (Fee)</label>
                             <input type="number" step="0.01" name="refund_airline_charge" id="refund_airline_charge"
                                 value="{{ old('refund_airline_charge', $refund->refund_airline_charge ?? '') }}"
                                 readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                        </div>
+
+                        <!-- Tax Refund -->
+                        <div>
+                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Tax Refund</label>
+                            <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
+                                value="{{ old('tax_refund', $refund->tax_refund ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-200">
                         </div>
 
                         <!-- Original Profit -->

@@ -132,15 +132,16 @@
                                 Refund Charge (Fee)</label>
                             <input readonly type="number" step="0.01" name="refund_airline_charge"
                                 id="refund_airline_charge"
-                                value="{{ old('refund_charge', $tasks->penalty_fee ?? '') }}"
+                                value="{{ old('refund_airline_charge', $tasks->penalty_fee ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
                         <!-- Tax Refund -->
                         <div>
-                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Tax Refund</label>
+                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Non-Refundable
+                                Tax</label>
                             <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
-                                value="{{ old('tax_refund', $tasks->tax ?? '') }}"
+                                value="{{ old('tax_refund', $tasks->refund_charge ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
@@ -159,7 +160,8 @@
                             <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service Charge
                                 Amount (*New Profit)</label>
                             <input type="number" step="0.01" min="-999999.99" name="service_charge"
-                                id="service_charge" value="{{ old('tax', $tasks->tax ?? '') }}"
+                                id="service_charge"
+                                value="{{ old('service_charge', $tasks->tax - $tasks->refund_charge ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             @error('service_charge')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>

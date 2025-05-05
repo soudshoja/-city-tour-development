@@ -173,8 +173,8 @@ class TaskController extends Controller
             'reference' => 'required|string',
             'gds_office_id' => 'nullable|string',
             'status' => 'required|string',
-            'price' => 'nullable|numeric',
-            'tax' => 'nullable|numeric',
+            'price' => 'required|numeric',
+            'tax' => 'required|numeric',
             'penalty_fee' => 'nullable|numeric',
             'client_name' => 'nullable|string',
             'agent_id' => 'required|exists:agents,id',
@@ -778,6 +778,8 @@ class TaskController extends Controller
             'reference' => $response['data']['reference'] ?? 'Unknown',
             'type' => $response['data']['type'] ?? 'Unknown',
             'refund_date' => $response['data']['refund_date'] ?? null,
+            'price' => $response['data']['price'] ?? 0,
+            'tax' => $response['data']['tax'] ?? 0,
             'total' => isset($response['data']['total']) 
                 ? ($response['data']['status'] === 'void' ? 0 : $response['data']['total'])
                 : 0,

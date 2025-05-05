@@ -153,7 +153,8 @@
 
                         <!-- Tax Refund -->
                         <div>
-                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Tax Refund</label>
+                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Non-Refundable
+                                Tax</label>
                             <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
                                 value="{{ old('tax_refund', $refund->tax_refund ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-200">

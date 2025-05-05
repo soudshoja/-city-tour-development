@@ -136,9 +136,7 @@ class RefundController extends Controller
             'total_nett_refund' => ['required', 'numeric', 'min:-999999.99'],
             'reason' => ['required', 'string'],
             'method' => ['required', 'in:Bank,Cash,Online'],
-            'account_id' => ['required', 'exists:accounts,id'],
             'date' => ['required', 'date'],
-            'reference' => ['nullable', 'string'],
         ]);
 
         $refund = Refund::create([
@@ -158,7 +156,6 @@ class RefundController extends Controller
             'service_charge' => $request->input('service_charge'),
             'reason' => $request->reason,
             'method' => $request->method,
-            'account_id' => $request->account_id,
             'date' => $request->date,
             'reference' => $request->reference,
             'status' => 'processed',
@@ -289,6 +286,24 @@ class RefundController extends Controller
                 ]);
 
 
+                // Create Transaction Record
+                $transaction = Transaction::create([
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'transaction_type' => 'debit',
+                    'amount' => $request->input('total_nett_refund'),
+                    'date' => $request->date,
+                    'description' => 'Adjust Profit - Reverse Original Profit',
+                    'reference_type' => 'Refund',
+                    'reference_number' => $request->bankpaymentref,
+                    'name' => $task->client_name,
+                    'remarks_internal' => $request->input('remarks_internal'),
+                    
+                ]);
+
+
                 $assetsDirectIncome = Account::where('name', 'Direct Income')->first(); 
                 $accountincomeName = 'Flight Booking Revenue';
         
@@ -386,6 +401,22 @@ class RefundController extends Controller
                 ]);
 
 
+                // Create Transaction Record
+                $transaction = Transaction::create([
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'transaction_type' => 'debit',
+                    'amount' => $request->input('total_nett_refund'),
+                    'date' => $request->date,
+                    'description' => 'Refund Charges',
+                    'reference_type' => 'Refund',
+                    'reference_number' => $request->bankpaymentref,
+                    'name' => $task->client_name,
+                    'remarks_internal' => $request->input('remarks_internal'),
+                    
+                ]);
 
                 // Get or create Refund Adjustment Account
                 $incomeIndirectRefundCharges = Account::where('name', 'LIKE', '%Indirect Income%')->first();

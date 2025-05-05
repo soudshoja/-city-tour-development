@@ -99,26 +99,6 @@
                         @enderror
                     </div>
 
-                    <!-- COA (Assets) Account (readonly with grey background) -->
-                    <div>
-                        <label for="account_name" class="block text-gray-700 font-semibold mb-2">COA (Assets)
-                            Account</label>
-                        <input list="accountList" type="text" name="account_name" id="account_name"
-                            value="{{ old('account_name', $refund->account->name ?? '') }}" readonly
-                            class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
-                            oninput="setAccountId(this)">
-                        <datalist id="accountList">
-                            @foreach ($coaAccounts as $account)
-                                <option value="{{ $account->name }}" data-id="{{ $account->id }}"></option>
-                            @endforeach
-                        </datalist>
-                        <input type="hidden" name="account_id" id="account_id"
-                            value="{{ old('account_id', $refund->account_id ?? '') }}">
-                        @error('account_id')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                    </div>
-
                     <!-- Reference -->
                     <div>
                         <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
@@ -165,10 +145,9 @@
                             <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
                                 Task
                                 Profit</label>
-                            <input type="number" step="0.01" name="original_task_profit"
-                                id="original_task_profit"
-                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}"
-                                readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
+                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
                         <!-- Total Service Charge -->

@@ -267,7 +267,7 @@ class OpenAiController extends Controller
             - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
-            - `refund_charge`: Sum of tax F6, GZ, KW and N4.
+            - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
             - `reference`: Reference code for the task.
             - `gds_office_id`: GDS office ID, if available.
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
@@ -331,7 +331,7 @@ class OpenAiController extends Controller
             'tax': 5.00,
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
             'penalty_fee': '10.00',
-            'refund_charge': '10.00',
+            'refund_charge': '0.250+0.900',
             'reference': 'gds_reference',
             'gds_office_id': 'gds_office_id',
             'type': 'flight',

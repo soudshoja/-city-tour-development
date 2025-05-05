@@ -12,10 +12,10 @@
                     <p class="mb-2"><strong>Type:</strong> {{ ucwords($tasks->type) }}</p>
                     @if ($tasks->type === 'flight')
                         <p class="mb-2"><strong>Ticket Number:</strong>
-                            {{ optional($tasks->flightDetails)->ticket_number }}
+                            {{ $tasks->ticket_number }}
                         @elseif($tasks->type === 'hotel')
                         <p class="mb-2"><strong>Room Ref:</strong>
-                            {{ optional($tasks->hotelDetails)->room_reference }}
+                            {{ $tasks->ticket_number }}
                     @endif
                     </p>
                     <p class="mb-2"><strong>Refund Date:</strong> {{ now()->format('d-m-Y') }}</p>
@@ -129,10 +129,18 @@
                         <!-- Airline Refund Charge -->
                         <div>
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
-                                Refund Charge</label>
+                                Refund Charge (Fee)</label>
                             <input readonly type="number" step="0.01" name="refund_airline_charge"
                                 id="refund_airline_charge"
-                                value="{{ old('refund_charge', $tasks->refund_charge ?? '') }}"
+                                value="{{ old('refund_charge', $tasks->penalty_fee ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                        </div>
+
+                        <!-- Tax Refund -->
+                        <div>
+                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Tax Refund</label>
+                            <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
+                                value="{{ old('tax_refund', $tasks->tax ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
@@ -244,11 +252,15 @@
         document.addEventListener('DOMContentLoaded', function() {
             const airlineNettFareInput = document.getElementById('airline_nett_fare');
             const refundAirlineChargeInput = document.getElementById('refund_airline_charge');
+            const taxRefundInput = document.getElementById('tax_refund');
             const originalTaskProfitInput = document.getElementById('original_task_profit');
             const serviceChargeInput = document.getElementById('service_charge');
             const totalNettRefundInput = document.getElementById('total_nett_refund');
 
             let isUpdating = false;
+
+            // default value
+            serviceChargeInput.value = 10;
 
             function calculateRefundFromServiceCharge() {
                 if (isUpdating) return;
@@ -256,10 +268,12 @@
 
                 const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
                 const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
+                const taxRefund = parseFloat(taxRefundInput.value) || 0;
                 const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
                 const serviceCharge = parseFloat(serviceChargeInput.value) || 0;
 
-                const totalRefund = airlineNettFare - refundAirlineCharge - originalTaskProfit - serviceCharge;
+                const totalRefund = airlineNettFare - refundAirlineCharge - taxRefund - originalTaskProfit -
+                    serviceCharge;
                 totalNettRefundInput.value = totalRefund.toFixed(2);
 
                 isUpdating = false;
@@ -271,22 +285,25 @@
 
                 const airlineNettFare = parseFloat(airlineNettFareInput.value) || 0;
                 const refundAirlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
+                const taxRefund = parseFloat(taxRefundInput.value) || 0;
                 const originalTaskProfit = parseFloat(originalTaskProfitInput.value) || 0;
                 const totalRefund = parseFloat(totalNettRefundInput.value) || 0;
 
-                const serviceCharge = airlineNettFare - refundAirlineCharge - originalTaskProfit - totalRefund;
+                const serviceCharge = airlineNettFare - refundAirlineCharge - taxRefund - originalTaskProfit -
+                    totalRefund;
                 serviceChargeInput.value = serviceCharge.toFixed(2);
 
                 isUpdating = false;
             }
 
-            // Initial calculation
+            // Initial calculation after setting default
             calculateRefundFromServiceCharge();
 
             serviceChargeInput.addEventListener('input', calculateRefundFromServiceCharge);
             totalNettRefundInput.addEventListener('input', calculateServiceChargeFromRefund);
             originalTaskProfitInput.addEventListener('input', calculateRefundFromServiceCharge);
         });
+
 
         function setAccountId(input) {
             const datalist = document.getElementById('accountList');

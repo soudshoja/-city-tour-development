@@ -261,7 +261,7 @@ class OpenAiController extends Controller
            1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
             - `ticket_number`: Ticket number. 
-            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
+            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued', if the files has 'void' and original ticket number, set the status to 'void'.
             - `refund_date`: Date of refund if applicable.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
@@ -269,7 +269,7 @@ class OpenAiController extends Controller
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
             - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
-            - `reference`: Reference code for the task. use the full gds pnr code from the file.
+            - `reference`: Reference code for the task. use the ticket number only from the file.
             - `gds_office_id`: GDS office ID, if available.
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
@@ -333,7 +333,7 @@ class OpenAiController extends Controller
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
             'penalty_fee': '10.00',
             'refund_charge': '0.250+0.900',
-            'reference': 'gds_reference',
+            'reference': 'ticket number',
             'gds_office_id': 'gds_office_id',
             'type': 'flight',
             'agent_name': 'agent name',

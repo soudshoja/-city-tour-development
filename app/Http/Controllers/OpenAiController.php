@@ -259,21 +259,19 @@ class OpenAiController extends Controller
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
         
         1. `tasks` model with the following fields:
-            - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `ticket_number`: Ticket number. 
-            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
-            - `refund_date`: Date of refund if applicable.
+            - `additional_info`: Additional information but make sure to only include relevant data and below 10 words, summarize it.
+            - `status`: Current status of the task.
             - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
-            - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
+            - `total`: Total amount for the task in float type.
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
             - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
-            - `reference`: Reference code for the task. use the full gds pnr code from the file.
-            - `gds_office_id`: GDS office ID, if available.
-            - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
+            - `reference`: Reference code for the task.
+            - `gds_office_id`: GDS office ID
+            - `type`: Type of task (e.g., flight).
             - `agent_name`: name of the agent handling the task.
-            - `client_name`: name of the client associated with the task.
+            - `client_name`: name of the client associated with the task, some pdfs have the client name as holder name.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
                 You can refer the supplier from this list: $supplierList
                 if the supplier is not in the list, just set it to null.
@@ -281,26 +279,6 @@ class OpenAiController extends Controller
             - `client_name`: Name of the client.
             - `cancellation_policy`: Cancellation policy details.
             - `venue`: Venue or location associated with the task.
-        
-        2. `task_flight_details` model, which applies only if the task is a flight, with the following fields:
-            - `farebase`: Fare basis of the flight in float type.
-            - `departure_time`: Departure time of the flight.
-            - `departure_from`: Location of departure, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
-            - `airport_from`: Airport code or name for departure.
-            - `terminal_from`: Departure terminal.
-            - `arrival_time`: Arrival time of the flight.
-            - `duration_time`: Duration of the flight in `XhYm` format (e.g., `2h5m`, `1h 45m`, `3h`). Do not return `HH:MM:SS` or timestamps. Only return readable duration in hours and minutes like `2h 5m`.
-            - `arrive_to`: Location of arrival, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
-            - `airport_to`: Airport code or name for arrival.
-            - `terminal_to`: Arrival terminal.
-            - `airline_name`: Airline name. 
-            - `flight_number`: Flight number.
-            - `class_type`: Class type of the flight.
-            - `baggage_allowed`: Baggage allowance.
-            - `equipment`: Equipment used in the flight.
-            - `ticket_number`: flight ticket number. 
-            - `flight_meal`: Meal options during the flight.
-            - `seat_no`: Seat number.
         
         CHEAT SHEET:
         - MUC1A [GDS_PNR+Ref];[Session];[GDS_PCC];[AgentNo];[GDS_PCC];[AgentNo]... ; [CouponCount] ; ... ; [AirlineCode] [AirlinePNR]

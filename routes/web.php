@@ -367,6 +367,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{task}/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
         Route::put('/{task}/{refund}', [RefundController::class, 'update'])->name('update');
         Route::post('/{task}/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');
+        Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
+        Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
+
     });
 
 
@@ -415,6 +418,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
         Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
+        Route::post('/refund/{id}', [ClientController::class, 'refund'])->name('refund');
 
         // Routes for Client Group Management
         Route::post('/group/add', [ClientController::class, 'addToGroup'])->name('group.add');

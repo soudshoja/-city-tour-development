@@ -8,10 +8,12 @@
                 <div class="bg-gradient-to-br from-blue-100 to-white shadow-md rounded-lg p-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Task Info
                     </h3>
-                    <p class="mb-2"><strong>Task Ref Number:</strong> {{ $refund->task->reference }}</p>
+                    <p class="mb-2"><strong>Task Reference No:</strong> {{ $refund->task->reference }}</p>
                     <p class="mb-2"><strong>Info:</strong> {{ $refund->task->additional_info }}</p>
-                    <p class="mb-2"><strong>Date:</strong> {{ $refund->date }}</p>
-                    <p class="mb-2"><strong>Total Refund:</strong> KWD{{ number_format($refund->task->total, 2) }}</p>
+                    <p class="mb-2"><strong>Ticket Number:</strong> {{ $refund->task->ticket_number }}</p>
+                    <p class="mb-2"><strong>Refund Date:</strong> {{ $refund->date }}</p>
+                    <p class="mb-2"><strong>Refund Amount:</strong> KWD{{ number_format($refund->task->total, 2) }}
+                    </p>
                     <p class="mb-2">
                         <strong>Status:</strong>
                         <span
@@ -113,9 +115,8 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <!-- Airline Nett Fare -->
                         <div>
-                            <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline
-                                Nett
-                                Fare</label>
+                            <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline Nett
+                                Fare (Original Task Price)</label>
                             <input type="number" step="0.01" name="airline_nett_fare" id="airline_nett_fare"
                                 value="{{ old('airline_nett_fare', $refund->airline_nett_fare ?? '') }}" readonly
                                 class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
@@ -152,14 +153,24 @@
 
                         <!-- Total Service Charge -->
                         <div>
-                            <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Service
-                                Charge
-                                Amount (*New Profit)</label>
+                            <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Refund Fee to
+                                Client</label>
                             <input type="number" step="0.01" name="service_charge" id="service_charge"
                                 value="{{ old('service_charge', $refund->service_charge ?? '') }}" readonly
                                 class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
-
+                        <!-- Service Charge -->
+                        <div>
+                            <label for="new_task_profit" class="block text-gray-700 font-semibold mb-2">New
+                                Profit</label>
+                            <input type="number" step="0.01" min="-999999.99" name="new_task_profit"
+                                id="new_task_profit"
+                                value="{{ old('new_task_profit', $refund->new_task_profit ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-200 rounded-lg">
+                            @error('new_task_profit')
+                                <span class="text-red-500 text-sm">{{ $message }}</span>
+                            @enderror
+                        </div>
                         <!-- Total Refund -->
                         <div>
                             <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total

@@ -375,6 +375,9 @@
                                                                     <option value="Refund" {{ $task->status === 'refund' ? 'selected' : '' }}>
                                                                         Refund
                                                                     </option>
+                                                                    <option value="Refund" {{ $task->status === 'void' ? 'selected' : '' }}>
+                                                                        Void
+                                                                    </option>
                                                                 </select>
                                                                 @endif
 

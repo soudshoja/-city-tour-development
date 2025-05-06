@@ -369,13 +369,13 @@
                                                                     <option value="Issued" {{ $task->status === 'issued' ? 'selected' : '' }}>
                                                                         Issued
                                                                     </option>
-                                                                    <option value="Refund" {{ $task->status === 'reissued' ? 'selected' : '' }}>
+                                                                    <option value="Reissued" {{ $task->status === 'reissued' ? 'selected' : '' }}>
                                                                         Reissued
                                                                     </option>
                                                                     <option value="Refund" {{ $task->status === 'refund' ? 'selected' : '' }}>
                                                                         Refund
                                                                     </option>
-                                                                    <option value="Refund" {{ $task->status === 'void' ? 'selected' : '' }}>
+                                                                    <option value="Void" {{ $task->status === 'void' ? 'selected' : '' }}>
                                                                         Void
                                                                     </option>
                                                                 </select>

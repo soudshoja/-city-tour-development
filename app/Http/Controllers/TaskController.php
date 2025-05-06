@@ -242,6 +242,25 @@ class TaskController extends Controller
 
         $validatedData['total'] = $validatedData['price'] + $validatedData['tax'] + $penaltyFee;
 
+        if($validatedData['status'] == 'refund'){
+            $originalTask = Task::where('ticket_number', $validatedData['ticket_number'])
+                ->where('supplier_id', $validatedData['supplier_id'])
+                ->where('company_id', $validatedData['company_id'])
+                ->where('status', 'issued')
+                ->first();
+            
+            if (!$originalTask) {
+                Log::warning('Original task not found for reference: ' , $validatedData);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This is refund ticket, but original ticket not found.',
+                ], 404);
+            }
+
+            $validatedData['original_task_id'] = $originalTask->id; 
+        }
+
+        
         DB::beginTransaction();
 
         try {
@@ -384,52 +403,104 @@ class TaskController extends Controller
             }
 
 
-            $transaction = Transaction::create([
-                'branch_id' => $task->agent->branch_id,
-                'company_id' => $task->company_id,
-                'entity_id' => $task->company_id,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'amount' => $task->total,
-                'date' => Carbon::now(),
-                'description' => 'Task created: ' . $task->reference,
-                'reference_type' => 'Payment',
-            ]);
+            if ($task->status !== 'refund') {
+                $transaction = Transaction::create([
+                    'branch_id' => $task->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $task->total,
+                    'date' => Carbon::now(),
+                    'description' => 'Task created: ' . $task->reference,
+                    'reference_type' => 'Payment',
+                ]);
+    
+                if (!$transaction) {
+                    throw new Exception('Transaction creation failed.');
+                }
+    
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierCost->id,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
+                    'name' => $supplierCompany->supplier->name,
+                    'debit' => $task->total,
+                    'credit' => 0,
+                    'balance' => $task->total,
+                    'type' => 'payable',
+                ]);
+    
+    
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierPayable->id,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Records Payable to (Liabilities) : ' . $supplierCompany->supplier->name,
+                    'name' => $supplierCompany->supplier->name,
+                    'debit' => 0,
+                    'credit' => $task->total,
+                    'balance' => $task->total,
+                    'type' => 'payable',
+                ]);
 
-            if (!$transaction) {
-                throw new Exception('Transaction creation failed.');
+            } else {
+
+                $transaction = Transaction::create([
+                    'branch_id' => $task->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $task->total,
+                    'date' => Carbon::now(),
+                    'description' => 'Refund Task uploaded: ' . $task->reference,
+                    'reference_type' => 'Refund',
+                ]);
+    
+                if (!$transaction) {
+                    throw new Exception('Refund Transaction for creation failed.');
+                }
+    
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierCost->id,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Record Refund due from Supplier (Assets): ' . $supplierCompany->supplier->name,
+                    'name' => $supplierCompany->supplier->name,
+                    'debit' => $task->total,
+                    'credit' => 0,
+                    'balance' => $task->total,
+                    'type' => 'payable',
+                ]);
+    
+    
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierPayable->id,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Record Refund due from Supplier (Income) : ' . $supplierCompany->supplier->name,
+                    'name' => $supplierCompany->supplier->name,
+                    'debit' => 0,
+                    'credit' => $task->total,
+                    'balance' => $task->total,
+                    'type' => 'payable', 
+                ]);               
             }
-
-            JournalEntry::create([
-                'transaction_id' => $transaction->id,
-                'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id,
-                'account_id' => $supplierCost->id,
-                'task_id' => $task->id,
-                'transaction_date' => Carbon::now(),
-                'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
-                'name' => $supplierCompany->supplier->name,
-                'debit' => $task->total,
-                'credit' => 0,
-                'balance' => $task->total,
-                'type' => 'payable',
-            ]);
-
-
-            JournalEntry::create([
-                'transaction_id' => $transaction->id,
-                'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id,
-                'account_id' => $supplierPayable->id,
-                'task_id' => $task->id,
-                'transaction_date' => Carbon::now(),
-                'description' => 'Records Payable to (Liabilities) : ' . $supplierCompany->supplier->name,
-                'name' => $supplierCompany->supplier->name,
-                'debit' => 0,
-                'credit' => $task->total,
-                'balance' => $task->total,
-                'type' => 'payable',
-            ]);
+            
 
             // JournalEntry::create([
             //     'transaction_id' => $transaction->id,
@@ -453,6 +524,9 @@ class TaskController extends Controller
                 'message' => 'Task created successfully.',
                 'data' => $task,
             ], 201);
+
+
+
         } catch (Exception $e) {
             DB::rollBack();
 

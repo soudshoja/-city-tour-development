@@ -228,6 +228,8 @@
         </div>
         <!-- ./right -->
     </div>
+
+    @include('refunds.refund-client')
     <!--./page content-->
     <script>
         function confirmProcessCompleted(taskId, refundId) {

@@ -453,16 +453,90 @@ class TaskController extends Controller
 
             } else {
 
+                $accountSupplierName = 'Supplier Refunds';
+                if (!empty($task->supplier?->name)) {
+                    $accountSupplierName .= ' - ' . $task->supplier->name;
+                }
+
+                // Get or create Supplier Refund Account
+                $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')
+                    ->where('company_id', $task->company_id)
+                    ->first();
+
+                $assetsReceivableAccount = Account::where('name', 'Accounts Receivable')->first(); 
+                
+                if (!$supplierRefundAccount) {
+                    $supplierRefundAccountId = Account::create([
+                        'name' => $accountSupplierName,
+                        'parent_id' => $assetsReceivableAccount->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $assetsReceivableAccount->root_id,
+                        'code' => $assetsReceivableAccount->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $assetsReceivableAccount->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $supplierRefundAccountEntry =  $supplierRefundAccountId;
+                } else {
+                    $supplierRefundAccountEntry =  $supplierRefundAccount;
+                }
+
+                // Get or create Supplier Refund Income Account
+                $incomeIndirectIncome = Account::where('name', 'LIKE', '%Indirect Income%')->first();
+                $accountSupplierRefundIncome = 'Supplier Refund Income (Refund Adjustment)';
+        
+                $supplierRefundIncome = Account::where('name', 'LIKE', $accountSupplierRefundIncome)
+                    ->where('company_id', $task->company_id)
+                    ->first();
+        
+                if (!$supplierRefundIncome) {
+                    $supplierRefundIncomeId = Account::create([
+                        'name' => $accountSupplierRefundIncome,
+                        'parent_id' => $incomeIndirectIncome->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $incomeIndirectIncome->root_id,
+                        'code' => $incomeIndirectIncome->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $incomeIndirectIncome->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $supplierRefundIncomeEntry =  $supplierRefundIncomeId;
+                } else {
+                    $supplierRefundIncomeEntry =  $supplierRefundIncome;
+                }
+
+                // Create Transaction Record
                 $transaction = Transaction::create([
-                    'branch_id' => $task->agent->branch_id,
-                    'company_id' => $task->company_id,
                     'entity_id' => $task->company_id,
                     'entity_type' => 'company',
-                    'transaction_type' => 'credit',
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'transaction_type' => 'debit',
                     'amount' => $task->total,
                     'date' => Carbon::now(),
                     'description' => 'Refund Task uploaded: ' . $task->reference,
                     'reference_type' => 'Refund',
+                    'name' => $task->client_name,
+                    
                 ]);
     
                 if (!$transaction) {
@@ -470,35 +544,33 @@ class TaskController extends Controller
                 }
     
                 JournalEntry::create([
+                    'transaction_date' => Carbon::now(),
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $supplierCost->id,
-                    'task_id' => $task->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Record Refund due from Supplier (Assets): ' . $supplierCompany->supplier->name,
-                    'name' => $supplierCompany->supplier->name,
+                    'account_id' => $supplierRefundAccountEntry->id,
+                    'description' => 'Record Refund Due from Supplier (Assets) ('.$supplierRefundAccountEntry->name.')',
                     'debit' => $task->total,
                     'credit' => 0,
-                    'balance' => $task->total,
-                    'type' => 'payable',
+                    'name' => $supplierRefundAccountEntry->name,
+                    'type' => 'refund',
                 ]);
-    
-    
+        
                 JournalEntry::create([
+                    'transaction_date' => Carbon::now(),
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $supplierPayable->id,
-                    'task_id' => $task->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Record Refund due from Supplier (Income) : ' . $supplierCompany->supplier->name,
-                    'name' => $supplierCompany->supplier->name,
+                    'account_id' => $supplierRefundIncomeEntry->id,
+                    'description' => 'Record Refund Due from Supplier (Income) ('.$supplierRefundIncomeEntry->name.')',
                     'debit' => 0,
                     'credit' => $task->total,
-                    'balance' => $task->total,
-                    'type' => 'payable', 
-                ]);               
+                    'name' => $supplierRefundIncomeEntry->name,
+                    'type' => 'refund',
+                ]);
+                
+                
+                
             }
             
 

@@ -14,33 +14,39 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use App\Models\RefundClient;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\Gate;
 
 class RefundController extends Controller
 {
 
     public function index()
     {
+        $user = Auth::user();
         if (Auth::user()->role->name === 'company') {
+            $agents = $user->company->branches->pluck('agents')->flatten();
+            $refundClients = $agents->pluck('refundClients')->flatten();
             $refunds = Refund::with('task.client', 'task.agent')
                 ->where('company_id', Auth::user()->company->id)
                 ->orderBy('id', 'desc')
                 ->get();
         } elseif (Auth::user()->role->name === 'branch') {
+            $refundClients = $user->branch->agents->refundClients;
             $refunds = Refund::with('task.client', 'task.agent')
                 ->where('branch_id', Auth::user()->branch->id)
                 ->orderBy('id', 'desc')
                 ->get();
         } else {
+            $refundClients = $user->agent->refundClients;
             $refunds = collect();
         }
-
-
     
         $totalRefunds = $refunds->count();
+        $totalRefundClients = $refundClients->count();
     
-        return view('refunds.index', compact('refunds', 'totalRefunds'));
+        return view('refunds.index', compact('refunds', 'totalRefunds', 'refundClients', 'totalRefundClients'));
     }
     
     public function create(Task $task)
@@ -478,6 +484,40 @@ class RefundController extends Controller
         }
     }
     
-    
+    public function completeRefundClient($refundClientId)
+    {
+        $refundClient = RefundClient::find($refundClientId);
+
+        if (!$refundClient) {
+            return redirect()->back()->withErrors(['error' => 'Refund Client not found.']);
+        }
+
+        $refundClient->update(['status' => 'completed']);
+
+        return redirect()->route('refunds.index')->with('success', 'Refund Client processed successfully.');
+    }
+
+    public function deleteRefundClient($refundClientId)
+    {
+        $refundClient = RefundClient::find($refundClientId);
+
+        Gate::authorize('delete', $refundClient);
+
+        if (!$refundClient) {
+            return redirect()->back()->withErrors(['error' => 'Refund Client not found.']);
+        }
+
+        try {
+            $refundClient->client->credit += $refundClient->amount;
+            $refundClient->client->save();
+        } catch (Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to reverse client credit.']);
+        }
+
+
+        $refundClient->delete();
+
+        return redirect()->route('refunds.index')->with('success', 'Refund Client deleted successfully.');
+    }
     
 }

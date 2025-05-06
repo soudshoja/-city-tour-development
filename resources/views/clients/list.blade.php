@@ -118,9 +118,9 @@
                                             class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
                                             <td
                                             class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                            <!-- <a href="{{ route('clients.show', ['id' => $client->id]) }}"
-                                                class="block">{{ $client->name }}</a> -->
-                                                {{ $client->name }}
+                                            <a href="{{ route('clients.show', ['id' => $client->id]) }}"
+                                                class="block">{{ $client->name }}</a>
+                                                <!-- {{ $client->name }} -->
                                         </td>
                                         <td>
                                             {{ $client->credit ? $client->credit : 'N/A' }}

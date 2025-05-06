@@ -55,4 +55,9 @@ class Client extends Model
         return $this->belongsTo(Account::class, 'account_id');
     }
 
+    public function refunds()
+    {
+        return $this->hasMany(RefundClient::class);
+    }
+
 }

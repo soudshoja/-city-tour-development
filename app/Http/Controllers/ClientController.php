@@ -17,6 +17,7 @@ use App\Models\Branch;
 use App\Models\Charge;
 use App\Models\JournalEntry;
 use App\Models\Payment;
+use App\Models\RefundClient;
 use App\Models\Role;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
@@ -31,7 +32,7 @@ class ClientController extends Controller
     use Converter;
 
     public function index()
-    {   
+    {
         $user = Auth::user();
         if ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
@@ -73,17 +74,15 @@ class ClientController extends Controller
         return view('clients.index', compact('agent', 'clients', 'clientsCount'));
     }
 
-    public function list()
-    {
-
-    }
+    public function list() {}
 
     public function create()
     {
         return view('clients.create');
     }
 
-    public function storeProcess(Request $request){
+    public function storeProcess(Request $request)
+    {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:clients,email',
@@ -91,8 +90,8 @@ class ClientController extends Controller
             'agent_id' => 'nullable|exists:agents,id',
         ]);
 
-        try{
-           $client = Client::create([
+        try {
+            $client = Client::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'status' => $request->status,
@@ -104,10 +103,9 @@ class ClientController extends Controller
                 'passport_no' => $request->passport_no,
                 'agent_id' => $request->agent_id,
             ]);
-
         } catch (Exception $e) {
             logger('Error creating client: ' . $e->getMessage());
-            
+
             return [
                 'status' => 'error',
                 'message' => 'Failed to create client',
@@ -119,7 +117,6 @@ class ClientController extends Controller
             'message' => 'Client created successfully',
             'data' => $client,
         ];
-
     }
 
     public function store(Request $request)
@@ -155,13 +152,26 @@ class ClientController extends Controller
 
     public function show($id)
     {
+        $user = Auth::user();
+
+        if($user->role_id == Role::COMPANY) {
+            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+            $agent = Agent::whereIn('branch_id', $branch)->first();
+            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+        } elseif ($user->role_id == Role::AGENT) {
+            $agent = Agent::where('user_id', $user->id)->first();
+            $agentIds = [$agent->id];
+        } else {
+            $agentIds = [];
+        }
+
         $client = Client::findOrFail($id);
         $agents = Agent::with('branch')->get();
-        
+
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();
 
-        foreach($tasks as $task){
+        foreach ($tasks as $task) {
             if (is_string($task->cancellation_policy) && $this->isValidJson($task->cancellation_policy)) {
                 $task->cancellation_policy = json_decode($task->cancellation_policy)->policies;
             }
@@ -172,28 +182,28 @@ class ClientController extends Controller
         $unpaid = $invoicesPart->flatMap->invoicePartials->where('status', '<>', 'paid')->sum('amount');
 
         $clients = Client::with('agent.branch')->get();
-            // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
-            $childClients = ClientGroup::where('parent_client_id', $id)
-            ->with('childClient') // Load related child clients
-            ->get()
-            ->map(function ($group) {
-                return [
-                    'client' => $group->childClient, // Extract child client details
-                    'relation' => $group->relation, // Include relation column
-                ];
-            });
+        // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
+        // $childClients = ClientGroup::where('parent_client_id', $id)
+        //     ->with('childClient') // Load related child clients
+        //     ->get()
+        //     ->map(function ($group) {
+        //         return [
+        //             'client' => $group->childClient, // Extract child client details
+        //             'relation' => $group->relation, // Include relation column
+        //         ];
+        //     });
 
-            $parentClients = ClientGroup::where('child_client_id', $id)
-            ->with('parentClient') // Load related child clients
-            ->get()
-            ->map(function ($group) {
-                return [
-                    'client' => $group->parentClient, // Extract child client details
-                    'relation' => $group->relation, // Include relation column
-                ];
-            });
+        // $parentClients = ClientGroup::where('child_client_id', $id)
+        //     ->with('parentClient') // Load related child clients
+        //     ->get()
+        //     ->map(function ($group) {
+        //         return [
+        //             'client' => $group->parentClient, // Extract child client details
+        //             'relation' => $group->relation, // Include relation column
+        //         ];
+        //     });
 
-        return view('clients.profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'childClients', 'parentClients', 'clients')); // Ensure the view exists
+        return view('clients.new-profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'clients')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -214,7 +224,7 @@ class ClientController extends Controller
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-        
+
         // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',
@@ -365,8 +375,8 @@ class ClientController extends Controller
 
         // Check if relationship already exists
         $exists = ClientGroup::where('parent_client_id', $request->parent_client_id)
-                             ->where('child_client_id', $request->child_client_id)
-                             ->exists();
+            ->where('child_client_id', $request->child_client_id)
+            ->exists();
 
         if ($exists) {
             return response()->json(['message' => 'Client is already in this group'], 409);
@@ -392,8 +402,8 @@ class ClientController extends Controller
         ]);
 
         $deleted = ClientGroup::where('parent_client_id', $request->parent_client_id)
-                              ->where('child_client_id', $request->child_client_id)
-                              ->delete();
+            ->where('child_client_id', $request->child_client_id)
+            ->delete();
 
         if ($deleted) {
             return response()->json(['message' => 'Client removed from the group'], 200);
@@ -404,16 +414,16 @@ class ClientController extends Controller
 
     public function getSubClients(int $parentClientId)
     {
-       
+
         $childClients = ClientGroup::where('parent_client_id', $parentClientId)
-        ->with('childClient') // Load related child clients
-        ->get()
-        ->map(function ($group) {
-            return [
-                'client' => $group->childClient, // Extract child client details
-                'relation' => $group->relation, // Include relation column
-            ];
-        });
+            ->with('childClient') // Load related child clients
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'client' => $group->childClient, // Extract child client details
+                    'relation' => $group->relation, // Include relation column
+                ];
+            });
         return response()->json($childClients);
     }
 
@@ -429,7 +439,7 @@ class ClientController extends Controller
                     'relation' => $group->relation, // Include relation column
                 ];
             });
-    
+
         return response()->json($parentClients);
     }
 
@@ -456,24 +466,24 @@ class ClientController extends Controller
             'relation' => 'required|string|max:255',
             'selectedId' => 'required|exists:clients,id',
         ]);
-    
+
         // Ensure that relation is a valid string
         $relation = (string)$request->relation;
-    
+
         // Log query parameters for debugging
         Log::info('Query parameters:', [
             'parent_client_id' => $id,
             'child_client_id' => $request->selectedId,
         ]);
-    
+
         // Find the client group based on parent_client_id and child_client_id
         $clientGroup = ClientGroup::where('parent_client_id', $id)
-                                  ->where('child_client_id', $request->selectedId)
-                                  ->first();
-    
+            ->where('child_client_id', $request->selectedId)
+            ->first();
+
         // Log if the client group is found or not
         Log::info('clientGroup found:', ['clientGroup' => $clientGroup]);
-    
+
         // If no client group is found, return an error response
         if (!$clientGroup) {
             return response()->json([
@@ -481,22 +491,22 @@ class ClientController extends Controller
                 'message' => 'Client relationship not found!',
             ], 404);
         }
-    
+
         // Check current value of relation before updating
         Log::info('Current relation value:', ['relation' => $clientGroup->relation]);
-    
+
         // If relation is null, set a default value
         if ($clientGroup->relation === null) {
             Log::warning('Relation is null, setting a default value.');
             $clientGroup->relation = 'parents'; // Or whatever default you prefer
         }
-    
+
         // Update the specific client group's relation field
         $clientGroup->relation = $relation;
-    
+
         // Log the updated relation value
         Log::info('Updated relation value:', ['relation' => $clientGroup->relation]);
-    
+
         // Save the updated record explicitly
         try {
             $clientGroup->save();
@@ -507,7 +517,7 @@ class ClientController extends Controller
                 'message' => 'Failed to update client relationship!',
             ], 500);
         }
-    
+
         // Return response with updated client group data
         return response()->json([
             'success' => true,
@@ -515,7 +525,7 @@ class ClientController extends Controller
             'clientGroup' => $clientGroup,
         ]);
     }
-    
+
     public function addCredit(Payment $payment)
     {
 
@@ -655,11 +665,10 @@ class ClientController extends Controller
 
     public function updateCredit($id, $amount)
     {
-        try{
+        try {
             $client = Client::findOrFail($id);
             $client->credit = $amount;
             $client->save();
-
         } catch (Exception $e) {
             logger('Error updating credit: ' . $e->getMessage());
             return [
@@ -679,5 +688,69 @@ class ClientController extends Controller
         ];
     }
 
+    public function refund($id, Request $request)
+    {
+        $response = $this->refundProcess($id, $request);
 
+        return redirect()->back()->with($response['status'], $response['message']);
+    }
+
+    public function refundProcess($id, Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'agent_id' => 'required|exists:agents,id',
+        ]);
+
+        if($request->amount <= 0) {
+            return [
+                'status' => 'error',
+                'message' => 'Refund amount must be greater than zero',
+            ];
+        }
+
+        $client = Client::findOrFail($id);
+
+        if ($client->credit < $request->amount) {
+            return [
+                'status' => 'error',
+                'message' => 'Insufficient credit',
+            ];
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $client->credit -= $request->amount;
+            $client->save();
+
+            RefundClient::create([
+                'client_id' => $client->id,
+                'agent_id' => $request->agent_id,
+                'status' => 'pending',
+                'amount' => $request->amount,
+                'currency' => 'KWD',
+                'remark' => $request->remark,
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            logger('Error processing refund: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to process refund',
+            ];
+        }
+
+        DB::commit();
+
+        return [
+            'status' => 'success',
+            'message' => 'Credit refunded successfully',
+            'data' => [
+                'client_id' => $client->id,
+                'credit' => $client->credit,
+            ],
+        ];    
+    }
 }

@@ -62,4 +62,9 @@ class Agent extends Model
     {
         return $this->hasOne(Account::class, 'agent_id');
     }
+
+    public function refundClients()
+    {
+        return $this->hasMany(RefundClient::class);
+    }
 }

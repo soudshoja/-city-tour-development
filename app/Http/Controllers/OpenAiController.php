@@ -263,8 +263,7 @@ class OpenAiController extends Controller
             - `ticket_number`: Ticket number. 
             - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
             - `refund_date`: Date of refund if applicable.
-            - `price`: Price of the task which is after K-F then KWD44.22 as an example.
-            - `total_price`: Price of the task which is after the price above and after ;;;;;;;;;;;;.
+            - `price`: Price of the task in float type.
             - `surcharge`: Any surcharge applied in float type.
             - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
             - `tax`: Total tax amount in float type.

@@ -175,7 +175,7 @@
                                 Client</label>
                             <input type="number" step="0.01" min="-999999.99" name="service_charge"
                                 id="service_charge"
-                                value="{{ old('service_charge', number_format($invoiceDetails->task_price - $invoiceDetails->markup_price - $tasks->total, 2) ?? '') }}"
+                                value="{{ old('service_charge', number_format($tasks->refund_charge, 2) ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             @error('service_charge')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -202,7 +202,7 @@
                                 Refund Amount to Client</label>
                             <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
                                 id="total_nett_refund"
-                                value="{{ old('total_nett_refund', $refund->total_nett_refund ?? '') }}"
+                                value="{{ old('total_nett_refund', number_format($invoiceDetails->task_price, 2) ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                             @error('total_nett_refund')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -280,66 +280,80 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const airRefundAmountInput = document.getElementById('air_refund_amount');
-            const refundAirlineChargeInput = document.getElementById('refund_airline_charge');
-            const originalTaskProfitInput = document.getElementById('original_task_profit');
-
+            const airlineNettFareInput = document.getElementById('airline_nett_fare');
             const serviceChargeInput = document.getElementById('service_charge');
             const totalNettRefundInput = document.getElementById('total_nett_refund');
+            const originalRefundAmountInput = document.getElementById('original_refund_amount');
             const newTaskProfitInput = document.getElementById('new_task_profit');
 
             let isUpdating = false;
 
-            function updateTotalFromServiceCharge() {
+            function parse(input) {
+                return parseFloat(input.value) || 0;
+            }
+
+            function updateTotalNettRefund() {
                 if (isUpdating) return;
                 isUpdating = true;
 
-                const airRefund = parseFloat(airRefundAmountInput.value) || 0;
-                const airlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
-                const newProfit = parseFloat(newTaskProfitInput.value) || 0;
-                const serviceCharge = parseFloat(serviceChargeInput.value) || 0;
+                const fare = parse(airlineNettFareInput);
+                const charge = parse(serviceChargeInput);
+                const totalRefund = fare - charge;
 
-                const totalRefund = airRefund - airlineCharge - (serviceCharge + newProfit);
                 totalNettRefundInput.value = totalRefund.toFixed(2);
+                updateNewProfitFromTotal();
 
                 isUpdating = false;
             }
 
-            function updateTotalFromNewProfit() {
+            function updateFromTotalNettRefund() {
                 if (isUpdating) return;
                 isUpdating = true;
 
-                const airRefund = parseFloat(airRefundAmountInput.value) || 0;
-                const airlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
-                const serviceCharge = parseFloat(serviceChargeInput.value) || 0;
-                const newProfit = parseFloat(newTaskProfitInput.value) || 0;
+                const totalRefund = parse(totalNettRefundInput);
+                const fare = parse(airlineNettFareInput);
+                const charge = fare - totalRefund;
 
-                const totalRefund = airRefund - airlineCharge - (serviceCharge + newProfit);
-                totalNettRefundInput.value = totalRefund.toFixed(2);
+                serviceChargeInput.value = charge.toFixed(2);
+                updateNewProfitFromTotal();
 
                 isUpdating = false;
             }
 
             function updateNewProfitFromTotal() {
+                const original = parse(originalRefundAmountInput);
+                const totalRefund = parse(totalNettRefundInput);
+                const profit = original - totalRefund;
+
+                newTaskProfitInput.value = profit.toFixed(2);
+            }
+
+            function updateFromNewProfit() {
                 if (isUpdating) return;
                 isUpdating = true;
 
-                const airRefund = parseFloat(airRefundAmountInput.value) || 0;
-                const airlineCharge = parseFloat(refundAirlineChargeInput.value) || 0;
-                const serviceCharge = parseFloat(serviceChargeInput.value) || 0;
-                const totalRefund = parseFloat(totalNettRefundInput.value) || 0;
+                const original = parse(originalRefundAmountInput);
+                const profit = parse(newTaskProfitInput);
 
-                const newProfit = airRefund - airlineCharge - serviceCharge - totalRefund;
-                newTaskProfitInput.value = newProfit.toFixed(2);
+                const totalRefund = original - profit;
+                totalNettRefundInput.value = totalRefund.toFixed(2);
+
+                const fare = parse(airlineNettFareInput);
+                const charge = fare - totalRefund;
+                serviceChargeInput.value = charge.toFixed(2);
 
                 isUpdating = false;
             }
 
-            serviceChargeInput.addEventListener('input', updateTotalFromServiceCharge);
-            newTaskProfitInput.addEventListener('input', updateTotalFromNewProfit);
-            totalNettRefundInput.addEventListener('input', updateNewProfitFromTotal);
+            // Event bindings
+            airlineNettFareInput.addEventListener('input', updateTotalNettRefund);
+            serviceChargeInput.addEventListener('input', updateTotalNettRefund);
+            totalNettRefundInput.addEventListener('input', updateFromTotalNettRefund);
+            originalRefundAmountInput.addEventListener('input', updateNewProfitFromTotal);
+            newTaskProfitInput.addEventListener('input', updateFromNewProfit);
 
-            updateTotalFromServiceCharge(); // Initial sync
+            // Initial calculation
+            updateTotalNettRefund();
         });
     </script>
 

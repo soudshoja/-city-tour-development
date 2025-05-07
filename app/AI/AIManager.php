@@ -3,18 +3,20 @@
 namespace App\AI;
 
 use App\AI\Contracts\AIClientInterface;
+use App\AI\Services\OpenAIClient;
+use App\Models\Supplier;
 
 class AIManager
 {
     protected AIClientInterface $client;
 
-    public function __construct(AIClientInterface $client)
+    public function __construct()
     {
-        $this->client = $client;
+        $this->client = new OpenAIClient();
     }
 
-    public function chat(array $messages, array $options = []): array
+    public function extractAirFiles($parameter)
     {
-        return $this->client->chat($messages, $options);
+        return $this->client->extractAirFiles($parameter);
     }
 }

@@ -227,7 +227,7 @@
                             @foreach ($JournalEntrys as $index => $transaction)
                                 <tr>
                                     <td>
-                                        {{ $transaction->account ? '[' . $transaction->account->id . '] ' . $transaction->account->name : 'N/A' }}
+                                        {{ $transaction->account ? '[' . $transaction->account->code . '] ' . $transaction->account->name : 'N/A' }}
                                         <input type="hidden" name="items[{{ $index }}][account_id]"
                                             value="{{ old("items.$index.account_id", $transaction->account_id) }}" />
                                     </td>

@@ -523,6 +523,9 @@ Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->na
 Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->name('bank-payments.edit');
 Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])->name('bank-payments.update');
 Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
+Route::get('/bank-payments/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('bank-payments.fetchPaymentsByDate');
+
+
 
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');

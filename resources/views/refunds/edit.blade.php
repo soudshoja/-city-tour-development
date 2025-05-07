@@ -113,12 +113,35 @@
                 <!-- Grouped Fields -->
                 <div class="mt-8 border border-gray-300 rounded-lg p-6 bg-gray-50">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                        <!--Original Refund Amount -->
+                        <div>
+                            <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">Original
+                                Refund Amount</label>
+                            <input readonly type="number" step="0.01" name="original_refund_amount"
+                                id="original_refund_amount"
+                                value="{{ old('original_refund_amount', number_format($refund->task->total, 2) ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-200 rounded-lg"
+                                readonly>
+                        </div>
+
                         <!-- Airline Nett Fare -->
                         <div>
                             <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline Nett
                                 Fare (Original Task Price)</label>
                             <input type="number" step="0.01" name="airline_nett_fare" id="airline_nett_fare"
                                 value="{{ old('airline_nett_fare', $refund->airline_nett_fare ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                        </div>
+
+
+                        <!-- Original Profit -->
+                        <div>
+                            <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
+                                Task
+                                Profit</label>
+                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
+                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}" readonly
                                 class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
                         </div>
 
@@ -141,15 +164,6 @@
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-200">
                         </div>
 
-                        <!-- Original Profit -->
-                        <div>
-                            <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
-                                Task
-                                Profit</label>
-                            <input type="number" step="0.01" name="original_task_profit" id="original_task_profit"
-                                value="{{ old('original_task_profit', $refund->original_task_profit ?? '') }}" readonly
-                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
-                        </div>
 
                         <!-- Total Service Charge -->
                         <div>

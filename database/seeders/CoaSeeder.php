@@ -161,6 +161,8 @@ class CoaSeeder extends Seeder
             $newAccount = Account::updateOrCreate([
                 'name' => $account['name'],
                 'company_id' => $companyId,
+                'parent_id' => $parentId,
+                'root_id' => $rootId,
             ],[
                 'serial_number' => null,
                 'account_type' => $account['account_type'],
@@ -169,8 +171,6 @@ class CoaSeeder extends Seeder
                 'actual_balance' => 0,
                 'budget_balance' => 0,
                 'variance' => 0,
-                'parent_id' => $parentId,
-                'root_id' => $rootId,
                 'branch_id' => null,
                 'agent_id' => null,
                 'client_id' => null,

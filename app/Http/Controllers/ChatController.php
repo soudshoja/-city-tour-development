@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AI\AIManager;
 use App\Http\Traits\NotificationTrait;
 use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Http\Request;
@@ -36,11 +37,11 @@ class ChatController extends Controller
     use NotificationTrait;
     use Converter;
 
-    protected $openAIService;
+    protected $aiManager;
 
-    public function __construct(OpenAIService $openAIService)
+    public function __construct(AIManager $aiManager)
     {
-        $this->openAIService = $openAIService;
+        $this->aiManager = $aiManager;
     }
 
 
@@ -86,7 +87,7 @@ class ChatController extends Controller
                 return $this->handleActionRequest($userMessage, $userData);
             } else {
                 // Pass the message to OpenAI if it's not recognized as data or action
-                $response = $this->openAIService->getChatResponse($messages);
+                $response = $this->aiManager->chat($messages);
                 return response()->json($response, 200);
             }
         } catch (\Exception $e) {
@@ -110,7 +111,7 @@ class ChatController extends Controller
             ],
         ];
 
-        $response = $this->openAIService->getChatResponse($classificationMessages);
+        $response = $this->aiManager->chat($classificationMessages);
 
         // Extract the classification result
         if (isset($response['choices'][0]['message']['content'])) {
@@ -189,7 +190,7 @@ class ChatController extends Controller
             ],
         ];
 
-        $response = $this->openAIService->getChatResponse($messagesData);
+        $response = $this->aiManager->chat($messagesData);
 
         return response()->json($response, 200);
     }
@@ -212,7 +213,7 @@ class ChatController extends Controller
             ],
         ];
 
-        $response = $this->openAIService->getChatResponse($actionMessages);
+        $response = $this->aiManager->chat($actionMessages);
 
         if (isset($response['choices'][0]['message']['content'])) {
             $responseContent = $response['choices'][0]['message']['content'];
@@ -991,7 +992,7 @@ class ChatController extends Controller
                     ];
 
 
-                    $response = $this->openAIService->getChatResponse($messages);
+                    $response = $this->aiManager->chat($messages);
                     Log::info('response:', ['response' => $response]);
 
                     // Check if $response is a JsonResponse object

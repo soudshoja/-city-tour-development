@@ -15,6 +15,11 @@ class AIManager
         $this->client = new OpenAIClient();
     }
 
+    public function chat(array $parameter)
+    {
+        return $this->client->chat($parameter);
+    }
+
     public function extractAirFiles($parameter)
     {
         return $this->client->extractAirFiles($parameter);

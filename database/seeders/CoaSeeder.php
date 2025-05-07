@@ -160,6 +160,7 @@ class CoaSeeder extends Seeder
 
             $newAccount = Account::updateOrCreate([
                 'name' => $account['name'],
+                'parent_id' => $parentId,
                 'company_id' => $companyId,
                 'parent_id' => $parentId,
                 'root_id' => $rootId,

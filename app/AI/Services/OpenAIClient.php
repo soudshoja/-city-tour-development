@@ -4,6 +4,7 @@ namespace App\AI\Services;
 
 use App\AI\Contracts\AIClientInterface;
 use App\Enums\TaskType;
+use App\Http\Traits\HttpRequestTrait;
 use App\Models\Airport;
 use App\Models\Supplier;
 use App\Models\Task;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class OpenAIClient implements AIClientInterface
 {
+    use HttpRequestTrait;
 
     protected string $apiUrl;
     protected string $apiKey;
@@ -26,6 +28,12 @@ class OpenAIClient implements AIClientInterface
 
     public function chatCompletionJsonResponse(array $message)
     {
+        // Log::info('OpenAI config: ', [
+        //     'api_url' => $this->apiUrl,
+        //     'api_key' => $this->apiKey,
+        //     'model' => $this->model,
+        // ]);
+
         $url = $this->apiUrl . '/chat/completions';
         $header = [
             'Authorization: Bearer ' . config('services.open-ai.key'),
@@ -45,9 +53,14 @@ class OpenAIClient implements AIClientInterface
             ]
         ];
 
-        $response =  Http::post($url, [
-            'headers' => $header,
-            'json' => $data,
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type' => 'application/json',
+        ])->post($url, $data);
+
+        Log::info('OpenAI API response: ', [
+            'status' => $response->status(),
+            'body' => $response->body(),
         ]);
 
         if ($response->failed()) {
@@ -84,7 +97,7 @@ class OpenAIClient implements AIClientInterface
             - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
-            - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
+            - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type. make sure to result in only one value of float type.
             - `reference`: Reference code for the task. use the full gds pnr code from the file.
             - `gds_office_id`: GDS office ID, if available.
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
@@ -149,7 +162,7 @@ class OpenAIClient implements AIClientInterface
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
             'penalty_fee': '10.00',
             'refund_charge': '0.250+0.900',
-            'reference': 'gds_reference',
+            'reference': 'ticket_number',
             'gds_office_id': 'gds_office_id',
             'type': 'flight',
             'agent_name': 'agent name',

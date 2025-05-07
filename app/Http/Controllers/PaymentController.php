@@ -30,6 +30,7 @@ use Exception;
 use Illuminate\Support\Facades\Redirect;
 use App\Support\PaymentGateway\Tap;
 use Google\Rpc\Context\AttributeContext\Response;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -1055,6 +1056,68 @@ class PaymentController extends Controller
                 ]);
                 return redirect()->back()->with('error', 'Payment cannot be updated');
             }
+
+            $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $payment->agent->branch->company->id)
+                ->first();
+
+            if (!$liabilitiesAccount) {
+                return redirect()->back()->with('error', 'Liabilities account not found.');
+            }
+
+            $clientAdvance = Account::where('name', 'Client')
+                ->where('company_id', $payment->agent->branch->company->id)
+                ->where('root_id', $liabilitiesAccount->id)
+                ->first();
+
+            if (!$clientAdvance) {
+                return redirect()->back()->with('error', 'Client advance account not found.');
+            }
+
+            DB::beginTransaction();
+
+            try {
+                $transaction = Transaction::create([
+                    'branch_id' => $payment->agent->branch->id,
+                    'company_id' => $payment->agent->branch->company->id,
+                    'entity_id' => $payment->agent->branch->company->id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'debit',
+                    'amount' => $payment->amount,
+                    'date' => now(),
+                    'description' => 'Topup by ' . $payment->client->name,
+                    'invoice_id' => $payment->invoice_id,
+                    'reference_type' => 'Payment',
+                ]);
+
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $payment->agent->branch->id,
+                    'company_id' => $payment->agent->branch->company->id,
+                    'invoice_id' => $payment->invoice_id,
+                    'account_id' => $clientAdvance->id,
+                    'transaction_date' => now(),
+                    'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                    'balance' => $clientAdvance->actual_balance - $payment->amount,
+                    'name' => $payment->client->name,
+                    'type' => 'receivable',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $clientAdvance->id
+                ]);
+
+            } catch (Exception $e) {
+                DB::rollBack();
+                logger('Failed to create journal entry', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return redirect()->back()->with('error', 'Payment cannot be updated');
+            }
+            DB::commit();
+
+
         } else if ($process == 'invoice'){
             $invoice = Invoice::where('id', $payment->invoice_id)->first();
             if (!$invoice) {

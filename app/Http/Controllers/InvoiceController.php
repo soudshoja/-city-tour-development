@@ -671,173 +671,25 @@ class InvoiceController extends Controller
                 //     $PayablechildAccountId = null; // Handle case when no parent account is found
                 // }
 
-                $accountsToBeUpdate = [];
+                $response = $this->addJournalEntry(
+                    $branchId,
+                    $companyId,
+                    $selectedtask,
+                    $task,
+                    $invoice,
+                    $invoiceDetail,
+                    $transaction,
+                    $client
+                );
 
-                $clientAccount = Account::where('name', 'like', '%Client%')
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if($clientAccount) {
-                    $clientAccount->description = 'Invoice created for (Assets): ' . $client->name;
-                    $clientAccount->debit_credit = 'debit';
-                    $clientAccount->amount = $task['invprice'];
-
-                    $accountsToBeUpdate[] = $clientAccount;
-                } 
-
-                if($task['type'] == 'flight'){
-                    $detailsAccount =  Account::where('name', 'like', 'Flight Booking%')
-                        ->where('company_id', $companyId)
-                        ->first();
-                } else {
-                    $detailsAccount =  Account::where('name', 'like', '%Hotel Booking%')
-                        ->where('company_id', $companyId)
-                        ->first();
-                }
-
-                if($detailsAccount){
-                    $detailsAccount->description = 'Invoice created for (Income): ' . $task['additional_info'];
-                    $detailsAccount->debit_credit = 'credit';
-                    $detailsAccount->amount = $task['invprice'];
-
-                    $accountsToBeUpdate[] = $detailsAccount;
-
-                }
-                $commissionCalculate = 0.15 * ($task['invprice'] - $selectedtask->total); //only for commission agent, not used now
-                // $commissionCalculate = $task['invprice'] - $selectedtask->total;
-
-                $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if($commissionExpenses){
-                    $commissionExpenses->description = 'Agents Commissions for (Expenses): ' . $task['agent']['name'];
-                    $commissionExpenses->debit_credit = 'debit';
-                    $commissionExpenses->amount = $commissionCalculate;
-
-                    $accountsToBeUpdate[] = $commissionExpenses;
-                }
-
-
-                $AccruedCommissionsAgent = Account::where('name', 'like', 'Commissions (Agents)%')
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if($AccruedCommissionsAgent){
-                    $AccruedCommissionsAgent->description = 'Agents Commissions for (Liabilities): ' . $task['agent']['name'];
-                    $AccruedCommissionsAgent->debit_credit = 'credit';
-                    $AccruedCommissionsAgent->amount = $commissionCalculate;
-
-                    $accountsToBeUpdate[] = $AccruedCommissionsAgent;
-                }
-
-                if(!$clientAccount || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
+                if ($response['status'] == 'error') {
                     $transaction->delete();
                     $invoiceDetail->delete();
                     $invoice->delete();
 
-                    Log::error(
-                        'Failed to find account: ' . $task['description'],
-                        [
-                            'clientAccount' => $clientAccount,
-                            'detailsAccount' => $detailsAccount,
-                            'commissionExpenses' => $commissionExpenses,
-                            'AccruedCommissionsAgent' => $AccruedCommissionsAgent,
-                        ]
-                    );
-                    return response()->json('Something went wrong', 404);
+                    return response()->json($response['message'], 500);
                 }
-                try {
 
-                    // Update the accounts in a loop
-                    foreach ($accountsToBeUpdate as $account) {
-
-                        $journalDataCreate = [
-                            'transaction_id' => $transaction->id,
-                            'branch_id' => $branchId,
-                            'company_id' => $companyId,
-                            'account_id' =>  $account->id,
-                            'invoice_id' =>  $invoice->id,
-                            'invoiceDetail_id' =>  $invoiceDetail->id,
-                            'transaction_date' => Carbon::now(),
-                            'description' => $account->description,
-                            'debit' => $account->debit_credit == 'debit' ? $account->amount : 0,
-                            'credit' => $account->debit_credit == 'credit' ? $account->amount : 0,
-                            'balance' => $account->balance,
-                            'name' =>  $account->name,
-                            'type' => $account->debit_credit == 'debit' ? 'receivable' : 'payable',
-                        ];
-
-                        JournalEntry::create($journalDataCreate);
-                    }
-
-                    // JournalEntry::create([
-                    //     'transaction_id' => $transaction->id,
-                    //     'branch_id' => $branchId,
-                    //     'company_id' => $companyId,
-                    //     'account_id' =>  $payableAccount->id,
-                    //     'invoice_id' =>  $invoice->id,
-                    //     'invoiceDetail_id' =>  $invoiceDetail->id,
-                    //     'transaction_date' => Carbon::now(),
-                    //     'description' => 'Payment: ' . $supplier->name,
-                    //     'debit' => 0,
-                    //     'credit' => $selectedtask->total,
-                    //     'balance' => $selectedtask->total,
-                    //     'name' => $supplier->name,
-                    //     'type' => 'payable',
-                    // ]);
-
-
-                    // Try to create receivable account
-                    // JournalEntry::create([
-                    //     'transaction_id' => $transaction->id,
-                    //     'branch_id' => $branchId,
-                    //     'company_id' => $companyId,
-                    //     'invoice_id' =>  $invoice->id,
-                    //     'account_id' =>  $receivableAccount->id,
-                    //     'invoiceDetail_id' =>  $invoiceDetail->id,
-                    //     'transaction_date' => Carbon::now(),
-                    //     'description' => 'Payment received from: ' . $client->name,
-                    //     'debit' => $task['invprice'],
-                    //     'credit' => 0,
-                    //     'balance' => $task['invprice'],
-                    //     'name' =>  $client->name,
-                    //     'type' => 'receivable',
-                    // ]);
-
-
-
-                    // $markup = $task['invprice'] - $selectedtask->total;
-                    // Try to create income
-                    // JournalEntry::create([
-                    //     'transaction_id' => $transaction->id,
-                    //     'branch_id' => $branchId,
-                    //     'company_id' => $companyId,
-                    //     'account_id' => $incomeAccount->id,
-                    //     'invoice_id' =>  $invoice->id,
-                    //     'invoiceDetail_id' =>  $invoiceDetail->id,
-                    //     'transaction_date' => Carbon::now(),
-                    //     'description' => 'Price markup by Agent: ' . $agent->name,
-                    //     'debit' => 0,
-                    //     'credit' => $markup,
-                    //     'balance' => $markup,
-                    //     'name' =>   $agent->name,
-                    //     'type' => 'income',
-                    // ]);
-
-
-                    // $selectedtask->status = 'Assigned';
-                    // $selectedtask->save();
-                    
-
-                } catch (Exception $e) {
-                    $transaction->delete();
-                    $invoiceDetail->delete();
-                    $invoice->delete();
-
-                    Log::error('Failed to Journal Entry: ' . $e->getMessage());
-                    return response()->json('Something Went Wrong', 500);
-                }
             }
         }
 
@@ -846,6 +698,122 @@ class InvoiceController extends Controller
             'message' => 'Invoice created successfully!',
             'invoiceId' => $invoice->id,
         ]);
+    }
+
+    public function addJournalEntry($branchId, $companyId, $selectedtask, $task, $invoice, $invoiceDetail, $transaction, $client)
+    {
+        $accountsToBeUpdate = [];
+
+        $clientAccount = Account::where('name', 'like', '%Client%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if ($clientAccount) {
+            $clientAccount->description = 'Invoice created for (Assets): ' . $client->name;
+            $clientAccount->debit_credit = 'debit';
+            $clientAccount->amount = $task['invprice'];
+
+            $accountsToBeUpdate[] = $clientAccount;
+        }
+
+        if ($task['type'] == 'flight') {
+            $detailsAccount =  Account::where('name', 'like', 'Flight Booking%')
+                ->where('company_id', $companyId)
+                ->first();
+        } else {
+            $detailsAccount =  Account::where('name', 'like', '%Hotel Booking%')
+                ->where('company_id', $companyId)
+                ->first();
+        }
+
+        if ($detailsAccount) {
+            $detailsAccount->description = 'Invoice created for (Income): ' . $task['additional_info'];
+            $detailsAccount->debit_credit = 'credit';
+            $detailsAccount->amount = $task['invprice'];
+
+            $accountsToBeUpdate[] = $detailsAccount;
+        }
+        $commissionCalculate = 0.15 * ($task['invprice'] - $selectedtask->total); //only for commission agent, not used now
+        // $commissionCalculate = $task['invprice'] - $selectedtask->total;
+
+        $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if ($commissionExpenses) {
+            $commissionExpenses->description = 'Agents Commissions for (Expenses): ' . $task['agent']['name'];
+            $commissionExpenses->debit_credit = 'debit';
+            $commissionExpenses->amount = $commissionCalculate;
+
+            $accountsToBeUpdate[] = $commissionExpenses;
+        }
+
+
+        $AccruedCommissionsAgent = Account::where('name', 'like', 'Commissions (Agents)%')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if ($AccruedCommissionsAgent) {
+            $AccruedCommissionsAgent->description = 'Agents Commissions for (Liabilities): ' . $task['agent']['name'];
+            $AccruedCommissionsAgent->debit_credit = 'credit';
+            $AccruedCommissionsAgent->amount = $commissionCalculate;
+
+            $accountsToBeUpdate[] = $AccruedCommissionsAgent;
+        }
+
+        if (!$clientAccount || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
+            $transaction->delete();
+            $invoiceDetail->delete();
+            $invoice->delete();
+
+            Log::error(
+                'Failed to find account: ' . $task['description'],
+                [
+                    'clientAccount' => $clientAccount,
+                    'detailsAccount' => $detailsAccount,
+                    'commissionExpenses' => $commissionExpenses,
+                    'AccruedCommissionsAgent' => $AccruedCommissionsAgent,
+                ]
+            );
+            return [
+                'status' => 'error',
+                'message' => 'Account not found!',
+            ];
+        }
+        try {
+
+            // Update the accounts in a loop
+            foreach ($accountsToBeUpdate as $account) {
+
+                $journalDataCreate = [
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $branchId,
+                    'company_id' => $companyId,
+                    'account_id' =>  $account->id,
+                    'invoice_id' =>  $invoice->id,
+                    'invoiceDetail_id' =>  $invoiceDetail->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => $account->description,
+                    'debit' => $account->debit_credit == 'debit' ? $account->amount : 0,
+                    'credit' => $account->debit_credit == 'credit' ? $account->amount : 0,
+                    'balance' => $account->balance,
+                    'name' =>  $account->name,
+                    'type' => $account->debit_credit == 'debit' ? 'receivable' : 'payable',
+                ];
+
+                JournalEntry::create($journalDataCreate);
+            }
+        } catch (Exception $e) {
+            $transaction->delete();
+            $invoiceDetail->delete();
+            $invoice->delete();
+
+            Log::error('Failed to Journal Entry: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create journal entry',
+            ];
+        }
     }
 
 

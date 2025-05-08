@@ -26,7 +26,7 @@ class ProcessAirFiles extends Command
     {
         parent::__construct();
 
-        $this->airFilesPath = base_path('air-files');
+        $this->airFilesPath = storage_path('app/air_files_unprocessed');
         $this->processedFilesPath = storage_path('app/air_files_processed');
         $this->aiManager = $aiManager;
     }

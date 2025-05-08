@@ -115,6 +115,7 @@
                                     onchange="toggleRefundDatalist()">
                                     <option value="">Choose One</option>
                                     <option value="Payment">Payment</option>
+                                    <option value="PaymentByDate">Payment by Date</option>
                                     <option value="Refund">Refund</option>
                                 </select>
                             </div>
@@ -311,9 +312,45 @@
         </form>
         <!-- end main content section -->
     </div>
+
+    <div id="paymentByDateModal"
+        class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-[90%] max-w-3xl shadow-xl">
+            <h2 class="text-lg font-bold mb-4">Select Payments by Date</h2>
+
+            <div class="flex gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium">Date From:</label>
+                    <input type="date" id="dateFrom" class="border-gray-300 rounded w-full" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Date To:</label>
+                    <input type="date" id="dateTo" class="border-gray-300 rounded w-full" />
+                </div>
+                <div class="flex items-end">
+                    <button onclick="loadJournalEntries()" class="bg-blue-600 text-white px-4 py-2 rounded">
+                        Search
+                    </button>
+                </div>
+            </div>
+
+            <div id="recordsContainer">
+                <p class="text-gray-500">Select a date range to load entries.</p>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+                <button onclick="submitSelectedPayments()" class="bg-blue-600 text-white px-4 py-2 rounded">Add
+                    Selected</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const suppliers = @json($suppliers);
         const lastLevelAccounts = @json($lastLevelAccounts);
+
+        let items = [];
 
         document.addEventListener("DOMContentLoaded", function() {
             const paymentTable = document.getElementById("paymentTable");
@@ -322,13 +359,12 @@
             const totalDifferenceEl = document.getElementById("total_difference");
             const addItemButton = document.getElementById("addItem");
 
-            let items = [];
-
             function addItem() {
                 let id = crypto.randomUUID();
                 let item = {
                     id,
                     ac_code: "",
+                    transaction_id: "",
                     remarks: "",
                     currency: "KWD",
                     exchange_rate: 1.0,
@@ -379,16 +415,17 @@
             }
 
             function selectedAccName(input, index) {
-                if (!input || index === undefined) return;
+                const selectedText = input.value.trim();
+                const acc = lastLevelAccounts.find(a => a.name === selectedText);
 
-                const selectedId = input.value;
-                const dataList = document.getElementById(`accountList_${index}`);
-                const selectedAccLabel = document.getElementById(`selectedAccName_${index}`);
-
-                if (!selectedAccLabel || !dataList) return;
-
-                const selectedOption = Array.from(dataList.options).find(option => option.value == selectedId);
-                selectedAccLabel.textContent = selectedOption ? selectedOption.textContent : "Account not found";
+                if (acc) {
+                    items[index].ac_code = acc.id;
+                    document.getElementById(`selectedAccName_${index}`).innerText =
+                        `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
+                } else {
+                    items[index].ac_code = null;
+                    document.getElementById(`selectedAccName_${index}`).innerText = '';
+                }
             }
 
             window.selectedAccName = selectedAccName; // Make function globally available
@@ -415,33 +452,32 @@
                 paymentTable.innerHTML = "";
                 items.forEach((item, index) => {
                     const row = document.createElement("tr");
+                    const accountOptions = lastLevelAccounts.map(acc =>
+                        `<option value="${acc.name}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}</option>`
+                    ).join('');
 
+                    const selectedAcc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
+                    const selectedAccDisplay = selectedAcc ?
+                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` :
+                        '';
                     row.innerHTML = `
                     <td>
                         <input required list="accountList_${index}" 
                             class="form-control form-control-sm" 
                             name="items[${index}][ac_code]" 
-                            value="${item.ac_code}" 
+                            value="${selectedAcc ? selectedAcc.name : ''}" 
                             placeholder="Search..."
-                            oninput="updateField(${index}, 'ac_code', this.value); selectedAccName(this, ${index});">
+                            oninput="selectedAccName(this, ${index});">
                         
-                            <datalist id="accountList_${index}">
-                                ${lastLevelAccounts.map(accpayreceive => 
-                                    `<option value="${accpayreceive.name}" ${item.ac_code == accpayreceive.id ? 'selected' : ''}>
-                                                                                        [${accpayreceive.root ? accpayreceive.root.name : 'No Root'}] [${accpayreceive.code}] ${accpayreceive.name}
-                                                                                    </option>`
-                                ).join('')}
-                            </datalist>
+                        <datalist id="accountList_${index}">
+                            ${accountOptions}
+                            
+                        </datalist>
 
-                    <small id="selectedAccName_${index}" class="text-muted">
-                        ${(() => {
-                            let acc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
-                            return acc ? `[${acc.id}] ${acc.name}` : '';
-                        })()}
-                    </small>
-
-
-                    </td>
+                        <small id="selectedAccName_${index}" class="text-muted">
+                            ${selectedAcc ? `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` : ''}
+                        </small>
+                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">
 
                     <td style="vertical-align: top;"><input required type="text" class="form-control form-control-sm" name="items[${index}][remarks]" value="${item.remarks}" oninput="updateField(${index}, 'remarks', this.value)"></td>
                     <td style="vertical-align: top;">
@@ -480,7 +516,7 @@
             addItemButton.addEventListener("click", addItem);
             addItem();
 
-
+            window.renderTable = renderTable;
 
             const saveBtn = document.getElementById('save-paymentvoucher-btn');
 
@@ -524,6 +560,119 @@
             } else {
                 field.classList.add('hidden');
             }
+            if (type === 'PaymentByDate') {
+                openPaymentByDateModal();
+            }
+        }
+
+        function openPaymentByDateModal() {
+            document.getElementById('paymentByDateModal').classList.remove('hidden');
+            document.getElementById('recordsContainer').innerHTML =
+                '<p class="text-gray-500">Select a date range to load entries.</p>';
+        }
+
+        function loadJournalEntries() {
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+
+            if (!from || !to) {
+                alert('Please select both Date From and Date To.');
+                return;
+            }
+
+            const container = document.getElementById('recordsContainer');
+            container.innerHTML = '<p class="text-gray-500">Loading records...</p>';
+
+            fetch(`/bank-payments/fetch-journals-by-date?from=${from}&to=${to}`)
+                .then(response => response.json())
+                .then(data => {
+                    container.innerHTML = '';
+                    if (data.length === 0) {
+                        container.innerHTML = '<p class="text-gray-500">No records found in the selected range.</p>';
+                        return;
+                    }
+
+                    data.forEach(record => {
+                        const formattedDate = new Date(record.transaction_date).toLocaleDateString('en-GB');
+                        container.innerHTML += `
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" 
+                                    class="payment-checkbox" 
+                                    value="${record.id}" 
+                                    data-account-id="${record.account_id}" 
+                                    data-debit="${record.debit}" 
+                                    data-transaction-id="${record.transaction_id}" />
+                                <label>
+                                    (${formattedDate}) (${record.account_id}) (${record.account_code}) ${record.name} - ${record.description} - KWD ${record.debit}
+                                </label>
+                            </div>
+                        `;
+                    });
+
+
+                });
+        }
+
+
+        function closeModal() {
+            document.getElementById('paymentByDateModal').classList.add('hidden');
+        }
+
+        function submitSelectedPayments() {
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+
+            const selectedCheckboxes = [...document.querySelectorAll('.payment-checkbox:checked')];
+
+            if (selectedCheckboxes.length === 0) {
+                alert("Please select at least one record.");
+                return;
+            }
+
+            // Extract data from selected checkboxes
+            const selectedRecords = selectedCheckboxes.map(cb => ({
+                id: cb.value,
+                debit: parseFloat(cb.dataset.debit || 0),
+                account_id: cb.dataset.accountId || null,
+                transaction_id: cb.dataset.transactionId || null
+            }));
+
+            // Create debit entries for each selected record
+            selectedRecords.forEach(record => {
+                items.push({
+                    id: crypto.randomUUID(),
+                    ac_code: record.account_id,
+                    transaction_id: record.transaction_id,
+                    remarks: `Payment from ${from} to ${to}`,
+                    currency: "KWD",
+                    exchange_rate: 1.0,
+                    amount: 0,
+                    debit: 0,
+                    credit: record.debit,
+                    cheque_no: "",
+                    cheque_date: "",
+                    bank_name: "",
+                    branch: "",
+                    auth_no: "",
+                    balance: 0,
+                });
+            });
+
+            // Remove first row if it's an empty placeholder
+            if (items.length > 1) {
+                const first = items[0];
+                const isEmpty =
+                    (!first.ac_code || first.ac_code.trim() === "") &&
+                    parseFloat(first.debit || 0) === 0 &&
+                    parseFloat(first.credit || 0) === 0;
+
+                if (isEmpty) {
+                    items.splice(0, 1);
+                }
+            }
+
+            renderTable();
+            closeModal();
         }
     </script>
 

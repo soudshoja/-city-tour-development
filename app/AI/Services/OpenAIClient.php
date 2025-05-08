@@ -10,6 +10,7 @@ use App\Models\Supplier;
 use App\Models\Task;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Response;
 
 class OpenAIClient implements AIClientInterface
 {
@@ -24,6 +25,24 @@ class OpenAIClient implements AIClientInterface
         $this->apiUrl = config('services.open-ai.url');
         $this->apiKey = config('services.open-ai.key');
         $this->model = config('services.open-ai.model');
+    }
+
+    public function chat(array $messages): array
+    {
+        $url = $this->apiUrl . '/chat/completions';
+        $response = Http::withToken($this->apiKey)
+        ->withoutVerifying()
+        ->post($url, [
+            'model' => $this->model,
+            'messages' => $messages,
+        ]);
+
+        // Check if the API call failed
+        if ($response->failed()) {
+            throw new \Exception('OpenAI API request failed: ' . $response->body());
+        }
+
+        return $response->json();
     }
 
     public function chatCompletionJsonResponse(array $message)

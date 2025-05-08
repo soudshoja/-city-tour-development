@@ -366,6 +366,7 @@
                 let item = {
                     id,
                     ac_code: "",
+                    account_id: "",
                     transaction_id: "",
                     remarks: "",
                     currency: "KWD",
@@ -474,14 +475,16 @@
                 paymentTable.innerHTML = "";
                 items.forEach((item, index) => {
                     const row = document.createElement("tr");
+
                     const accountOptions = lastLevelAccounts.map(acc =>
-                        `<option value="${acc.name}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}</option>`
+                        `<option value="${acc.name}" data-id="${acc.id}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}</option>`
                     ).join('');
 
                     const selectedAcc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
                     const selectedAccDisplay = selectedAcc ?
-                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` :
+                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.id}] [${selectedAcc.code}] ${selectedAcc.name}` :
                         '';
+
                     row.innerHTML = `
                     <td>
                         <input required list="accountList_${index}" 
@@ -489,18 +492,19 @@
                             name="items[${index}][ac_code]" 
                             value="${selectedAcc ? selectedAcc.name : ''}" 
                             placeholder="Search..."
-                            oninput="selectedAccName(this, ${index});">
+                            oninput="selectedAccName(this, ${index}); updateHiddenAccountId(this, ${index});">
                         
                         <datalist id="accountList_${index}">
                             ${accountOptions}
-                            
                         </datalist>
 
                         <small id="selectedAccName_${index}" class="text-muted">
-                            ${selectedAcc ? `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` : ''}
+                            ${selectedAccDisplay}
                         </small>
-                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">
 
+                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
+                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">
+                    </td>
                     <td style="vertical-align: top;"><input required type="text" class="form-control form-control-sm" name="items[${index}][remarks]" value="${item.remarks}" oninput="updateField(${index}, 'remarks', this.value)"></td>
                     <td style="vertical-align: top;">
                         <select required class="form-control form-control-sm text-left" name="items[${index}][currency]" onchange="updateField(${index}, 'currency', this.value)">
@@ -572,6 +576,20 @@
 
         });
 
+        function updateHiddenAccountId(input, index) {
+            const name = input.value;
+            const acc = lastLevelAccounts.find(acc => acc.name === name);
+            if (acc) {
+                document.getElementById(`account_id_${index}`).value = acc.id;
+                document.getElementById(`selectedAccName_${index}`).innerText =
+                    `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
+            } else {
+                document.getElementById(`account_id_${index}`).value = '';
+                document.getElementById(`selectedAccName_${index}`).innerText = '';
+            }
+        }
+
+
         function toggleRefundDatalist() {
             const type = document.getElementById('bankpaymenttype').value;
             const refundField = document.getElementById('refundNumberField');
@@ -596,12 +614,21 @@
             }
         }
 
-
         function openPaymentByDateModal() {
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+            // Format as YYYY-MM-DD
+            const toDateString = date => date.toISOString().split('T')[0];
+
+            document.getElementById('dateFrom').value = toDateString(firstDayOfMonth);
+            document.getElementById('dateTo').value = toDateString(today);
+
             document.getElementById('paymentByDateModal').classList.remove('hidden');
             document.getElementById('recordsContainer').innerHTML =
                 '<p class="text-gray-500">Select a date range to load entries.</p>';
         }
+
 
         function closeModalAndShowLastSearch() {
             // Close modal logic here (if needed)
@@ -696,7 +723,7 @@
                             <td class="p-2 border text-center">[${record.root_name}]<br>${record.account_code}</td>
                             <td class="p-2 border">${record.name}</td>
                             <td class="p-2 border">${record.description}</td>
-                            <td class="p-2 border text-right">KWD ${Math.abs(parseFloat(record.debit) - parseFloat(record.credit)).toFixed(2)}</td>
+                            <td class="p-2 border text-right">KWD ${Math.abs(parseFloat(record.credit) - parseFloat(record.debit)).toFixed(2)}</td>
 
                         </tr>
                     `;

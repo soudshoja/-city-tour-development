@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\AI\AIManager;
+use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
 use Illuminate\Console\Command;
@@ -227,6 +228,18 @@ class ProcessAirFiles extends Command
                 'status' => 'error',
                 'message' => 'Task already exists',
                 'code' => 409,
+            ];
+        }
+
+        $supplier = Supplier::where('name', 'Amadeus')->first();
+
+        if ($supplier) {
+            $data['supplier_id'] = $supplier->id;
+        } else {
+            Log::error("Supplier 'Amadeus' not found.");
+            return [
+                'status' => 'error',
+                'message' => 'Supplier not found',
             ];
         }
 

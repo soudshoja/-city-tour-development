@@ -456,7 +456,7 @@ class AccountingController extends Controller
             $companies = Company::all();
         }
 
-        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
         $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
@@ -464,7 +464,7 @@ class AccountingController extends Controller
         ->get()
         ->groupBy('type');
 
-        $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
         return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
@@ -567,7 +567,7 @@ class AccountingController extends Controller
             $companies = Company::all();
         }
 
-        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
         $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
@@ -575,7 +575,7 @@ class AccountingController extends Controller
         ->get()
         ->groupBy('type');  
 
-        $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
         return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysReceivable'));
@@ -670,7 +670,7 @@ class AccountingController extends Controller
             $companies = Company::all();
         }
 
-        $parentIds = Account::where('name', 'LIKE', '%Payable%')->pluck('id');
+        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
         $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
@@ -678,7 +678,7 @@ class AccountingController extends Controller
         ->get()
         ->groupBy('type');
 
-        $parentIdClients = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
+        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
         return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));

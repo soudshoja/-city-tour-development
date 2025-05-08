@@ -120,32 +120,12 @@ class BankPaymentController extends Controller
                 ->select('refund_number')
                 ->get();
 
-                
-            $validAccountIds = DB::table('journal_entries')
-                ->select('account_id')
-                ->where('company_id', $user->company->id)
-                ->where('branch_id', $user->branch->id)
-                ->groupBy('account_id')
-                ->havingRaw('SUM(debit - credit) > 0')
-                ->pluck('account_id');
-
-            $chkOutstandingDebitForPayment = JournalEntry::whereIn('account_id', $validAccountIds)
-                ->where('company_id', $user->company->id)
-                ->where('branch_id', $user->branch->id)
-                ->whereHas('account.root', function ($q) {
-                    $q->whereIn('name', ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity']);
-                })
-                ->with(['account', 'account.root'])
-                ->orderBy('transaction_date')
-                ->get();
-
-
 
         }else{
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers', 'chkOutstandingDebitForPayment'));
+        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers'));
 
     }
 
@@ -426,22 +406,28 @@ class BankPaymentController extends Controller
 
     public function fetchPaymentsByDate(Request $request)
     {
+        // Validate input dates
         $request->validate([
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
         ]);
-   
+    
         $user = auth()->user();
-
+    
+        // Fetch valid account IDs where the net movement is not zero
         $validAccountIds = DB::table('journal_entries')
-        ->select('account_id')
-        ->where('company_id', $user->company->id)
-        ->where('branch_id', $user->branch->id)
-        ->whereBetween('transaction_date', [$request->from, $request->to])
-        ->groupBy('account_id')
-        ->havingRaw('SUM(debit - credit) > 0')
-        ->pluck('account_id');
-
+            ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
+            ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
+            ->select('journal_entries.account_id')
+            ->where('journal_entries.company_id', $user->company->id)
+            ->where('journal_entries.branch_id', $user->branch->id)
+            ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
+            ->whereIn('root_a.name', ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'])
+            ->groupBy('journal_entries.account_id')
+            ->havingRaw('SUM(journal_entries.debit - journal_entries.credit) <> 0')
+            ->pluck('journal_entries.account_id');
+    
+        // Fetch journal entries for the filtered accounts
         $entries = JournalEntry::whereIn('account_id', $validAccountIds)
             ->where('company_id', $user->company->id)
             ->where('branch_id', $user->branch->id)
@@ -452,8 +438,9 @@ class BankPaymentController extends Controller
             ->with(['account', 'account.root'])
             ->orderBy('transaction_date')
             ->get();
-
-        $payments  = $entries->map(function ($entry) {
+    
+        // Format the results
+        $payments = $entries->map(function ($entry) {
             return [
                 'id'               => $entry->id,
                 'transaction_id'   => $entry->transaction_id,
@@ -468,10 +455,9 @@ class BankPaymentController extends Controller
                 'credit'           => $entry->credit,
             ];
         });
-
-    return response()->json($payments);
+    
+        return response()->json($payments);
     }
     
-
 
 }

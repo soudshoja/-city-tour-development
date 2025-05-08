@@ -135,26 +135,6 @@ class BankPaymentController extends Controller
     public function store(Request $request)
     {   
         //dd($request);
-        $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
-        $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-
-        $accountMap = Account::doesntHave('children')
-            ->whereHas('parent', function ($query) use ($rootIds) {
-                $query->whereIn('root_id', $rootIds);
-            })
-            ->pluck('id', 'name')
-            ->toArray();
-
-        $modifiedItems = collect($request->items)->map(function ($item) use ($accountMap) {
-            if (isset($accountMap[$item['ac_code']])) {
-                $item['ac_code'] = $accountMap[$item['ac_code']];
-            }
-            return $item;
-        })->toArray();
-
-        // Replace request data
-        $request->merge(['items' => $modifiedItems]);
-        //dd($request->bankpaymenttype);
 
         if ($request->bankpaymenttype === 'PaymentByDate') {
             $bankPaymentType = 'Payment';
@@ -165,7 +145,7 @@ class BankPaymentController extends Controller
         } else {
             $bankPaymentType = 'Invoice'; 
         }
-        
+
         $request->validate([
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
@@ -177,7 +157,7 @@ class BankPaymentController extends Controller
             'internal_remarks' => 'nullable|string',
             'remarks_fl' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.ac_code' => ['nullable', 'exists:accounts,id'],
+            'items.*.account_id' => ['nullable', 'exists:accounts,id'],
             'items.*.remarks' => 'nullable|string',
             'items.*.currency' => 'nullable|string',
             'items.*.exchange_rate' => 'nullable|numeric',
@@ -190,7 +170,6 @@ class BankPaymentController extends Controller
             'items.*.branch' => 'nullable|string',
             'items.*.balance' => 'nullable|numeric',
         ], [
-            'items.*.ac_code.exists' => 'The selected account code does not exist.', 
             'items.*.account_id.exists' => 'The selected account code does not exist.', 
         ]);
 
@@ -221,11 +200,11 @@ class BankPaymentController extends Controller
 
             // Store General Ledger Entries
             foreach ($request->items as $item) {
-                $accname = Account::where('id', $item['ac_code'])->first();
+                $accname = Account::where('id', $item['account_id'])->first();
 
                 JournalEntry::create([
                     'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                    'account_id' => $item['ac_code'],
+                    'account_id' => $item['account_id'],
                     'company_id' => $request->company_id ?? auth()->user()->company->id,
                     'branch_id' => $item['branch'] ?? auth()->user()->branch->id,
                     'transaction_id' => $transaction->id,
@@ -414,33 +393,87 @@ class BankPaymentController extends Controller
     
         $user = auth()->user();
     
-        // Fetch valid account IDs where the net movement is not zero
-        $validAccountIds = DB::table('journal_entries')
+        // $validAccountIds = DB::table('journal_entries')
+        //     ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
+        //     ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
+        //     ->select('journal_entries.account_id')
+        //     ->where('journal_entries.company_id', $user->company->id)
+        //     ->where('journal_entries.branch_id', $user->branch->id)
+        //     ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
+        //     ->whereIn('root_a.name', ['Liabilities'])
+        //     ->groupBy('journal_entries.account_id')
+        //     ->havingRaw('SUM(journal_entries.credit) - SUM(journal_entries.debit) > 0')
+        //     ->pluck('journal_entries.account_id');
+
+        // $entries = JournalEntry::whereIn('account_id', $validAccountIds)
+        //     ->where('company_id', $user->company->id)
+        //     ->where('branch_id', $user->branch->id)
+        //     ->whereBetween('transaction_date', [$request->from, $request->to])
+        //     ->where('credit', '<>', 0)
+        //     ->whereHas('account.root', function ($q) {
+        //         $q->whereIn('name', ['Liabilities']);
+        //     })
+        //     ->with(['account', 'account.root'])
+        //     ->orderBy('transaction_date')
+        //     ->get();
+
+        //group by account_id
+        // $entries = DB::table('journal_entries')
+        // ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
+        // ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
+        // ->select(
+        //     DB::raw('MAX(journal_entries.id) as id'), // just to retain one ID (not really meaningful)
+        //     DB::raw('MAX(journal_entries.transaction_id) as transaction_id'),
+        //     DB::raw('MAX(journal_entries.transaction_date) as transaction_date'),
+        //     'journal_entries.account_id',
+        //     'a.code as account_code',
+        //     'a.name as account_name',
+        //     'root_a.name as root_name',
+        //     DB::raw('SUM(journal_entries.debit) as debit'),
+        //     DB::raw('SUM(journal_entries.credit) as credit'),
+        //     DB::raw('MAX(journal_entries.name) as name'),
+        //     DB::raw('MAX(journal_entries.description) as description')
+        // )
+        // ->where('journal_entries.company_id', $user->company->id)
+        // ->where('journal_entries.branch_id', $user->branch->id)
+        // ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
+        // ->where('journal_entries.credit', '!=', 0)
+        // ->whereIn('root_a.name', ['Liabilities'])
+        // ->groupBy('journal_entries.account_id', 'a.code', 'a.name', 'root_a.name')
+        // ->havingRaw('SUM(journal_entries.credit - journal_entries.debit) > 0')
+        // ->orderBy('transaction_date')
+        // ->get();
+    
+        // Format the results
+
+        $totalsByAccount = DB::table('journal_entries')
             ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
             ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
-            ->select('journal_entries.account_id')
+            ->select(
+                'journal_entries.account_id',
+                DB::raw('SUM(journal_entries.credit) - SUM(journal_entries.debit) AS total')
+            )
             ->where('journal_entries.company_id', $user->company->id)
             ->where('journal_entries.branch_id', $user->branch->id)
             ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
-            ->whereIn('root_a.name', ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'])
+            ->whereIn('root_a.name', ['Liabilities'])
             ->groupBy('journal_entries.account_id')
-            ->havingRaw('SUM(journal_entries.debit - journal_entries.credit) <> 0')
-            ->pluck('journal_entries.account_id');
-    
-        // Fetch journal entries for the filtered accounts
-        $entries = JournalEntry::whereIn('account_id', $validAccountIds)
+            ->havingRaw('total > 0')
+            ->pluck('total', 'journal_entries.account_id');
+
+        $entries = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
             ->where('company_id', $user->company->id)
             ->where('branch_id', $user->branch->id)
             ->whereBetween('transaction_date', [$request->from, $request->to])
+            ->where('credit', '!=', 0)
             ->whereHas('account.root', function ($q) {
-                $q->whereIn('name', ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity']);
+                $q->whereIn('name', ['Liabilities']);
             })
             ->with(['account', 'account.root'])
             ->orderBy('transaction_date')
             ->get();
-    
-        // Format the results
-        $payments = $entries->map(function ($entry) {
+
+        $payments = $entries->map(function ($entry) use ($totalsByAccount) {
             return [
                 'id'               => $entry->id,
                 'transaction_id'   => $entry->transaction_id,
@@ -451,10 +484,12 @@ class BankPaymentController extends Controller
                 'root_name'        => $entry->account->root->name ?? 'No Root',
                 'name'             => $entry->name,
                 'description'      => $entry->description,
-                'debit'            => $entry->debit,
-                'credit'           => $entry->credit,
+                'debit'            => (float) $entry->debit,
+                'credit'           => (float) $entry->credit,
+                'account_total'    => (float) ($totalsByAccount[$entry->account_id] ?? 0), // Add total
             ];
         });
+           
     
         return response()->json($payments);
     }

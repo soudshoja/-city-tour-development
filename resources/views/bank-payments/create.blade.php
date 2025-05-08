@@ -118,7 +118,9 @@
                                     <option value="PaymentByDate">Payment by Date</option>
                                     <option value="Refund">Refund</option>
                                 </select>
+
                             </div>
+                            <div id="lastSearchInfo" class="text-muted ml-30" style="display: none;"></div>
                             <div id="refundNumberField" class="flex items-center gap-x-4 mt-4 hidden">
                                 <label for="refund_number" class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
                                     Refund Number <span class="text-red-500">*</span>
@@ -178,8 +180,8 @@
                                 <div class="text-lg font-semibold">Remarks</div>
 
                                 <div class="mt-4 flex items-center gap-x-4">
-                                    <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks <span
-                                            class="text-red-500">*</span></label>
+                                    <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
+                                        <span class="text-red-500">*</span></label>
                                     <input required id="remarks_create" type="text" name="remarks_create"
                                         class="form-input flex-1" placeholder="Enter Remarks" />
                                 </div>
@@ -384,13 +386,33 @@
             }
 
             window.removeItem = function(index) {
-                if (items.length > 1) {
-                    items.splice(index, 1);
+                // Get the payment type from the dropdown
+                const type = document.getElementById('bankpaymenttype').value;
+
+                // If the payment type is 'PaymentByDate', reset the table and arrays when one item is removed
+                if (type === 'PaymentByDate') {
+                    // Reset the selectedJournalIds array
+                    selectedJournalIds = [];
+
+                    items = [];
+
+                    // Re-render the table with no records
                     renderTable();
+
+                    alert("All records have been reset and re-select the record if you want to continue.");
                 } else {
-                    alert("At least one record is required.");
+                    // For other payment types, continue normal removal
+                    if (items.length > 1) {
+                        // Remove the item at the given index
+                        items.splice(index, 1);
+                        renderTable();
+                    } else {
+                        alert("At least one record is required.");
+                    }
                 }
             };
+
+
 
             window.updateField = function(index, field, value) {
                 if (["debit", "credit", "amount", "exchange_rate", "balance"].includes(field)) {
@@ -534,7 +556,6 @@
                 // Disable the button
                 button.disabled = true;
 
-                // Show loading spinner
                 icon.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -543,9 +564,8 @@
                     `;
                 text.textContent = 'Saving...';
 
-                // Submit the form after delay (simulate AJAX or save effect)
                 setTimeout(() => {
-                    button.closest('form').submit(); // Actually submit the form
+                    button.closest('form').submit();
                 }, 500);
             }
 
@@ -554,22 +574,62 @@
 
         function toggleRefundDatalist() {
             const type = document.getElementById('bankpaymenttype').value;
-            const field = document.getElementById('refundNumberField');
+            const refundField = document.getElementById('refundNumberField');
+
+            // Show/hide refund field
             if (type === 'Refund') {
-                field.classList.remove('hidden');
+                refundField.classList.remove('hidden');
             } else {
-                field.classList.add('hidden');
+                refundField.classList.add('hidden');
             }
+
+            // Reset the form state
+            items = [];
+            selectedJournalIds = [];
+            renderTable();
+
+            lastSearchInfo.innerHTML = '';
+            lastSearchInfo.style.display = 'none';
+
             if (type === 'PaymentByDate') {
                 openPaymentByDateModal();
             }
         }
+
 
         function openPaymentByDateModal() {
             document.getElementById('paymentByDateModal').classList.remove('hidden');
             document.getElementById('recordsContainer').innerHTML =
                 '<p class="text-gray-500">Select a date range to load entries.</p>';
         }
+
+        function closeModalAndShowLastSearch() {
+            // Close modal logic here (if needed)
+            const infoContainer = document.getElementById('lastSearchInfo');
+
+            if (lastSearchFrom && lastSearchTo) {
+                infoContainer.innerHTML = `
+            Last search: <strong>${lastSearchFrom} to ${lastSearchTo}</strong>.
+            <a href="javascript:void(0);" onclick="reopenModal()" class="text-blue-600 underline ml-2">View again</a>
+        `;
+            } else {
+                infoContainer.innerHTML = '';
+            }
+        }
+
+        function reopenModal() {
+            document.getElementById('openPaymentByDateModal').classList.remove('hidden'); // Example
+
+            if (lastSearchFrom && lastSearchTo) {
+                document.getElementById('dateFrom').value = lastSearchFrom;
+                document.getElementById('dateTo').value = lastSearchTo;
+                openPaymentByDateModal();
+            }
+        }
+
+        let lastSearchFrom = '';
+        let lastSearchTo = '';
+        let selectedJournalIds = [];
 
         function loadJournalEntries() {
             const from = document.getElementById('dateFrom').value;
@@ -580,6 +640,9 @@
                 return;
             }
 
+            lastSearchFrom = from;
+            lastSearchTo = to;
+
             const container = document.getElementById('recordsContainer');
             container.innerHTML = '<p class="text-gray-500">Loading records...</p>';
 
@@ -587,32 +650,98 @@
                 .then(response => response.json())
                 .then(data => {
                     container.innerHTML = '';
+
                     if (data.length === 0) {
                         container.innerHTML = '<p class="text-gray-500">No records found in the selected range.</p>';
                         return;
                     }
 
+                    // Table header
+                    let tableHTML = `
+                <div class="overflow-x-auto">
+                    <div class="max-h-[300px] overflow-y-auto">
+                        <table class="w-full border border-gray-300 text-sm">
+                            <thead class="bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th class="p-2 border">Select</th>
+                                    <th class="p-2 border">Date</th>
+                                    <th class="p-2 border">A/C</th>
+                                    <th class="p-2 border">Name</th>
+                                    <th class="p-2 border">Description</th>
+                                    <th class="p-2 border">Outstanding Balance (KWD)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                
+            `;
+                    lastSearchFrom = from;
+                    lastSearchTo = to;
                     data.forEach(record => {
+                        if (selectedJournalIds.includes(record.id)) return; // Skip if already selected
+
                         const formattedDate = new Date(record.transaction_date).toLocaleDateString('en-GB');
-                        container.innerHTML += `
-                            <div class="flex items-center gap-2 mb-2">
+                        tableHTML += `
+                        <tr class="border-t">
+                            <td class="p-2 border text-center">
                                 <input type="checkbox" 
                                     class="payment-checkbox" 
                                     value="${record.id}" 
                                     data-account-id="${record.account_id}" 
                                     data-debit="${record.debit}" 
-                                    data-transaction-id="${record.transaction_id}" />
-                                <label>
-                                    (${formattedDate}) (${record.account_id}) (${record.account_code}) ${record.name} - ${record.description} - KWD ${record.debit}
-                                </label>
-                            </div>
-                        `;
+                                    data-credit="${record.credit}" 
+                                    data-transaction-id="${record.transaction_id}" 
+                                    data-description="${record.description}" />
+                            </td>
+                            <td class="p-2 border text-center">${formattedDate}</td>
+                            <td class="p-2 border text-center">[${record.root_name}]<br>${record.account_code}</td>
+                            <td class="p-2 border">${record.name}</td>
+                            <td class="p-2 border">${record.description}</td>
+                            <td class="p-2 border text-right">KWD ${Math.abs(parseFloat(record.debit) - parseFloat(record.credit)).toFixed(2)}</td>
+
+                        </tr>
+                    `;
                     });
 
 
+                    // Append footer with search range
+                    tableHTML += `
+                            </tbody>
+                            <tfoot class="bg-gray-50">
+                                <tr>
+                                    <td colspan="7" class="p-2 border text-right text-sm italic text-gray-600">
+                                        Searched: ${from} to ${to}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+                    container.innerHTML = tableHTML;
                 });
+
+
+
+            const info = document.getElementById('lastSearchInfo');
+            info.innerHTML = `
+                    <small>Last search by date from ${from} to ${to} 
+                        <a href="#" onclick="openModalWithLastSearch()" class="text-blue-400 ml-1">[View]</a>
+                    </small>
+            `;
+            info.style.display = 'block';
         }
 
+
+        function openModalWithLastSearch() {
+            if (!lastSearchFrom || !lastSearchTo) return;
+
+            document.getElementById('dateFrom').value = lastSearchFrom;
+            document.getElementById('dateTo').value = lastSearchTo;
+
+            document.getElementById('paymentByDateModal').classList.remove('hidden');
+            loadJournalEntries();
+        }
 
         function closeModal() {
             document.getElementById('paymentByDateModal').classList.add('hidden');
@@ -621,6 +750,7 @@
         function submitSelectedPayments() {
             const from = document.getElementById('dateFrom').value;
             const to = document.getElementById('dateTo').value;
+
 
             const selectedCheckboxes = [...document.querySelectorAll('.payment-checkbox:checked')];
 
@@ -631,32 +761,41 @@
 
             // Extract data from selected checkboxes
             const selectedRecords = selectedCheckboxes.map(cb => ({
-                id: cb.value,
+                id: parseInt(cb.value), // Make sure ID is a number
                 debit: parseFloat(cb.dataset.debit || 0),
+                credit: parseFloat(cb.dataset.credit || 0),
                 account_id: cb.dataset.accountId || null,
-                transaction_id: cb.dataset.transactionId || null
+                transaction_id: cb.dataset.transactionId || null,
+                description: cb.dataset.description || null
             }));
 
             // Create debit entries for each selected record
             selectedRecords.forEach(record => {
-                items.push({
-                    id: crypto.randomUUID(),
-                    ac_code: record.account_id,
-                    transaction_id: record.transaction_id,
-                    remarks: `Payment from ${from} to ${to}`,
-                    currency: "KWD",
-                    exchange_rate: 1.0,
-                    amount: 0,
-                    debit: 0,
-                    credit: record.debit,
-                    cheque_no: "",
-                    cheque_date: "",
-                    bank_name: "",
-                    branch: "",
-                    auth_no: "",
-                    balance: 0,
-                });
+                // Prevent duplicates in items (optional, if needed)
+                if (!selectedJournalIds.includes(record.id)) {
+                    selectedJournalIds.push(record.id); // 🔄 Push into the global array
+
+                    items.push({
+                        id: crypto.randomUUID(),
+                        ac_code: record.account_id,
+                        transaction_id: record.transaction_id,
+                        remarks: `${record.description} - Payment from ${lastSearchFrom} to ${lastSearchTo}`,
+                        currency: "KWD",
+                        exchange_rate: 1.0,
+                        amount: 0,
+                        debit: record.credit ?? 0,
+                        credit: record.debit ?? 0,
+                        cheque_no: "",
+                        cheque_date: "",
+                        bank_name: "",
+                        branch: "",
+                        auth_no: "",
+                        balance: 0,
+                    });
+                }
             });
+
+            loadJournalEntries();
 
             // Remove first row if it's an empty placeholder
             if (items.length > 1) {
@@ -673,6 +812,21 @@
 
             renderTable();
             closeModal();
+        }
+
+        function appendLastSearchedDateOption(searchedDate) {
+            const select = document.getElementById('bankpaymenttype');
+            const existingOption = document.querySelector(`#bankpaymenttype option[value="LastSearch:${searchedDate}"]`);
+
+            if (!existingOption) {
+                const option = document.createElement('option');
+                option.value = `LastSearch:${searchedDate}`;
+                option.textContent = `Last Search: ${searchedDate}`;
+                option.disabled = true;
+                option.selected = true;
+
+                select.appendChild(option);
+            }
         }
     </script>
 

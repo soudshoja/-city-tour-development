@@ -107,12 +107,6 @@ class BankPaymentController extends Controller
                     $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
-            
-            // $suppliers = Account::doesntHave('children')
-            //     ->whereHas('parent', function ($query) use ($rootIds) {
-            //         $query->whereIn('root_id', $rootIds);
-            //     })
-            //     ->get();
 
             $suppliers = Account::doesntHave('children')
                 ->with('root') 
@@ -125,14 +119,33 @@ class BankPaymentController extends Controller
                 ->where('branch_id', $user->branch->id)
                 ->select('refund_number')
                 ->get();
-            
-            
+
+                
+            $validAccountIds = DB::table('journal_entries')
+                ->select('account_id')
+                ->where('company_id', $user->company->id)
+                ->where('branch_id', $user->branch->id)
+                ->groupBy('account_id')
+                ->havingRaw('SUM(debit - credit) > 0')
+                ->pluck('account_id');
+
+            $chkOutstandingDebitForPayment = JournalEntry::whereIn('account_id', $validAccountIds)
+                ->where('company_id', $user->company->id)
+                ->where('branch_id', $user->branch->id)
+                ->whereHas('account.root', function ($q) {
+                    $q->whereIn('name', ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity']);
+                })
+                ->with(['account', 'account.root'])
+                ->orderBy('transaction_date')
+                ->get();
+
+
 
         }else{
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers'));
+        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers', 'chkOutstandingDebitForPayment'));
 
     }
 
@@ -141,6 +154,7 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {   
+        //dd($request);
         $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
         $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
 
@@ -160,13 +174,24 @@ class BankPaymentController extends Controller
 
         // Replace request data
         $request->merge(['items' => $modifiedItems]);
+        //dd($request->bankpaymenttype);
 
+        if ($request->bankpaymenttype === 'PaymentByDate') {
+            $bankPaymentType = 'Payment';
+        } elseif ($request->bankpaymenttype === 'Payment') {
+            $bankPaymentType = 'Payment';
+        } elseif ($request->bankpaymenttype === 'Refund') {
+            $bankPaymentType = 'Refund';
+        } else {
+            $bankPaymentType = 'Invoice'; 
+        }
+        
         $request->validate([
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
             'docdate' => 'required|date',
             'bankpaymentref' => 'required|string',
-            'bankpaymenttype' => 'required|string|in:Payment,Refund,Invoice',
+            'bankpaymenttype' => 'required|string',
             'pay_to' => ['required', 'exists:accounts,name'],
             'remarks_create' => 'required|string',
             'internal_remarks' => 'nullable|string',
@@ -207,7 +232,7 @@ class BankPaymentController extends Controller
                 : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'invoice_id' => null,
                 'reference_number' => $request->bankpaymentref,
-                'reference_type' => $request->bankpaymenttype,
+                'reference_type' => $bankPaymentType,
                 'name' => $request->pay_to,
                 'remarks_internal' => $request->internal_remarks,
                 'remarks_fl' => $request->remarks_fl,
@@ -224,6 +249,7 @@ class BankPaymentController extends Controller
                     'company_id' => $request->company_id ?? auth()->user()->company->id,
                     'branch_id' => $item['branch'] ?? auth()->user()->branch->id,
                     'transaction_id' => $transaction->id,
+                    //'transaction_id' => $item['transaction_id'],
                     'description' => $item['remarks'] ?? '',
                     'debit' => $item['debit'] ?? 0,
                     'credit' => $item['credit'] ?? 0,
@@ -272,9 +298,6 @@ class BankPaymentController extends Controller
                 })
                 ->get();
 
-            $parentIdsSuppliers = Account::where('name', 'LIKE', '%Payable%')
-            ->pluck('id');
-            //$suppliers = Account::whereIn('parent_id', $parentIdsSuppliers)->get();
             $suppliers = Account::doesntHave('children')->get();
 
             
@@ -292,12 +315,6 @@ class BankPaymentController extends Controller
                     $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
-
-            // $suppliers = Account::doesntHave('children')
-            // ->whereHas('parent', function ($query) use ($rootIds) {
-            //     $query->whereIn('root_id', $rootIds);
-            // })
-            // ->get();
 
             $suppliers = Account::doesntHave('children')
             ->with('root') 
@@ -407,39 +424,54 @@ class BankPaymentController extends Controller
         }
     }
 
-    /**
-     * Get payable and receivable accounts.
-     */
-    private function getPayableReceivableAccounts()
+    public function fetchPaymentsByDate(Request $request)
     {
-        // return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')
-        //     ->orWhere('name', 'LIKE', '%Receivable%')
-        //     ->pluck('id'))->get();
-        $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
+        $request->validate([
+            'from' => 'required|date',
+            'to' => 'required|date|after_or_equal:from',
+        ]);
+   
+        $user = auth()->user();
 
-        return Account::whereIn('parent_id', Account::where(function ($query) {
-                        $query->where('name', 'LIKE', '%Payable%')
-                            ->orWhere('name', 'LIKE', '%Receivable%');
-                    })
-                    ->where('root_id', $liabilitiesRootId)
-                    ->pluck('id'))
-                ->get();
-    }
+        $validAccountIds = DB::table('journal_entries')
+        ->select('account_id')
+        ->where('company_id', $user->company->id)
+        ->where('branch_id', $user->branch->id)
+        ->whereBetween('transaction_date', [$request->from, $request->to])
+        ->groupBy('account_id')
+        ->havingRaw('SUM(debit - credit) > 0')
+        ->pluck('account_id');
 
-    /**
-     * Get supplier accounts.
-     */
-    private function getSupplierAccounts()
-    {
-        //return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')->pluck('id'))->get();
-        $liabilitiesRootId = Account::where('name', 'Liabilities')->value('id');
-
-        return Account::whereIn('parent_id', Account::where('name', 'LIKE', '%Payable%')
-                ->where('root_id', $liabilitiesRootId)
-                ->pluck('id'))
+        $entries = JournalEntry::whereIn('account_id', $validAccountIds)
+            ->where('company_id', $user->company->id)
+            ->where('branch_id', $user->branch->id)
+            ->whereBetween('transaction_date', [$request->from, $request->to])
+            ->whereHas('account.root', function ($q) {
+                $q->whereIn('name', ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity']);
+            })
+            ->with(['account', 'account.root'])
+            ->orderBy('transaction_date')
             ->get();
 
+        $payments  = $entries->map(function ($entry) {
+            return [
+                'id'               => $entry->id,
+                'transaction_id'   => $entry->transaction_id,
+                'transaction_date' => $entry->transaction_date,
+                'account_id'       => $entry->account_id,
+                'account_code'     => $entry->account->code ?? '',
+                'account_name'     => $entry->account->name ?? '',
+                'root_name'        => $entry->account->root->name ?? 'No Root',
+                'name'             => $entry->name,
+                'description'      => $entry->description,
+                'debit'            => $entry->debit,
+                'credit'           => $entry->credit,
+            ];
+        });
+
+    return response()->json($payments);
     }
+    
 
 
 }

@@ -721,6 +721,99 @@ class ClientController extends Controller
         DB::beginTransaction();
 
         try {
+    
+            $liabilities = Account::where('name', 'Liabilities')
+                ->where('company_id', $client->agent->branch->company->id)
+                ->first();
+
+            if (!$liabilities) {
+                throw new Exception('Liabilities account not found');
+            }
+
+            $advances = Account::where('name', 'Advances')
+                ->where('company_id', $client->agent->branch->company->id)
+                ->where('parent_id', $liabilities->id)
+                ->first();
+            
+            if (!$advances) {
+                throw new Exception('Advances account not found');
+            }
+
+            $clientAdvance = Account::where('name', 'Client')
+                ->where('company_id', $client->agent->branch->company->id)
+                ->where('parent_id', $advances->id)
+                ->where('root_id', $liabilities->id)
+                ->first();
+            
+            if (!$clientAdvance) {
+                throw new Exception('Client Advance account not found');
+            }
+
+            $refundPayable = Account::where('name', 'Refund Payable')
+                ->where('company_id', $client->agent->branch->company->id)
+                ->where('root_id', $liabilities->id)
+                ->first();
+
+            if (!$refundPayable) {
+                throw new Exception('Refund Payable account not found');
+            }
+
+            $clientRefund = Account::where('name', 'Clients')
+                ->where('company_id', $client->agent->branch->company->id)
+                ->where('parent_id', $refundPayable->id)
+                ->where('root_id', $liabilities->id)
+                ->first();
+            
+            if (!$clientRefund) {
+                throw new Exception('Client Refund account not found');
+            }
+
+            $transaction = Transaction::create([
+                'branch_id' =>  $client->agent->branch->id,
+                'company_id' =>  $client->agent->branch->company->id,
+                'entity_id' =>  $client->agent->branch->company->id,
+                'entity_type' => 'client',
+                'transaction_type' => 'credit',
+                'amount' => $request->amount,
+                'date' => Carbon::now(),
+                'description' => 'Client Refund of ' . $client->name . ' of ' . $request->amount,
+                'invoice_id' => null,
+                'reference_type' => 'Refund',
+                'reference_number' => null,
+            ]);
+
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'branch_id' => $client->agent->branch->id,
+                'company_id' => $client->agent->branch->company->id,
+                'account_id' =>  $clientAdvance->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Deduct Client Advance: ' . $client->name . ' of ' . $request->amount,
+                'debit' => $request->amount,
+                'credit' => 0,
+                'balance' => null,
+                'name' =>  $client->name,
+                'type' => 'receivable',
+                'voucher_number' => null,
+                'type_reference_id' => $advances->id
+            ]);
+
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'branch_id' => $client->agent->branch->id,
+                'company_id' => $client->agent->branch->company->id,
+                'account_id' =>  $clientRefund->id,
+                'transaction_date' => Carbon::now(),
+                'description' => 'Debit Client Refund Payable: ' . $client->name . ' of ' . $request->amount,
+                'debit' => 0,
+                'credit' => $request->amount,
+                'balance' => null,
+                'name' =>  $client->name,
+                'type' => 'payable',
+                'voucher_number' => null,
+                'type_reference_id' => $refundPayable->id
+            ]);
+
             $client->credit -= $request->amount;
             $client->save();
 

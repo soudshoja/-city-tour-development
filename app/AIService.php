@@ -3,9 +3,7 @@
 namespace App;
 
 use App\Http\Traits\HttpRequestTrait;
-use App\Models\Agent;
 use App\Models\Conversation;
-use App\Models\Role;
 use App\Models\User;
 use Exception;
 

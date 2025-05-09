@@ -760,13 +760,27 @@ class InvoiceController extends Controller
                 ->where('parent_id', $liabilities->id)
                 ->first();
             
-            if ($advances) {
-                $advances->description = 'Invoice created for (Liabilities) in advance: ' . $clientName;
-                $advances->debit_credit = 'credit';
-                $advances->amount = $task->invoiceDetail->task_price;
+            if (!$advances) {
+                Log::error('Missing advances account', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+                return [
+                    'status' => 'error',
+                    'message' => 'Account not found!',
+                ];
+            }
 
-                $accountsToBeUpdate[] = $advances;
-            } 
+            $clientAdvance = Account::where('name', 'like', '%Clients%')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $advances->id)
+                ->where('root_id', $liabilities->id)
+                ->first();
+            
+            if ($clientAdvance) {
+                $clientAdvance->description = 'Invoice created for (Assets): ' . $clientName;
+                $clientAdvance->debit_credit = 'debit';
+                $clientAdvance->amount = $task->invoiceDetail->task_price;
+
+                $accountsToBeUpdate[] = $clientAdvance;
+            }
 
         } else {
             $accountReceivable = Account::where('name', 'Accounts Receivable')

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Redirect;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class InvoiceController extends Controller
@@ -440,7 +441,7 @@ class InvoiceController extends Controller
         $gateway = $request->input('gateway');
         $credit = $request->input('credit', false); // Default to false if not provided
 
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
 
         $client = Client::find($clientId);
 
@@ -485,6 +486,64 @@ class InvoiceController extends Controller
             $clientController = new ClientController();
             $clientController->updateCredit($clientId, $newAmountCredit);
         }
+
+        $invoiceDetail = InvoiceDetail::where('invoice_id', $invoiceId)->first();
+        $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
+
+        $tasks = Task::with('invoiceDetail','agent')->whereIn('id', $tasksId)->get();
+
+        DB::beginTransaction();
+        try {
+            $transaction = Transaction::create([
+                'company_id' => $tasks[0]->company_id,
+                'branch_id' => $tasks[0]->agent->branch_id,
+                'entity_id' => $tasks[0]->company_id,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' =>  $invoice->amount,
+                'date' => Carbon::now(),
+                'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                'invoice_id' => $invoice->id,
+                'reference_type' => 'Invoice',
+            ]);
+        } catch (Exception $e) {
+
+            DB::rollBack();
+
+            Log::error('Failed to create Transactions: ' . $e->getMessage());
+            return response()->json('Something Went Wrong', 500);
+        }
+        DB::commit();
+      
+
+        DB::beginTransaction();
+
+        foreach($tasks as $task){
+            Log::info('Preparing to add journal entry', [
+                'task_id' => $task->id ?? null,
+                'invoice_id' => $invoiceId,
+                'invoice_detail_id' => $invoiceDetail->id ?? null,
+                'transaction_id' => $transaction->id ?? null,
+                'client_name' => $client->name ?? null,
+                'task' => $task,
+            ]);
+            
+            $response = $this->addJournalEntry(
+                $task,
+                $invoiceId,
+                $invoiceDetail->id,
+                $transaction->id,
+                $client->name,
+            );
+
+            if ($response['status'] == 'error') {
+                DB::rollBack();
+                Log::error('Journal entry creation failed', ['response' => $response]);
+                return response()->json($response['message'], 500);
+            }
+        }
+
+        DB::commit();
 
         return response()->json([
             'success' => true,
@@ -638,27 +697,7 @@ class InvoiceController extends Controller
                     return response()->json('Something Went Wrong', 500);
                 }
 
-                try {
-                    $transaction = Transaction::create([
-                        'company_id' => $companyId,
-                        'branch_id' => $branchId,
-                        'entity_id' => $companyId,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'credit',
-                        'amount' =>  $task['invprice'],
-                        'date' => Carbon::now(),
-                        'description' => 'Invoice:' . $invoiceNumber . ' Generated',
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Invoice',
-                    ]);
-                } catch (Exception $e) {
-
-                    $invoiceDetail->delete();
-                    $invoice->delete();
-
-                    Log::error('Failed to create Transactions: ' . $e->getMessage());
-                    return response()->json('Something Went Wrong', 500);
-                }
+             
 
                 // Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
                 // if ($payableAccount) {
@@ -671,24 +710,7 @@ class InvoiceController extends Controller
                 //     $PayablechildAccountId = null; // Handle case when no parent account is found
                 // }
 
-                $response = $this->addJournalEntry(
-                    $branchId,
-                    $companyId,
-                    $selectedtask,
-                    $task,
-                    $invoice,
-                    $invoiceDetail,
-                    $transaction,
-                    $client
-                );
-
-                if ($response['status'] == 'error') {
-                    $transaction->delete();
-                    $invoiceDetail->delete();
-                    $invoice->delete();
-
-                    return response()->json($response['message'], 500);
-                }
+         
 
             }
         }
@@ -700,44 +722,48 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function addJournalEntry($branchId, $companyId, $selectedtask, $task, $invoice, $invoiceDetail, $transaction, $client)
-    {
+    public function addJournalEntry(
+        $task,
+        $invoiceId,
+        $invoiceDetailId,
+        $transactionId,
+        $clientName,
+    ) {
         $accountsToBeUpdate = [];
 
         $clientAccount = Account::where('name', 'like', '%Client%')
-            ->where('company_id', $companyId)
+            ->where('company_id', $task->company_id)
             ->first();
 
         if ($clientAccount) {
-            $clientAccount->description = 'Invoice created for (Assets): ' . $client->name;
+            $clientAccount->description = 'Invoice created for (Assets): ' . $clientName;
             $clientAccount->debit_credit = 'debit';
-            $clientAccount->amount = $task['invprice'];
+            $clientAccount->amount = $task->invoiceDetail->task_price;
 
             $accountsToBeUpdate[] = $clientAccount;
         }
 
         if ($task['type'] == 'flight') {
             $detailsAccount =  Account::where('name', 'like', 'Flight Booking%')
-                ->where('company_id', $companyId)
+                ->where('company_id', $task->company_id)
                 ->first();
         } else {
             $detailsAccount =  Account::where('name', 'like', '%Hotel Booking%')
-                ->where('company_id', $companyId)
+                ->where('company_id', $task->company_id)
                 ->first();
         }
 
         if ($detailsAccount) {
             $detailsAccount->description = 'Invoice created for (Income): ' . $task['additional_info'];
             $detailsAccount->debit_credit = 'credit';
-            $detailsAccount->amount = $task['invprice'];
+            $detailsAccount->amount = $task->invoiceDetail->task_price;
 
             $accountsToBeUpdate[] = $detailsAccount;
         }
-        $commissionCalculate = 0.15 * ($task['invprice'] - $selectedtask->total); //only for commission agent, not used now
-        // $commissionCalculate = $task['invprice'] - $selectedtask->total;
+        $commissionCalculate = 0.15 * ($task->invoiceDetail->task_price - $task->total);
 
         $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
-            ->where('company_id', $companyId)
+            ->where('company_id', $task->company_id)
             ->first();
 
         if ($commissionExpenses) {
@@ -748,9 +774,8 @@ class InvoiceController extends Controller
             $accountsToBeUpdate[] = $commissionExpenses;
         }
 
-
         $AccruedCommissionsAgent = Account::where('name', 'like', 'Commissions (Agents)%')
-            ->where('company_id', $companyId)
+            ->where('company_id', $task->company_id)
             ->first();
 
         if ($AccruedCommissionsAgent) {
@@ -761,18 +786,21 @@ class InvoiceController extends Controller
             $accountsToBeUpdate[] = $AccruedCommissionsAgent;
         }
 
-        if (!$clientAccount || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
-            $transaction->delete();
-            $invoiceDetail->delete();
-            $invoice->delete();
+        // Log missing accounts
+        if (!$clientAccount) Log::error('Missing clientAccount', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+        if (!$detailsAccount) Log::error('Missing detailsAccount', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+        if (!$commissionExpenses) Log::error('Missing commissionExpenses', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+        if (!$AccruedCommissionsAgent) Log::error('Missing AccruedCommissionsAgent', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
 
+        if (!$clientAccount || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
             Log::error(
-                'Failed to find account: ' . $task['description'],
+                'Failed to find account for journal entry',
                 [
                     'clientAccount' => $clientAccount,
                     'detailsAccount' => $detailsAccount,
                     'commissionExpenses' => $commissionExpenses,
                     'AccruedCommissionsAgent' => $AccruedCommissionsAgent,
+                    'task' => $task,
                 ]
             );
             return [
@@ -780,40 +808,55 @@ class InvoiceController extends Controller
                 'message' => 'Account not found!',
             ];
         }
+
         try {
-
-            // Update the accounts in a loop
             foreach ($accountsToBeUpdate as $account) {
-
                 $journalDataCreate = [
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $branchId,
-                    'company_id' => $companyId,
-                    'account_id' =>  $account->id,
-                    'invoice_id' =>  $invoice->id,
-                    'invoiceDetail_id' =>  $invoiceDetail->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => $account->description,
+                    'transaction_id' => $transactionId,
+                    'branch_id' => $task->agent->branch_id ?? null,
+                    'company_id' => $task->company_id ?? null,
+                    'account_id' =>  $account->id ?? null,
+                    'invoice_id' =>  $invoiceId,
+                    'invoice_detail_id' =>  $invoiceDetailId,
+                    'transaction_date' => now(),
+                    'description' => $account->description ?? '',
                     'debit' => $account->debit_credit == 'debit' ? $account->amount : 0,
                     'credit' => $account->debit_credit == 'credit' ? $account->amount : 0,
-                    'balance' => $account->balance,
-                    'name' =>  $account->name,
+                    'balance' => $account->balance ?? 0,
+                    'name' =>  $account->name ?? '',
                     'type' => $account->debit_credit == 'debit' ? 'receivable' : 'payable',
+                    // Add other required fields with sensible defaults or nulls
+                    'currency' => $task->currency ?? 'USD',
+                    'exchange_rate' => $task->exchange_rate ?? 1.00,
+                    'amount' => $account->amount ?? 0,
                 ];
+
+                // Log the data before creation
+                foreach (['transaction_id', 'branch_id', 'company_id', 'account_id', 'invoice_id', 'invoice_detail_id', 'name', 'description'] as $field) {
+                    if (empty($journalDataCreate[$field]) && $journalDataCreate[$field] !== 0) {
+                        Log::error("Missing required field for JournalEntry: $field", [
+                            'journalDataCreate' => $journalDataCreate,
+                            'task' => $task,
+                            'account' => $account,
+                        ]);
+                    }
+                }
+
+                Log::info('Creating JournalEntry', $journalDataCreate);
 
                 JournalEntry::create($journalDataCreate);
             }
         } catch (Exception $e) {
-            $transaction->delete();
-            $invoiceDetail->delete();
-            $invoice->delete();
-
-            Log::error('Failed to Journal Entry: ' . $e->getMessage());
+            Log::error('Failed to create Journal Entry: ' . $e->getMessage(), [
+                'task' => $task,
+                'accountsToBeUpdate' => $accountsToBeUpdate,
+            ]);
             return [
                 'status' => 'error',
                 'message' => 'Failed to create journal entry',
             ];
         }
+        return ['status' => 'success'];
     }
 
 

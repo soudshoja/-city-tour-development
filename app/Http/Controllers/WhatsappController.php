@@ -10,7 +10,7 @@ use App\Models\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
-use Barryvdh\DomPDF\Facade\Pdf; // Add this import
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class WhatsappController extends Controller
@@ -179,7 +179,7 @@ class WhatsappController extends Controller
 
     $reqBody = [
         "messaging_product" => "whatsapp",
-        "to" => preg_replace('/[^0-9]/', '', $client->phone), // Ensure correct format
+        "to" => preg_replace('/[^0-9]/', '', $client->phone), 
         "type" => "template",
         "template" => [
             "name" => "payment_complete",

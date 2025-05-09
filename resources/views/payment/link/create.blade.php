@@ -25,15 +25,15 @@
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
-                        <select name="currency" id="currency" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select name="currency" id="currency" class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach ($currencies as $currency)
-                                <option value="{{ $currency->iso_code }}">{{ $currency->name }}</option>
+                                <option value="{{ $currency->iso_code }}" {{ $currency->country ? $currency->country->name == 'Kuwait' ? 'selected' : '' : ''}}>{{ $currency->name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div>
                         <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
-                        <select name="payment_gateway" id="payment-gateway" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select name="payment_gateway" id="payment-gateway" class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach ($paymentGateways as $gateway)
                                 <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                             @endforeach
@@ -41,7 +41,8 @@
                     </div>
                     <div>
                         <label for="client" class="block text-sm font-medium text-gray-700">Client</label>
-                        <select name="client_id" id="payment_client_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select name="client_id" id="payment_client_id" class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Select Client</option>
                             @foreach ($clients as $client)
                                 <option value="{{ $client->id }}">{{ $client->name }}</option>
                             @endforeach
@@ -50,7 +51,8 @@
                     @if(auth()->user()->role_id == App\Models\Role::COMPANY)
                     <div>
                         <label for="agent" class="block text-sm font-medium text-gray-700">Agent</label>
-                        <select name="agent_id" id="payment_agent_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select name="agent_id" id="payment_agent_id" class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Select Agent</option>
                             @foreach ($agents as $agent)
                                 <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                             @endforeach

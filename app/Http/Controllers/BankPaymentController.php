@@ -74,11 +74,10 @@ class BankPaymentController extends Controller
                 })
                 ->get();
 
+            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
             $suppliers = Account::doesntHave('children')
-                ->with('root') 
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
+                ->with('root')
+                ->whereIn('root_id', $rootIds)
                 ->get();
 
             $refundNumbers = Refund::select('refund_number')->get();
@@ -108,11 +107,10 @@ class BankPaymentController extends Controller
                 })
                 ->get();
 
+            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
             $suppliers = Account::doesntHave('children')
-                ->with('root') 
-                ->whereHas('parent', function ($query) use ($rootIds) {
-                    $query->whereIn('root_id', $rootIds);
-                })
+                ->with('root')
+                ->whereIn('root_id', $rootIds)
                 ->get();
 
             $refundNumbers = Refund::where('company_id', $user->company->id)
@@ -391,6 +389,7 @@ class BankPaymentController extends Controller
             'to' => 'required|date|after_or_equal:from',
         ]);
     
+        $supplierName = $request->get('supplier'); 
         $user = auth()->user();
     
         // $validAccountIds = DB::table('journal_entries')
@@ -446,33 +445,55 @@ class BankPaymentController extends Controller
     
         // Format the results
 
-        $totalsByAccount = DB::table('journal_entries')
+        // Base query for totals by account
+        $totalsByAccountQuery = DB::table('journal_entries')
             ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
             ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
             ->select(
                 'journal_entries.account_id',
-                DB::raw('SUM(journal_entries.credit) - SUM(journal_entries.debit) AS total')
+                DB::raw('SUM(COALESCE(journal_entries.credit, 0)) - SUM(COALESCE(journal_entries.debit, 0)) AS total')
             )
             ->where('journal_entries.company_id', $user->company->id)
             ->where('journal_entries.branch_id', $user->branch->id)
             ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
-            ->whereIn('root_a.name', ['Liabilities'])
-            ->groupBy('journal_entries.account_id')
-            ->havingRaw('total > 0')
-            ->pluck('total', 'journal_entries.account_id');
+            ->whereIn('root_a.name', ['Liabilities']);
 
-        $entries = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
+        // Apply supplier filter if set (using 'name' field on journal_entries)
+        if ($supplierName) {
+            $totalsByAccountQuery->where('journal_entries.name', 'LIKE', "%{$supplierName}%");
+        }
+
+        $totalsByAccount = $totalsByAccountQuery
+            ->groupBy('journal_entries.account_id')
+            ->get()
+            ->filter(function ($entry) {
+                // Filter out any entries with a total of 0 or less
+                return $entry->total > 0;
+            })
+            ->pluck('total', 'account_id');
+
+        // Base query for detailed journal entries
+        $entriesQuery = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
             ->where('company_id', $user->company->id)
             ->where('branch_id', $user->branch->id)
             ->whereBetween('transaction_date', [$request->from, $request->to])
             ->where('credit', '!=', 0)
             ->whereHas('account.root', function ($q) {
                 $q->whereIn('name', ['Liabilities']);
-            })
+            });
+
+        // Apply supplier filter if set
+        if ($supplierName) {
+            $entriesQuery->where('name', 'LIKE', "%{$supplierName}%");
+        }
+
+        $entries = $entriesQuery
             ->with(['account', 'account.root'])
             ->orderBy('transaction_date')
             ->get();
 
+
+        // Format results
         $payments = $entries->map(function ($entry) use ($totalsByAccount) {
             return [
                 'id'               => $entry->id,
@@ -486,10 +507,9 @@ class BankPaymentController extends Controller
                 'description'      => $entry->description,
                 'debit'            => (float) $entry->debit,
                 'credit'           => (float) $entry->credit,
-                'account_total'    => (float) ($totalsByAccount[$entry->account_id] ?? 0), // Add total
+                'account_total'    => (float) ($totalsByAccount[$entry->account_id] ?? 0),
             ];
         });
-           
     
         return response()->json($payments);
     }

@@ -2,11 +2,6 @@
 
 namespace App\Providers;
 
-use App\AIService;
-use App\AIServiceInterface;
-use Illuminate\Support\Facades\View;
-
-
 use App\Models\Client;
 use App\Models\CoaCategory;
 use App\Models\Company;

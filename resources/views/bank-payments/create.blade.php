@@ -160,7 +160,7 @@
                     <div class="mt-8 px-4">
                         <div class="flex flex-col justify-between lg:flex-row gap-x-4">
                             <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
-                                <div class="text-lg font-semibold">Bank Payment To</div>
+                                <div class="text-lg font-semibold">Payment Voucher</div>
                                 <div class="mt-4 flex items-center gap-x-4">
                                     <label for="pay_to_payee" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Pay To <span
                                             class="text-red-500">*</span></label>
@@ -293,7 +293,7 @@
                         </a>
 
                         <!-- Right side: Save and Reset -->
-                        <div class="flex gap-4">
+                        <div class="flex gap-4 ml-5">
                             <button type="reset" class="btn btn-warning px-6 py-2 w-40 rounded-lg">Reset</button>
                             <button id="save-paymentvoucher-btn" type="submit"
                                 class="btn btn-success px-6 py-2 w-40 rounded-lg flex items-center justify-center gap-2">
@@ -316,37 +316,53 @@
     </div>
 
     <div id="paymentByDateModal"
-        class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg p-6 w-[90%] max-w-3xl shadow-xl">
+        class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-3xl shadow-xl">
             <h2 class="text-lg font-bold mb-4">Select Payments by Date</h2>
 
-            <div class="flex gap-4 mb-4">
-                <div>
+            <div class="flex flex-col sm:flex-row sm:gap-4 gap-2 mb-4">
+                <div class="w-full sm:w-1/3">
                     <label class="block text-sm font-medium">Date From:</label>
-                    <input type="date" id="dateFrom" class="border-gray-300 rounded w-full" />
+                    <input type="date" id="dateFrom"
+                        class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
                 </div>
-                <div>
+                <div class="w-full sm:w-1/3">
                     <label class="block text-sm font-medium">Date To:</label>
-                    <input type="date" id="dateTo" class="border-gray-300 rounded w-full" />
+                    <input type="date" id="dateTo"
+                        class="border border-gray-300 rounded w-full px-2 py-1 h-10" />
                 </div>
-                <div class="flex items-end">
-                    <button onclick="loadJournalEntries()" class="bg-blue-600 text-white px-4 py-2 rounded">
-                        Search
-                    </button>
+                <div class="w-full sm:w-1/3">
+                    <label class="block text-sm font-medium">Supplier:</label>
+                    <input required id="supplierName" type="text" name="supplierName"
+                        class="border border-gray-300 rounded w-full px-2 py-1 h-10" list="supplierList"
+                        placeholder="Search supplier name..." />
+                    <datalist id="supplierList">
+                        @foreach ($suppliers as $supplier)
+                            <option value="{{ $supplier->name }}">
+                                [{{ $supplier->root->name ?? 'N/A' }}] [{{ $supplier->code }}] {{ $supplier->name }}
+                            </option>
+                        @endforeach
+                    </datalist>
                 </div>
             </div>
 
-            <div id="recordsContainer">
-                <p class="text-gray-500">Select a date range to load entries.</p>
+            <div class="mb-4">
+                <button onclick="loadJournalEntries()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Search</button>
             </div>
 
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
-                <button onclick="submitSelectedPayments()" class="bg-blue-600 text-white px-4 py-2 rounded">Add
-                    Selected</button>
+            <div id="recordsContainer" class="text-sm overflow-x-auto">
+                <p class="text-gray-500">Select a date range and click Search to load entries.</p>
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2">
+                <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded w-full sm:w-auto">Close</button>
+                <button onclick="submitSelectedPayments()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Add Selected</button>
             </div>
         </div>
     </div>
+
 
     <script>
         const suppliers = @json($suppliers);
@@ -400,7 +416,7 @@
                     // Re-render the table with no records
                     renderTable();
 
-                    alert("All records have been reset and re-select the record if you want to continue.");
+                    alert("All records have been reset and do re-select the record if you want to continue.");
                 } else {
                     // For other payment types, continue normal removal
                     if (items.length > 1) {
@@ -412,8 +428,6 @@
                     }
                 }
             };
-
-
 
             window.updateField = function(index, field, value) {
                 if (["debit", "credit", "amount", "exchange_rate", "balance"].includes(field)) {
@@ -439,17 +453,33 @@
 
             function selectedAccName(input, index) {
                 const selectedText = input.value.trim();
-                const acc = lastLevelAccounts.find(a => a.name === selectedText);
+
+                // Match format: [CODE] NAME
+                const match = selectedText.match(/^\[(.+?)\]\s+(.+)$/);
+                if (!match) {
+                    items[index].ac_code = null;
+                    document.getElementById(`selectedAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                    return;
+                }
+
+                const selectedCode = match[1];
+                const selectedName = match[2];
+
+                const acc = lastLevelAccounts.find(a => a.code === selectedCode && a.name === selectedName);
 
                 if (acc) {
                     items[index].ac_code = acc.id;
                     document.getElementById(`selectedAccName_${index}`).innerText =
-                        `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
+                        `[${acc.root ? acc.root.name : 'No Root'}] [${acc.id}] [${acc.code}] ${acc.name}`;
+                    document.getElementById(`account_id_${index}`).value = acc.id;
                 } else {
                     items[index].ac_code = null;
                     document.getElementById(`selectedAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
                 }
             }
+
 
             window.selectedAccName = selectedAccName; // Make function globally available
 
@@ -477,7 +507,7 @@
                     const row = document.createElement("tr");
 
                     const accountOptions = lastLevelAccounts.map(acc =>
-                        `<option value="${acc.name}" data-id="${acc.id}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}</option>`
+                        `<option value="[${acc.code}] ${acc.name}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.id}] [${acc.code}] ${acc.name}</option>`
                     ).join('');
 
                     const selectedAcc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
@@ -485,15 +515,16 @@
                         `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.id}] [${selectedAcc.code}] ${selectedAcc.name}` :
                         '';
 
+
                     row.innerHTML = `
                     <td>
                         <input required list="accountList_${index}" 
                             class="form-control form-control-sm" 
                             name="items[${index}][ac_code]" 
-                            value="${selectedAcc ? selectedAcc.name : ''}" 
+                            value="${selectedAcc ? `[${selectedAcc.code}] ${selectedAcc.name}` : ''}" 
                             placeholder="Search..."
-                            oninput="selectedAccName(this, ${index}); updateHiddenAccountId(this, ${index});">
-                        
+                            oninput="selectedAccName(this, ${index})">
+
                         <datalist id="accountList_${index}">
                             ${accountOptions}
                         </datalist>
@@ -576,6 +607,33 @@
 
         });
 
+        document.getElementById('supplierName')?.addEventListener('input', function() {
+            const payToInput = document.getElementById('pay_to');
+            if (payToInput) {
+                payToInput.value = this.value;
+            }
+        });
+
+        document.getElementById('pay_to')?.addEventListener('input', function() {
+            const payToValue = this.value.trim();
+            const supplierSelect = document.getElementById('supplierName');
+
+            if (supplierSelect && payToValue) {
+                const options = supplierSelect.options ? Array.from(supplierSelect.options) : [];
+                const optionExists = options.some(opt => opt.value === payToValue);
+                if (optionExists) {
+                    supplierSelect.value = payToValue;
+                } else {
+                    // Optionally add the supplier to the list
+                    const newOption = document.createElement('option');
+                    newOption.value = payToValue;
+                    newOption.textContent = payToValue;
+                    supplierSelect.appendChild(newOption);
+                    supplierSelect.value = payToValue;
+                }
+            }
+        });
+
         function updateHiddenAccountId(input, index) {
             const name = input.value;
             const acc = lastLevelAccounts.find(acc => acc.name === name);
@@ -617,32 +675,47 @@
         function openPaymentByDateModal() {
             const today = new Date();
             const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1,
+                0); // This sets the last day of the current month
 
-            // Format as YYYY-MM-DD
-            const toDateString = date => date.toISOString().split('T')[0];
+            const toDateString = date => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
 
             document.getElementById('dateFrom').value = toDateString(firstDayOfMonth);
-            document.getElementById('dateTo').value = toDateString(today);
+            document.getElementById('dateTo').value = toDateString(lastDayOfMonth);
 
             document.getElementById('paymentByDateModal').classList.remove('hidden');
             document.getElementById('recordsContainer').innerHTML =
-                '<p class="text-gray-500">Select a date range to load entries.</p>';
+                '<p class="text-gray-500">Select a date range and click Search to load entries.</p>';
+
+            const modal = document.getElementById('paymentByDateModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                loadJournalEntries();
+            } else {
+                console.warn('Modal element not found');
+            }
         }
 
 
+
         function closeModalAndShowLastSearch() {
-            // Close modal logic here (if needed)
             const infoContainer = document.getElementById('lastSearchInfo');
 
             if (lastSearchFrom && lastSearchTo) {
                 infoContainer.innerHTML = `
-            Last search: <strong>${lastSearchFrom} to ${lastSearchTo}</strong>.
+            Last search: <strong>${lastSearchFrom} to ${lastSearchTo}</strong>${supplier ? ` for <strong>${supplier}</strong>` : ''}.
             <a href="javascript:void(0);" onclick="reopenModal()" class="text-blue-600 underline ml-2">View again</a>
         `;
             } else {
                 infoContainer.innerHTML = '';
             }
         }
+
 
         function reopenModal() {
             document.getElementById('openPaymentByDateModal').classList.remove('hidden'); // Example
@@ -661,6 +734,7 @@
         function loadJournalEntries() {
             const from = document.getElementById('dateFrom').value;
             const to = document.getElementById('dateTo').value;
+            const supplier = document.getElementById('supplierName').value;
 
             if (!from || !to) {
                 alert('Please select both Date From and Date To.');
@@ -673,7 +747,7 @@
             const container = document.getElementById('recordsContainer');
             container.innerHTML = '<p class="text-gray-500">Loading records...</p>';
 
-            fetch(`/bank-payments/fetch-journals-by-date?from=${from}&to=${to}`)
+            fetch(`/bank-payments/fetch-journals-by-date?from=${from}&to=${to}&supplier=${encodeURIComponent(supplier)}`)
                 .then(response => response.json())
                 .then(data => {
                     container.innerHTML = '';
@@ -685,22 +759,24 @@
 
                     // Table header
                     let tableHTML = `
-                <div class="overflow-x-auto">
-                    <div class="max-h-[300px] overflow-y-auto">
-                        <table class="w-full border border-gray-300 text-sm">
-                            <thead class="bg-gray-100 sticky top-0">
-                                <tr>
-                                    <th class="p-2 border">Select</th>
-                                    <th class="p-2 border">Date</th>
-                                    <th class="p-2 border">A/C</th>
-                                    <th class="p-2 border">Name</th>
-                                    <th class="p-2 border">Description</th>
-                                    <th class="p-2 border">Outstanding Balance (KWD)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                
-            `;
+                    <div class="overflow-x-auto">
+                        <div class="max-h-[300px] overflow-y-auto">
+                            <table class="w-full border border-gray-300 text-sm">
+                                <thead class="bg-gray-100 sticky top-0">
+                                    <tr>
+                                        <th class="p-2 border text-center">
+                                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleAllJournals(this)">
+                                        </th>
+                                        <th class="p-2 border">Date</th>
+                                        <th class="p-2 border">A/C</th>
+                                        <th class="p-2 border">Name</th>
+                                        <th class="p-2 border">Description</th>
+                                        <th class="p-2 border">Outstanding Balance (KWD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                `;
                     lastSearchFrom = from;
                     lastSearchTo = to;
                     data.forEach(record => {
@@ -736,7 +812,7 @@
                             <tfoot class="bg-gray-50">
                                 <tr>
                                     <td colspan="7" class="p-2 border text-right text-sm italic text-gray-600">
-                                        Searched: ${from} to ${to}
+                                        Searched: ${from} to ${to} by ${supplier}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -752,13 +828,15 @@
 
             const info = document.getElementById('lastSearchInfo');
             info.innerHTML = `
-                    <small>Last search by date from ${from} to ${to} 
-                        <a href="#" onclick="openModalWithLastSearch()" class="text-blue-400 ml-1">[View]</a>
-                    </small>
+                <small>Last search by date from <strong>${from}</strong> to <strong>${to}</strong>${supplier ? ` for <strong>${supplier}</strong>` : ''}
+                    <a href="#" onclick="openModalWithLastSearch()" class="text-blue-400 ml-1">[View]</a>
+                </small>
             `;
             info.style.display = 'block';
         }
 
+
+        let supplier = "";
 
         function openModalWithLastSearch() {
             if (!lastSearchFrom || !lastSearchTo) return;
@@ -766,12 +844,58 @@
             document.getElementById('dateFrom').value = lastSearchFrom;
             document.getElementById('dateTo').value = lastSearchTo;
 
-            document.getElementById('paymentByDateModal').classList.remove('hidden');
-            loadJournalEntries();
+            // Sync from main page `pay_to` to modal `supplierName`
+            const payToValue = document.getElementById('pay_to')?.value.trim();
+            const supplierSelect = document.getElementById('supplierName');
+
+            if (supplierSelect && payToValue) {
+                // Ensure the options exist before trying to iterate
+                const options = supplierSelect.options ? Array.from(supplierSelect.options) : [];
+                const optionExists = options.some(opt => opt.value === payToValue);
+
+                if (optionExists) {
+                    supplierSelect.value = payToValue;
+                } else {
+                    // Optionally, add the supplier to the modal's supplier list
+                    const newOption = document.createElement('option');
+                    newOption.value = payToValue;
+                    newOption.textContent = payToValue;
+                    supplierSelect.appendChild(newOption);
+                    supplierSelect.value = payToValue;
+                }
+            }
+
+            const modal = document.getElementById('paymentByDateModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                loadJournalEntries();
+            } else {
+                console.warn('Modal element not found');
+            }
+        }
+
+
+        function toggleAllJournals(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.payment-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = masterCheckbox.checked;
+            });
         }
 
         function closeModal() {
             document.getElementById('paymentByDateModal').classList.add('hidden');
+            const supplierSelect = document.getElementById('supplierName');
+            const supplierValue = supplierSelect?.value?.trim();
+
+            const payToInput = document.getElementById('pay_to');
+            if (supplierValue && payToInput) {
+                payToInput.value = supplierValue;
+            }
+
+            const modal = document.getElementById('paymentByDateModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
         }
 
         function submitSelectedPayments() {
@@ -789,8 +913,8 @@
             // Extract data from selected checkboxes
             const selectedRecords = selectedCheckboxes.map(cb => ({
                 id: parseInt(cb.value), // Make sure ID is a number
-                debit: parseFloat(cb.dataset.debit || 0),
-                credit: parseFloat(cb.dataset.credit || 0),
+                debit: parseFloat(cb.dataset.debit || 0).toFixed(2),
+                credit: parseFloat(cb.dataset.credit || 0).toFixed(2),
                 account_id: cb.dataset.accountId || null,
                 transaction_id: cb.dataset.transactionId || null,
                 description: cb.dataset.description || null
@@ -800,7 +924,7 @@
             selectedRecords.forEach(record => {
                 // Prevent duplicates in items (optional, if needed)
                 if (!selectedJournalIds.includes(record.id)) {
-                    selectedJournalIds.push(record.id); // 🔄 Push into the global array
+                    selectedJournalIds.push(record.id);
 
                     items.push({
                         id: crypto.randomUUID(),
@@ -810,8 +934,8 @@
                         currency: "KWD",
                         exchange_rate: 1.0,
                         amount: 0,
-                        debit: record.credit ?? 0,
-                        credit: record.debit ?? 0,
+                        debit: (parseFloat(record.credit ?? 0) || 0).toFixed(2),
+                        credit: (parseFloat(record.debit ?? 0) || 0).toFixed(2),
                         cheque_no: "",
                         cheque_date: "",
                         bank_name: "",

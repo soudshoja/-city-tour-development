@@ -396,6 +396,7 @@
                     branch: "",
                     auth_no: "",
                     balance: 0,
+                    type_reference_id: "",
                 };
 
                 items.push(item);
@@ -440,8 +441,8 @@
             };
 
             function updateTotals() {
-                let totalDebit = items.reduce((sum, item) => sum + item.debit, 0);
-                let totalCredit = items.reduce((sum, item) => sum + item.credit, 0);
+                let totalDebit = items.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0);
+                let totalCredit = items.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0);
                 let totalDifference = totalDebit - totalCredit;
 
                 totalDebitEl.textContent = totalDebit.toFixed(2);
@@ -450,6 +451,7 @@
 
                 updateDifference(totalDifference);
             }
+
 
             function selectedAccName(input, index) {
                 const selectedText = input.value.trim();
@@ -471,7 +473,7 @@
                 if (acc) {
                     items[index].ac_code = acc.id;
                     document.getElementById(`selectedAccName_${index}`).innerText =
-                        `[${acc.root ? acc.root.name : 'No Root'}] [${acc.id}] [${acc.code}] ${acc.name}`;
+                        `[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}`;
                     document.getElementById(`account_id_${index}`).value = acc.id;
                 } else {
                     items[index].ac_code = null;
@@ -507,12 +509,12 @@
                     const row = document.createElement("tr");
 
                     const accountOptions = lastLevelAccounts.map(acc =>
-                        `<option value="[${acc.code}] ${acc.name}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.id}] [${acc.code}] ${acc.name}</option>`
+                        `<option value="[${acc.code}] ${acc.name}">[${acc.root ? acc.root.name : 'No Root'}] [${acc.code}] ${acc.name}</option>`
                     ).join('');
 
                     const selectedAcc = lastLevelAccounts.find(acc => acc.id == item.ac_code);
                     const selectedAccDisplay = selectedAcc ?
-                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.id}] [${selectedAcc.code}] ${selectedAcc.name}` :
+                        `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` :
                         '';
 
 
@@ -535,6 +537,7 @@
 
                         <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
                         <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">
+                        <input type="hidden" name="items[${index}][type_reference_id]" value="${item.id}">
                     </td>
                     <td style="vertical-align: top;"><input required type="text" class="form-control form-control-sm" name="items[${index}][remarks]" value="${item.remarks}" oninput="updateField(${index}, 'remarks', this.value)"></td>
                     <td style="vertical-align: top;">
@@ -793,6 +796,7 @@
                                     data-debit="${record.debit}" 
                                     data-credit="${record.credit}" 
                                     data-transaction-id="${record.transaction_id}" 
+                                    data-type_reference_id="${record.type_reference_id}" 
                                     data-description="${record.description}" />
                             </td>
                             <td class="p-2 border text-center">${formattedDate}</td>
@@ -917,7 +921,8 @@
                 credit: parseFloat(cb.dataset.credit || 0).toFixed(2),
                 account_id: cb.dataset.accountId || null,
                 transaction_id: cb.dataset.transactionId || null,
-                description: cb.dataset.description || null
+                description: cb.dataset.description || null,
+                type_reference_id: cb.dataset.type_reference_id || null
             }));
 
             // Create debit entries for each selected record
@@ -927,9 +932,11 @@
                     selectedJournalIds.push(record.id);
 
                     items.push({
-                        id: crypto.randomUUID(),
+                        //id: crypto.randomUUID(),
+                        id: record.id,
                         ac_code: record.account_id,
                         transaction_id: record.transaction_id,
+                        type_reference_id: record.type_reference_id,
                         remarks: `${record.description} - Payment from ${lastSearchFrom} to ${lastSearchTo}`,
                         currency: "KWD",
                         exchange_rate: 1.0,

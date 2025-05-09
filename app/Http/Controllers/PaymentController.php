@@ -20,6 +20,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Account;
+use App\Models\Branch;
 use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Charge;
@@ -756,17 +757,26 @@ class PaymentController extends Controller
         $user = Auth::user();
 
         if($user->role_id == Role::ADMIN){
+
             $agents = Agent::all();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else if($user->role_id == Role::COMPANY){
-            $agents = Agent::where('company_id', $user->company_id)->get();
+
+            $branches = Branch::where('company_id', $user->company->id)->get();
+            $agents = Agent::where('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else if($user->role_id == Role::BRANCH){
-            $agents = Agent::where('branch_id', $user->branch_id)->get();
+
+            $agents = Agent::where('branch_id', $user->branch->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else if($user->role_id == Role::AGENT){
-            $agents = Agent::where('id', $user->id)->get();
+            
+            $agents = Agent::where('id', $user->agent->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else {
             return redirect()->back()->with('error', 'You are not authorized to view payment links.');
         }
@@ -798,17 +808,26 @@ class PaymentController extends Controller
     {
         $user = Auth::user();
         if($user->role_id == Role::ADMIN){
+
             $agents = Agent::all();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else if($user->role_id == Role::COMPANY){
-            $agents = Agent::where('company_id', $user->company_id)->get();
+
+            $branches = Branch::where('company_id', $user->company->id)->get();
+            $agents = Agent::where('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else if($user->role_id == Role::BRANCH){
-            $agents = Agent::where('branch_id', $user->branch_id)->get();
+
+            $agents = Agent::where('branch_id', $user->branch->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else if($user->role_id == Role::AGENT){
-            $agents = Agent::where('id', $user->id)->get();
+
+            $agents = Agent::where('id', $user->agent->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
+
         }else {
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }

@@ -729,18 +729,84 @@ class InvoiceController extends Controller
         $transactionId,
         $clientName,
     ) {
+
+        $invoice = Invoice::where('id', $invoiceId)->first();
+
+        if(!$invoice) {
+            Log::error('Invoice not found', ['invoice_id' => $invoiceId]);
+            return [
+                'status' => 'error',
+                'message' => 'Invoice not found!',
+            ];
+        }
+
         $accountsToBeUpdate = [];
 
-        $clientAccount = Account::where('name', 'like', '%Client%')
-            ->where('company_id', $task->company_id)
-            ->first();
+        if($invoice->is_client_credit){
+            $liabilities = Account::where('name', 'like', 'Liabilities%')
+                ->where('company_id', $task->company_id)
+                ->first();
+            
+            if (!$liabilities) {
+                Log::error('Missing liabilities account', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+                return [
+                    'status' => 'error',
+                    'message' => 'Account not found!',
+                ];
+            }
+            
+            $advances = Account::where('name', 'Advances')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $liabilities->id)
+                ->first();
+            
+            if (!$advances) {
+                Log::error('Missing advances account', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+                return [
+                    'status' => 'error',
+                    'message' => 'Account not found!',
+                ];
+            }
 
-        if ($clientAccount) {
-            $clientAccount->description = 'Invoice created for (Assets): ' . $clientName;
-            $clientAccount->debit_credit = 'debit';
-            $clientAccount->amount = $task->invoiceDetail->task_price;
+            $clientAdvance = Account::where('name', 'like', '%Clients%')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $advances->id)
+                ->where('root_id', $liabilities->id)
+                ->first();
+            
+            if ($clientAdvance) {
+                $clientAdvance->description = 'Invoice created for (Assets): ' . $clientName;
+                $clientAdvance->debit_credit = 'debit';
+                $clientAdvance->amount = $task->invoiceDetail->task_price;
 
-            $accountsToBeUpdate[] = $clientAccount;
+                $accountsToBeUpdate[] = $clientAdvance;
+            }
+
+        } else {
+            $accountReceivable = Account::where('name', 'Accounts Receivable')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$accountReceivable) {
+                Log::error('Missing accountReceivable', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
+                return [
+                    'status' => 'error',
+                    'message' => 'Account not found!',
+                ];
+            }
+
+            $clientAccount = Account::where('name', 'like', '%Clients%')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $accountReceivable->id)
+                ->first();
+
+            if ($clientAccount) {
+                $clientAccount->description = 'Invoice created for (Assets): ' . $clientName;
+                $clientAccount->debit_credit = 'debit';
+                $clientAccount->amount = $task->invoiceDetail->task_price;
+
+                $accountsToBeUpdate[] = $clientAccount;
+            }
         }
 
         if ($task['type'] == 'flight') {
@@ -786,16 +852,12 @@ class InvoiceController extends Controller
             $accountsToBeUpdate[] = $AccruedCommissionsAgent;
         }
 
-        // Log missing accounts
-        if (!$clientAccount) Log::error('Missing clientAccount', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
-        if (!$detailsAccount) Log::error('Missing detailsAccount', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
-        if (!$commissionExpenses) Log::error('Missing commissionExpenses', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
-        if (!$AccruedCommissionsAgent) Log::error('Missing AccruedCommissionsAgent', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
 
-        if (!$clientAccount || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
+        if ( (!$advances && !$clientAccount) || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
             Log::error(
                 'Failed to find account for journal entry',
                 [
+                    'advances' => $advances,
                     'clientAccount' => $clientAccount,
                     'detailsAccount' => $detailsAccount,
                     'commissionExpenses' => $commissionExpenses,

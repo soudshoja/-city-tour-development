@@ -13,7 +13,7 @@ class Currency extends Model
         'symbol'
     ];
 
-    public function countries()
+    public function country()
     {
         return $this->belongsTo(Country::class);
     }

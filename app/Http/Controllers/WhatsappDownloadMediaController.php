@@ -15,8 +15,7 @@ class DownloadMediaController extends Controller
             return response('No media ID provided.', 400);
         }
 
-        // Your WhatsApp token
-        $whatsappToken = "EAANoyWCikwo..."; 
+        $whatsappToken = "EAANoyWCikw0BO4fkFHz5xWEupMXgdUMD03B5oQPVaDaJbussK0QrnctmNMF3gQiuXRKlwltRWiZBEtuQ7WRcWRz9MHOPdkgdLke9LZB4l89TbppWcVACkc3ZA8ZABw3HzKZBVpC4y8oZBaj0ZAUivtVZBNP2p3tfqwEOfev7Cezh3AZA84CskkUTvE8BZAtEJHlZBjJkgZDZD"; 
         
         // Step 1: Retrieve the media URL
         $apiUrl = "https://graph.facebook.com/v22.0/{$mediaId}";

@@ -4,7 +4,7 @@
             <li>
                 <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
             </li>
-            <li>
+            <li class="before:content-['/'] before:mr-1">
                 <a href="{{ route('payment.link.index') }}" class="hover:text-blue-500 hover:underline">Payment Links</a>
             </li>
             <li class="before:content-['/'] before:mr-1">

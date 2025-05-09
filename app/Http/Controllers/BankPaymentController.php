@@ -377,6 +377,7 @@ class BankPaymentController extends Controller
                 'bank_info' => $item['bank_name'] ?? '',
                 'auth_no' => $item['auth_no'] ?? '',
                 'updated_at' => now(),
+                'type_reference_id' => $item['type_reference_id'],
             ]);
         }
     }

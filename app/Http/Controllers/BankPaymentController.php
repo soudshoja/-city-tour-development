@@ -136,12 +136,20 @@ class BankPaymentController extends Controller
 
         if ($request->bankpaymenttype === 'PaymentByDate') {
             $bankPaymentType = 'Payment';
+            $reconciledFlag = 2; //0 = no yet reconciled, 1 = the record that has been reconciled, 2 = reconciled record
+            $reconciledProcess = 'yes';
         } elseif ($request->bankpaymenttype === 'Payment') {
             $bankPaymentType = 'Payment';
+            $reconciledFlag = 0;
+            $reconciledProcess = 'no';
         } elseif ($request->bankpaymenttype === 'Refund') {
             $bankPaymentType = 'Refund';
+            $reconciledFlag = 0;
+            $reconciledProcess = 'no';
         } else {
             $bankPaymentType = 'Invoice'; 
+            $reconciledFlag = 0;
+            $reconciledProcess = 'no';
         }
 
         $request->validate([
@@ -196,17 +204,16 @@ class BankPaymentController extends Controller
                 
             ]);
 
-            // Store General Ledger Entries
+            // Store JournalEntries
             foreach ($request->items as $item) {
                 $accname = Account::where('id', $item['account_id'])->first();
 
-                JournalEntry::create([
+                $journalEntryRec = JournalEntry::create([
                     'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                     'account_id' => $item['account_id'],
                     'company_id' => $request->company_id ?? auth()->user()->company->id,
-                    'branch_id' => $item['branch'] ?? auth()->user()->branch->id,
+                    'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                     'transaction_id' => $transaction->id,
-                    //'transaction_id' => $item['transaction_id'],
                     'description' => $item['remarks'] ?? '',
                     'debit' => $item['debit'] ?? 0,
                     'credit' => $item['credit'] ?? 0,
@@ -221,7 +228,38 @@ class BankPaymentController extends Controller
                     'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s'): null,
                     'bank_info' => $item['bank_name'] ?? '',
                     'auth_no' => $item['auth_no'] ?? '',
+                    'reconciled' => $reconciledFlag,
                 ]);
+
+                $selected_account_id = $item['account_id'];
+
+                // Update selected journal entries 
+                if ($reconciledProcess==='yes') {
+                    JournalEntry::where('company_id', auth()->user()->company->id)
+                        ->where('branch_id', auth()->user()->branch->id)
+                        ->where('account_id', $selected_account_id)
+                        ->where('reconciled', 0)
+                        ->where('debit', 0)
+                        ->where('name', 'LIKE', "%{$request->supplier_name}%")
+                        ->update([
+                            'reconciled' => 1,
+                            'reconciled_ref_id' => $journalEntryRec->id
+                        ]);
+                }
+                // foreach ($items as $item) {
+                //     if ($reconciledProcess === 'yes' && isset($item['reconciled_entry_ids']) && is_array($item['reconciled_entry_ids'])) {
+                //         JournalEntry::whereIn('id', $item['reconciled_entry_ids'])
+                //             ->where('reconciled', 0)
+                //             ->update([
+                //                 'reconciled' => 1,
+                //                 'reconciled_ref_id' => $journalEntryRec->id,
+                //             ]);
+                //     }
+                // }
+
+
+
+        
             }
 
             DB::commit();
@@ -392,61 +430,8 @@ class BankPaymentController extends Controller
     
         $supplierName = $request->get('supplier'); 
         $user = auth()->user();
-    
-        // $validAccountIds = DB::table('journal_entries')
-        //     ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
-        //     ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
-        //     ->select('journal_entries.account_id')
-        //     ->where('journal_entries.company_id', $user->company->id)
-        //     ->where('journal_entries.branch_id', $user->branch->id)
-        //     ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
-        //     ->whereIn('root_a.name', ['Liabilities'])
-        //     ->groupBy('journal_entries.account_id')
-        //     ->havingRaw('SUM(journal_entries.credit) - SUM(journal_entries.debit) > 0')
-        //     ->pluck('journal_entries.account_id');
-
-        // $entries = JournalEntry::whereIn('account_id', $validAccountIds)
-        //     ->where('company_id', $user->company->id)
-        //     ->where('branch_id', $user->branch->id)
-        //     ->whereBetween('transaction_date', [$request->from, $request->to])
-        //     ->where('credit', '<>', 0)
-        //     ->whereHas('account.root', function ($q) {
-        //         $q->whereIn('name', ['Liabilities']);
-        //     })
-        //     ->with(['account', 'account.root'])
-        //     ->orderBy('transaction_date')
-        //     ->get();
 
         //group by account_id
-        // $entries = DB::table('journal_entries')
-        // ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
-        // ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
-        // ->select(
-        //     DB::raw('MAX(journal_entries.id) as id'), // just to retain one ID (not really meaningful)
-        //     DB::raw('MAX(journal_entries.transaction_id) as transaction_id'),
-        //     DB::raw('MAX(journal_entries.transaction_date) as transaction_date'),
-        //     'journal_entries.account_id',
-        //     'a.code as account_code',
-        //     'a.name as account_name',
-        //     'root_a.name as root_name',
-        //     DB::raw('SUM(journal_entries.debit) as debit'),
-        //     DB::raw('SUM(journal_entries.credit) as credit'),
-        //     DB::raw('MAX(journal_entries.name) as name'),
-        //     DB::raw('MAX(journal_entries.description) as description')
-        // )
-        // ->where('journal_entries.company_id', $user->company->id)
-        // ->where('journal_entries.branch_id', $user->branch->id)
-        // ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
-        // ->where('journal_entries.credit', '!=', 0)
-        // ->whereIn('root_a.name', ['Liabilities'])
-        // ->groupBy('journal_entries.account_id', 'a.code', 'a.name', 'root_a.name')
-        // ->havingRaw('SUM(journal_entries.credit - journal_entries.debit) > 0')
-        // ->orderBy('transaction_date')
-        // ->get();
-    
-        // Format the results
-
-        // Base query for totals by account
         $totalsByAccountQuery = DB::table('journal_entries')
             ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
             ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
@@ -479,6 +464,8 @@ class BankPaymentController extends Controller
             ->where('branch_id', $user->branch->id)
             ->whereBetween('transaction_date', [$request->from, $request->to])
             ->where('credit', '!=', 0)
+            ->where('reconciled', '==', 0)
+            ->where('voucher_number', NULL)
             ->whereHas('account.root', function ($q) {
                 $q->whereIn('name', ['Liabilities']);
             });
@@ -493,7 +480,7 @@ class BankPaymentController extends Controller
             ->orderBy('transaction_date')
             ->get();
 
-
+    
         // Format results
         $payments = $entries->map(function ($entry) use ($totalsByAccount) {
             return [
@@ -511,9 +498,8 @@ class BankPaymentController extends Controller
                 'account_total'    => (float) ($totalsByAccount[$entry->account_id] ?? 0),
             ];
         });
-    
+
         return response()->json($payments);
-    }
-    
+    }  
 
 }

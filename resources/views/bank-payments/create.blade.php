@@ -311,6 +311,7 @@
                     </div>
                 </div>
             </div>
+            <input type="hidden" id="items_json" name="items_json">
         </form>
         <!-- end main content section -->
     </div>
@@ -537,7 +538,7 @@
 
                         <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
                         <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">
-                        <input type="hidden" name="items[${index}][type_reference_id]" value="${item.id}">
+
                     </td>
                     <td style="vertical-align: top;"><input required type="text" class="form-control form-control-sm" name="items[${index}][remarks]" value="${item.remarks}" oninput="updateField(${index}, 'remarks', this.value)"></td>
                     <td style="vertical-align: top;">
@@ -767,7 +768,7 @@
                             <table class="w-full border border-gray-300 text-sm">
                                 <thead class="bg-gray-100 sticky top-0">
                                     <tr>
-                                        <th class="p-2 border text-center">
+                                        <th class="p-2 border text-center">Reconciled<br><small>Select all</small>
                                             <input type="checkbox" id="selectAllCheckbox" onclick="toggleAllJournals(this)">
                                         </th>
                                         <th class="p-2 border">Date</th>
@@ -792,12 +793,14 @@
                                 <input type="checkbox" 
                                     class="payment-checkbox" 
                                     value="${record.id}" 
-                                    data-account-id="${record.account_id}" 
+                                    data-id="${record.id}"
+                                    data-account-id="${record.account_id}"
+                                    data-account-name="${record.account_name}"  
                                     data-debit="${record.debit}" 
                                     data-credit="${record.credit}" 
                                     data-transaction-id="${record.transaction_id}" 
-                                    data-type_reference_id="${record.type_reference_id}" 
-                                    data-description="${record.description}" />
+                                    data-description="${record.description}" 
+                                    onclick="selectJournalEntry(event)" />
                             </td>
                             <td class="p-2 border text-center">${formattedDate}</td>
                             <td class="p-2 border text-center">[${record.root_name}]<br>${record.account_code}</td>
@@ -816,7 +819,7 @@
                             <tfoot class="bg-gray-50">
                                 <tr>
                                     <td colspan="7" class="p-2 border text-right text-sm italic text-gray-600">
-                                        Searched: ${from} to ${to} by ${supplier}
+                                        Searched: ${from} to ${to} ${supplier ? 'by ' + supplier : ''}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -840,35 +843,55 @@
         }
 
 
+        function selectJournalEntry(event) {
+            const checkbox = event.target;
+            const record = {
+                id: parseInt(checkbox.value),
+                debit: parseFloat(checkbox.dataset.debit || 0).toFixed(2),
+                credit: parseFloat(checkbox.dataset.credit || 0).toFixed(2),
+                account_id: checkbox.dataset.accountId || null,
+                account_name: checkbox.dataset.accountName || null,
+                transaction_id: checkbox.dataset.transactionId || null,
+                description: checkbox.dataset.description || null
+            };
+
+            // Add or remove record from selectedJournalIds
+            if (checkbox.checked) {
+                selectedJournalIds.push(record.id);
+            } else {
+                selectedJournalIds = selectedJournalIds.filter(item => item !== record.id);
+            }
+        }
+
         let supplier = "";
 
         function openModalWithLastSearch() {
             if (!lastSearchFrom || !lastSearchTo) return;
 
+            // Set previously searched dates in modal
             document.getElementById('dateFrom').value = lastSearchFrom;
             document.getElementById('dateTo').value = lastSearchTo;
 
-            // Sync from main page `pay_to` to modal `supplierName`
+            // Sync pay_to from main to supplierName in modal
             const payToValue = document.getElementById('pay_to')?.value.trim();
             const supplierSelect = document.getElementById('supplierName');
 
-            if (supplierSelect && payToValue) {
-                // Ensure the options exist before trying to iterate
-                const options = supplierSelect.options ? Array.from(supplierSelect.options) : [];
-                const optionExists = options.some(opt => opt.value === payToValue);
-
-                if (optionExists) {
+            if (supplierSelect) {
+                if (payToValue) {
+                    let optionExists = Array.from(supplierSelect.options).some(opt => opt.value === payToValue);
+                    if (!optionExists) {
+                        let newOption = document.createElement('option');
+                        newOption.value = payToValue;
+                        newOption.textContent = payToValue;
+                        supplierSelect.appendChild(newOption);
+                    }
                     supplierSelect.value = payToValue;
                 } else {
-                    // Optionally, add the supplier to the modal's supplier list
-                    const newOption = document.createElement('option');
-                    newOption.value = payToValue;
-                    newOption.textContent = payToValue;
-                    supplierSelect.appendChild(newOption);
-                    supplierSelect.value = payToValue;
+                    supplierSelect.value = ''; // Clear if empty pay_to
                 }
             }
 
+            // Show the modal and load journals
             const modal = document.getElementById('paymentByDateModal');
             if (modal) {
                 modal.classList.remove('hidden');
@@ -887,26 +910,25 @@
         }
 
         function closeModal() {
-            document.getElementById('paymentByDateModal').classList.add('hidden');
+            const modal = document.getElementById('paymentByDateModal');
             const supplierSelect = document.getElementById('supplierName');
-            const supplierValue = supplierSelect?.value?.trim();
-
             const payToInput = document.getElementById('pay_to');
-            if (supplierValue && payToInput) {
-                payToInput.value = supplierValue;
+
+            // Sync back supplier name from modal to main pay_to input
+            if (supplierSelect && payToInput) {
+                const supplierValue = supplierSelect.value.trim();
+                if (supplierValue) {
+                    payToInput.value = supplierValue;
+                }
             }
 
-            const modal = document.getElementById('paymentByDateModal');
+            // Hide the modal
             if (modal) {
                 modal.classList.add('hidden');
             }
         }
 
         function submitSelectedPayments() {
-            const from = document.getElementById('dateFrom').value;
-            const to = document.getElementById('dateTo').value;
-
-
             const selectedCheckboxes = [...document.querySelectorAll('.payment-checkbox:checked')];
 
             if (selectedCheckboxes.length === 0) {
@@ -914,63 +936,80 @@
                 return;
             }
 
-            // Extract data from selected checkboxes
+            // Extract all selected records
             const selectedRecords = selectedCheckboxes.map(cb => ({
-                id: parseInt(cb.value), // Make sure ID is a number
-                debit: parseFloat(cb.dataset.debit || 0).toFixed(2),
-                credit: parseFloat(cb.dataset.credit || 0).toFixed(2),
-                account_id: cb.dataset.accountId || null,
-                transaction_id: cb.dataset.transactionId || null,
-                description: cb.dataset.description || null,
-                type_reference_id: cb.dataset.type_reference_id || null
+                journal_entry_id: parseInt(cb.value),
+                debit: parseFloat(cb.dataset.debit || 0),
+                credit: parseFloat(cb.dataset.credit || 0),
+                account_id: cb.dataset.accountId,
+                account_name: cb.dataset.accountName,
+                transaction_id: cb.dataset.transactionId,
+                description: cb.dataset.description || ''
             }));
 
-            // Create debit entries for each selected record
-            selectedRecords.forEach(record => {
-                // Prevent duplicates in items (optional, if needed)
-                if (!selectedJournalIds.includes(record.id)) {
-                    selectedJournalIds.push(record.id);
+            // Group records by account_id
+            const groupedByAccount = {};
 
-                    items.push({
-                        //id: crypto.randomUUID(),
-                        id: record.id,
-                        ac_code: record.account_id,
-                        transaction_id: record.transaction_id,
-                        type_reference_id: record.type_reference_id,
-                        remarks: `${record.description} - Payment from ${lastSearchFrom} to ${lastSearchTo}`,
-                        currency: "KWD",
-                        exchange_rate: 1.0,
-                        amount: 0,
-                        debit: (parseFloat(record.credit ?? 0) || 0).toFixed(2),
-                        credit: (parseFloat(record.debit ?? 0) || 0).toFixed(2),
-                        cheque_no: "",
-                        cheque_date: "",
-                        bank_name: "",
-                        branch: "",
-                        auth_no: "",
-                        balance: 0,
-                    });
+            selectedRecords.forEach(record => {
+                if (!groupedByAccount[record.account_id]) {
+                    groupedByAccount[record.account_id] = {
+                        account_id: record.account_id,
+                        account_name: record.account_name,
+                        total_debit: 0,
+                        total_credit: 0,
+                        journal_entry_ids: [],
+                        description: record.description
+                    };
                 }
+
+                groupedByAccount[record.account_id].total_debit += record.debit;
+                groupedByAccount[record.account_id].total_credit += record.credit;
+                groupedByAccount[record.account_id].journal_entry_ids.push(record.journal_entry_id);
             });
 
-            loadJournalEntries();
+            // Remove any previous grouped entries for same account_id
+            items = items.filter(item => !groupedByAccount.hasOwnProperty(item.ac_code));
 
-            // Remove first row if it's an empty placeholder
-            if (items.length > 1) {
-                const first = items[0];
-                const isEmpty =
-                    (!first.ac_code || first.ac_code.trim() === "") &&
-                    parseFloat(first.debit || 0) === 0 &&
-                    parseFloat(first.credit || 0) === 0;
+            // Add one entry per group
+            for (const acc_id in groupedByAccount) {
+                const group = groupedByAccount[acc_id];
+                const netDebit = (group.total_credit - group.total_debit).toFixed(2);
 
-                if (isEmpty) {
-                    items.splice(0, 1);
-                }
+                items.push({
+                    id: acc_id,
+                    ac_code: acc_id,
+                    transaction_ids: group.journal_entry_ids,
+                    reconciled_entry_ids: [...group
+                        .journal_entry_ids
+                    ], // ✅ Important: clone the array, avoid reference issues
+                    remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
+                    currency: "KWD",
+                    exchange_rate: 1.0,
+                    amount: 0,
+                    debit: netDebit,
+                    credit: 0,
+                    cheque_no: "",
+                    cheque_date: "",
+                    bank_name: "",
+                    branch: "",
+                    auth_no: "",
+                    balance: 0,
+                });
             }
+
+            // Optionally update hidden input if you use JSON submission
+            const hiddenInput = document.getElementById("items_json");
+            if (hiddenInput) {
+                hiddenInput.value = JSON.stringify(items);
+            }
+
+            console.log("Grouped Items (Per account_id):", items);
 
             renderTable();
             closeModal();
         }
+
+
 
         function appendLastSearchedDateOption(searchedDate) {
             const select = document.getElementById('bankpaymenttype');

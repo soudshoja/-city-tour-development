@@ -311,7 +311,6 @@
                     </div>
                 </div>
             </div>
-            <input type="hidden" id="items_json" name="items_json">
         </form>
         <!-- end main content section -->
     </div>
@@ -944,10 +943,10 @@
                 account_id: cb.dataset.accountId,
                 account_name: cb.dataset.accountName,
                 transaction_id: cb.dataset.transactionId,
-                description: cb.dataset.description || ''
+                description: cb.dataset.description
             }));
 
-            // Group records by account_id
+            // Group records by account_id and aggregate
             const groupedByAccount = {};
 
             selectedRecords.forEach(record => {
@@ -967,10 +966,10 @@
                 groupedByAccount[record.account_id].journal_entry_ids.push(record.journal_entry_id);
             });
 
-            // Remove any previous grouped entries for same account_id
-            items = items.filter(item => !groupedByAccount.hasOwnProperty(item.ac_code));
+            // Always clear previous grouped entries for clean table (remove if same account_id already exists)
+            items = items.filter(item => !Object.keys(groupedByAccount).includes(item.ac_code));
 
-            // Add one entry per group
+            // Add 1 entry per account_id
             for (const acc_id in groupedByAccount) {
                 const group = groupedByAccount[acc_id];
                 const netDebit = (group.total_credit - group.total_debit).toFixed(2);
@@ -978,10 +977,8 @@
                 items.push({
                     id: acc_id,
                     ac_code: acc_id,
-                    transaction_ids: group.journal_entry_ids,
-                    reconciled_entry_ids: [...group
-                        .journal_entry_ids
-                    ], // ✅ Important: clone the array, avoid reference issues
+                    transaction_ids: group.journal_entry_ids, // Optional tracking for user info
+                    reconciled_entry_ids: group.journal_entry_ids, // ✅ this will be used in backend
                     remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
                     currency: "KWD",
                     exchange_rate: 1.0,
@@ -997,18 +994,11 @@
                 });
             }
 
-            // Optionally update hidden input if you use JSON submission
-            const hiddenInput = document.getElementById("items_json");
-            if (hiddenInput) {
-                hiddenInput.value = JSON.stringify(items);
-            }
-
             console.log("Grouped Items (Per account_id):", items);
 
             renderTable();
             closeModal();
         }
-
 
 
         function appendLastSearchedDateOption(searchedDate) {

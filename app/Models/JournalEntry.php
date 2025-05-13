@@ -32,6 +32,8 @@ class JournalEntry extends Model
         'cheque_date',
         'bank_info',
         'auth_no',
+        'reconciled',
+        'reconciled_ref_id',
     ];
 
     protected static function booted()

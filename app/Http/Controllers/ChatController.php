@@ -7,7 +7,7 @@ use App\Http\Traits\NotificationTrait;
 use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Http\Request;
 use App\Services\OpenAIService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\FacadesLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -27,9 +27,11 @@ use App\Models\Task;
 use App\Models\Invoice;
 use App\Models\InvoiceSequence;
 use App\Models\InvoiceDetail;
+use App\Models\InvoicePartial;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\Log;
 use LDAP\Result;
 
 class ChatController extends Controller
@@ -91,7 +93,7 @@ class ChatController extends Controller
                 return response()->json($response, 200);
             }
         } catch (\Exception $e) {
-            \Log::error('Chatbot error: ' . $e->getMessage());
+            Log::error('Chatbot error: ' . $e->getMessage());
             return response()->json(['error' => 'Something went wrong. Please try again later.'], 500);
         }
     }
@@ -229,7 +231,7 @@ class ChatController extends Controller
                     $taskIds = [];
                 }
 
-                \Log::info('action:', ['action' => $action]);
+                Log::info('action:', ['action' => $action]);
                 // Handle actions based on parsed response
                 switch ($action) {
                     case 'create invoice':
@@ -254,7 +256,7 @@ class ChatController extends Controller
         }
 
         // Log and return error if JSON structure is invalid
-        \Log::error('Invalid response from OpenAI:', ['response' => $response]);
+        Log::error('Invalid response from OpenAI:', ['response' => $response]);
         return response()->json(['error' => 'Unable to classify action.'], 400);
     }
 
@@ -262,7 +264,7 @@ class ChatController extends Controller
     private function initiateInvoiceCreationWithTasks(array $taskIds, $userData)
     {
         // Logic to create an invoice using the provided task IDs
-        \Log::info('initiateInvoiceCreationWithTasks:', ['taskIds' => $taskIds]);
+        Log::info('initiateInvoiceCreationWithTasks:', ['taskIds' => $taskIds]);
 
         if (!empty($taskIds)) {
             // If tasks are directly mentioned, validate and proceed
@@ -287,16 +289,16 @@ class ChatController extends Controller
     {
 
         // Logic to create an invoice using the provided task IDs
-        \Log::info('processTaskSelection:', ['taskIds' => $taskIds]);
+        Log::info('processTaskSelection:', ['taskIds' => $taskIds]);
 
         $userData = $this->fetchUserBasedData();
 
         // Cast task IDs to integers
         $taskIds = array_map('intval', $taskIds);
-        \Log::info('processTaskSelectiontaskIds:', ['taskIds' => $taskIds]);
+        Log::info('processTaskSelectiontaskIds:', ['taskIds' => $taskIds]);
         // Filter available tasks based on provided IDs
         $availableTasks = collect($userData['tasks'])->whereIn('id', $taskIds);
-        \Log::info('available Tasks:', ['availableTasks' => $availableTasks]);
+        Log::info('available Tasks:', ['availableTasks' => $availableTasks]);
 
 
         if ($availableTasks->isEmpty()) {
@@ -1047,21 +1049,21 @@ class ChatController extends Controller
     private function extractTextFromPdf($filePath)
     {
 
-        \Log::info('extractTextFromPdf:', ['filePath' => $filePath]);
+        Log::info('extractTextFromPdf:', ['filePath' => $filePath]);
         try {
             $parser = new Parser();
             $pdf = $parser->parseFile(storage_path('app/public/' . $filePath));
-            \Log::info('pdf:', ['pdf' => $pdf]);
+            Log::info('pdf:', ['pdf' => $pdf]);
             $text = $pdf->getText(); // Extract text content from PDF
 
             if (empty($text)) {
                 return null; // No text extracted
             }
 
-            \Log::info('Extracted Text from PDF:', ['text' => $text]);
+            Log::info('Extracted Text from PDF:', ['text' => $text]);
             return $text; // Return the extracted text
         } catch (\Exception $e) {
-            \Log::error('Error extracting text from PDF', ['error' => $e->getMessage()]);
+            Log::error('Error extracting text from PDF', ['error' => $e->getMessage()]);
             return null; // Return null in case of error
         }
     }
@@ -1081,7 +1083,7 @@ class ChatController extends Controller
 
             return $imagePaths;
         } catch (\Exception $e) {
-            \Log::error('Error extracting images from PDF', ['error' => $e->getMessage()]);
+            Log::error('Error extracting images from PDF', ['error' => $e->getMessage()]);
             return [];
         }
     }
@@ -1152,7 +1154,7 @@ class ChatController extends Controller
             return sprintf('%04d-%02d-%02d', $dateParts[2], $dateParts[1], $dateParts[0]);
         }
 
-        \Log::error('Invalid date format', ['date' => $date]);
+        Log::error('Invalid date format', ['date' => $date]);
         return null; // Return null if the date format is invalid
     }
 
@@ -1243,7 +1245,7 @@ class ChatController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error registering agent: ' . $e->getMessage(),
-                'errors' => $e->errors() ?? [],
+                'errors' => $e->getMessage(),
             ], 400);
         }
     }

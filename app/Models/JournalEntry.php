@@ -34,6 +34,7 @@ class JournalEntry extends Model
         'auth_no',
         'reconciled',
         'reconciled_ref_id',
+        'task_id',
     ];
 
     protected static function booted()
@@ -62,6 +63,10 @@ class JournalEntry extends Model
         return $this->belongsTo(InvoiceDetail::class,'invoice_detail_id');
     }
 
+    public function task()
+    {
+        return $this->belongsTo(Task::class, 'task_id');
+    }
 
     public function transaction()
     {

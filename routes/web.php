@@ -429,6 +429,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('client.parclients');
         Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('updateGroup');
         Route::get('/{id}/getDetails', [ClientController::class, 'getDetails'])->name('getDetails');
+        Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
 
     });
 

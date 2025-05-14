@@ -189,7 +189,7 @@ class BankPaymentController extends Controller
                 'company_id' => $request->company_id ?? auth()->user()->company->id,
                 'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                 'transaction_type' => 'debit',
-                'amount' => ($item['credit'] ?? 0) - ($item['debit'] ?? 0),
+                'amount' => $request->total_payment ?? 0,
                 'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'description' => $request->bankpaymenttype === 'Refund'

@@ -524,6 +524,7 @@ Route::get('/bank-payments/edit/{id}', [BankPaymentController::class, 'edit'])->
 Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])->name('bank-payments.update');
 Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
 Route::get('/bank-payments/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('bank-payments.fetchPaymentsByDate');
+Route::get('/bank-payments/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('bank-payments.fetch-journals');
 
 
 

@@ -50,6 +50,12 @@
             text-align: right;
             /* Align button to right */
         }
+
+        .btn-lightblue {
+            background-color: lightblue;
+            box-shadow: none !important;
+            border: none;
+        }
     </style>
 
     <!-- start main content section -->
@@ -102,14 +108,15 @@
                                     class="text-red-500">*</span></label>
                             <input required readonly id="bankpaymentref"
                                 value="{{ old('bankpaymentref', $bankPayment->reference_number) }}" type="text"
-                                name="bankpaymentref" class="form-input w-2/3 bg-gray-200 text-gray-700" />
+                                name="bankpaymentref"
+                                class="form-input w-2/3 bg-gray-100 text-gray-800 border-gray-300" />
                         </div>
                         <div class="flex items-center gap-x-4 mt-4">
                             <label class="mb-0 flex-1 ltr:mr-2 rtl:ml-2">
-                                Payment Type
+                                Payment Type <span class="text-red-500">*</span>
                             </label>
                             <input value="{{ old('reference_type', $bankPayment->reference_type) }}" type="text"
-                                readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-700 border-gray-300"
+                                readonly class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300"
                                 value="{{ $bankPayment->reference_type }}" />
                         </div>
 
@@ -119,7 +126,7 @@
                                     Refund Number
                                 </label>
                                 <input type="text" readonly
-                                    class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-700 border-gray-300"
+                                    class="form-input w-2/3 lg:w-[250px] bg-gray-100 text-gray-800 border-gray-300"
                                     value="{{ trim(\Illuminate\Support\Str::after($bankPayment->description, '|')) }}" />
                             </div>
                         @endif
@@ -127,7 +134,8 @@
                         <div class="flex items-center gap-x-6 mt-4">
                             <label for="branch_id" class="mb-0 flex-1">Branch <span
                                     class="text-red-500">*</span></label>
-                            <select required id="branch_id" name="branch_id" class="form-input w-2/3">
+                            <select readonly id="branch_id" name="branch_id"
+                                class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300">
                                 @foreach ($branches as $branch)
                                     <option value="{{ $branch->id }}"
                                         {{ old('branch_id', $bankPayment->branch_id) == $branch->id ? 'selected' : '' }}>
@@ -141,7 +149,8 @@
                             <label for="docdate" class="mb-0 flex-1">Doc Date <span
                                     class="text-red-500">*</span></label>
 
-                            <input required id="docdate" type="date" name="docdate" class="form-input w-2/3"
+                            <input readonly id="docdate" type="date" name="docdate"
+                                class="form-input w-2/3  bg-gray-100 text-gray-800 border-gray-300"
                                 value="{{ old('docdate', isset($bankPayment->date) ? \Carbon\Carbon::parse($bankPayment->date)->format('Y-m-d') : '') }}" />
 
                         </div>
@@ -153,13 +162,13 @@
                 <div class="mt-8 px-4">
                     <div class="flex flex-col justify-between lg:flex-row gap-x-4">
                         <div class="mb-6 w-full lg:w-1/2 ltr:lg:mr-6 rtl:lg:ml-6">
-                            <div class="text-lg font-semibold">Bank Payment To</div>
+                            <div class="text-lg font-semibold">Payment Voucher</div>
                             <div class="mt-4 flex items-center gap-x-4">
-                                <label for="pay_to" class="mb-0 w-1/3">Pay To <span
+                                <label for="pay_to" class="mb-0 w-1/3 ">Pay To <span
                                         class="text-red-500">*</span></label>
-                                <input required id="pay_to" type="text" name="pay_to" list="supplierList"
+                                <input readonly id="pay_to" type="text" name="pay_to" list="supplierList"
                                     placeholder="Enter Payee Name" value="{{ old('pay_to', $bankPayment->name) }}"
-                                    class="form-input flex-1" />
+                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300" />
                                 <datalist id="supplierList">
                                     @foreach ($suppliers as $supplier)
                                         <option value="{{ $supplier->name }}">[{{ $supplier->id }}]
@@ -176,8 +185,9 @@
                             <div class="mt-4 flex items-center gap-x-4">
                                 <label for="remarks_create_label" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
                                     <span class="text-red-500">*</span></label>
-                                <input required id="remarks_create" type="text" name="remarks_create"
-                                    class="form-input flex-1" placeholder="Enter Remarks"
+                                <input readonly id="remarks_create" type="text" name="remarks_create"
+                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
+                                    placeholder="Enter Remarks"
                                     value="{{ old('remarks_create', trim(\Illuminate\Support\Str::before($bankPayment->description, '|'))) }}" />
 
                             </div>
@@ -185,15 +195,17 @@
                             <div class="mt-4 flex items-center gap-x-4">
                                 <label for="internal_remarks" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Internal
                                     Remarks</label>
-                                <input id="internal_remarks" type="text" name="internal_remarks"
-                                    class="form-input flex-1" placeholder="Enter Internal Remarks"
+                                <input readonly id="internal_remarks" type="text" name="internal_remarks"
+                                    class="form-input flex-1  bg-gray-100 text-gray-800 border-gray-300"
+                                    placeholder="Enter Internal Remarks"
                                     value="{{ old('internal_remarks', $bankPayment->remarks_internal) }}" />
                             </div>
 
                             <div class="mt-4 flex items-center gap-x-4">
                                 <label for="remarks_fl" class="mb-0 w-1/3 ltr:mr-2 rtl:ml-2">Remarks
                                     FL</label>
-                                <input id="remarks_fl" type="text" name="remarks_fl" class="form-input flex-1"
+                                <input readonly id="remarks_fl" type="text" name="remarks_fl"
+                                    class="form-input flex-1 bg-gray-100 text-gray-800 border-gray-300"
                                     placeholder="Enter Remarks FL"
                                     value="{{ old('remarks_fl', $bankPayment->remarks_fl) }}" />
                             </div>
@@ -227,42 +239,51 @@
                             @foreach ($JournalEntrys as $index => $transaction)
                                 <tr>
                                     <td>
-                                        {{ $transaction->account ? '[' . $transaction->account->code . '] ' . $transaction->account->name : 'N/A' }}
-                                        <input type="hidden" name="items[{{ $index }}][account_id]"
+                                        {{ $transaction->account ? '[' . $transaction->account->root->name . '] [' . $transaction->account->code . '] ' . $transaction->account->name : 'N/A' }}
+                                        <input readonly type="hidden" name="items[{{ $index }}][account_id]"
                                             value="{{ old("items.$index.account_id", $transaction->account_id) }}" />
+                                        @if ($transaction->reconciled == 2)
+                                            <button type="button" class="btn btn-lightblue btn-sm p-10"
+                                                onclick="fetchJournalEntries({{ $transaction->id }})">
+                                                Reconciled Item
+                                            </button>
+                                        @endif
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][description]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][description]"
                                             value="{{ old("items.$index.description", $transaction->description) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][currency]"
-                                            value="KWD" /></td>
-                                    <td><input type="text" name="items[{{ $index }}][exchange_rate]"
-                                            value="1.00" /></td>
-                                    <td><input type="text" name="items[{{ $index }}][amount]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][currency]"
+                                            value="{{ old("items.$index.currency", $transaction->currency) }}" />
+                                    </td>
+                                    <td><input readonly type="text"
+                                            name="items[{{ $index }}][exchange_rate]"
+                                            value="{{ old("items.$index.exchange_rate", $transaction->exchange_rate) }}" />
+                                    </td>
+                                    <td><input readonly type="text" name="items[{{ $index }}][amount]"
                                             value="{{ old("items.$index.amount", $transaction->amount) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][debit]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][debit]"
                                             value="{{ old("items.$index.debit", $transaction->debit) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][credit]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][credit]"
                                             value="{{ old("items.$index.credit", $transaction->credit) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][cheque_no]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][cheque_no]"
                                             value="{{ old("items.$index.cheque_no", $transaction->cheque_no) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][cheque_date]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][cheque_date]"
                                             value="{{ old("items.$index.cheque_date", $transaction->cheque_date) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][bank_name]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][bank_name]"
                                             value="{{ old("items.$index.bank_name", $transaction->bank_name) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][auth_no]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][auth_no]"
                                             value="{{ old("items.$index.auth_no", $transaction->auth_no) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][branch_name]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][branch_name]"
                                             value="{{ old("items.$index.branch_name", $transaction->branch_name) }}" />
                                     </td>
-                                    <td><input type="text" name="items[{{ $index }}][balance]"
+                                    <td><input readonly type="text" name="items[{{ $index }}][balance]"
                                             value="{{ old("items.$index.balance", $transaction->balance) }}" />
                                     </td>
                                 </tr>
@@ -297,7 +318,7 @@
                             </div>
 
                         </div>
-                        <div class="absolute -bottom-12 right-12 h-36 w-36"> <!-- Increased parent div size -->
+                        <div class="absolute -bottom-12 right-12 h-36 w-36">
                             <svg id="correct" width="36" height="36" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg" class="h-full w-full text-success opacity-20">
                                 <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor"
@@ -329,6 +350,25 @@
 
 
     </div>
+
+    <div id="journalEntriesModal"
+        class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-3xl shadow-xl">
+            <h2 class="text-lg font-bold mb-4">Reconciled Journal Entries</h2>
+
+            <div id="journal-entries-content" class="text-sm overflow-x-auto">
+                <p class="text-gray-500">Loading entries...</p>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeJournalEntriesModal()"
+                    class="bg-gray-300 px-4 py-2 rounded w-full sm:w-auto">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+
     <script>
         const suppliers = @json($suppliers);
         const accpayreceives = @json($accpayreceives);
@@ -380,25 +420,6 @@
                 }
             }
 
-            // Optional: Set display/stored values for datalist
-            function setDisplayValue(input) {
-                const displayName = input.getAttribute('data-display');
-                if (displayName) {
-                    input.value = displayName;
-                }
-            }
-
-            function setStoredValue(input) {
-                const datalist = document.getElementById(input.getAttribute('list'));
-                const selectedOption = Array.from(datalist.options).find(option => option.text === input.value);
-                if (selectedOption) {
-                    input.value = selectedOption.value;
-                    input.setAttribute('data-display', selectedOption.text);
-                } else {
-                    input.value = "";
-                }
-            }
-
             // Event: Update totals on input change
             document.addEventListener('input', function(e) {
                 if (e.target.matches(
@@ -407,20 +428,92 @@
                 }
             });
 
-            // Add row logic
-            if (addItemButton) {
-                addItemButton.addEventListener("click", function() {
-                    if (typeof addItem === "function") {
-                        addItem();
-                    }
-                });
-            }
-
             // Ensure totals update when everything is loaded
             window.addEventListener('load', function() {
                 updateTotals();
             });
         });
+
+        function fetchJournalEntries(entryId) {
+            console.log(entryId);
+
+            const content = document.getElementById('journal-entries-content');
+            content.innerHTML = '<p class="text-gray-500">Loading entries...</p>';
+
+            if (!entryId) {
+                content.innerHTML = '<p class="text-gray-500">No entries found.</p>';
+                openJournalEntriesModal();
+                return;
+            }
+
+            fetch(`/bank-payments/fetch-journals-view?id=${entryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        content.innerHTML = '<p class="text-gray-500">No entries found.</p>';
+                    } else {
+                        let totalDebit = 0;
+                        let totalCredit = 0;
+                        let table = `
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-50">
+                        <table class="min-w-full table-auto text-sm">
+                            <thead class="bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th class="border px-2 py-1">ID</th>
+                                    <th class="border px-2 py-1">Date</th>
+                                    <th class="border px-2 py-1">Name</th>
+                                    <th class="border px-2 py-1">Description</th>
+                                    <th class="border px-2 py-1 text-right">Debit</th>
+                                    <th class="border px-2 py-1 text-right">Credit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                        data.forEach(entry => {
+                            totalDebit += parseFloat(entry.debit);
+                            totalCredit += parseFloat(entry.credit);
+                            table += `
+                        <tr>
+                            <td class="border px-2 py-1">${entry.id}</td>
+                            <td class="border px-2 py-1">${entry.transaction_date}</td>
+                            <td class="border px-2 py-1">${entry.name}</td>
+                            <td class="border px-2 py-1">${entry.description}</td>
+                            <td class="border px-2 py-1 text-right">${parseFloat(entry.debit).toFixed(2)}</td>
+                            <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(2)}</td>
+                        </tr>
+                    `;
+                        });
+
+                        // Total row
+                        table += `
+                        <tr class="font-semibold bg-gray-50">
+                            <td class="border px-2 py-1 text-right" colspan="4">Total</td>
+                            <td class="border px-2 py-1 text-right">${totalDebit.toFixed(2)}</td>
+                            <td class="border px-2 py-1 text-right">${totalCredit.toFixed(2)}</td>
+                        </tr>
+                    </tbody>
+                    </table>
+                </div>
+                `;
+
+                        content.innerHTML = table;
+                    }
+                    openJournalEntriesModal();
+                })
+                .catch(error => {
+                    console.error('Error fetching journal entries:', error);
+                    content.innerHTML = '<p class="text-red-500">Error loading entries.</p>';
+                    openJournalEntriesModal();
+                });
+        }
+
+        function openJournalEntriesModal() {
+            document.getElementById('journalEntriesModal').classList.remove('hidden');
+        }
+
+        function closeJournalEntriesModal() {
+            document.getElementById('journalEntriesModal').classList.add('hidden');
+        }
     </script>
 
 

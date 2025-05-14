@@ -152,6 +152,7 @@
                                 <input required id="docdate" type="date" name="docdate"
                                     class="form-input w-2/3 lg:w-[250px]" />
                             </div>
+                            <input type="hidden" id="total_payment" name="total_payment" value="" readonly>
                         </div>
                     </div>
 
@@ -376,6 +377,7 @@
             const totalCreditEl = document.getElementById("total_credit");
             const totalDifferenceEl = document.getElementById("total_difference");
             const addItemButton = document.getElementById("addItem");
+            const totalPaymentInput = document.getElementById('total_payment');
 
             function addItem() {
                 let id = crypto.randomUUID();
@@ -448,6 +450,11 @@
                 totalDebitEl.textContent = totalDebit.toFixed(2);
                 totalCreditEl.textContent = totalCredit.toFixed(2);
                 totalDifferenceEl.textContent = totalDifference.toFixed(2);
+
+                const totalPaymentInput = document.getElementById('total_payment');
+                if (totalPaymentInput) {
+                    totalPaymentInput.value = totalDifference.toFixed(2);
+                }
 
                 updateDifference(totalDifference);
             }

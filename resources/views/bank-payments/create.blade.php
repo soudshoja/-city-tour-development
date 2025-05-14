@@ -865,38 +865,48 @@
         let supplier = "";
 
         function openModalWithLastSearch() {
-            if (!lastSearchFrom || !lastSearchTo) return;
+            if (!lastSearchFrom || !lastSearchTo) {
+                console.warn("Search dates are missing.");
+                return;
+            }
 
-            // Set previously searched dates in modal
-            document.getElementById('dateFrom').value = lastSearchFrom;
-            document.getElementById('dateTo').value = lastSearchTo;
+            // Sync dates in modal
+            const dateFromInput = document.getElementById('dateFrom');
+            const dateToInput = document.getElementById('dateTo');
+            if (dateFromInput) dateFromInput.value = lastSearchFrom;
+            if (dateToInput) dateToInput.value = lastSearchTo;
 
             // Sync pay_to from main to supplierName in modal
-            const payToValue = document.getElementById('pay_to')?.value.trim();
+            const payToValue = document.getElementById('pay_to')?.value?.trim() || "";
             const supplierSelect = document.getElementById('supplierName');
 
             if (supplierSelect) {
+                // Check if payToValue already exists as option
+                const options = Array.from(supplierSelect.options || []);
+                const optionExists = options.some(opt => opt.value === payToValue);
+
                 if (payToValue) {
-                    let optionExists = Array.from(supplierSelect.options).some(opt => opt.value === payToValue);
                     if (!optionExists) {
-                        let newOption = document.createElement('option');
+                        const newOption = document.createElement('option');
                         newOption.value = payToValue;
                         newOption.textContent = payToValue;
                         supplierSelect.appendChild(newOption);
                     }
                     supplierSelect.value = payToValue;
                 } else {
-                    supplierSelect.value = ''; // Clear if empty pay_to
+                    supplierSelect.value = ''; // Clear if empty
                 }
+            } else {
+                console.warn("Supplier select element not found.");
             }
 
-            // Show the modal and load journals
+            // Show modal and trigger journal entry load
             const modal = document.getElementById('paymentByDateModal');
             if (modal) {
                 modal.classList.remove('hidden');
                 loadJournalEntries();
             } else {
-                console.warn('Modal element not found');
+                console.warn("Payment by Date Modal not found.");
             }
         }
 
@@ -977,8 +987,8 @@
                 items.push({
                     id: acc_id,
                     ac_code: acc_id,
-                    transaction_ids: group.journal_entry_ids, // Optional tracking for user info
-                    reconciled_entry_ids: group.journal_entry_ids, // ✅ this will be used in backend
+                    transaction_id: group.journal_entry_ids, // Optional tracking for user info
+                    reconciled_entry_ids: group.journal_entry_ids,
                     remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
                     currency: "KWD",
                     exchange_rate: 1.0,

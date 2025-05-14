@@ -204,6 +204,7 @@ class BankPaymentController extends Controller
                 
             ]);
 
+            //dd($request->items);
             // Store JournalEntries
             foreach ($request->items as $item) {
                 $accname = Account::where('id', $item['account_id'])->first();
@@ -234,32 +235,33 @@ class BankPaymentController extends Controller
                 $selected_account_id = $item['account_id'];
 
                 // Update selected journal entries 
-                if ($reconciledProcess==='yes') {
+                //dd($request->items);
+
+                $selectedJournalEntryIds = [];
+
+                foreach ($request->items as $entry) {
+                    if (!empty($entry['transaction_id'])) {
+                        $ids = array_filter(array_map('trim', explode(',', $entry['transaction_id'])));
+                        $selectedJournalEntryIds = array_merge($selectedJournalEntryIds, $ids);
+                    }
+                }
+
+                $selectedJournalEntryIds = array_unique(array_map('intval', $selectedJournalEntryIds));
+
+                //dd($selectedJournalEntryIds);
+
+                if (!empty($selectedJournalEntryIds)) {
                     JournalEntry::where('company_id', auth()->user()->company->id)
                         ->where('branch_id', auth()->user()->branch->id)
-                        ->where('account_id', $selected_account_id)
-                        ->where('reconciled', 0)
-                        ->where('debit', 0)
-                        ->where('name', 'LIKE', "%{$request->supplier_name}%")
+                        ->whereIn('id', $selectedJournalEntryIds)
+                        ->where('reconciled', '!=', 2)
                         ->update([
                             'reconciled' => 1,
-                            'reconciled_ref_id' => $journalEntryRec->id
+                            'reconciled_ref_id' => $journalEntryRec->id,
                         ]);
                 }
-                // foreach ($items as $item) {
-                //     if ($reconciledProcess === 'yes' && isset($item['reconciled_entry_ids']) && is_array($item['reconciled_entry_ids'])) {
-                //         JournalEntry::whereIn('id', $item['reconciled_entry_ids'])
-                //             ->where('reconciled', 0)
-                //             ->update([
-                //                 'reconciled' => 1,
-                //                 'reconciled_ref_id' => $journalEntryRec->id,
-                //             ]);
-                //     }
-                // }
 
-
-
-        
+       
             }
 
             DB::commit();

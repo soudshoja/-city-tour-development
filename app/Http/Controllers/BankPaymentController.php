@@ -232,33 +232,23 @@ class BankPaymentController extends Controller
                     'reconciled' => $reconciledFlag,
                 ]);
 
-                $selected_account_id = $item['account_id'];
-
                 // Update selected journal entries 
                 //dd($request->items);
 
-                $selectedJournalEntryIds = [];
+                if (!empty($item['transaction_id'])) {
+                    $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
+                    $selectedJournalEntryIds = array_unique(array_map('intval', $ids));
 
-                foreach ($request->items as $entry) {
-                    if (!empty($entry['transaction_id'])) {
-                        $ids = array_filter(array_map('trim', explode(',', $entry['transaction_id'])));
-                        $selectedJournalEntryIds = array_merge($selectedJournalEntryIds, $ids);
+                    if (!empty($selectedJournalEntryIds)) {
+                        JournalEntry::where('company_id', auth()->user()->company->id)
+                            ->where('branch_id', auth()->user()->branch->id)
+                            ->whereIn('id', $selectedJournalEntryIds)
+                            ->where('reconciled', '!=', 2)
+                            ->update([
+                                'reconciled' => 1,
+                                'reconciled_ref_id' => $journalEntryRec->id,  
+                            ]);
                     }
-                }
-
-                $selectedJournalEntryIds = array_unique(array_map('intval', $selectedJournalEntryIds));
-
-                //dd($selectedJournalEntryIds);
-
-                if (!empty($selectedJournalEntryIds)) {
-                    JournalEntry::where('company_id', auth()->user()->company->id)
-                        ->where('branch_id', auth()->user()->branch->id)
-                        ->whereIn('id', $selectedJournalEntryIds)
-                        ->where('reconciled', '!=', 2)
-                        ->update([
-                            'reconciled' => 1,
-                            'reconciled_ref_id' => $journalEntryRec->id,
-                        ]);
                 }
 
        
@@ -503,5 +493,24 @@ class BankPaymentController extends Controller
 
         return response()->json($payments);
     }  
+
+    public function fetchJournalEntriesByIds(Request $request)
+    {     
+        $id = $request->input('id');
+
+        if (!$id) {
+            return response()->json(['error' => 'Invalid or missing ID.'], 400);
+        }
+
+        // Fetch the journal entries where reconciled_ref_id equals the given transaction ID
+        $entries = JournalEntry::with(['account', 'transaction'])
+                    ->where('reconciled', 1) 
+                    ->where('reconciled_ref_id', $id) 
+                    ->get();
+
+        return response()->json($entries);
+    }
+
+
 
 }

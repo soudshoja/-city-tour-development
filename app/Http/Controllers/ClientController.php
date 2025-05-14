@@ -846,4 +846,27 @@ class ClientController extends Controller
             ],
         ];    
     }
+
+        public function getAgent($id)
+        {
+            $client = Client::with('agent')->find($id);
+
+            if (!$client) {
+                return response()->json(['error' => 'Client not found'], 404);
+            }
+
+            if (!$client->agent) {
+                return response()->json(['error' => 'No agent assigned to this client'], 404);
+            }
+
+            return response()->json([
+                'agent' => [
+                    'id' => $client->agent->id,
+                    'name' => $client->agent->name,
+                ],
+            ]);
+        }
+
+
+
 }

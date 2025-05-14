@@ -136,7 +136,31 @@
                                     {{ $transaction->transaction_date }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    <p>{{ $transaction->description }}</p>
+                                    <p>{{ $transaction->description }}
+                                    </p>
+                                    @if (!empty($transaction->task?->additional_info))
+                                        <p>Additional info: {{ $transaction->task->additional_info }}</p>
+                                    @endif
+
+                                    @if (!empty($transaction->task?->reference))
+                                        <p>Ref: {{ $transaction->task->reference }}</p>
+                                    @endif
+
+                                    @if (!empty($transaction->task?->client_name))
+                                        <p>Client: {{ $transaction->task->client_name }}</p>
+                                    @endif
+
+                                    @if (!empty($transaction->task?->flightDetails?->departure_time))
+                                        <p>Flight details: {{ $transaction->task->flightDetails->departure_time }} -
+                                            {{ $transaction->task->flightDetails->arrival_time }}</p>
+                                    @endif
+
+                                    @if (!empty($transaction->task?->hotelDetails->room_details))
+                                        <p>Hotel details: {{ $transaction->task->hotelDetails->room_details }} -
+                                            ({{ $transaction->task->hotelDetails->check_in }} -
+                                            {{ $transaction->task->hotelDetails->check_out }})
+                                        </p>
+                                    @endif
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}
@@ -184,7 +208,8 @@
                                     {{ $transaction->transaction_date }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    <p>{{ $transaction->description }}</p>
+                                    <p>{{ $transaction->description }}
+                                    </p>
                                     @if ($transaction->invoice && !empty($transaction->invoice->invoice_number))
                                         <p>
                                             <small>Ref:

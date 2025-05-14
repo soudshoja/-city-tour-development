@@ -952,7 +952,7 @@
                 return;
             }
 
-            // Extract all selected records
+            // Extract selected records
             const selectedRecords = selectedCheckboxes.map(cb => ({
                 journal_entry_id: parseInt(cb.value),
                 debit: parseFloat(cb.dataset.debit || 0),
@@ -963,7 +963,7 @@
                 description: cb.dataset.description
             }));
 
-            // Group records by account_id and aggregate
+            // Group by account_id and aggregate amounts
             const groupedByAccount = {};
 
             selectedRecords.forEach(record => {
@@ -977,45 +977,57 @@
                         description: record.description
                     };
                 }
-
                 groupedByAccount[record.account_id].total_debit += record.debit;
                 groupedByAccount[record.account_id].total_credit += record.credit;
                 groupedByAccount[record.account_id].journal_entry_ids.push(record.journal_entry_id);
             });
 
-            // Always clear previous grouped entries for clean table (remove if same account_id already exists)
-            items = items.filter(item => !Object.keys(groupedByAccount).includes(item.ac_code));
-
-            // Add 1 entry per account_id
+            // Loop through each group and merge or add into items
             for (const acc_id in groupedByAccount) {
                 const group = groupedByAccount[acc_id];
-                const netDebit = (group.total_credit - group.total_debit).toFixed(2);
+                const netDebit = group.total_credit - group.total_debit;
 
-                items.push({
-                    id: acc_id,
-                    ac_code: acc_id,
-                    transaction_id: group.journal_entry_ids, // Optional tracking for user info
-                    reconciled_entry_ids: group.journal_entry_ids,
-                    remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
-                    currency: "KWD",
-                    exchange_rate: 1.0,
-                    amount: 0,
-                    debit: netDebit,
-                    credit: 0,
-                    cheque_no: "",
-                    cheque_date: "",
-                    bank_name: "",
-                    branch: "",
-                    auth_no: "",
-                    balance: 0,
-                });
+                // Check if this account already exists in items
+                let existingItem = items.find(i => i.ac_code === acc_id);
+
+                if (existingItem) {
+                    // Merge amounts
+                    existingItem.debit = parseFloat(existingItem.debit) + netDebit;
+                    // Merge unique transaction ids
+                    const existingIds = Array.isArray(existingItem.reconciled_entry_ids) ? existingItem
+                        .reconciled_entry_ids : [];
+                    const newUniqueIds = [...new Set([...existingIds, ...group.journal_entry_ids])];
+                    existingItem.reconciled_entry_ids = newUniqueIds;
+                    existingItem.transaction_id = newUniqueIds;
+                } else {
+                    // Add new entry
+                    items.push({
+                        id: acc_id,
+                        ac_code: acc_id,
+                        transaction_id: group.journal_entry_ids,
+                        reconciled_entry_ids: group.journal_entry_ids,
+                        remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
+                        currency: "KWD",
+                        exchange_rate: 1.0,
+                        amount: 0,
+                        debit: netDebit,
+                        credit: 0,
+                        cheque_no: "",
+                        cheque_date: "",
+                        bank_name: "",
+                        branch: "",
+                        auth_no: "",
+                        balance: 0,
+                    });
+                }
             }
 
-            console.log("Grouped Items (Per account_id):", items);
+            console.log("Updated Items (Merged if exists):", items);
 
             renderTable();
             closeModal();
         }
+
 
 
         function appendLastSearchedDateOption(searchedDate) {

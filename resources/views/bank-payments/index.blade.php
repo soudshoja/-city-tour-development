@@ -83,6 +83,7 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Doc Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Registered</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Amount (KWD)</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
                                 </tr>
                             </thead>
@@ -112,6 +113,9 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->created_at }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                KWD {{ number_format($bankpayment->amount, 2) }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 <a data-tooltip="View Payment Voucher"

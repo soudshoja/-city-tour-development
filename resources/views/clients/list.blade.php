@@ -63,27 +63,27 @@
                                         </svg>
                                     </label>
                                 </th> -->
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Actions
                                 </th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client's Name</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Credit (KWD)</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Email</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Phone</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Client's Name</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Credit (KWD)</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Email</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Phone</th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Agent's Name</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if ($clients->isEmpty())
-                                <tr>
-                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No
-                                        data for now.... Create new!</td>
-                                </tr>
+                            <tr>
+                                <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No
+                                    data for now.... Create new!</td>
+                            </tr>
                             @else
-                                @foreach ($clients as $client)
-                                    <tr data-name="{{ $client->name }}" data-email="{{ $client->email }}"
-                                        data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
-                                        data-client-id="{{ $client ? $client->id : null }}" class="taskRow">
-                                        <!-- <td>
+                            @foreach ($clients as $client)
+                            <tr data-name="{{ $client->name }}" data-email="{{ $client->email }}"
+                                data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
+                                data-client-id="{{ $client ? $client->id : null }}"class="taskRow">
+                                <!-- <td>
                                     <label class="custom-checkbox" data-tooltip="select client">
                                         <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" data-id="{{ $client->id }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
@@ -91,51 +91,46 @@
                                         </svg>
                                     </label>
                                 </td> -->
-                                        <td class="p-3 text-sm flex gap-3">
-
-                                            <a href="javascript:void(0);"
-                                                class="viewClient text-blue-600 dark:text-blue-300"
-                                                data-id="{{ $client->id }}" data-name="{{ $client->name }}"
-                                                data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
-                                                data-tooltip="see Client">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                    viewBox="0 0 24 24">
-                                                    <g fill="none" stroke="currentColor" stroke-width="1">
-                                                        <path
-                                                            d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
-                                                            opacity=".5" />
-                                                        <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                                    </g>
-                                                </svg>
-                                            </a>
-                                            <!-- <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                                        <path fill="none" stroke="#e11d48" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12H8m-6 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2M4.649 5.079q.207-.22.427-.428M7.947 2.73q.273-.122.553-.229M2.732 7.942q-.124.275-.232.558" color="#e11d48" />
-                                    </svg> -->
-                                        </td>
+                                <td class="p-3 text-sm text-center">
+                                    <a href="javascript:void(0);"
+                                        class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
+                                        data-id="{{ $client->id }}" data-name="{{ $client->name }}"
+                                        data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
+                                        data-tooltip="see Client">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24">
+                                            <g fill="none" stroke="currentColor" stroke-width="1">
+                                                <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
+                                                    opacity=".5" />
+                                                <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                            </g>
+                                        </svg>
+                                    </a>
+                                </td>
 
 
-                                        <!-- <td
+                                <!-- <td
                                             class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
-                                            <td
-                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                            <a href="{{ route('clients.show', ['id' => $client->id]) }}"
-                                                class="block">{{ $client->name }}</a>
-                                                <!-- {{ $client->name }} -->
-                                        </td>
-                                        <td>
-                                            {{ $client->credit ? $client->credit : 'N/A' }}
-                                        </td>
-                                        <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $client->email ? $client->email : 'N/A' }}
-                                        </td>
-                                        <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                            {{ $client->phone ? $client->phone : 'N/A' }}
-                                        </td>
-                                        <td>
-                                            {{ $client->agent ? $client->agent->name : 'N/A' }}
-                                        </td>
-                                    </tr>
-                                @endforeach
+                                <td
+                                    class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    <!-- <a href="{{ route('clients.show', ['id' => $client->id]) }}"
+                                                class="block">{{ $client->name }}</a> -->
+                                    {{ $client->name }}
+                                </td>
+                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->credit ? $client->credit : 'N/A' }}
+                                </td>
+                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->email ? $client->email : 'N/A' }}
+                                </td>
+                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->phone ? $client->phone : 'N/A' }}
+                                </td>
+                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->agent ? $client->agent->name : 'N/A' }}
+                                </td>
+                            </tr>
+                            @endforeach
                             @endif
                         </tbody>
                     </table>
@@ -339,16 +334,33 @@
             const clientName = this.getAttribute("data-name");
             const clientEmail = this.getAttribute("data-email");
             const clientPhone = this.getAttribute("data-phone");
-
             // Populate the sidebar with client details
             clientDetailsDiv.innerHTML = `
-                <h3 class="text-lg font-bold mb-4">Client Details</h3>
-                <p><strong>ID:</strong> ${clientId}</p>
-                <p><strong>Name:</strong> ${clientName}</p>
-                <p><strong>Email:</strong> ${clientEmail}</p>
-                <p><strong>Phone:</strong> ${clientPhone}</p>
-            `;
+            <div class="bg-white dark:bg-gray-700 rounded-xl shadow-xl p-6 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center font-bold text-lg">
+                        ${clientName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${clientName}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-300">Client ID: <span class="font-medium">${clientId}</span></p>
+                    </div>
+                </div>
 
+                <div class="border-t border-gray-200 dark:border-gray-600 pt-4">
+                    <div class="text-sm text-gray-700 dark:text-gray-200 space-y-2">
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-gray-600 dark:text-gray-300">Email:</span>
+                            <a href="mailto:${clientEmail}" class="text-blue-600 dark:text-blue-400 hover:underline">${clientEmail}</a>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-gray-600 dark:text-gray-300">Phone:</span>
+                            <a href="tel:${clientPhone}" class="text-blue-600 dark:text-blue-400 hover:underline">${clientPhone}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
 
             fetchSubClients(clientId);
             fetchParClients(clientId);

@@ -223,6 +223,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payment-voucher', [CoaController::class, 'payment'])->name('payment');
         Route::get('/transactions', [CoaController::class, 'transaction'])->name('transaction');
         Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('addCategory');
+        Route::get('/export', [CoaController::class, 'exportAccounts'])->name('export');
+        Route::post('/import', [CoaController::class, 'importAccounts'])->name('import');
     });
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');

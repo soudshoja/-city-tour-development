@@ -14,10 +14,9 @@
           <h3 class="font-semibold text-lg text-[#1e40af]">Income</h3>
       </div>
       <!-- Status Badge -->
-      <span class="px-2 py-1 text-xs font-semibold text-blue-600 bg-blue-100 rounded-full">Code</span>
-
+      <span class="ml-40 px-5 py-1 text-xs font-semibold text-blue-600 bg-blue-100 rounded-full">Code</span>
       <!-- Integration Type -->
-      <span class="font-semibold text-lg text-[#1e40af]">Actual Balance</span>
+      <span class="font-semibold text-lg text-[#1e40af] mr-20">Actual Balance</span>
 
       <button class="hover:text-gray-700">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -32,23 +31,23 @@
       <div>
           <ul class="w-full">
               @foreach ($incomes->childAccounts as $income)
-              @include('coa.partials.child-account', ['account' => $income, 'color' => 'blue'])
+                  @include('coa.partials.child-account', ['account' => $income, 'color' => 'blue'])
               @endforeach
           </ul>
       </div>
   </div>
   <script>
-        const contentIncomeDiv = document.getElementById('incomeDetails');
-        const IncomeToggleButton = document.querySelectorAll('.IncomeToggleButton');
-    
-        contentIncomeDiv.style.display = 'none';
-    
-        function toggleIncomeVisibility() {
-            contentIncomeDiv.style.display = contentIncomeDiv.style.display === 'none' || contentIncomeDiv.style.display === '' ? 'block' : 'none';
-        }
-    
-        IncomeToggleButton.forEach(button => {
-            button.addEventListener('click', toggleIncomeVisibility);
-        });
+      const contentIncomeDiv = document.getElementById('incomeDetails');
+      const IncomeToggleButton = document.querySelectorAll('.IncomeToggleButton');
 
+      contentIncomeDiv.style.display = 'none';
+
+      function toggleIncomeVisibility() {
+          contentIncomeDiv.style.display = contentIncomeDiv.style.display === 'none' || contentIncomeDiv.style.display ===
+              '' ? 'block' : 'none';
+      }
+
+      IncomeToggleButton.forEach(button => {
+          button.addEventListener('click', toggleIncomeVisibility);
+      });
   </script>

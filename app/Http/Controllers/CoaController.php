@@ -679,9 +679,7 @@ class CoaController extends Controller
             $supplierCompanyMap = DB::table('supplier_companies')
                 ->select('id', 'supplier_id', 'company_id')
                 ->get()
-                ->mapWithKeys(function ($item) {
-                    return [$item->supplier_id . '-' . $item->company_id => $item->id];
-                });
+                ->mapWithKeys(fn($item) => [$item->supplier_id . '-' . $item->company_id => $item->id]);
 
             $duplicatesInFile = collect();
             $existingInDb = collect();
@@ -697,8 +695,6 @@ class CoaController extends Controller
                 $agentName   = strtolower(trim((string)($row[12] ?? '')));
                 $clientName  = strtolower(trim((string)($row[13] ?? '')));
 
-                $supplierName = strtolower(trim((string)($row[16] ?? '')));
-
                 $rootId = $rootAccounts[$rootName] ?? null;
                 $parentId = $accountNameToId[$parentName] ?? null;
 
@@ -707,8 +703,32 @@ class CoaController extends Controller
                 $agentId = $agents[$agentName] ?? null;
                 $clientId = $clients[$clientName] ?? null;
 
+                // Supplier and supplier_company_id mapping
+                $supplierNameRaw = (string)($row[14] ?? '');
+                $supplierName = strtolower(trim($supplierNameRaw));
                 $supplierId = $supplierNameToId[$supplierName] ?? null;
-                $supplierCompanyId = $supplierId ? ($supplierCompanyMap[$supplierId . '-' . $companyId] ?? null) : null;
+
+                $supplierCompanyId = null;
+                if ($supplierId) {
+                    $supplierCompanyKey = $supplierId . '-' . $companyId;
+                    $supplierCompanyId = $supplierCompanyMap[$supplierCompanyKey] ?? null;
+
+                    if (!$supplierCompanyId) {
+                        Log::warning("No supplier_company_id found", [
+                            'supplier_name_raw' => $supplierNameRaw,
+                            'normalized_supplier' => $supplierName,
+                            'supplier_id' => $supplierId,
+                            'company_id' => $companyId,
+                            'expected_key' => $supplierCompanyKey,
+                            'available_keys_sample' => $supplierCompanyMap->keys()->take(5),
+                        ]);
+                    }
+                } elseif (!empty($supplierNameRaw)) {
+                    Log::warning("Supplier name not found in DB", [
+                        'supplier_name_raw' => $supplierNameRaw,
+                        'normalized' => $supplierName,
+                    ]);
+                }
 
                 if (!$rootId || $accountName === '') {
                     Log::warning('Skipping row due to invalid root or account name', [
@@ -757,16 +777,16 @@ class CoaController extends Controller
                     'agent_id'            => $agentId,
                     'client_id'           => $clientId,
                     'supplier_id'         => $supplierId,
-                    'supplier_company_id' => $supplierCompanyId,
+                    'supplier_company_id' => $supplierCompanyId ? (int) $supplierCompanyId : null,
                     'reference_id'        => $referenceId,
-                    'code'                => $row[18] ?? null,
-                    'currency'            => $row[19] ?? 'KWD',
-                    'is_group'            => (int)($row[20] ?? 1),
+                    'code'                => $row[16] ?? null,
+                    'currency'            => $row[17] ?? 'KWD',
+                    'is_group'            => (int)($row[18] ?? 1),
                     'disabled'            => $isDisabled,
                     'balance_must_be'     => $balanceMustBe,
-                    'created_at'          => $row[23] ?? now(),
-                    'updated_at'          => $row[24] ?? now(),
-                    'account_type_id'     => $row[25] ?? null,
+                    'created_at'          => $row[21] ?? now(),
+                    'updated_at'          => $row[22] ?? now(),
+                    'account_type_id'     => $row[23] ?? null,
                 ]);
             }
 
@@ -789,7 +809,6 @@ class CoaController extends Controller
             return back()->with('error', 'Import failed. Please check the file format or server configuration.');
         }
     }
-
 
     public function exportAccounts(): BinaryFileResponse
     {

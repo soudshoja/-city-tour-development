@@ -15,21 +15,23 @@ use Illuminate\Support\Facades\Log;
 
 class ProcessAirFiles extends Command
 {
-    protected $signature = 'air:process-files';
+    protected $signature = 'app:process-files';
 
     protected $description = 'Scans the root air-files directory for new AIR files, processes them using existing logic, and moves them.';
 
-    protected $airFilesPath;
-    protected $processedFilesPath;
+    // protected $airFilesPath;
+    // protected $processedFilesPath;
     protected $aiManager;
+    protected $suppliers;
 
     public function __construct(AIManager $aiManager)
     {
         parent::__construct();
 
-        $this->airFilesPath = storage_path('app/air_files_unprocessed');
-        $this->processedFilesPath = storage_path('app/air_files_processed');
+        // $this->airFilesPath = storage_path('app/air_files_unprocessed');
+        // $this->processedFilesPath = storage_path('app/air_files_processed');
         $this->aiManager = $aiManager;
+        $this->suppliers = Supplier::all();
     }
 
     public function handle()
@@ -37,176 +39,305 @@ class ProcessAirFiles extends Command
         $this->info('Starting AIR file processing from root/air-files directory...');
         Log::info('AIR File Processing: Service started.');
 
-        if (!File::isDirectory($this->airFilesPath)) {
-            $this->error("Source directory not found: {$this->airFilesPath}");
-            Log::error("AIR File Processing: Source directory {$this->airFilesPath} not found.");
-            File::makeDirectory($this->airFilesPath, 0755, true, true); // Optionally create it
-            $this->info("Created source directory: {$this->airFilesPath}, please ensure files are pushed here.");
-            return 1;
-        }
+        foreach($this->suppliers as $supplier) {
+            $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
+
+            $filePath = storage_path("app/{$supplierName}/files_unprocessed");
+
+            if (!File::isDirectory($filePath)) {
+                $this->error("Source directory not found: {$filePath}");
+                Log::error("AIR File Processing: Source directory {$filePath} not found.");
+                File::makeDirectory($filePath, 0755, true, true); // Optionally create it
+                $this->info("Created source directory: {$filePath}, please ensure files are pushed here.");
+                return 1;
+            }
+
+            if (!File::isDirectory($filePath)) {
+                File::makeDirectory($filePath, 0755, true, true);
+                $this->info("Created processed files directory: {$supplierName}/files_processed");
+            }
+
+            $filesToProcess = File::files($filePath);
+
+            if (empty($filesToProcess)) {
+                $this->info("No new files found in {$supplierName} air-files directory to process.");
+                Log::info("AIR File Processing: No new files found in {$supplierName}.");
+                continue; // Skip to the next supplier
+            }
+
+            $this->info(count($filesToProcess) . ' file(s) found in air-files.');
+            foreach ($filesToProcess as $file) { // $file is an SplFileInfo object
+                $filePath = $file->getRealPath();
+                $fileName = $file->getFilename();
+
+                $this->info("Processing file: {$fileName}");
+                Log::info("AIR File Processing: Starting file {$fileName}");
+
+                try {
+
+                    $extractedData = $this->processWithAiTool($filePath, $fileName);
 
 
-        if (!File::isDirectory($this->processedFilesPath)) {
-            File::makeDirectory($this->processedFilesPath, 0755, true, true);
-            $this->info("Created processed files directory: {$this->processedFilesPath}");
-        }
-
-        // The example filename 'AIR-BLK206;...' doesn't have a typical extension.
-        // File::files() gets all files. You might want to add more specific filtering
-        // if there are other types of files in this directory you want to ignore.
-        $filesToProcess = File::files($this->airFilesPath);
-
-        if (empty($filesToProcess)) {
-            $this->info('No new files found in air-files directory to process.');
-            Log::info('AIR File Processing: No new files found.');
-            return 0; // Success
-        }
-
-        $this->info(count($filesToProcess) . ' file(s) found in air-files.');
-
-        foreach ($filesToProcess as $file) { // $file is an SplFileInfo object
-            $filePath = $file->getRealPath();
-            $fileName = $file->getFilename();
-
-            $this->info("Processing file: {$fileName}");
-            Log::info("AIR File Processing: Starting file {$fileName}");
-
-            try {
-                $fileContent = File::get($filePath);
-
-                $extractedData = $this->processWithAiTool($fileContent, $fileName);
-
-                if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
-                    Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
-                    $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
-                    continue;
-                }
-
-                $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
-
-                $response = $this->saveTask(1,$extractedData['data']);
-
-                if ($response['status'] === 'error') {
-                    if(isset($response['code']) && $response['code'] === 409) {
-                        Log::info("Task already exists for {$fileName}. Skipping save.");
-                        $this->info("Task already exists for {$fileName}. Skipping save.");
-                        $this->info("Moving {$fileName} to {$this->processedFilesPath}.");
-                        $destinationPath = $this->processedFilesPath . '/' . $fileName;
-                        File::move($filePath, $destinationPath);
-                        continue;
-                    } else {
-                        Log::error("Failed to save task for {$fileName}: " . $response['message']);
-                        $this->error("Failed to save task for {$fileName}: " . $response['message']);
+                    if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
+                        Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
+                        $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
                         continue;
                     }
+
+                    $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
+
+                    $response = $this->saveTask(1,$extractedData['data']);
+
+                    if ($response['status'] === 'error') {
+                        if(isset($response['code']) && $response['code'] === 409) {
+                            Log::info("Task already exists for {$fileName}. Skipping save.");
+                            $this->info("Task already exists for {$fileName}. Skipping save.");
+                            continue;
+                        } else {
+                            Log::error("Failed to save task for {$fileName}: " . $response['message']);
+                            $this->error("Failed to save task for {$fileName}: " . $response['message']);
+                            continue;
+                        }
+                    }
+
+                    Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
+                    $this->info("File {$fileName} processed successfully by AI tool.");
+
+                    // Move the file to the processed directory
+                    $destinationPath = storage_path("app/{$supplierName}/files_processed") . '/' . $fileName;
+                    File::move($filePath, $destinationPath);
+
+                    Log::info("AIR File Processing: Successfully moved {$fileName} to {$destinationPath}.");
+
+                } catch (\Exception $e) {
+                    $this->error("Error processing file {$fileName}: " . $e->getMessage());
+                    Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
+                        'file' => $fileName,
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Optional: Move to an error directory
+                    // $errorPath = storage_path('app/air_files_error');
+                    // if (!File::isDirectory($errorPath)) { File::makeDirectory($errorPath, 0755, true, true); }
+                    // File::move($filePath, $errorPath . '/' . $fileName);
                 }
 
-                Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
-                $this->info("File {$fileName} processed successfully by AI tool.");
-
-                $destinationPath = $this->processedFilesPath . '/' . $fileName;
-                File::move($filePath, $destinationPath);
-
-                $this->info("Successfully moved {$fileName} to {$this->processedFilesPath}.");
-                Log::info("AIR File Processing: Successfully moved {$fileName} to {$destinationPath}.");
-
-            } catch (\Exception $e) {
-                $this->error("Error processing file {$fileName}: " . $e->getMessage());
-                Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
-                    'file' => $fileName,
-                    'trace' => $e->getTraceAsString()
-                ]);
-                // Optional: Move to an error directory
-                // $errorPath = storage_path('app/air_files_error');
-                // if (!File::isDirectory($errorPath)) { File::makeDirectory($errorPath, 0755, true, true); }
-                // File::move($filePath, $errorPath . '/' . $fileName);
+                $this->info('AIR file processing for supplier' . $supplierName . ' finished.');
+                Log::info('AIR File Processing: Finished processing for supplier ' . $supplierName . '.');
             }
         }
-
-        $this->info('AIR file processing finished.');
         Log::info('AIR File Processing: Service finished.');
-        return 0; 
+        return 0;
     }
 
-    protected function processWithAiTool(string $fileContent, string $fileName) : mixed
+    protected function processWithAiTool(string $filePath, string $fileName) : mixed
     {
+
         $this->info("Handing over content of {$fileName} to AI processing tool...");
 
-        try {
-            $response = $this->aiManager->extractAirFiles($fileContent);
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-            if (!isset($response['status']) || $response['status'] !== 'success') {
+        if ($extension === 'pdf') {
+            $response = $this->aiManager->extractPdfFiles($filePath);
+
+            Log::info("extractPdfFiles response for {$fileName}: " . json_encode($response));
+
+            if($response['status'] !== 'success') {
                 $errorMessage = $response['message'] ?? 'Unknown error occurred.';
                 Log::error("AI Tool processing failed for {$fileName}: " . $errorMessage);
                 $this->error("AI Tool processing failed for {$fileName}: " . $errorMessage);
                 return null;
             }
 
-            Log::info("AI Tool processing response for {$fileName}: " . json_encode($response));
+            $data = $response['data'] ?? null;
 
-            $extractedData = $response['data'] ?? null;
-
-            if (!$extractedData) {
+            if(!$data) {
                 Log::error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
                 $this->error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
                 return null;
             }
 
-            $processedData = [
-                'status' => 'success',
-                'message' => "Successfully processed {$fileName} using AI.",
-                'original_filename' => $fileName,
-                'data' => [
-                    'additional_info' => $extractedData['additional_info'] ?? 'N/A',
-                    'ticket_number' => $extractedData['ticket_number'] ?? 'N/A',
-                    'status' => $extractedData['status'] ?? 'N/A',
-                    'reference' => $extractedData['reference'] ?? 'N/A',
-                    'gds_office_id' => $extractedData['gds_office_id'] ?? 'N/A',
-                    'type' => $extractedData['type'] ?? 'N/A',
-                    'agent_name' => $extractedData['agent_name'] ?? 'N/A',
-                    'client_name' => $extractedData['client_name'] ?? 'N/A',
-                    'supplier_name' => $extractedData['supplier_name'] ?? 'N/A',
-                    'supplier_country' => $extractedData['supplier_country'] ?? 'N/A',
-                    'cancellation_policy' => $extractedData['cancellation_policy'] ?? 'N/A',
-                    'venue' => $extractedData['venue'] ?? 'N/A',
-                    'task_flight_details' => [
-                        'farebase' => $extractedData['task_flight_details']['farebase'] ?? null,
-                        'departure_time' => $extractedData['task_flight_details']['departure_time'] ?? null,
-                        'departure_from' => $extractedData['task_flight_details']['departure_from'] ?? null,
-                        'airport_from' => $extractedData['task_flight_details']['airport_from'] ?? 'N/A',
-                        'terminal_from' => $extractedData['task_flight_details']['terminal_from'] ?? 'N/A',
-                        'arrival_time' => $extractedData['task_flight_details']['arrival_time'] ?? null,
-                        'duration_time' => $extractedData['task_flight_details']['duration_time'] ?? 'N/A',
-                        'arrive_to' => $extractedData['task_flight_details']['arrive_to'] ?? 'N/A',
-                        'airport_to' => $extractedData['task_flight_details']['airport_to'] ?? 'N/A',
-                        'terminal_to' => $extractedData['task_flight_details']['terminal_to'] ?? 'N/A',
-                        'airline_name' => $extractedData['task_flight_details']['airline_name'] ?? 'N/A',
-                        'flight_number' => $extractedData['task_flight_details']['flight_number'] ?? 'N/A',
-                        'class_type' => $extractedData['task_flight_details']['class_type'] ?? 'N/A',
-                        'baggage_allowed' => $extractedData['task_flight_details']['baggage_allowed'] ?? 'N/A',
-                        'equipment' => $extractedData['task_flight_details']['equipment'] ?? 'N/A',
-                        'flight_meal' => $extractedData['task_flight_details']['flight_meal'] ?? 'N/A',
-                        'seat_no' => $extractedData['task_flight_details']['seat_no'] ?? 'N/A',
-                        'ticket_number' => $extractedData['task_flight_details']['ticket_number'] ?? 'N/A',
-                    ],
-                    'price' => $extractedData['price'] ?? null,
-                    'surcharge' => $extractedData['surcharge'] ?? null,
-                    'tax' => $extractedData['tax'] ?? null,
-                    'taxes_record' => $extractedData['taxes_record'] ?? 'N/A',
-                    'penalty_fee' => $extractedData['penalty_fee'] ?? 0.00,
-                    'refund_charge' => $extractedData['refund_charge'] ?? null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]
-            ];
+            Log::info('Extracting data from AI Tool for ' . $fileName . ': ' . json_encode($data));
+
+            $task = $data['task'] ?? null;
+            $taskFlightDetails = $data['task_flight_details'] ?? null;
+            $taskHotelDetails = $data['task_hotel_details'] ?? null;
+
+            if ($task['type'] === 'flight') {
+                $processedData = [
+                    'status' => 'success',
+                    'message' => "Successfully processed {$fileName} using AI.",
+                    'original_filename' => $fileName,
+                    'data' => [
+                        'additional_info' => $task['additional_info'] ?? 'N/A',
+                        'ticket_number' => $task['ticket_number'] ?? 'N/A',
+                        'status' => $task['status'] ?? 'N/A',
+                        'reference' => $task['reference'] ?? 'N/A',
+                        'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
+                        'type' => $task['type'] ?? 'N/A',
+                        'agent_name' => $task['agent_name'] ?? 'N/A',
+                        'client_name' => $task['client_name'] ?? 'N/A',
+                        'supplier_name' => $task['supplier_name'] ?? 'N/A',
+                        'supplier_country' => $task['supplier_country'] ?? 'N/A',
+                        'cancellation_policy' => $task['cancellation_policy'] ?? null,
+                        'venue' => $task['venue'] ?? null,
+                        'price' => $task['price'] ?? null,
+                        'surcharge' => $task['surcharge'] ?? null,
+                        'tax' => $task['tax'] ?? null,
+                        'taxes_record' => $task['taxes_record'] ?? 'N/A',
+                        'penalty_fee' => $task['penalty_fee'] ?? 0.00,
+                        'refund_charge' => $task['refund_charge'] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'task_flight_details' => [
+                            'farebase' => $taskFlightDetails['farebase'] ?? null,
+                            'departure_time' => $taskFlightDetails['departure_time'] ?? null,
+                            'departure_from' => $taskFlightDetails['departure_from'] ?? null,
+                            'airport_from' => $taskFlightDetails['airport_from'] ?? 'N/A',
+                            'terminal_from' => $taskFlightDetails['terminal_from'] ?? 'N/A',
+                            'arrival_time' => $taskFlightDetails['arrival_time'] ?? null,
+                            'duration_time' => $taskFlightDetails['duration_time'] ?? 'N/A',
+                            'arrive_to' => $taskFlightDetails['arrive_to'] ?? 'N/A',
+                            'airport_to' => $taskFlightDetails['airport_to'] ?? 'N/A',
+                            'terminal_to' => $taskFlightDetails['terminal_to'] ?? 'N/A',
+                            'airline_name' => $taskFlightDetails['airline_name'] ?? 'N/A',
+                            'flight_number' => $taskFlightDetails['flight_number'] ?? 'N/A',
+                            'class_type' => $taskFlightDetails['class_type'] ?? 'N/A',
+                            'baggage_allowed' => $taskFlightDetails['baggage_allowed'] ?? 'N/A',
+                            'equipment' => $taskFlightDetails['equipment'] ?? null,
+                            'flight_meal' => $taskFlightDetails['flight_meal'] ?? null,
+                            'seat_no' => $taskFlightDetails['seat_no'] ?? null,
+                        ],
+                        
+                    ]
+                ];
+            } else if( $task['type'] === 'hotel'){
+                $processedData = [
+                    'status' => 'success',
+                    'message' => "Successfully processed {$fileName} using AI.",
+                    'original_filename' => $fileName,
+                    'data' => [
+                        'additional_info' => $task['additional_info'] ?? 'N/A',
+                        'ticket_number' => $task['ticket_number'] ?? 'N/A',
+                        'status' => $task['status'] ?? 'N/A',
+                        'reference' => $task['reference'] ?? 'N/A',
+                        'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
+                        'type' => $task['type'] ?? 'N/A',
+                        'agent_name' => $task['agent_name'] ?? 'N/A',
+                        'client_name' => $task['client_name'] ?? 'N/A',
+                        'supplier_name' => $task['supplier_name'] ?? 'N/A',
+                        'supplier_country' => $task['supplier_country'] ?? null,
+                        'cancellation_policy' => $task['cancellation_policy'] ?? null,
+                        'venue' => $task['venue'] ?? null,
+                        'price' => $task['price'] ?? null,
+                        'surcharge' => $task['surcharge'] ?? null,
+                        'tax' => $task['tax'] ?? null,
+                        'taxes_record' => $task['taxes_record'] ?? 'N/A',
+                        'penalty_fee' => $task['penalty_fee'] ?? 0.00,
+                        'refund_charge' => $task['refund_charge'] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'task_hotel_details' => [
+                            'hotel_name' => $taskHotelDetails['hotel_name'] ?? null,
+                            'check_in_date' => $taskHotelDetails['check_in_date'] ?? null,
+                            'check_out_date' => $taskHotelDetails['check_out_date'] ?? null,
+                            'room_type' => $taskHotelDetails['room_type'] ?? null,
+                            'number_of_rooms' => $taskHotelDetails['number_of_rooms'] ?? null,
+                            'number_of_guests' => $taskHotelDetails['number_of_guests'] ?? null,
+                            'meal_plan' => $taskHotelDetails['meal_plan'] ?? null,
+                        ],
+                    ]
+                ];
+
+            } else {
+                Log::warning("Unsupported task type in {$fileName}: {$task['type']}");
+                return null;
+            }
 
             return $processedData;
 
-        } catch (\Exception $e) {
-            Log::error("Exception occurred while processing {$fileName}: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            $this->error("An error occurred while processing {$fileName}: " . $e->getMessage());
+        } elseif (in_array($extension, ['txt', 'text'])) {
+
+            $fileContent = File::get($filePath);
+
+            try {
+                $response = $this->aiManager->extractAirFiles($fileContent);
+
+                if (!isset($response['status']) || $response['status'] !== 'success') {
+                    $errorMessage = $response['message'] ?? 'Unknown error occurred.';
+                    Log::error("AI Tool processing failed for {$fileName}: " . $errorMessage);
+                    $this->error("AI Tool processing failed for {$fileName}: " . $errorMessage);
+                    return null;
+                }
+
+                Log::info("AI Tool processing response for {$fileName}: " . json_encode($response));
+
+                $extractedData = $response['data'] ?? null;
+
+                if (!$extractedData) {
+                    Log::error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
+                    $this->error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
+                    return null;
+                }
+
+                $processedData = [
+                    'status' => 'success',
+                    'message' => "Successfully processed {$fileName} using AI.",
+                    'original_filename' => $fileName,
+                    'data' => [
+                        'additional_info' => $extractedData['additional_info'] ?? 'N/A',
+                        'ticket_number' => $extractedData['ticket_number'] ?? 'N/A',
+                        'status' => $extractedData['status'] ?? 'N/A',
+                        'reference' => $extractedData['reference'] ?? 'N/A',
+                        'gds_office_id' => $extractedData['gds_office_id'] ?? 'N/A',
+                        'type' => $extractedData['type'] ?? 'N/A',
+                        'agent_name' => $extractedData['agent_name'] ?? 'N/A',
+                        'client_name' => $extractedData['client_name'] ?? 'N/A',
+                        'supplier_name' => $extractedData['supplier_name'] ?? 'N/A',
+                        'supplier_country' => $extractedData['supplier_country'] ?? 'N/A',
+                        'cancellation_policy' => $extractedData['cancellation_policy'] ?? 'N/A',
+                        'venue' => $extractedData['venue'] ?? 'N/A',
+                        'task_flight_details' => [
+                            'farebase' => $extractedData['task_flight_details']['farebase'] ?? null,
+                            'departure_time' => $extractedData['task_flight_details']['departure_time'] ?? null,
+                            'departure_from' => $extractedData['task_flight_details']['departure_from'] ?? null,
+                            'airport_from' => $extractedData['task_flight_details']['airport_from'] ?? 'N/A',
+                            'terminal_from' => $extractedData['task_flight_details']['terminal_from'] ?? 'N/A',
+                            'arrival_time' => $extractedData['task_flight_details']['arrival_time'] ?? null,
+                            'duration_time' => $extractedData['task_flight_details']['duration_time'] ?? 'N/A',
+                            'arrive_to' => $extractedData['task_flight_details']['arrive_to'] ?? 'N/A',
+                            'airport_to' => $extractedData['task_flight_details']['airport_to'] ?? 'N/A',
+                            'terminal_to' => $extractedData['task_flight_details']['terminal_to'] ?? 'N/A',
+                            'airline_name' => $extractedData['task_flight_details']['airline_name'] ?? 'N/A',
+                            'flight_number' => $extractedData['task_flight_details']['flight_number'] ?? 'N/A',
+                            'class_type' => $extractedData['task_flight_details']['class_type'] ?? 'N/A',
+                            'baggage_allowed' => $extractedData['task_flight_details']['baggage_allowed'] ?? 'N/A',
+                            'equipment' => $extractedData['task_flight_details']['equipment'] ?? 'N/A',
+                            'flight_meal' => $extractedData['task_flight_details']['flight_meal'] ?? 'N/A',
+                            'seat_no' => $extractedData['task_flight_details']['seat_no'] ?? 'N/A',
+                            'ticket_number' => $extractedData['task_flight_details']['ticket_number'] ?? 'N/A',
+                        ],
+                        'price' => $extractedData['price'] ?? null,
+                        'surcharge' => $extractedData['surcharge'] ?? null,
+                        'tax' => $extractedData['tax'] ?? null,
+                        'taxes_record' => $extractedData['taxes_record'] ?? 'N/A',
+                        'penalty_fee' => $extractedData['penalty_fee'] ?? 0.00,
+                        'refund_charge' => $extractedData['refund_charge'] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                ];
+
+                return $processedData;
+            } catch (\Exception $e) {
+                Log::error("Exception occurred while processing {$fileName}: " . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString()
+                ]);
+                $this->error("An error occurred while processing {$fileName}: " . $e->getMessage());
+                return null;
+            }
+        } else {
+            Log::warning("Unsupported file type for {$fileName}: {$extension}");
+            $this->warn("Unsupported file type for {$fileName}: {$extension}");
             return null;
         }
     }

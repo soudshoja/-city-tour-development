@@ -8,9 +8,11 @@ use App\Http\Traits\HttpRequestTrait;
 use App\Models\Airport;
 use App\Models\Supplier;
 use App\Models\Task;
+use App\Models\TaskFlightDetail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 
 class OpenAIClient implements AIClientInterface
 {
@@ -93,6 +95,44 @@ class OpenAIClient implements AIClientInterface
 
         logger('chat completion response: ', $response);
         return $response;
+    }
+
+    public function createResponse(array $content)
+    {
+        // logger('content: ', $content);
+
+        $input = [
+            $content
+        ];
+
+        logger('input: ', $input);
+
+        $response = Http::timeout(120)->withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type' => 'application/json',
+        ])->post($this->apiUrl . '/responses', [
+            'model' => $this->model,
+            'input' => $input,
+            'text' => [
+                'format' => [
+                    'type' => 'json_object',
+                ]
+            ]
+        ]);
+
+        logger('create response: ', $response->json());
+
+        if ($response->failed()) {
+            return [
+                'status' => 'error',
+                'message' => 'Failed to get response from OpenAI API',
+            ];
+        }
+
+        $response = json_decode($response->body(), true);
+
+        return $response;
+
     }
 
     public function extractAirFiles(string $content): array
@@ -242,5 +282,171 @@ class OpenAIClient implements AIClientInterface
             ];
         }
         
+    }
+
+    public function extractPdfFiles(string $fileId) : array
+    {
+        $uploadFileResponseId = $this->uploadFileToOpenAI($fileId);
+
+        $fileId = $uploadFileResponseId;
+
+        $taskModel = [
+            'task' => [
+                'company_name' => 'company_name or agency name',
+                'type' => 'flight or hotel',
+                'status' => 'status',
+                'client_name' => 'client_name',
+                'reference' => 'reference',
+                'gds_office_id' => 'gds_office_id',
+                'duration' => 'duration',
+                'payment_type' => 'payment_type',
+                'price' => 0,
+                'tax' => 0,
+                'surcharge' => 0,
+                'penalty_fee' => 0,
+                'total' => 0,
+                'cancellation_policy' => '',
+                'additional_info' => '',
+                'venue' => '',
+                'invoice_price' => 0,
+                'voucher_status' => '',
+                'refund_date' => '',
+                'enabled' => true,
+                'taxes_record' => '',
+                'refund_charge' => 0,
+                'ticket_number' => '3580878589',
+            ],
+            'task_hotel_details' => [
+                'hotel_name' => 'JW Marriott Hotel',
+                'booking_time' => '2024-10-12 14:00:00',
+                'check_in' => '2024-10-16',
+                'check_out' => '2024-10-20',
+                'room_reference' => 'JW123456',
+                'room_number' => '123',
+                'room_type' => 'Deluxe Room',
+                'room_amount' => 1,
+                'room_details' => '2 adults, 1 child',
+                'room_promotion' => '10% off', 
+                'rate' => 0,
+                'meal_type' => 'Breakfast included',
+                'is_refundable' => true,
+                'supplements' => 'Extra bed available',
+            ],
+            'task_flight_details' => [
+                'farebase' => '20.00',
+                'departure_time' => '2024-10-16 14:00:00',
+                'country_from' => 'Kuwait',
+                'airport_from' => 'KWI',
+                'terminal_from' => '1',
+                'arrival_time' => '2024-10-16 16:00:00',
+                'duration_time' => '2h 5m',
+                'country_to' => 'Singapore',
+                'airport_to' => 'SIN',
+                'terminal_to' => '1',
+                'airline_name' => 'Kuwait Airways',
+                'flight_number' => 'KU-123',
+                'ticket_number' => '3580878589',
+                'class_type' => 'economy',
+                'baggage_allowed' => '2 pieces',
+                'equipment' => 'equipment',
+                'flight_meal' => 'chicken',
+                'seat_no' => '12A',
+            ],
+        ];
+  
+
+        $content = [
+            [
+                'type' => 'input_file',
+                'file_id' => $fileId,
+            ],
+            [
+                'type' => 'input_text',
+                'text' => 'Please extract the data from this file and return it in JSON format.',
+            ],
+                        [
+                'type' => 'input_text',
+                'text' => 'Try to get information following my models, if the task is a flight, you can use the task_flight_details model, if the task is a hotel, you can use the task_hotel_details model. If the task is a flight and hotel, you can use both models.',
+            ],
+            [
+                'type' => 'input_text',
+                'text' => 'Please make sure to use the same field names as in the models.',
+            ],
+            [
+                'type' => 'input_text',
+                'text' => json_encode($taskModel),
+            ]
+            
+        ];
+
+        $response = $this->createResponse(
+            [
+                'role' => 'user',
+                'content' => $content,
+            ]
+        );
+
+        Log::info('OpenAI API response: ', $response);
+
+
+        if (
+            isset($response['output'][0]['content'][0]['text']) &&
+            is_string($response['output'][0]['content'][0]['text'])
+        ) {
+            $message = $response['output'][0]['content'][0]['text'];
+            $decodedResponse = json_decode($message, true);
+        } else {
+            return [
+                'status' => 'error',
+                'message' => 'Failed to extract data from the response',
+                'data' => null,
+            ];
+        }
+
+        $this->deleteFileFromOpenAI($fileId);
+
+        return [
+            'status' => 'success',
+            'message' => 'Data extracted successfully',
+            'data' => $decodedResponse,
+        ];
+
+    } 
+
+    public function uploadFileToOpenAI($file, string $purpose = 'user_data')
+    {
+        // Accepts either UploadedFile or file path
+        $fileResource = $file instanceof UploadedFile ? fopen($file->getRealPath(), 'r') : fopen($file, 'r');
+
+        $response = Http::withToken($this->apiKey)
+            ->attach('file', $fileResource, is_string($file) ? basename($file) : $file->getClientOriginalName())
+            ->post($this->apiUrl . '/files', [
+                'purpose' => $purpose,
+            ]);
+        
+        logger('upload file response: ', $response->json());
+
+        fclose($fileResource);
+
+        if ($response->failed()) {
+            throw new \Exception('Error uploading file: ' . $response->body());
+        }
+
+        return $response->json('id'); // Return file_id
+    }
+
+
+    public function deleteFileFromOpenAI($fileId)
+    {
+        $response = Http::withToken($this->apiKey)
+            ->delete($this->apiUrl . '/files/' . $fileId);
+
+        logger('delete file response: ', $response->json());
+
+        // if ($response->failed()) {
+        //     throw new \Exception('Error deleting file: ' . $response->body());
+        // }
+
+        return;
     }
 }

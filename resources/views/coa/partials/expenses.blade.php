@@ -13,9 +13,8 @@
         </svg>
         <h3 class="font-semibold text-lg text-[#AF1740]">Expenses</h3>
     </div>
-    <span class="px-2 py-1 text-xs font-semibold text-red-600 bg-red-100 rounded-full">Code</span>
-
-    <span class="font-semibold text-lg text-[#AF1740]">Actual Balance</span>
+    <span class="ml-40 px-5 py-1 text-xs font-semibold text-red-600 bg-red-100 rounded-full">Code</span>
+    <span class="font-semibold text-lg text-[#AF1740] mr-20">Actual Balance</span>
 
     <button class="hover:text-gray-700">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,7 +29,7 @@
     <div>
         <ul class="w-full">
             @foreach ($expenses->childAccounts as $expense)
-            @include('coa.partials.child-account', ['account' => $expense, 'color' => 'red'])
+                @include('coa.partials.child-account', ['account' => $expense, 'color' => 'red'])
             @endforeach
         </ul>
     </div>
@@ -42,7 +41,8 @@
     contentExpensesDiv.style.display = 'none';
 
     function toggleExpensesVisibility() {
-        contentExpensesDiv.style.display = contentExpensesDiv.style.display === 'none' || contentExpensesDiv.style.display === '' ? 'block' : 'none';
+        contentExpensesDiv.style.display = contentExpensesDiv.style.display === 'none' || contentExpensesDiv.style
+            .display === '' ? 'block' : 'none';
     }
 
     ExpensesToggleButton.forEach(button => {

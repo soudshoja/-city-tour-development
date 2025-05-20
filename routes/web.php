@@ -528,7 +528,7 @@ Route::put('/bank-payments/edit/{id}', [BankPaymentController::class, 'update'])
 Route::get('/bank-payments', [BankPaymentController::class, 'index'])->name('bank-payments.index');
 Route::get('/bank-payments/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('bank-payments.fetchPaymentsByDate');
 Route::get('/bank-payments/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('bank-payments.fetch-journals');
-
+Route::post('/bank-payments/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('bank-payments.decline-reconcile');
 
 
 // EXPORT

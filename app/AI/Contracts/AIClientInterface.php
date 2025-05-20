@@ -8,4 +8,5 @@ interface AiClientInterface
 {
     public function chat(array $messages): array;
     public function extractAirFiles(string $content): array;
+    public function extractPdfFiles(string $fileId): array;
 }

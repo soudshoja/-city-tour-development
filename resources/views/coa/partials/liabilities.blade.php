@@ -1,5 +1,4 @@
-  <div
-      class="LiabilitiesToggleButton main-container cursor-pointer items-center justify-between p-4  flex w-full rounded-lg BoxShadow coa-partials"
+  <div class="LiabilitiesToggleButton main-container cursor-pointer items-center justify-between p-4  flex w-full rounded-lg BoxShadow coa-partials"
       x-data="{ showAddCategoryForm: false }">
       <div class="flex items-center space-x-3 ">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -12,10 +11,9 @@
           </svg>
           <h3 class="font-semibold text-lg text-[#ffc107]">Liabilities</h3>
       </div>
-      <span class="px-2 py-1 text-xs font-semibold text-yellow-600 bg-yellow-100 rounded-full">Code</span>
-
+      <span class="ml-40 px-5 py-1 text-xs font-semibold text-yellow-600 bg-yellow-100 rounded-full">Code</span>
       <!-- Integration Type -->
-      <span class="font-semibold text-lg text-[#ffc107]">Actual Balance</span>
+      <span class="font-semibold text-lg text-[#ffc107] mr-20">Actual Balance</span>
 
       <button class="hover:text-gray-700">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,25 +28,24 @@
       <div>
           <ul class="w-full">
               @foreach ($liabilities->childAccounts as $liability)
-              @include('coa.partials.child-account', ['account' => $liability, 'color' => 'yellow'])
+                  @include('coa.partials.child-account', ['account' => $liability, 'color' => 'yellow'])
               @endforeach
           </ul>
       </div>
   </div>
   <script>
-    //   const entitySelects = document.querySelectorAll('.entitySelect');
+      //   const entitySelects = document.querySelectorAll('.entitySelect');
       const contentLiabilitiesDiv = document.getElementById('liabilitiesDetails');
       const LiabilitiesToggleButton = document.querySelectorAll('.LiabilitiesToggleButton');
 
       contentLiabilitiesDiv.style.display = 'none';
 
       function toggleLiabilitiesVisibility() {
-          contentLiabilitiesDiv.style.display = contentLiabilitiesDiv.style.display === 'none' || contentLiabilitiesDiv.style.display === '' ? 'block' : 'none';
+          contentLiabilitiesDiv.style.display = contentLiabilitiesDiv.style.display === 'none' || contentLiabilitiesDiv
+              .style.display === '' ? 'block' : 'none';
       }
 
       LiabilitiesToggleButton.forEach(button => {
           button.addEventListener('click', toggleLiabilitiesVisibility);
       });
-
-
   </script>

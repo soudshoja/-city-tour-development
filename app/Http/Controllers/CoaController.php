@@ -1,9 +1,12 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Imports\AccountsImport;
+use App\Exports\AccountsExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\ToModel;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Company;
@@ -23,6 +26,7 @@ use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 use Illuminate\Support\Facades\Auth;
 
@@ -630,4 +634,235 @@ class CoaController extends Controller
             'transactionsByDate' => $paginated
         ]);
     }
+
+    public function importAccounts(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            if (!$request->hasFile('file')) {
+                return back()->with('error', 'No file was uploaded.');
+            }
+
+            $file = $request->file('file');
+            $rows = Excel::toCollection(null, $file);
+            $dataRows = $rows->first()->skip(1); // Skip header row
+
+            // Prepare caches
+            $rootAccounts = Account::where('level', 1)
+                ->pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $accountNameToId = Account::pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $companies = Company::pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $branches = Branch::pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $agents = Agent::pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $clients = Client::pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $supplierNameToId = DB::table('suppliers')
+                ->pluck('id', 'name')
+                ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
+
+            $supplierCompanyMap = DB::table('supplier_companies')
+                ->select('id', 'supplier_id', 'company_id')
+                ->get()
+                ->mapWithKeys(function ($item) {
+                    return [$item->supplier_id . '-' . $item->company_id => $item->id];
+                });
+
+            $duplicatesInFile = collect();
+            $existingInDb = collect();
+            $rowsToImport = collect();
+
+            foreach ($dataRows as $row) {
+                $rootName = strtolower(trim((string)($row[1] ?? '')));
+                $accountName = trim((string)($row[4] ?? ''));
+                $parentName = strtolower(trim((string)($row[9] ?? '')));
+
+                $companyName = strtolower(trim((string)($row[10] ?? '')));
+                $branchName  = strtolower(trim((string)($row[11] ?? '')));
+                $agentName   = strtolower(trim((string)($row[12] ?? '')));
+                $clientName  = strtolower(trim((string)($row[13] ?? '')));
+
+                $supplierName = strtolower(trim((string)($row[16] ?? '')));
+
+                $rootId = $rootAccounts[$rootName] ?? null;
+                $parentId = $accountNameToId[$parentName] ?? null;
+
+                $companyId = $companies[$companyName] ?? $user->company_id;
+                $branchId = $branches[$branchName] ?? $user->branch_id;
+                $agentId = $agents[$agentName] ?? null;
+                $clientId = $clients[$clientName] ?? null;
+
+                $supplierId = $supplierNameToId[$supplierName] ?? null;
+                $supplierCompanyId = $supplierId ? ($supplierCompanyMap[$supplierId . '-' . $companyId] ?? null) : null;
+
+                if (!$rootId || $accountName === '') {
+                    Log::warning('Skipping row due to invalid root or account name', [
+                        'root_name' => $rootName,
+                        'account_name' => $accountName
+                    ]);
+                    continue;
+                }
+
+                $key = $rootId . '|' . $accountName;
+                if ($duplicatesInFile->contains($key)) {
+                    return back()->with('error', "Duplicate row in file found for account: $accountName.");
+                }
+                $duplicatesInFile->push($key);
+
+                $exists = Account::where('root_id', $rootId)
+                    ->where('name', $accountName)
+                    ->exists();
+
+                if ($exists) {
+                    $existingInDb->push($key);
+                    continue;
+                }
+
+                $disabledRaw = strtolower(trim((string)($row[21] ?? '0')));
+                $isDisabled = in_array($disabledRaw, ['1', 'yes', 'true']) ? 1 : 0;
+
+                $balanceMustBe = strtolower(trim((string)($row[22] ?? '')));
+                $balanceMustBe = in_array($balanceMustBe, ['debit', 'credit']) ? $balanceMustBe : null;
+
+                $referenceId = is_numeric($row[17]) ? (int)$row[17] : null;
+
+                $rowsToImport->push([
+                    'serial_number'       => $row[0],
+                    'root_id'             => $rootId,
+                    'account_type'        => $row[2] ?? null,
+                    'report_type'         => $row[3] ?? null,
+                    'name'                => $accountName,
+                    'level'               => $row[5] ?? 2,
+                    'actual_balance'      => $row[6] ?? 0,
+                    'budget_balance'      => $row[7] ?? 0,
+                    'variance'            => $row[8] ?? 0,
+                    'parent_id'           => $parentId,
+                    'company_id'          => $companyId,
+                    'branch_id'           => $branchId,
+                    'agent_id'            => $agentId,
+                    'client_id'           => $clientId,
+                    'supplier_id'         => $supplierId,
+                    'supplier_company_id' => $supplierCompanyId,
+                    'reference_id'        => $referenceId,
+                    'code'                => $row[18] ?? null,
+                    'currency'            => $row[19] ?? 'KWD',
+                    'is_group'            => (int)($row[20] ?? 1),
+                    'disabled'            => $isDisabled,
+                    'balance_must_be'     => $balanceMustBe,
+                    'created_at'          => $row[23] ?? now(),
+                    'updated_at'          => $row[24] ?? now(),
+                    'account_type_id'     => $row[25] ?? null,
+                ]);
+            }
+
+            $totalImportRow = $rowsToImport->count();
+
+            if ($totalImportRow === 0) {
+                return back()->with('error', 'No new record to import due to data invalid or duplicates.');
+            }
+
+            foreach ($rowsToImport as $data) {
+                Account::create($data);
+            }
+
+            return back()->with('success', "$totalImportRow record(s) imported successfully.");
+        } catch (\Exception $e) {
+            Log::error('Account import failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return back()->with('error', 'Import failed. Please check the file format or server configuration.');
+        }
+    }
+
+
+    public function exportAccounts(): BinaryFileResponse
+    {
+        // Root account names (level 1)
+        $rootAccounts = Account::where('level', 1)->pluck('name', 'id'); // [id => name]
+
+        // Account names for parent lookup
+        $allAccountNames = Account::pluck('name', 'id');
+
+        // Foreign key mappings
+        $companyNames = Company::pluck('name', 'id');           // Company ID → Company Name
+        $branchNames = Branch::pluck('name', 'id');             // Branch ID → Branch Name
+        $agentNames = Agent::pluck('name', 'id');               // Agent ID → Agent Name
+        $clientNames = Client::pluck('name', 'id');             // Client ID → Client Name
+
+        // SupplierCompanyID → SupplierID
+        $supplierCompanies = DB::table('supplier_companies')->pluck('supplier_id', 'id');
+        // SupplierID → Supplier Name
+        $supplierNames = DB::table('suppliers')->pluck('name', 'id');
+        // SupplierCompanyID → Supplier Name
+        $supplierCompanyIdToName = $supplierCompanies->mapWithKeys(function ($supplierId, $companyId) use ($supplierNames) {
+            return [$companyId => $supplierNames[$supplierId] ?? null];
+        });
+
+        // Fetch all accounts
+        $accounts = Account::all();
+
+        // Header row
+        $data = collect();
+        $data->push([
+            'Serial Number', 'Root Name', 'Account Type', 'Report Type', 'Name', 'Level',
+            'Actual Balance', 'Budget Balance', 'Variance', 'Parent Name', 'Company Name',
+            'Branch Name', 'Agent Name', 'Client Name', 'Supplier Name', 'Reference ID', 'Code',
+            'Currency', 'Is Group', 'Disabled', 'Balance Must Be', 'Created At', 'Updated At',
+            'Account Type ID'
+        ]);
+
+        foreach ($accounts as $account) {
+            $data->push([
+                $account->serial_number,
+                $rootAccounts[$account->root_id] ?? '',                    // Root Name
+                $account->account_type,
+                $account->report_type,
+                $account->name,
+                $account->level,
+                $account->actual_balance,
+                $account->budget_balance,
+                $account->variance,
+                $allAccountNames[$account->parent_id] ?? '',               // Parent Name
+                $companyNames[$account->company_id] ?? '',                 // Company Name
+                $branchNames[$account->branch_id] ?? '',                   // Branch Name
+                $agentNames[$account->agent_id] ?? '',                     // Agent Name
+                $clientNames[$account->client_id] ?? '',                   // Client Name
+                $supplierCompanyIdToName[$account->supplier_company_id] ?? '', // Supplier Name only
+                $account->reference_id,
+                $account->code,
+                $account->currency,
+                $account->is_group,
+                $account->disabled,
+                $account->balance_must_be,
+                $account->created_at,
+                $account->updated_at,
+                $account->account_type_id,
+            ]);
+        }
+
+        return Excel::download(new class($data) implements \Maatwebsite\Excel\Concerns\FromCollection {
+            protected $data;
+            public function __construct(Collection $data) { $this->data = $data; }
+            public function collection() { return $this->data; }
+        }, 'accounts_export.xlsx');
+    }
+
+
+
 }

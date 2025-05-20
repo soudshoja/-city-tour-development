@@ -650,9 +650,9 @@ class CoaController extends Controller
 
             $file = $request->file('file');
             $rows = Excel::toCollection(null, $file);
-            $dataRows = $rows->first()->skip(1); // Skip header
+            $dataRows = $rows->first()->skip(1); // Skip header row
 
-            // Load mapping caches
+            // Prepare caches
             $rootAccounts = Account::where('level', 1)
                 ->pluck('id', 'name')
                 ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
@@ -676,8 +676,12 @@ class CoaController extends Controller
                 ->pluck('id', 'name')
                 ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id]);
 
-            $supplierIdToCompanyId = DB::table('supplier_companies')
-                ->pluck('company_id', 'supplier_id');
+            $supplierCompanyMap = DB::table('supplier_companies')
+                ->select('id', 'supplier_id', 'company_id')
+                ->get()
+                ->mapWithKeys(function ($item) {
+                    return [$item->supplier_id . '-' . $item->company_id => $item->id];
+                });
 
             $duplicatesInFile = collect();
             $existingInDb = collect();
@@ -704,12 +708,12 @@ class CoaController extends Controller
                 $clientId = $clients[$clientName] ?? null;
 
                 $supplierId = $supplierNameToId[$supplierName] ?? null;
-                $supplierCompanyId = $supplierId ? ($supplierIdToCompanyId[$supplierId] ?? null) : null;
+                $supplierCompanyId = $supplierId ? ($supplierCompanyMap[$supplierId . '-' . $companyId] ?? null) : null;
 
                 if (!$rootId || $accountName === '') {
-                    Log::warning('Skipping row with invalid root name or account name', [
+                    Log::warning('Skipping row due to invalid root or account name', [
                         'root_name' => $rootName,
-                        'name' => $accountName
+                        'account_name' => $accountName
                     ]);
                     continue;
                 }
@@ -729,46 +733,47 @@ class CoaController extends Controller
                     continue;
                 }
 
-                $disabledRaw = (string)($row[21] ?? 0);
-                $isDisabled = in_array(strtolower($disabledRaw), ['1', 'yes', 'true']) ? 1 : 0;
+                $disabledRaw = strtolower(trim((string)($row[21] ?? '0')));
+                $isDisabled = in_array($disabledRaw, ['1', 'yes', 'true']) ? 1 : 0;
+
+                $balanceMustBe = strtolower(trim((string)($row[22] ?? '')));
+                $balanceMustBe = in_array($balanceMustBe, ['debit', 'credit']) ? $balanceMustBe : null;
 
                 $referenceId = is_numeric($row[17]) ? (int)$row[17] : null;
 
                 $rowsToImport->push([
-                    'serial_number' => $row[0],
-                    'root_id' => $rootId,
-                    'account_type' => $row[2] ?? null,
-                    'report_type' => $row[3] ?? null,
-                    'name' => $accountName,
-                    'level' => $row[5] ?? 2,
-                    'actual_balance' => $row[6] ?? 0,
-                    'budget_balance' => $row[7] ?? 0,
-                    'variance' => $row[8] ?? 0,
-                    'parent_id' => $parentId,
-                    'company_id' => $companyId,
-                    'branch_id' => $branchId,
-                    'agent_id' => $agentId,
-                    'client_id' => $clientId,
-                    'supplier_id' => $supplierId,
+                    'serial_number'       => $row[0],
+                    'root_id'             => $rootId,
+                    'account_type'        => $row[2] ?? null,
+                    'report_type'         => $row[3] ?? null,
+                    'name'                => $accountName,
+                    'level'               => $row[5] ?? 2,
+                    'actual_balance'      => $row[6] ?? 0,
+                    'budget_balance'      => $row[7] ?? 0,
+                    'variance'            => $row[8] ?? 0,
+                    'parent_id'           => $parentId,
+                    'company_id'          => $companyId,
+                    'branch_id'           => $branchId,
+                    'agent_id'            => $agentId,
+                    'client_id'           => $clientId,
+                    'supplier_id'         => $supplierId,
                     'supplier_company_id' => $supplierCompanyId,
-                    'reference_id' => $referenceId,
-                    'code' => $row[18] ?? null,
-                    'currency' => $row[19] ?? 'KWD',
-                    'is_group' => (int)($row[20] ?? 1),
-                    'disabled' => $isDisabled,
-                    'balance_must_be' => in_array(strtolower(trim($row[22] ?? '')), ['debit', 'credit']) 
-                    ? strtolower(trim($row[22])) 
-                    : null,
-                    'created_at' => $row[23] ?? now(),
-                    'updated_at' => $row[24] ?? now(),
-                    'account_type_id' => $row[25] ?? null,
+                    'reference_id'        => $referenceId,
+                    'code'                => $row[18] ?? null,
+                    'currency'            => $row[19] ?? 'KWD',
+                    'is_group'            => (int)($row[20] ?? 1),
+                    'disabled'            => $isDisabled,
+                    'balance_must_be'     => $balanceMustBe,
+                    'created_at'          => $row[23] ?? now(),
+                    'updated_at'          => $row[24] ?? now(),
+                    'account_type_id'     => $row[25] ?? null,
                 ]);
             }
 
             $totalImportRow = $rowsToImport->count();
 
             if ($totalImportRow === 0) {
-                return back()->with('error', 'No new record to import due to data invalid or duplicate.');
+                return back()->with('error', 'No new record to import due to data invalid or duplicates.');
             }
 
             foreach ($rowsToImport as $data) {
@@ -784,7 +789,6 @@ class CoaController extends Controller
             return back()->with('error', 'Import failed. Please check the file format or server configuration.');
         }
     }
-
 
 
     public function exportAccounts(): BinaryFileResponse

@@ -119,55 +119,66 @@
                             value="{{ number_format($tasks->total, 2) ?? 0 }}"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
 
-                        <!--Original Refund Amount -->
-                        <div>
-                            <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">Original
-                                Refund Amount</label>
-                            <input readonly type="number" step="0.01" name="original_refund_amount"
-                                id="original_refund_amount"
-                                value="{{ old('original_refund_amount', number_format($tasks->total, 2) ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
-                        </div>
 
-                        <!-- Airline Nett Fare -->
+                        <!-- Original Task Price -->
                         <div>
-                            <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Airline Nett
-                                Fare (Original Task Price)</label>
-                            <input readonly type="number" step="0.01" name="airline_nett_fare"
-                                id="airline_nett_fare"
-                                value="{{ old('airline_nett_fare', number_format($invoiceDetails->task_price, 2) ?? '') }}"
+                            <label for="original_task_price" class="block text-gray-700 font-semibold mb-2">Original
+                                Task (Cost Price)</label>
+                            <input readonly type="number" step="0.01" name="original_task_price"
+                                id="original_task_price"
+                                value="{{ old('original_task_price', number_format($invoiceDetails->task_price - $invoiceDetails->markup_price, 2) ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
 
                         <!-- Original Task Profit -->
                         <div>
-                            <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">Original
-                                Task Profit</label>
-                            <input readonly type="number" step="0.01" name="original_task_profit"
-                                id="original_task_profit"
-                                value="{{ old('original_task_profit', number_format($invoiceDetails->markup_price, 2) ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                            <label for="original_task_profit" class="block text-gray-700 font-semibold mb-2">
+                                Original Task Profit
+                            </label>
+                            <div class="flex items-center">
+                                <span class="text-lg font-semibold mr-2">+</span>
+                                <input readonly type="number" step="0.01" name="original_task_profit"
+                                    id="original_task_profit"
+                                    value="{{ old('original_task_profit', number_format($invoiceDetails->markup_price, 2) ?? '') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                            </div>
                         </div>
+
+
+                        <!-- Airline Nett Fare -->
+                        <div>
+                            <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Original Task
+                                Selling Price</label>
+                            <div class="flex items-center">
+                                <span class="text-lg font-semibold mr-2">=</span>
+                                <input readonly type="number" step="0.01" name="airline_nett_fare"
+                                    id="airline_nett_fare"
+                                    value="{{ old('airline_nett_fare', number_format($invoiceDetails->task_price, 2) ?? '') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                            </div>
+                        </div>
+
+
 
                         <!-- Airline Refund Charge -->
                         <div>
-                            <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Airline
-                                Refund Charge (Fee)</label>
+                            <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">
+                                Refund Task Supplier Charges</label>
                             <input readonly type="number" step="0.01" name="refund_airline_charge"
                                 id="refund_airline_charge"
-                                value="{{ old('refund_airline_charge', number_format($tasks->penalty_fee, 2) ?? '') }}"
+                                value="{{ old('refund_airline_charge', number_format($invoiceDetails->task_price - $invoiceDetails->markup_price - $tasks->total, 2) ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                         </div>
 
                         <!-- Tax Refund -->
-                        <div>
+                        {{-- <div>
                             <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Non-Refundable
                                 Tax</label>
                             <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
                                 value="{{ old('tax_refund', number_format($tasks->refund_charge, 2) ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
-                        </div>
+                        </div> --}}
 
                         <!-- Service Charge Fee -->
                         <div>
@@ -182,15 +193,28 @@
                             @enderror
                         </div>
 
+                        <br>
+                        <!--Original Refund Amount -->
+                        <div>
+                            <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">
+                                Refund Task (Cost Price)</label>
+                            <input readonly type="number" step="0.01" name="original_refund_amount"
+                                id="original_refund_amount"
+                                value="{{ old('original_refund_amount', number_format($tasks->total, 2) ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                        </div>
 
                         <!-- Service Charge -->
                         <div>
                             <label for="new_task_profit" class="block text-gray-700 font-semibold mb-2">New
                                 Profit</label>
-                            <input type="number" step="0.01" min="-999999.99" name="new_task_profit"
-                                id="new_task_profit"
-                                value="{{ old('new_task_profit', number_format($tasks->tax - $tasks->refund_charge, 2) ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            <div class="flex items-center">
+                                <span class="text-lg font-semibold mr-2">-</span>
+                                <input type="number" step="0.01" min="-999999.99" name="new_task_profit"
+                                    id="new_task_profit"
+                                    value="{{ old('new_task_profit', number_format($tasks->tax - $tasks->refund_charge, 2) ?? '') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            </div>
                             @error('new_task_profit')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
                             @enderror
@@ -198,12 +222,15 @@
 
                         <!-- Total Nett Refund Amount -->
                         <div>
-                            <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total Nett
-                                Refund Amount to Client</label>
-                            <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
-                                id="total_nett_refund"
-                                value="{{ old('total_nett_refund', number_format($invoiceDetails->task_price, 2) ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                            <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total
+                                Refund to Client</label>
+                            <div class="flex items-center">
+                                <span class="text-lg font-semibold mr-2">=</span>
+                                <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
+                                    id="total_nett_refund"
+                                    value="{{ old('total_nett_refund', number_format($invoiceDetails->task_price, 2) ?? '') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                            </div>
                             @error('total_nett_refund')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
                             @enderror

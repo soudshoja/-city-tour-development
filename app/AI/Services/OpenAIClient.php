@@ -388,20 +388,20 @@ class OpenAIClient implements AIClientInterface
 
         Log::info('OpenAI API response: ', $response);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $message = $response['choices'][0]['message']['content'];
+
+        if (
+            isset($response['output'][0]['content'][0]['text']) &&
+            is_string($response['output'][0]['content'][0]['text'])
+        ) {
+            $message = $response['output'][0]['content'][0]['text'];
             $decodedResponse = json_decode($message, true);
-
         } else {
-
             return [
                 'status' => 'error',
                 'message' => 'Failed to extract data from the response',
                 'data' => null,
             ];
-
         }
-
 
         $this->deleteFileFromOpenAI($fileId);
 

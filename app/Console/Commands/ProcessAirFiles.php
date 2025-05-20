@@ -15,12 +15,12 @@ use Illuminate\Support\Facades\Log;
 
 class ProcessAirFiles extends Command
 {
-    protected $signature = 'air:process-files';
+    protected $signature = 'app:process-files';
 
     protected $description = 'Scans the root air-files directory for new AIR files, processes them using existing logic, and moves them.';
 
-    protected $airFilesPath;
-    protected $processedFilesPath;
+    // protected $airFilesPath;
+    // protected $processedFilesPath;
     protected $aiManager;
     protected $suppliers;
 
@@ -28,8 +28,8 @@ class ProcessAirFiles extends Command
     {
         parent::__construct();
 
-        $this->airFilesPath = storage_path('app/air_files_unprocessed');
-        $this->processedFilesPath = storage_path('app/air_files_processed');
+        // $this->airFilesPath = storage_path('app/air_files_unprocessed');
+        // $this->processedFilesPath = storage_path('app/air_files_processed');
         $this->aiManager = $aiManager;
         $this->suppliers = Supplier::all();
     }
@@ -52,9 +52,9 @@ class ProcessAirFiles extends Command
                 return 1;
             }
 
-            if (!File::isDirectory($this->processedFilesPath)) {
-                File::makeDirectory($this->processedFilesPath, 0755, true, true);
-                $this->info("Created processed files directory: {$this->processedFilesPath}");
+            if (!File::isDirectory($filePath)) {
+                File::makeDirectory($filePath, 0755, true, true);
+                $this->info("Created processed files directory: {$supplierName}/files_processed");
             }
 
             $filesToProcess = File::files($filePath);
@@ -77,7 +77,6 @@ class ProcessAirFiles extends Command
 
                     $extractedData = $this->processWithAiTool($filePath, $fileName);
 
-                    continue;
 
                     if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
                         Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
@@ -105,7 +104,7 @@ class ProcessAirFiles extends Command
                     $this->info("File {$fileName} processed successfully by AI tool.");
 
                     // Move the file to the processed directory
-                    $destinationPath = storage_path('app/air_files_processed') . '/' . $supplierName . '/' . $fileName;
+                    $destinationPath = storage_path("app/{$supplierName}/files_processed") . '/' . $fileName;
                     File::move($filePath, $destinationPath);
 
                     Log::info("AIR File Processing: Successfully moved {$fileName} to {$destinationPath}.");
@@ -157,9 +156,11 @@ class ProcessAirFiles extends Command
                 return null;
             }
 
-            $task = $data['text']['tasks'] ?? null;
-            $taskFlightDetails = $data['text']['task_flight_details'] ?? null;
-            $taskHotelDetails = $data['text']['task_hotel_details'] ?? null;
+            Log::info('Extracting data from AI Tool for ' . $fileName . ': ' . json_encode($data));
+
+            $task = $data['task'] ?? null;
+            $taskFlightDetails = $data['task_flight_details'] ?? null;
+            $taskHotelDetails = $data['task_hotel_details'] ?? null;
 
             if ($task['type'] === 'flight') {
                 $processedData = [

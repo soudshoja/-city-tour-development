@@ -511,6 +511,35 @@ class BankPaymentController extends Controller
         return response()->json($entries);
     }
 
+    public function declineReconcile($transactionId)
+    {   
+        $transaction = JournalEntry::findOrFail($transactionId);
 
+        $recJournalEntry = JournalEntry::where('id', $transaction->id)
+            ->firstOrFail();
+
+        $recJournalEntry->reconciled = 0;
+        $recJournalEntry->save();
+
+        JournalEntry::where('id', $recJournalEntry->id)->update([
+            'reconciled' => 0,
+        ]);
+
+        $recOriginalJournalEntry = JournalEntry::where('reconciled_ref_id', $recJournalEntry->id)->get();
+        foreach ($recOriginalJournalEntry as $entry) {
+            $entry->reconciled = 0;
+            $entry->reconciled_ref_id = null;
+            $entry->save();           
+        }
+
+        JournalEntry::where('reconciled_ref_id', $recJournalEntry->id)->update([
+            'reconciled' => 0,
+            'reconciled_ref_id' => null,
+        ]);
+
+        JournalEntry::where('id', $recJournalEntry->id)->delete();
+
+        return response()->json(['success' => true]);
+    }
 
 }

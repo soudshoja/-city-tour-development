@@ -245,7 +245,12 @@
                                         @if ($transaction->reconciled == 2)
                                             <button type="button" class="btn btn-lightblue btn-sm p-10"
                                                 onclick="fetchJournalEntries({{ $transaction->id }})">
-                                                Reconciled Item
+                                                View Reconciled Item
+                                            </button>
+
+                                            <button type="button" class="mt-1 btn btn-warning text-black btn-sm p-10"
+                                                onclick="declineReconcileJournalEntries({{ $transaction->id }})">
+                                                Decline & Remove Reconcile
                                             </button>
                                         @endif
                                     </td>
@@ -454,12 +459,13 @@
                     } else {
                         let totalDebit = 0;
                         let totalCredit = 0;
+                        let count = 1;
                         let table = `
                     <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-50">
                         <table class="min-w-full table-auto text-sm">
                             <thead class="bg-gray-100 sticky top-0">
                                 <tr>
-                                    <th class="border px-2 py-1">ID</th>
+                                    <th class="border px-2 py-1">#</th>
                                     <th class="border px-2 py-1">Date</th>
                                     <th class="border px-2 py-1">Name</th>
                                     <th class="border px-2 py-1">Description</th>
@@ -474,7 +480,7 @@
                             totalCredit += parseFloat(entry.credit);
                             table += `
                         <tr>
-                            <td class="border px-2 py-1">${entry.id}</td>
+                            <td class="border px-2 py-1">${count}</td>
                             <td class="border px-2 py-1">${entry.transaction_date}</td>
                             <td class="border px-2 py-1">${entry.name}</td>
                             <td class="border px-2 py-1">${entry.description}</td>
@@ -482,6 +488,7 @@
                             <td class="border px-2 py-1 text-right">${parseFloat(entry.credit).toFixed(2)}</td>
                         </tr>
                     `;
+                            count++;
                         });
 
                         // Total row
@@ -513,6 +520,36 @@
 
         function closeJournalEntriesModal() {
             document.getElementById('journalEntriesModal').classList.add('hidden');
+        }
+
+        function declineReconcileJournalEntries(transactionId) {
+
+            console.log(transactionId);
+            if (!confirm('Are you sure you want to decline & remove this reconciliation?')) {
+                return;
+            }
+
+            fetch(`/bank-payments/${transactionId}/decline-reconcile`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Reconciliation declined successfully.');
+                        location.reload(); // reload to reflect changes
+                    } else {
+                        alert('Failed to decline reconciliation.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while declining reconciliation.');
+                });
         }
     </script>
 

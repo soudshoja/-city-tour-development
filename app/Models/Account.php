@@ -32,7 +32,8 @@ class Account extends Model
        'currency',
        'is_group',
        'disabled',
-       'balance_must_be'
+       'balance_must_be',
+       'supplier_company_id',
     ];
 
     public const REPORT_TYPES = [

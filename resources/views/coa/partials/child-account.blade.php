@@ -1,51 +1,34 @@
 <li x-data="{ open: false, showAddCategoryForm: false }" class="relative w-full flex flex-col cursor-pointer"
-    :class="{ 'pointer-events-none': showAddCategoryForm }">
+    :class="{ 'pointer-events-none: showAddCategoryForm }">
     <div class="flex gap-2 border-b border-b-[#E5E7EB] dark:border-b-[#374151]">
-        <div class="flex items-center justify-between py-2 w-full hover:text-[#508D4E] transition-all dark:hover:text-[#00ab55] dark:text-white"
+        <div class="flex justify-between py-2 w-full hover:text-[#508D4E] transition-all  dark:hover:text-[#00ab55] dark:text-white"
             @click="if (!showAddCategoryForm) open = !open">
-
-            <!-- Account Name -->
-            <span class="px-2 w-1/3 truncate">{{ $account->name }}</span>
-
-            <!-- Account Code -->
-            <div class="w-1/6 flex justify-center">
+            <span class="px-2 flex-shrink-0">{{ $account->name }}</span>
+            <div class="flex justify-start w-120">
                 <div
-                    class="p-2 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
+                    class="p-2 min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
                     {{ $account->code }}
                 </div>
             </div>
-
-            <!-- Account Balance (Right-Aligned) -->
-            <div class="w-1/6 flex justify-end pr-2">
-                <div
-                    class="p-2 w-fit h-fit text-xs text-right rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
-                    {{ number_format($account->balance, 2) }}
-                </div>
+            <div
+                class="p-2  min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
+                {{ $account->balance }}
             </div>
-
-            <!-- Toggle Icon, Add Button, Ledger Link -->
-            <div class="px-2 flex items-center gap-2 w-1/3 justify-end">
-                <!-- Toggle Icons -->
-                <template x-if="!open">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
-                            stroke-linejoin="round" />
-                        <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                </template>
-                <template x-if="open">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
-                            stroke-linejoin="round" />
-                        <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                </template>
-
-                <!-- Add Button -->
+            <div class="px-2 flex items-center gap-2">
+                <svg x-show="!open" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <svg x-show="open" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 4L10 20L4 14.5" stroke="#00ab55" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path opacity="0.5" d="M14 20L14 4L20 9.5" stroke="#1C274C" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
                 @if ($account->is_group)
                     <button @click.stop="showAddCategoryForm = !showAddCategoryForm"
                         class="text-green-600 hover:text-green-800">
@@ -58,17 +41,7 @@
                 @else
                     <div class="w-6"></div>
                 @endif
-
-                <!-- Ledger Link -->
-                @if ($account->ledger)
-                    <a class="p-2 text-xs text-blue-500 hover:underline" target="_blank"
-                        href="{{ route('journal-entries.show', $account->id) }}">
-                        Ledger
-                    </a>
-                @endif
             </div>
-
-            <!-- Modal -->
             <div x-show="showAddCategoryForm" x-cloak @keydown.escape.window="showAddCategoryForm = false"
                 class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-75 transition-opacity cursor-default">
                 <div @click.away="showAddCategoryForm = false"
@@ -93,10 +66,23 @@
                             <input type="text" name="code" required placeholder="Enter code"
                                 class="w-full border rounded text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         </div>
+                        <!-- <div class="mb-4" x-data x-init="new TomSelect($refs.accountType, { closeAfterSelect: true, hideSelected: true, create: false })">
+                            <label class="block text-sm font-medium mb-1">
+                                Account Type<span class="text-red-500"> *</span>
+                            </label>
+                            <select name="accountType" x-ref="accountType" id="account-type" required placeholder="Select type" autocomplete="off">
+                                <option value="">Select type</option>
+                                <option value="expenses">Expenses</option>
+                                <option value="fixed_assets">Fixed Assets</option>
+                                <option value="acc_payable">Account Payable</option>
+                            </select>
+                        </div> -->
                         <div class="mb-4" x-data x-init="new TomSelect($refs.entity, { closeAfterSelect: true, hideSelected: true, create: false })">
-                            <label class="block text-sm font-medium mb-1">Entity</label>
-                            <select data-level="{{ $account->level }}" data-account-id="{{ $account->id }}"
-                                name="entity" x-ref="entity" class="entitySelect w-full" placeholder="Select entity"
+                            <label class="block text-sm font-medium mb-1">
+                                Entity
+                            </label>
+                            <select data-level = "{{ $account->level }}" data-account-id="{{ $account->id }}"
+                                name="entity" x-ref="entity" class="entitySelect" placeholder="Select entity"
                                 autocomplete="off">
                                 <option value="">Select entity</option>
                                 <option value="client">Client</option>
@@ -120,9 +106,13 @@
                 </div>
             </div>
         </div>
+        @if ($account->ledger)
+            <a class="p-2 text-xs text-center text-blue-500 hover:underline" target="_blank"
+                href="{{ route('journal-entries.show', $account->id) }}">
+                Ledger
+            </a>
+        @endif
     </div>
-
-    <!-- Child Accounts -->
     <ul x-show="open" class="ml-6 space-y-2">
         @if ($account->childAccounts && $account->childAccounts->isNotEmpty())
             @foreach ($account->childAccounts as $childAccount)
@@ -133,3 +123,4 @@
         @endif
     </ul>
 </li>
+<script></script>

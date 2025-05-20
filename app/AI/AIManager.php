@@ -24,4 +24,9 @@ class AIManager
     {
         return $this->client->extractAirFiles($parameter);
     }
+
+    public function extractPdfFiles($parameter)
+    {
+        return $this->client->extractPdfFiles($parameter);
+    }
 }

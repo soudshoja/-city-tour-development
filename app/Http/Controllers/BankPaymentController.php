@@ -146,6 +146,8 @@ class BankPaymentController extends Controller
             $bankPaymentType = 'Refund';
             $reconciledFlag = 0;
             $reconciledProcess = 'no';
+            $totalNettRefund = Refund::where('refund_number', $request->refund_number)
+            ->value('total_nett_refund');
         } else {
             $bankPaymentType = 'Invoice'; 
             $reconciledFlag = 0;
@@ -189,11 +191,13 @@ class BankPaymentController extends Controller
                 'company_id' => $request->company_id ?? auth()->user()->company->id,
                 'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                 'transaction_type' => 'debit',
-                'amount' => $request->total_payment ?? 0,
+                'amount' => $request->bankpaymenttype === 'Refund'
+                    ? $totalNettRefund
+                    : abs($request->credit - $request->debit),
                 'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'description' => $request->bankpaymenttype === 'Refund'
-                ? 'Client Refund Payable - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
+                ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
                 : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'invoice_id' => null,
                 'reference_number' => $request->bankpaymentref,
@@ -215,7 +219,9 @@ class BankPaymentController extends Controller
                     'company_id' => $request->company_id ?? auth()->user()->company->id,
                     'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                     'transaction_id' => $transaction->id,
-                    'description' => $item['remarks'] ?? '',
+                    'description' => $request->bankpaymenttype === 'Refund'
+                    ? 'Refund - ' . $item['remarks']
+                    : $item['remarks'],
                     'debit' => $item['debit'] ?? 0,
                     'credit' => $item['credit'] ?? 0,
                     'balance' => $item['balance'] ?? 0,

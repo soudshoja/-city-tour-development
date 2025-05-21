@@ -368,9 +368,9 @@ class TaskController extends Controller
                 ->where('company_id', $task->company_id)
                 ->get();
 
-            if (!$supplierAccount) {
-                throw new Exception('Supplier account not found.');
-            }
+            // if (!$supplierAccount) {
+            //     throw new Exception('Supplier account not found.');
+            // }
 
             $supplierPayable = collect();
             $supplierCost = collect();

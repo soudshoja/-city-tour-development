@@ -212,17 +212,15 @@
 
 
                         <div>
-
-                            <div class="flex items-center"><br><br>
+                            <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">
+                                &nbsp;&nbsp;</label>
+                            <div class="flex items-center">
                                 <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
                                     stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
                                 </svg>
                                 New Profit
                             </div>
-                            @error('new_task_profit')
-                                <span class="text-red-500 text-sm">{{ $message }}</span>
-                            @enderror
                         </div>
 
                         <!--Original Refund Amount -->

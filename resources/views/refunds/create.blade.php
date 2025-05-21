@@ -113,7 +113,7 @@
                 </div>
 
                 <!-- Grouped Fields -->
-                <div class="border border-gray-300 rounded-lg p-6 bg-gray-50">
+                <div class="border border-gray-300 rounded-lg px-10 py-20 bg-gray-50">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <input hidden type="number" step="0.01" name="air_refund_amount" id="air_refund_amount"
                             value="{{ number_format($tasks->total, 2) ?? 0 }}"
@@ -137,7 +137,11 @@
                                 Original Task Profit
                             </label>
                             <div class="flex items-center">
-                                <span class="text-lg font-semibold mr-2">+</span>
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                                </svg>
+
                                 <input readonly type="number" step="0.01" name="original_task_profit"
                                     id="original_task_profit"
                                     value="{{ old('original_task_profit', number_format($invoiceDetails->markup_price, 2) ?? '') }}"
@@ -151,7 +155,11 @@
                             <label for="airline_nett_fare" class="block text-gray-700 font-semibold mb-2">Original Task
                                 Selling Price</label>
                             <div class="flex items-center">
-                                <span class="text-lg font-semibold mr-2">=</span>
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                                </svg>
+
                                 <input readonly type="number" step="0.01" name="airline_nett_fare"
                                     id="airline_nett_fare"
                                     value="{{ old('airline_nett_fare', number_format($invoiceDetails->task_price, 2) ?? '') }}"
@@ -159,26 +167,10 @@
                             </div>
                         </div>
 
-
-
-                        <!-- Airline Refund Charge -->
-                        <div>
-                            <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">
-                                Refund Task Supplier Charges</label>
-                            <input readonly type="number" step="0.01" name="refund_airline_charge"
-                                id="refund_airline_charge"
-                                value="{{ old('refund_airline_charge', number_format($invoiceDetails->task_price - $invoiceDetails->markup_price - $tasks->total, 2) ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                        <!-- Horizontal Rule -->
+                        <div class="col-span-full">
+                            <hr class="mx-2 my-4 border-t border-gray-300">
                         </div>
-
-                        <!-- Tax Refund -->
-                        {{-- <div>
-                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Non-Refundable
-                                Tax</label>
-                            <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
-                                value="{{ old('tax_refund', number_format($tasks->refund_charge, 2) ?? '') }}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
-                        </div> --}}
 
                         <!-- Service Charge Fee -->
                         <div>
@@ -193,7 +185,44 @@
                             @enderror
                         </div>
 
-                        <br>
+                        <!-- Airline Refund Charge -->
+                        <div>
+                            <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">
+                                Refund Task Supplier Charges</label>
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                                </svg>
+                                <input readonly type="number" step="0.01" name="refund_airline_charge"
+                                    id="refund_airline_charge"
+                                    value="{{ old('refund_airline_charge', number_format($invoiceDetails->task_price - $invoiceDetails->markup_price - $tasks->total, 2) ?? '') }}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Tax Refund -->
+                        {{-- <div>
+                            <label for="tax_refund" class="block text-gray-700 font-semibold mb-2">Non-Refundable
+                                Tax</label>
+                            <input readonly type="number" step="0.01" name="tax_refund" id="tax_refund"
+                                value="{{ old('tax_refund', number_format($tasks->refund_charge, 2) ?? '') }}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                        </div> --}}
+
+
+                        <div>
+                            <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">
+                                &nbsp;&nbsp;</label>
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                                </svg>
+                                New Profit
+                            </div>
+                        </div>
+
                         <!--Original Refund Amount -->
                         <div>
                             <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">
@@ -209,7 +238,11 @@
                             <label for="new_task_profit" class="block text-gray-700 font-semibold mb-2">New
                                 Profit</label>
                             <div class="flex items-center">
-                                <span class="text-lg font-semibold mr-2">-</span>
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                                </svg>
+
                                 <input type="number" step="0.01" min="-999999.99" name="new_task_profit"
                                     id="new_task_profit"
                                     value="{{ old('new_task_profit', number_format($tasks->tax - $tasks->refund_charge, 2) ?? '') }}"
@@ -225,7 +258,11 @@
                             <label for="total_nett_refund" class="block text-gray-700 font-semibold mb-2">Total
                                 Refund to Client</label>
                             <div class="flex items-center">
-                                <span class="text-lg font-semibold mr-2">=</span>
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                                </svg>
+
                                 <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
                                     id="total_nett_refund"
                                     value="{{ old('total_nett_refund', number_format($invoiceDetails->task_price, 2) ?? '') }}"
@@ -307,11 +344,11 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const airlineNettFareInput = document.getElementById('airline_nett_fare');
-            const serviceChargeInput = document.getElementById('service_charge');
-            const totalNettRefundInput = document.getElementById('total_nett_refund');
+            const originalTaskPriceInput = document.getElementById('original_task_price');
             const originalRefundAmountInput = document.getElementById('original_refund_amount');
             const newTaskProfitInput = document.getElementById('new_task_profit');
+            const serviceChargeInput = document.getElementById('service_charge');
+            const totalNettRefundInput = document.getElementById('total_nett_refund');
 
             let isUpdating = false;
 
@@ -319,16 +356,49 @@
                 return parseFloat(input.value) || 0;
             }
 
-            function updateTotalNettRefund() {
+            function initializeFields() {
+                const taskPrice = parse(originalTaskPriceInput);
+                const originalRefund = parse(originalRefundAmountInput);
+
+                const serviceCharge = taskPrice - originalRefund;
+                const newProfit = 0;
+                const totalRefund = originalRefund - newProfit;
+
+                serviceChargeInput.value = serviceCharge.toFixed(2);
+                newTaskProfitInput.value = newProfit.toFixed(2);
+                totalNettRefundInput.value = totalRefund.toFixed(2);
+            }
+
+            function updateFromNewProfit() {
                 if (isUpdating) return;
                 isUpdating = true;
 
-                const fare = parse(airlineNettFareInput);
-                const charge = parse(serviceChargeInput);
-                const totalRefund = fare - charge;
+                const taskPrice = parse(originalTaskPriceInput);
+                const originalRefund = parse(originalRefundAmountInput);
+                const newProfit = parse(newTaskProfitInput);
+
+                const totalRefund = originalRefund - newProfit;
+                const serviceCharge = taskPrice - totalRefund;
 
                 totalNettRefundInput.value = totalRefund.toFixed(2);
-                updateNewProfitFromTotal();
+                serviceChargeInput.value = serviceCharge.toFixed(2);
+
+                isUpdating = false;
+            }
+
+            function updateFromServiceCharge() {
+                if (isUpdating) return;
+                isUpdating = true;
+
+                const taskPrice = parse(originalTaskPriceInput);
+                const originalRefund = parse(originalRefundAmountInput);
+                const serviceCharge = parse(serviceChargeInput);
+
+                const totalRefund = taskPrice - serviceCharge;
+                const newProfit = originalRefund - totalRefund;
+
+                totalNettRefundInput.value = totalRefund.toFixed(2);
+                newTaskProfitInput.value = newProfit.toFixed(2);
 
                 isUpdating = false;
             }
@@ -337,52 +407,27 @@
                 if (isUpdating) return;
                 isUpdating = true;
 
+                const taskPrice = parse(originalTaskPriceInput);
+                const originalRefund = parse(originalRefundAmountInput);
                 const totalRefund = parse(totalNettRefundInput);
-                const fare = parse(airlineNettFareInput);
-                const charge = fare - totalRefund;
 
-                serviceChargeInput.value = charge.toFixed(2);
-                updateNewProfitFromTotal();
+                const serviceCharge = taskPrice - totalRefund;
+                const newProfit = originalRefund - totalRefund;
+
+                serviceChargeInput.value = serviceCharge.toFixed(2);
+                newTaskProfitInput.value = newProfit.toFixed(2);
 
                 isUpdating = false;
             }
 
-            function updateNewProfitFromTotal() {
-                const original = parse(originalRefundAmountInput);
-                const totalRefund = parse(totalNettRefundInput);
-                const profit = original - totalRefund;
-
-                newTaskProfitInput.value = profit.toFixed(2);
-            }
-
-            function updateFromNewProfit() {
-                if (isUpdating) return;
-                isUpdating = true;
-
-                const original = parse(originalRefundAmountInput);
-                const profit = parse(newTaskProfitInput);
-
-                const totalRefund = original - profit;
-                totalNettRefundInput.value = totalRefund.toFixed(2);
-
-                const fare = parse(airlineNettFareInput);
-                const charge = fare - totalRefund;
-                serviceChargeInput.value = charge.toFixed(2);
-
-                isUpdating = false;
-            }
+            // Initialize values on page load
+            initializeFields();
 
             // Event bindings
-            airlineNettFareInput.addEventListener('input', updateTotalNettRefund);
-            serviceChargeInput.addEventListener('input', updateTotalNettRefund);
-            totalNettRefundInput.addEventListener('input', updateFromTotalNettRefund);
-            originalRefundAmountInput.addEventListener('input', updateNewProfitFromTotal);
             newTaskProfitInput.addEventListener('input', updateFromNewProfit);
-
-            // Initial calculation
-            updateTotalNettRefund();
+            serviceChargeInput.addEventListener('input', updateFromServiceCharge);
+            totalNettRefundInput.addEventListener('input', updateFromTotalNettRefund);
         });
     </script>
-
 
 </x-app-layout>

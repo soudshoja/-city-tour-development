@@ -368,9 +368,9 @@ class TaskController extends Controller
                 ->where('company_id', $task->company_id)
                 ->get();
 
-            if (!$supplierAccount) {
-                throw new Exception('Supplier account not found.');
-            }
+            // if (!$supplierAccount) {
+            //     throw new Exception('Supplier account not found.');
+            // }
 
             $supplierPayable = collect();
             $supplierCost = collect();
@@ -443,7 +443,7 @@ class TaskController extends Controller
                     'account_id' => $supplierPayable->id,
                     'task_id' => $task->id,
                     'transaction_date' => Carbon::now(),
-                    'description' => 'Records Payable to (Liabilities) : ' . $supplierCompany->supplier->name,
+                    'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
                     'name' => $supplierCompany->supplier->name,
                     'debit' => 0,
                     'credit' => $task->total,
@@ -459,12 +459,13 @@ class TaskController extends Controller
 
                 // Get or create Supplier Refund Account
                 $assetsPayableAccount = Account::where('name', 'Accounts Payable')
+                    ->where('company_id', $task->company_id)
                     ->where('root_id', 2)    
                     ->first();
 
                 $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')
                     ->where('company_id', $task->company_id)
-                    ->where('parent_id', $assetsPayableAccount->id)
+                    ->where('root_id', $assetsPayableAccount->root_id)
                     ->first();
 
                 if (!$supplierRefundAccount) {
@@ -494,14 +495,15 @@ class TaskController extends Controller
                 }
 
                 // Get Expense Account
-                $expensesDirectExpenses = Account::where('name', 'LIKE', '%Flights Cost%')
+                $expensesDirectExpenses = Account::where('name', 'LIKE', '%Direct Expenses%')
+                    ->where('company_id', $task->company_id)
                     ->where('root_id', 5)    
                     ->first();
-                $accountSupplierRefundExpenses = $accountSupplierName;
+                $accountSupplierRefundExpenses = ucfirst($task->type) . 's Cost';
 
-                $supplierRefundExpenses = Account::where('name', 'LIKE', $accountSupplierRefundExpenses)
+                $supplierRefundExpenses = Account::where('name', $accountSupplierRefundExpenses)
                     ->where('company_id', $task->company_id)
-                    ->where('parent_id', $expensesDirectExpenses->id)
+                    ->where('root_id', $expensesDirectExpenses->root_id)  
                     ->first();
         
                 if (!$supplierRefundExpenses) {
@@ -554,7 +556,7 @@ class TaskController extends Controller
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
                     'account_id' => $supplierRefundAccountEntry->id,
-                    'description' => 'Refund Task - Supplier refunds us ('.$supplierRefundAccountEntry->name.')',
+                    'description' => 'Refund Task - Supplier refunds us (Liabilities): '.$supplierRefundAccountEntry->name.'',
                     'debit' => $task->total,
                     'credit' => 0,
                     'name' => $supplierRefundAccountEntry->name,
@@ -567,7 +569,7 @@ class TaskController extends Controller
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
                     'account_id' => $supplierRefundExpensesEntry->id,
-                    'description' => 'Refund Task - Flight cost return ('.$supplierRefundExpensesEntry->name.')',
+                    'description' => 'Refund Task - Flight cost return (Expenses): '.$supplierRefundExpensesEntry->name.'',
                     'debit' => 0,
                     'credit' => $task->total,
                     'name' => $supplierRefundExpensesEntry->name,

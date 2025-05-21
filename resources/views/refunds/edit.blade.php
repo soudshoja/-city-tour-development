@@ -163,15 +163,28 @@
                             <hr class="mx-2 my-4 border-t border-gray-300">
                         </div>
 
+                        <div>
+                            <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Refund Fee to
+                                Client</label>
+                            <input type="number" step="0.01" name="service_charge" id="service_charge"
+                                value="{{ old('service_charge', $refund->service_charge ?? '') }}" readonly
+                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                        </div>
 
                         <!-- Airline Refund Charge -->
                         <div>
                             <label for="refund_airline_charge" class="block text-gray-700 font-semibold mb-2">Refund
                                 Task Supplier Charges</label>
-                            <input type="number" step="0.01" name="refund_airline_charge"
-                                id="refund_airline_charge"
-                                value="{{ old('refund_airline_charge', $refund->refund_airline_charge ?? '') }}"
-                                readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                                </svg>
+                                <input type="number" step="0.01" name="refund_airline_charge"
+                                    id="refund_airline_charge"
+                                    value="{{ old('refund_airline_charge', $refund->refund_airline_charge ?? '') }}"
+                                    readonly class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                            </div>
                         </div>
 
                         <!-- Tax Refund -->
@@ -182,18 +195,21 @@
                                 value="{{ old('tax_refund', $refund->tax_refund ?? '') }}"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-200">
                         </div> --}}
-
-
                         <!-- Total Service Charge -->
+
                         <div>
-                            <label for="service_charge" class="block text-gray-700 font-semibold mb-2">Refund Fee to
-                                Client</label>
-                            <input type="number" step="0.01" name="service_charge" id="service_charge"
-                                value="{{ old('service_charge', $refund->service_charge ?? '') }}" readonly
-                                class="w-full px-4 py-2 border border-gray-300 bg-gray-200 rounded-lg">
+                            <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">
+                                &nbsp;&nbsp;</label>
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path>
+                                </svg>
+                                New Profit
+                            </div>
                         </div>
 
-                        <br>
+
                         <!--Original Refund Amount -->
                         <div>
                             <label for="original_refund_amount" class="block text-gray-700 font-semibold mb-2">Refund

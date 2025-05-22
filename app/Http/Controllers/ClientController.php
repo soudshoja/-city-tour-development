@@ -20,6 +20,7 @@ use App\Models\Payment;
 use App\Models\RefundClient;
 use App\Models\Role;
 use App\Models\Transaction;
+use App\Models\Credit;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -867,6 +868,11 @@ class ClientController extends Controller
             ]);
         }
 
-
+        // get Credit balance of a client
+        public function getCreditBalance($id)
+        {
+            $credit = Credit::getTotalCreditsByClient($id);
+            return response()->json(['credit' => $credit]);
+        }
 
 }

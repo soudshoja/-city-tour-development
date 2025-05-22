@@ -63,27 +63,39 @@
                                         </svg>
                                     </label>
                                 </th> -->
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Actions
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Actions
                                 </th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Client's Name</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Credit (KWD)</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Email</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Phone</th>
-                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">Agent's Name</th>
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Client's Name</th>
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Credit (KWD)</th>
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Email</th>
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Phone</th>
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Agent's Name</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if ($clients->isEmpty())
-                            <tr>
-                                <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No
-                                    data for now.... Create new!</td>
-                            </tr>
+                                <tr>
+                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No
+                                        data for now.... Create new!</td>
+                                </tr>
                             @else
-                            @foreach ($clients as $client)
-                            <tr data-name="{{ $client->name }}" data-email="{{ $client->email }}"
-                                data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
-                                data-client-id="{{ $client ? $client->id : null }}"class="taskRow">
-                                <!-- <td>
+                                @foreach ($clients as $client)
+                                    <tr data-name="{{ $client->name }}" data-email="{{ $client->email }}"
+                                        data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
+                                        data-client-id="{{ $client ? $client->id : null }}"class="taskRow">
+                                        <!-- <td>
                                     <label class="custom-checkbox" data-tooltip="select client">
                                         <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" data-id="{{ $client->id }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
@@ -91,46 +103,67 @@
                                         </svg>
                                     </label>
                                 </td> -->
-                                <td class="p-3 text-sm text-center">
-                                    <a href="javascript:void(0);"
-                                        class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
-                                        data-id="{{ $client->id }}" data-name="{{ $client->name }}"
-                                        data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
-                                        data-tooltip="see Client">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                            viewBox="0 0 24 24">
-                                            <g fill="none" stroke="currentColor" stroke-width="1">
-                                                <path d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
-                                                    opacity=".5" />
-                                                <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                            </g>
-                                        </svg>
-                                    </a>
-                                </td>
+                                        <td class="p-3 text-sm text-center">
+                                            <a href="javascript:void(0);"
+                                                class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
+                                                data-id="{{ $client->id }}" data-name="{{ $client->name }}"
+                                                data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
+                                                data-tooltip="see Client">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                    viewBox="0 0 24 24">
+                                                    <g fill="none" stroke="currentColor" stroke-width="1">
+                                                        <path
+                                                            d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
+                                                            opacity=".5" />
+                                                        <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                                    </g>
+                                                </svg>
+                                            </a>
+                                        </td>
 
 
-                                <!-- <td
+                                        <!-- <td
                                             class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
-                                <td
-                                    class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                    <!-- <a href="{{ route('clients.show', ['id' => $client->id]) }}"
+                                        <td
+                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                            <!-- <a href="{{ route('clients.show', ['id' => $client->id]) }}"
                                                 class="block">{{ $client->name }}</a> -->
-                                    {{ $client->name }}
-                                </td>
-                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                    {{ $client->credit ? $client->credit : 'N/A' }}
-                                </td>
-                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                    {{ $client->email ? $client->email : 'N/A' }}
-                                </td>
-                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                    {{ $client->phone ? $client->phone : 'N/A' }}
-                                </td>
-                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                    {{ $client->agent ? $client->agent->name : 'N/A' }}
-                                </td>
-                            </tr>
-                            @endforeach
+                                            {{ $client->name }}
+                                        </td>
+                                        {{-- <td
+                                            class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                            <a href="javascript:void(0);"
+                                                class="clientCreditLink text-blue-600 font-bold"
+                                                data-client-id="{{ $client->id }}">
+                                                {{ $client->credit ? number_format($client->credit, 2) : 'N/A' }}
+                                            </a>
+                                        </td> --}}
+                                        <td class="p-3 text-sm font-semibold text-center">
+                                            @php
+                                                $totalCredit = \App\Models\Credit::getTotalCreditsByClient($client->id);
+                                                $creditColor = $totalCredit >= 0 ? 'text-green-600' : 'text-red-600';
+                                            @endphp
+                                            <a href="javascript:void(0);"
+                                                class="clientCreditLink font-bold {{ $creditColor }}"
+                                                data-client-id="{{ $client->id }}">
+                                                {{ number_format($totalCredit, 2) }}
+                                            </a>
+                                        </td>
+
+                                        <td
+                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                            {{ $client->email ? $client->email : 'N/A' }}
+                                        </td>
+                                        <td
+                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                            {{ $client->phone ? $client->phone : 'N/A' }}
+                                        </td>
+                                        <td
+                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                            {{ $client->agent ? $client->agent->name : 'N/A' }}
+                                        </td>
+                                    </tr>
+                                @endforeach
                             @endif
                         </tbody>
                     </table>
@@ -293,6 +326,49 @@
         </div>
     </div>
     <!-- ./edit agent details modal -->
+</div>
+
+
+<!-- Credit Details Modal -->
+<div id="creditDetailsModal"
+    class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center px-4"
+    onclick="closeModalOnOutsideClick(event)">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl relative max-h-[90vh]"
+        onclick="event.stopPropagation();">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Credit Transaction Details</h2>
+            <button id="closeModal" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="p-4">
+            <form id="creditFilterForm" class="flex flex-wrap gap-4 mb-4">
+                <input type="date" name="from" id="filterFromDate"
+                    class="border p-2 rounded w-full sm:w-auto">
+                <input type="date" name="to" id="filterToDate" class="border p-2 rounded w-full sm:w-auto">
+                <input type="hidden" id="modalClientId" name="client_id">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                    Filter
+                </button>
+            </form>
+
+            <!-- Scrollable Table -->
+            <div class="overflow-y-auto max-h-[350px]">
+                <table class="w-full text-m text-left border-collapse">
+                    <thead class="sticky top-0 bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th class="p-2 border-b">Date</th>
+                            <th class="p-2 border-b">Type</th>
+                            <th class="p-2 border-b">Description</th>
+                            <th class="p-2 border-b text-right">Amount (KWD)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="creditDetailsBody">
+                        <!-- Rows will be populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -664,4 +740,83 @@
             alert('Network error occurred!');
         }
     }
+
+
+    //credit details modal
+    document.querySelectorAll('.clientCreditLink').forEach(link => {
+        link.addEventListener('click', function() {
+            const clientId = this.dataset.clientId;
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            const toDateString = date => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            const from = toDateString(firstDay);
+            const to = toDateString(lastDay);
+
+            document.getElementById('filterFromDate').value = from;
+            document.getElementById('filterToDate').value = to;
+            document.getElementById('modalClientId').value = clientId;
+
+            fetchCredits(clientId, from, to);
+
+            document.getElementById('creditDetailsModal').classList.remove('hidden');
+        });
+    });
+
+
+    document.getElementById('closeModal').addEventListener('click', function() {
+        document.getElementById('creditDetailsModal').classList.add('hidden');
+    });
+
+    document.getElementById('creditFilterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const clientId = document.getElementById('modalClientId').value;
+        const from = document.getElementById('filterFromDate').value;
+        const to = document.getElementById('filterToDate').value;
+        fetchCredits(clientId, from, to);
+    });
+
+    function fetchCredits(clientId, from, to) {
+        fetch(`/credits/filter?client_id=${clientId}&from=${from}&to=${to}`)
+            .then(response => response.json())
+            .then(data => {
+                const body = document.getElementById('creditDetailsBody');
+                body.innerHTML = '';
+
+                if (data.length === 0) {
+                    body.innerHTML =
+                        `<tr><td colspan="4" class="p-2 text-center text-gray-500">No records found</td></tr>`;
+                    return;
+                }
+
+                data.forEach(credit => {
+                    body.innerHTML += `
+                    <tr>
+                        <td class="p-2">${credit.date}</td>
+                        <td class="p-2">${credit.type ?? '-'}</td>
+                        <td class="p-2">${credit.description ?? '-'}</td>
+                        <td class="p-2 text-right font-semibold ${credit.amount >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${parseFloat(credit.amount).toFixed(2)}
+                        </td>
+                    </tr>
+                `;
+                });
+            });
+    }
+
+    function closeModalOnOutsideClick(event) {
+        const modal = document.getElementById('creditDetailsModal');
+        modal.classList.add('hidden');
+    }
+
+    document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('creditDetailsModal').classList.add('hidden');
+    });
 </script>

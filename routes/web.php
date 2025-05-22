@@ -38,6 +38,7 @@ use Google\ApiCore\Testing\ProtobufMessageComparator;
 use App\Http\Controllers\DownloadMediaController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\BankPaymentController;
+use App\Http\Controllers\CreditController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
@@ -432,6 +433,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('updateGroup');
         Route::get('/{id}/getDetails', [ClientController::class, 'getDetails'])->name('getDetails');
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
+        Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
+
 
     });
 
@@ -480,6 +483,17 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', NotificationIndex::class)->name('index');
     });
+
+    // CREDITS
+    Route::group([
+        'prefix' => 'credits',
+        'as' => 'credits.',
+    ], function () {
+        Route::get('/', [CreditController::class, 'index'])->name('index');
+        Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
+
+    });
+
 
 });
 

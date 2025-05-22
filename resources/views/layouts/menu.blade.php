@@ -85,6 +85,12 @@
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
                 </menuitem>
             @endcan
+            {{-- @can('viewAny', 'App\Models\Credit') --}}
+            <menuitem><a href="{{ route('credits.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
+                Credit</a>
+            </menuitem>
+            {{-- @endcan --}}
         </menu>
         </menuitem>
 

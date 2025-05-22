@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\Task;
 use App\Models\JournalEntry;
+use App\Models\Credit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -348,7 +349,8 @@ class RefundController extends Controller
     }
 
     public function complete_process(Task $task, Refund $refund)
-    {
+    {   
+        $user = Auth::user();
         if ($refund->task_id !== $task->id) {
             return response()->json(['error' => 'Invalid Task or Refund.'], 400);
         }
@@ -357,69 +359,134 @@ class RefundController extends Controller
 
         try {
 
-            // // Create Transaction Record
-            // $transaction = Transaction::create([
-            //     'entity_id' => $taskRec->company_id,
-            //     'entity_type' => 'company',
-            //     'company_id' => $taskRec->company_id,
-            //     'branch_id' => $taskRec->agent->branch_id,
-            //     'transaction_type' => 'debit',
-            //     'amount' => $refundRec->new_task_profit,
-            //     'date' => $refundRec->date,
-            //     'description' => 'Adjusted Profit - Refund ('.$refundRec->refund_number.')',
-            //     'reference_type' => 'Refund',
-            //     'reference_number' => $refundRec->refund_number,
-            //     'name' => $taskRec->client_name,
-            //     'remarks_internal' => $refundRec->remarks_internal,
+            // Create Transaction Record
+            $transaction = Transaction::create([
+                'entity_id' => $taskRec->company_id,
+                'entity_type' => 'company',
+                'company_id' => $taskRec->company_id,
+                'branch_id' => $taskRec->agent->branch_id,
+                'transaction_type' => 'debit',
+                'amount' => $refundRec->new_task_profit,
+                'date' => $refundRec->date,
+                'description' => 'Adjusted Profit - Refund ('.$refundRec->refund_number.')',
+                'reference_type' => 'Refund',
+                'reference_number' => $refundRec->refund_number,
+                'name' => $taskRec->client_name,
+                'remarks_internal' => $refundRec->remarks_internal,
                 
-            // ]);
+            ]);
 
-            // $incomeIndirectIncome = Account::where('name', 'LIKE', '%Indirect Income%')->first();
-            // $accountSupplierRefundIncome = 'Adjusted Profit';
+            $incomeIndirectIncome = Account::where('name', 'LIKE', '%Expenses%')->first();
+            $accountSupplierRefundIncome = 'Refund Clearing / Payable Allocation';
     
-            // $supplierRefundIncome = Account::where('name', 'LIKE', $accountSupplierRefundIncome)
-            //     ->where('company_id', $taskRec->company_id)
-            //     ->first();
+            $supplierRefundIncome = Account::where('name', $accountSupplierRefundIncome)
+                ->where('company_id', $taskRec->company_id)
+                ->where('root_id', 5)
+                ->first();
     
-            // if (!$supplierRefundIncome) {
-            //     $supplierRefundIncomeId = Account::create([
-            //         'name' => $accountSupplierRefundIncome,
-            //         'parent_id' => $incomeIndirectIncome->id,
-            //         'company_id' => Auth::user()->company->id,
-            //         'branch_id' => Auth::user()->branch_id,
-            //         'root_id' => $incomeIndirectIncome->root_id,
-            //         'code' => $incomeIndirectIncome->code + 1,
-            //         'account_type' => 'asset',
-            //         'report_type' => 'balance sheet',
-            //         'level' => $incomeIndirectIncome->level + 1,
-            //         'is_group' => 0,
-            //         'disabled' => 0,
-            //         'actual_balance' => 0.00,
-            //         'budget_balance' => 0.00,
-            //         'variance' => 0.00,
-            //         'currency' => 'KWD',
-            //         'created_at' => now(),
-            //         'updated_at' => now(),
-            //     ]);
-            //     $supplierRefundDirectIncomeEntry =  $supplierRefundIncomeId;
-            // } else {
-            //     $supplierRefundDirectIncomeEntry =  $supplierRefundIncome;
-            // }
+            if (!$supplierRefundIncome) {
+                $supplierRefundIncomeId = Account::create([
+                    'name' => $accountSupplierRefundIncome,
+                    'parent_id' => $incomeIndirectIncome->id,
+                    'company_id' => Auth::user()->company->id,
+                    'branch_id' => Auth::user()->branch_id,
+                    'root_id' => $incomeIndirectIncome->root_id,
+                    'code' => $incomeIndirectIncome->code + 1,
+                    'account_type' => 'asset',
+                    'report_type' => 'balance sheet',
+                    'level' => $incomeIndirectIncome->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => 'KWD',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $supplierRefundDirectIncomeEntry =  $supplierRefundIncomeId;
+            } else {
+                $supplierRefundDirectIncomeEntry =  $supplierRefundIncome;
+            }
+
+
+            $incomeIndirectLiability = Account::where('name', 'LIKE', '%Refund Payable%')
+                ->where('company_id', $taskRec->company_id)
+                ->where('root_id', 2)            
+                ->first();
+
+            $accountSupplierRefundLiability = 'Clients';
     
-            // // Step 1: Debit Entry for Refund
-            // JournalEntry::create([
-            //     'transaction_date' => $refundRec->date,
-            //     'transaction_id' => $transaction->id,
-            //     'company_id' => $taskRec->company_id,
-            //     'branch_id' => $taskRec->agent->branch_id,
-            //     'account_id' => $supplierRefundDirectIncomeEntry->id,
-            //     'description' => $refundRec->refund_number . ' - '.$supplierRefundDirectIncomeEntry->name.'',
-            //     'debit' => $refundRec->new_task_profit,
-            //     'credit' => 0,
-            //     'voucher_number' => $refundRec->id,
-            //     'name' => $supplierRefundDirectIncomeEntry->name,
-            //     'type' => 'refund',
-            // ]);
+            $supplierRefundLiability = Account::where('name', $accountSupplierRefundLiability)
+                ->where('company_id', $taskRec->company_id)
+                ->where('root_id', $incomeIndirectLiability->root_id)
+                ->first();
+
+            if (!$supplierRefundLiability) {
+                $supplierRefundLiabilityId = Account::create([
+                    'name' => $accountSupplierRefundLiability,
+                    'parent_id' => $incomeIndirectLiability->id,
+                    'company_id' => Auth::user()->company->id,
+                    'branch_id' => Auth::user()->branch_id,
+                    'root_id' => $incomeIndirectLiability->root_id,
+                    'code' => $incomeIndirectLiability->code + 1,
+                    'account_type' => 'asset',
+                    'report_type' => 'balance sheet',
+                    'level' => $incomeIndirectLiability->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => 'KWD',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $supplierRefundDirectLiabilityEntry =  $supplierRefundLiabilityId;
+            } else {
+                $supplierRefundDirectLiabilityEntry =  $supplierRefundLiability;
+            }            
+    
+            // Step 1: Debit Entry for Refund
+            JournalEntry::create([
+                'transaction_date' => $refundRec->date,
+                'transaction_id' => $transaction->id,
+                'company_id' => $taskRec->company_id,
+                'branch_id' => $taskRec->agent->branch_id,
+                'account_id' => $supplierRefundDirectIncomeEntry->id,
+                'description' => $refundRec->refund_number . ' - '.$supplierRefundDirectIncomeEntry->name.'',
+                'debit' => $refundRec->new_task_profit,
+                'credit' => 0,
+                'voucher_number' => $refundRec->id,
+                'name' => $supplierRefundDirectIncomeEntry->name,
+                'type' => 'refund',
+            ]);
+
+            // Step 2: Debit Entry for Refund
+            JournalEntry::create([
+                'transaction_date' => $refundRec->date,
+                'transaction_id' => $transaction->id,
+                'company_id' => $taskRec->company_id,
+                'branch_id' => $taskRec->agent->branch_id,
+                'account_id' => $supplierRefundDirectLiabilityEntry->id,
+                'description' => $refundRec->refund_number . ' - '.$supplierRefundDirectLiabilityEntry->name.'',
+                'debit' => 0,
+                'credit' => $refundRec->new_task_profit,
+                'voucher_number' => $refundRec->id,
+                'name' => $supplierRefundDirectLiabilityEntry->name,
+                'type' => 'refund',
+            ]);
+
+            // Create Credit Record
+            $creditSubmit = Credit::create([
+                'company_id'  => $taskRec->company_id,
+                'client_id'   => $taskRec->client_id,
+                'task_id'   => $taskRec->id,
+                'type'        => 'Refund',
+                'description' => $refundRec->refund_number . ': Refund for ' . $supplierRefundDirectLiabilityEntry->name,
+                'amount'      => $refundRec->new_task_profit,
+            ]);
+
 
             $refund->update(['status' => 'completed']);
             return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');

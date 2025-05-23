@@ -22,6 +22,7 @@ use App\Models\InvoiceSequence;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Models\Credit;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
@@ -444,9 +445,10 @@ class InvoiceController extends Controller
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
 
         $client = Client::find($clientId);
-
+        $balanceCredit = Credit::getTotalCreditsByClient($clientId);
+        //dd($credit, $balanceCredit);
         if ($credit) {
-            if ($amount > $client->credit) {
+            if ($amount > $balanceCredit) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Client credit is not enough!',
@@ -482,9 +484,23 @@ class InvoiceController extends Controller
 
 
         if ($invoice->is_client_credit == true) {
-            $newAmountCredit = $client->credit - $amount;
-            $clientController = new ClientController();
-            $clientController->updateCredit($clientId, $newAmountCredit);
+            // $newAmountCredit = $client->credit - $amount;
+            // $clientController = new ClientController();
+            // $clientController->updateCredit($clientId, $newAmountCredit);
+            // Create Credit Record
+            try{
+                $creditSubmit = Credit::create([
+                    'company_id'  => $invoice->client->agent->branch->company_id,
+                    'client_id'   => $clientId,
+                    'type'        => 'Invoice',
+                    'description' => 'Payment by Credit: ' . $invoice->invoice_number,
+                    'amount'      => -($invoice->amount),
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to create Credit: ' . $e->getMessage());
+                return response()->json('Something Went Wrong', 500);
+            }
+
         }
 
         $invoiceDetail = InvoiceDetail::where('invoice_id', $invoiceId)->first();
@@ -1027,12 +1043,17 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
+        $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('company_id', $invoice->agent->branch->company_id)
+            ->where('type', 'Invoice')
+            ->first();
+
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'company'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'company', 'checkUtilizeCredit'));
     }
 
     public function generatePdf(string $invoiceNumber)
@@ -1304,77 +1325,155 @@ class InvoiceController extends Controller
     {
         $request->validate([
             'invoice_id' => 'required|integer',
-            'payment_gateway' => 'required|string',
+            'selected_option' => 'required|string',
+            'payment_gateway' => 'nullable|string',
         ]);
 
         $invoiceId = $request->input('invoice_id');
+        $option = $request->input('selected_option');
         $gateway = $request->input('payment_gateway');
 
         $invoice = Invoice::find($invoiceId);
 
-        if (!$invoice) {
-            logger('Invoice not found', ['invoiceId' => $invoiceId]);
+        if (!$invoice || !$invoice->client) {
+            logger('Invoice or client not found', ['invoiceId' => $invoiceId]);
             return redirect()->back()->with('error', 'Something went wrong!');
         }
 
-        if (!$invoice->client) {
-            logger('Client not found in this invoice', ['invoiceId' => $invoiceId]);
-            return redirect()->back()->with('error', 'Something went wrong!');
-        }
-
-        $amount = $invoice->amount;
         $client = $invoice->client;
         $agent = $invoice->agent;
+        $amount = $invoice->amount;
+        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+        $balance = $amount - ($balanceCredit);
 
-        $balance = $amount - $client->credit;
+        if ($option === 'use_credit') {           
+            if ($balanceCredit <= 0) {
+                return redirect()->back()->with('error', 'Client has no available credit balance.');
+            }
 
-        try{
-            $client->credit = 0;
-            $client->save();
+            try {
 
-            $invoicePartial = InvoicePartial::create([
-                'invoice_id' => $invoice->id,
-                'invoice_number' => $invoice->invoice_number,
-                'client_id' => $client->id,
-                'agent_id' => $agent->id,
-                'amount' => $amount,
-                'status' => 'unpaid',
-                'type' => 'full',
-                'payment_gateway' => $gateway,
-            ]);
+                $creditSubmit = Credit::create([
+                    'company_id'  => $agent->company_id,
+                    'client_id'   => $client->id,
+                    'invoice_id'  => $invoice->id,
+                    'type'        => 'Invoice',
+                    'description' => 'Payment for ' . $invoice->invoice_number,
+                    'amount'      => -($balanceCredit),
+                ]);    
 
-        } catch (Exception $e) {
-            logger('Failed to create invoice link: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Something went wrong!');
+                $invoicePartial = InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'amount' => $amount,
+                    'status' => 'unpaid',
+                    'type' => 'full',
+                    'payment_gateway' => $gateway,
+                ]);
+
+                // Save the invoice type
+                $invoice->payment_type = 'full';
+                $invoice->save();
+
+                // // Create Payment Request
+                // $paymentRequest = new Request([
+                //     'client_id' => $client->id,
+                //     'agent_id' => $agent->id,
+                //     'invoice_id' => $invoice->id,
+                //     'amount' => $balance,
+                //     'type' => 'full',
+                //     'payment_gateway' => $gateway,
+                //     'notes' => 'Payment link created for invoice: ' . $invoice->invoice_number . ' with balance of: ' . $balance,
+                // ]);
+
+                // $paymentController = new PaymentController();
+                // $response = $paymentController->paymentStoreLinkProcess($paymentRequest);
+
+                // if ($response['status'] === 'error') {
+                //     $invoicePartial->delete();
+                //     return redirect()->back()->with('error', 'Failed to create payment link.');
+                // }
+
+                // $payment = $response['data'];
+
+                return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Client credit applied. Invoice link created successfully!');
+
+            } catch (Exception $e) {
+                logger('Failed to apply client credit: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to apply client credit.');
+            }
         }
 
-        $request  = new Request([
-            'client_id' => $client->id,
-            'agent_id' => $agent->id,
-            'invoice_id' => $invoice->id,
-            'amount' => $balance,
-            'type' => 'full',
-            'payment_gateway' => $gateway,
-            'notes' => 'Payment link created for invoice: ' . $invoice->invoice_number . ' with balance of: ' . $balance,
-        ]);
+        if ($option === 'generate_yes') {
+            if (!$gateway) {
+                return redirect()->back()->with('error', 'Payment gateway is required.');
+            }
 
-        $paymentController = new PaymentController();
-        $response = $paymentController->paymentStoreLinkProcess($request);
+            $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+            $balance = $amount - $balanceCredit;
+            if ($balanceCredit <= 0) {
+                return redirect()->back()->with('error', 'Client has no available credit balance.');
+            }
+            
+            try {
+                // Reset client credit
+                // $client->credit = 0;
+                // $client->save();
 
-        if ($response['status'] == 'error'){
-            $invoicePartial->delete();
-            return redirect()->back()->with('error', 'Failed to create invoice link!');
+                //utilize the credit
+                $creditSubmit = Credit::create([
+                    'company_id'  => $agent->company_id,
+                    'client_id'   => $client->id,
+                    'type'        => 'Invoice',
+                    'description' => 'Payment for ' . $invoice->invoice_number,
+                    'amount'      => -($balanceCredit),
+                ]);                
+
+                // Create InvoicePartial
+                $invoicePartial = InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'amount' => $amount,
+                    'status' => 'unpaid',
+                    'type' => 'full',
+                    'payment_gateway' => $gateway,
+                ]);
+
+                // Create Payment Request
+                $paymentRequest = new Request([
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'invoice_id' => $invoice->id,
+                    'amount' => $balance,
+                    'type' => 'full',
+                    'payment_gateway' => $gateway,
+                    'notes' => 'Payment link created for invoice: ' . $invoice->invoice_number . ' with balance of: ' . $balance,
+                ]);
+
+                $paymentController = new PaymentController();
+                $response = $paymentController->paymentStoreLinkProcess($paymentRequest);
+
+                if ($response['status'] === 'error') {
+                    $invoicePartial->delete();
+                    return redirect()->back()->with('error', 'Failed to create payment link.');
+                }
+
+                $payment = $response['data'];
+                return redirect()->route('payment.link.show', $payment->id)->with('status', 'Invoice link created successfully!');
+            } catch (Exception $e) {
+                logger('Failed to create invoice/payment link: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Something went wrong!');
+            }
         }
 
-        $payment = $response['data'];
-
-        if(!$payment){
-            logger('Payment not found', ['invoiceId' => $invoiceId]);
-            return redirect()->back()->with('error', 'Something went wrong!');
-        }
-
-        return redirect()->route('payment.link.show', $payment->id)->with('status', 'Invoice link created successfully!');
+        return redirect()->back()->with('error', 'Invalid option selected.');
     }
+
+
 
     public function createInvoiceWithLoss(Request $request)
     {

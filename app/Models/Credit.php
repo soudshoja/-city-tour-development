@@ -12,7 +12,7 @@ class Credit extends Model
     protected $fillable = [
         'company_id',
         'client_id',
-        'task_id',
+        'invoice_id',
         'type',
         'description',
         'amount',
@@ -30,9 +30,9 @@ class Credit extends Model
         return $this->belongsTo(Client::class);
     }
 
-    public function task()
+    public function invoice()
     {
-        return $this->belongsTo(Task::class);
+        return $this->belongsTo(Invoice::class);
     }
 
     public static function getTotalCreditsByClient($clientId)

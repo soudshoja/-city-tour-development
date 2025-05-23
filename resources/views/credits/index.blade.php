@@ -7,8 +7,8 @@
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Transaction of Credits</h2>
             <div data-tooltip="total of credits"
-                class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm">
-                <span class="text-xl font-bold text-white">{{ number_format($totalCreditsAmount, 0) }}</span>
+                class="relative w-auto p-2 h-12 flex items-center justify-center DarkBGcolor shadow-sm rounded-xl">
+                <span class="text-xl font-bold text-white">{{ number_format($totalCreditsAmount, 2) }}</span>
             </div>
         </div>
         <!-- add new credit & refresh page -->

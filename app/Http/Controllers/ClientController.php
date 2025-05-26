@@ -183,6 +183,8 @@ class ClientController extends Controller
         $unpaid = $invoicesPart->flatMap->invoicePartials->where('status', '<>', 'paid')->sum('amount');
 
         $clients = Client::with('agent.branch')->get();
+        $balanceCredit = Credit::getTotalCreditsByClient($id);
+
         // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
         // $childClients = ClientGroup::where('parent_client_id', $id)
         //     ->with('childClient') // Load related child clients
@@ -204,7 +206,7 @@ class ClientController extends Controller
         //         ];
         //     });
 
-        return view('clients.new-profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'clients')); // Ensure the view exists
+        return view('clients.new-profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'clients', 'balanceCredit')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -697,7 +699,8 @@ class ClientController extends Controller
     }
 
     public function refundProcess($id, Request $request)
-    {
+    {   
+        //dd($id, $request->all());
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'agent_id' => 'required|exists:agents,id',
@@ -711,13 +714,15 @@ class ClientController extends Controller
         }
 
         $client = Client::findOrFail($id);
-
-        if ($client->credit < $request->amount) {
+        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+        if ($balanceCredit < $request->amount) {
             return [
                 'status' => 'error',
                 'message' => 'Insufficient credit',
             ];
         }
+
+        //dd($balanceCredit);
 
         DB::beginTransaction();
 
@@ -815,8 +820,10 @@ class ClientController extends Controller
                 'type_reference_id' => $refundPayable->id
             ]);
 
-            $client->credit -= $request->amount;
-            $client->save();
+            // $client->credit -= $request->amount;
+            // $client->save();
+
+
 
             RefundClient::create([
                 'client_id' => $client->id,
@@ -826,6 +833,20 @@ class ClientController extends Controller
                 'currency' => 'KWD',
                 'remark' => $request->remark,
             ]);
+
+            try{
+                Credit::create([
+                    'company_id'  => $client->agent->branch->company->id,
+                    'client_id'   => $client->id,
+                    'type'        => 'Refund Credit',
+                    'description' => 'Refund Credit for ' . $client->name,
+                    'amount'      => -($request->amount),
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to create Credit: ' . $e->getMessage());
+                return response()->json('Something Went Wrong', 500);
+            }
+
 
         } catch (Exception $e) {
             DB::rollBack();

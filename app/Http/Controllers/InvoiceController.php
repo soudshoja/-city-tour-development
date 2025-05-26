@@ -773,11 +773,6 @@ class InvoiceController extends Controller
 
         $accountsToBeUpdate = [];
 
-        Log::info('Client credit flag and accounts to update', [
-            'is_client_credit' => $invoice->is_client_credit,
-            'accountsToBeUpdate' => $accountsToBeUpdate,
-        ]);
-
         if($invoice->is_client_credit){
             $liabilities = Account::where('name', 'like', 'Liabilities%')
                 ->where('company_id', $task->company_id)
@@ -906,6 +901,11 @@ class InvoiceController extends Controller
                 'message' => 'Account not found!',
             ];
         }
+
+        Log::info('Client credit flag and accounts to update', [
+            'is_client_credit' => $invoice->is_client_credit,
+            'accountsToBeUpdate' => $accountsToBeUpdate,
+        ]);
 
         try {
             foreach ($accountsToBeUpdate as $account) {

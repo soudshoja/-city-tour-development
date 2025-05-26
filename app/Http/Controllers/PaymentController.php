@@ -26,13 +26,14 @@ use App\Models\Transaction;
 use App\Models\Charge;
 use App\Models\Currency;
 use App\Models\Role;
+use App\Models\Credit;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Redirect;
 use App\Support\PaymentGateway\Tap;
 use Google\Rpc\Context\AttributeContext\Response;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Str;
 class PaymentController extends Controller
 {
     use NotificationTrait;
@@ -1158,6 +1159,41 @@ class PaymentController extends Controller
                 $invoice->paid_date = now();
                 $invoice->save();
             }
+
+            if ($invoice->is_client_credit == 2) {
+                $creditSubmit = Credit::create([
+                    'company_id'  => $invoice->client->agent->branch->company_id,
+                    'client_id'   => $invoice->client->id,
+                    'invoice_id'  => $invoice->id,
+                    'type'        => 'Topup',
+                    'description' => 'Topup Client Credit for ' . $invoice->client->name,
+                    'amount'      => $invoice->amount,
+                ]);    
+            }
+
+            $croppedOriginalInvoiceNo = Str::before($invoice->invoice_number, '-TC-');
+
+            $originalInvoice = Invoice::where('invoice_number', $croppedOriginalInvoiceNo)
+                ->where('is_client_credit', 1)
+                ->where('status', 'unpaid')
+                ->first();
+
+            if ($originalInvoice) {
+                $originalInvoice->status = 'paid';
+                $originalInvoice->paid_date = now();
+                $originalInvoice->save();
+
+                $creditSubmit = Credit::create([
+                    'company_id'  => $originalInvoice->client->agent->branch->company_id,
+                    'client_id'   => $originalInvoice->client->id,
+                    'invoice_id'  => $originalInvoice->id,
+                    'type'        => 'Topup',
+                    'description' => 'Payment for ' . $originalInvoice->invoice_number,
+                    'amount'      => -($invoice->amount),
+                ]);  
+            }
+
+            //dd($process);
 
         } catch (Exception $e) {
             logger('Failed to update payment status', [

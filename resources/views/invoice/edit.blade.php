@@ -478,7 +478,10 @@
                                         <div class="min-h-40 min-w-40 p-7 bg-white rounded shadow"
                                             @click.away="generateInvoiceWithCreditModal = false">
                                             <header class="text-lg font-semibold mb-4">
-                                                Would you like to generate a new invoice to top up the client's credit?
+                                                Would you
+                                                like to generate a new invoice to top up the client's credit<br>
+                                                by using the current credit balance of {{ $balanceCredit }} KWD by
+                                                {{ $selectedClient->name }}?
                                             </header>
 
                                             <main>
@@ -495,8 +498,8 @@
                                                                 value="generate_yes"
                                                                 class="form-radio h-5 w-5 text-blue-600 mr-3"
                                                                 x-model="option">
-                                                            <span class="text-gray-800 text-base">[Yes] Generate New
-                                                                Invoice.</span>
+                                                            <span class="text-gray-800 text-base">[Yes] Generate new
+                                                                invoice to topup the remaining balance.</span>
                                                         </label>
 
                                                         <!-- Option 2 -->
@@ -507,9 +510,8 @@
                                                                 value="generate_no"
                                                                 class="form-radio h-5 w-5 text-blue-600 mr-3"
                                                                 x-model="option">
-                                                            <span class="text-gray-800 text-base">[No] Proceed Create
-                                                                Payment
-                                                                Link Instead.</span>
+                                                            <span class="text-gray-800 text-base">[No] Set the same
+                                                                invoice as paid in advance.</span>
                                                         </label>
 
                                                         @if ($balanceCredit > 0)
@@ -523,13 +525,10 @@
                                                                         class="form-radio h-5 w-5 text-green-600 mr-3"
                                                                         x-model="option">
                                                                     <span class="text-gray-800 text-base">
-                                                                        Use Credit Balance: {{ $balanceCredit }} KWD
+                                                                        [No] Pay the
+                                                                        remaining balance in the same invoice.
                                                                     </span>
                                                                 </div>
-                                                                <small class="ml-8 text-gray-600 mt-1">
-                                                                    [No] Using Same Invoice & Pay Only The Remaining
-                                                                    Balance Instead.
-                                                                </small>
                                                             </label>
                                                         @endif
                                                     </div>

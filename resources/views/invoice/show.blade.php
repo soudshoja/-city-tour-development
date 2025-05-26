@@ -119,11 +119,13 @@
                         <tr class="text-sm text-gray-700">
                             <td class="px-4 py-2 border">
                                 {{ $detail->task_description ?? 'N/A' }}
-                                <p>
-                                    <br>Info: {{ $detail->task->additional_info }}
-                                    <br>Type: {{ ucfirst($detail->task->type) }}
-                                    <br>Venue: {{ $detail->task->venue }}
-                                </p>
+                                @if ($detail->task_description != 'Topup Client Credit')
+                                    <p>
+                                        <br>Info: {{ $detail->task->additional_info }}
+                                        <br>Type: {{ ucfirst($detail->task->type) }}
+                                        <br>Venue: {{ $detail->task->venue }}
+                                    </p>
+                                @endif
                             </td>
                             <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
                             <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
@@ -242,19 +244,22 @@
                     <span>Subtotal:</span>
                     <span>{{ number_format($invoice->amount, 2) }}</span>
                 </div>
-                @if ($checkUtilizeCredit)
-                    <div class="flex justify-between py-2 border-b border-gray-200">
-                        <span>Client's Credit:</span>
-                        <span>{{ number_format($checkUtilizeCredit->amount, 2) }}</span>
-                    </div>
+                @if ($checkUtilizeCredit->isNotEmpty())
+                    @foreach ($checkUtilizeCredit as $credit)
+                        <div class="flex justify-between py-2 border-b border-gray-200">
+                            <span>Client's Credit ({{ $credit->created_at->format('Y-m-d') }}):</span>
+                            <span>{{ number_format($credit->amount, 2) }}</span>
+                        </div>
+                    @endforeach
                 @endif
+
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Tax ({{ $invoice->tax_rate }}%):</span>
                     <span>{{ number_format($invoice->tax, 2) }}</span>
                 </div>
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
-                    <span>{{ number_format($invoice->amount - abs($checkUtilizeCredit->amount ?? 0), 2) }}</span>
+                    <span>{{ number_format($invoice->amount - abs($checkUtilizeCredit->sum('amount') ?? 0), 2) }}</span>
                 </div>
             </div>
         </div>
@@ -389,10 +394,16 @@
             </div>
         </div>
     </div>
-    @if ($invoice->is_client_credit)
+    @if ($invoice->is_client_credit == 1)
         <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6 text-center">
             <p class="text-lg font-semibold text-green-500">
                 This is invoice paid by client credit.
+            </p>
+        </div>
+    @elseif ($invoice->is_client_credit == 2)
+        <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6 text-center">
+            <p class="text-lg font-semibold text-blue-500">
+                This is invoice paid for topup the client credit.
             </p>
         </div>
     @else

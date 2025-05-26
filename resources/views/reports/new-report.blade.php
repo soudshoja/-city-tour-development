@@ -151,8 +151,11 @@
                                     @endif
 
                                     @if (!empty($transaction->task?->flightDetails?->departure_time))
-                                        <p>Flight details: {{ $transaction->task->flightDetails->departure_time }} -
-                                            {{ $transaction->task->flightDetails->arrival_time }}</p>
+                                        <p>Flight details:
+                                            {{ \Carbon\Carbon::parse($transaction->task->flightDetails->departure_time)->format('Y-m-d H:i') }}
+                                            -
+                                            {{ \Carbon\Carbon::parse($transaction->task->flightDetails->arrival_time)->format('Y-m-d H:i') }}
+                                        </p>
                                     @endif
 
                                     @if (!empty($transaction->task?->hotelDetails->room_details))

@@ -244,10 +244,10 @@
                     <span>Subtotal:</span>
                     <span>{{ number_format($invoice->amount, 2) }}</span>
                 </div>
-                @if ($checkUtilizeCredit->isNotEmpty())
+                @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                     @foreach ($checkUtilizeCredit as $credit)
                         <div class="flex justify-between py-2 border-b border-gray-200">
-                            <span>Client's Credit ({{ $credit->created_at->format('Y-m-d') }}):</span>
+                            <span>Client's Credit ({{ $credit->created_at->format('d M Y') }}):</span>
                             <span>{{ number_format($credit->amount, 2) }}</span>
                         </div>
                     @endforeach
@@ -259,7 +259,7 @@
                 </div>
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
-                    <span>{{ number_format($invoice->amount - abs($checkUtilizeCredit->sum('amount') ?? 0), 2) }}</span>
+                    <span>{{ number_format($invoice->amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}</span>
                 </div>
             </div>
         </div>
@@ -284,7 +284,7 @@
                     @csrf
 
                     <input type="hidden" id="totalAmountInput" name="total_amount"
-                        value="{{ $invoicePartials->sum('amount') - abs($checkUtilizeCredit->amount ?? 0) }}">
+                        value="{{ $invoicePartials->sum('amount') - abs($checkUtilizeCredit->sum('amount')) ?? 0 }}">
                     <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                     <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
                     <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
@@ -298,7 +298,7 @@
                             </button>
                         @endif
                         <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                            {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount') - abs($checkUtilizeCredit->amount ?? 0), 2) }}
+                            {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount') - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}
                         </span>
                     </div>
                     <div id="loadingSpinner" class="hidden mt-2">
@@ -355,7 +355,7 @@
                 Pay Now
             </button>
             <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount') - abs($checkUtilizeCredit->amount ?? 0), 2) }}
+                {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
             </span>
         </div>
         <div id="loadingSpinner" class="hidden mt-2">
@@ -435,7 +435,7 @@
                                     </td>
                                     <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                                     <td class="px-4 py-2 border">
-                                        {{ number_format(($partial->amount ?? 0) - abs($checkUtilizeCredit->amount ?? 0), 2) }}
+                                        {{ number_format($partial->amount ?? 0, 2) }}
 
                                     </td>
                                 </tr>

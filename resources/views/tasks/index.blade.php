@@ -882,10 +882,14 @@
                     'dark:text-gray-300', 'p-3');
                 formTaskContainer.appendChild(input);
             } else if (supplier.name === 'TBO Holiday') {
-                let div = document.createElement('div');
-                div.classList.add('text-blue-500', 'text-sm', 'font-semibold', 'mt-2');
-                div.innerHTML = 'Coming Soon';
-                formTaskContainer.appendChild(div);
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'supplier_ref';
+                input.placeholder = 'Client Reference Id';
+                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
+                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
+                    'dark:text-gray-300', 'p-3');
+                formTaskContainer.appendChild(input);
             } else if (supplier.name === 'Amadeus') {
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';

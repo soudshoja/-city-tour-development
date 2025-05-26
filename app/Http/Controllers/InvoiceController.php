@@ -397,6 +397,11 @@ class InvoiceController extends Controller
 
         $appUrl = config('app.url');
 
+        // Check if the credit has been used for this invoice
+        $creditUsed = Credit::where('client_id', $invoice->client_id)
+            ->where('invoice_id', $invoice->id)
+            ->first();
+
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -415,7 +420,8 @@ class InvoiceController extends Controller
             'invoiceDate',
             'invprice',
             'dueDate',
-            'appUrl'
+            'appUrl',
+            'creditUsed'
         ));
     }
 
@@ -540,7 +546,7 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoiceId,
                 'invoice_detail_id' => $invoiceDetail->id ?? null,
                 'transaction_id' => $transaction->id ?? null,
-                'client_name' => $client->name ?? null,
+                'client_name' => $invoice->client->name ?? null,
                 'task' => $task,
             ]);
             
@@ -746,6 +752,12 @@ class InvoiceController extends Controller
         $clientName,
     ) {
 
+        Log::info('addJournalEntry method called', [
+    'task_id' => $task->id ?? null,
+    'invoice_id' => $invoiceId,
+]);
+        //dd($task, $invoiceId, $invoiceDetailId, $transactionId, $clientName);
+
         $invoice = Invoice::where('id', $invoiceId)->first();
 
         if(!$invoice) {
@@ -757,6 +769,11 @@ class InvoiceController extends Controller
         }
 
         $accountsToBeUpdate = [];
+
+        Log::info('Client credit flag and accounts to update', [
+            'is_client_credit' => $invoice->is_client_credit,
+            'accountsToBeUpdate' => $accountsToBeUpdate,
+        ]);
 
         if($invoice->is_client_credit){
             $liabilities = Account::where('name', 'like', 'Liabilities%')
@@ -1354,24 +1371,28 @@ class InvoiceController extends Controller
             try {
 
                 $creditSubmit = Credit::create([
-                    'company_id'  => $agent->company_id,
-                    'client_id'   => $client->id,
+                    'company_id'  => $invoice->client->agent->branch->company_id,
+                    'client_id'   => $invoice->client->id,
                     'invoice_id'  => $invoice->id,
                     'type'        => 'Invoice',
                     'description' => 'Payment for ' . $invoice->invoice_number,
                     'amount'      => -($balanceCredit),
                 ]);    
 
-                $invoicePartial = InvoicePartial::create([
-                    'invoice_id' => $invoice->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'client_id' => $client->id,
-                    'agent_id' => $agent->id,
-                    'amount' => $amount,
-                    'status' => 'unpaid',
-                    'type' => 'full',
-                    'payment_gateway' => $gateway,
-                ]);
+                $existingPartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
+
+                if (!$existingPartial) {
+                    $invoicePartial = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $client->id,
+                        'agent_id' => $agent->id,
+                        'amount' => $amount,
+                        'status' => 'unpaid',
+                        'type' => 'full',
+                        'payment_gateway' => $gateway,
+                    ]);
+                }
 
                 // Save the invoice type
                 $invoice->payment_type = 'full';
@@ -1406,7 +1427,7 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($option === 'generate_yes') {
+        if ($option === 'generate_yes' || $option === 'generate_no') {
             if (!$gateway) {
                 return redirect()->back()->with('error', 'Payment gateway is required.');
             }
@@ -1424,24 +1445,28 @@ class InvoiceController extends Controller
 
                 //utilize the credit
                 $creditSubmit = Credit::create([
-                    'company_id'  => $agent->company_id,
-                    'client_id'   => $client->id,
+                    'company_id'  => $invoice->client->agent->branch->company_id,
+                    'client_id'   => $invoice->client->id,
                     'type'        => 'Invoice',
                     'description' => 'Payment for ' . $invoice->invoice_number,
                     'amount'      => -($balanceCredit),
                 ]);                
 
                 // Create InvoicePartial
-                $invoicePartial = InvoicePartial::create([
-                    'invoice_id' => $invoice->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'client_id' => $client->id,
-                    'agent_id' => $agent->id,
-                    'amount' => $amount,
-                    'status' => 'unpaid',
-                    'type' => 'full',
-                    'payment_gateway' => $gateway,
-                ]);
+                $existingPartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
+
+                if (!$existingPartial) {
+                    $invoicePartial = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $client->id,
+                        'agent_id' => $agent->id,
+                        'amount' => $amount,
+                        'status' => 'unpaid',
+                        'type' => 'full',
+                        'payment_gateway' => $gateway,
+                    ]);
+                }
 
                 // Create Payment Request
                 $paymentRequest = new Request([

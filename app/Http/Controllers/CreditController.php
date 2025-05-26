@@ -81,7 +81,7 @@ class CreditController extends Controller
         $credits = Credit::where('client_id', $request->client_id)
             ->whereDate('created_at', '>=', $request->from)
             ->whereDate('created_at', '<=', $request->to)
-            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->get(['created_at', 'type', 'description', 'amount']);
 
         return response()->json($credits->map(function ($credit) {

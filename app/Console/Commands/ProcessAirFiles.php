@@ -3,13 +3,17 @@
 namespace App\Console\Commands;
 
 use App\AI\AIManager;
+use App\Http\Controllers\TaskController;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
+use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+
 // If your AI tool is a class or service, you might need to import it here
 // use App\Services\YourAiProcessingService;
 
@@ -96,6 +100,14 @@ class ProcessAirFiles extends Command
                         } else {
                             Log::error("Failed to save task for {$fileName}: " . $response['message']);
                             $this->error("Failed to save task for {$fileName}: " . $response['message']);
+
+                            $errorPath = storage_path("app/{$supplierName}/files_error");
+                            if (!File::isDirectory($errorPath)) {
+                                File::makeDirectory($errorPath, 0755, true, true);
+                            }
+                            File::move($filePath, $errorPath . '/' . $fileName);
+                            Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                            $this->info("File {$fileName} moved to error directory due to save failure.");
                             continue;
                         }
                     }
@@ -104,21 +116,27 @@ class ProcessAirFiles extends Command
                     $this->info("File {$fileName} processed successfully by AI tool.");
 
                     // Move the file to the processed directory
-                    $destinationPath = storage_path("app/{$supplierName}/files_processed") . '/' . $fileName;
-                    File::move($filePath, $destinationPath);
+                    $successPath = storage_path("app/{$supplierName}/files_processed");
+                    if (!File::isDirectory($successPath)) {
+                        File::makeDirectory($successPath, 0755, true, true);
+                    }
+                    File::move($filePath, $successPath . '/' . $fileName);
 
-                    Log::info("AIR File Processing: Successfully moved {$fileName} to {$destinationPath}.");
+                    Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
 
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $this->error("Error processing file {$fileName}: " . $e->getMessage());
                     Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
                         'file' => $fileName,
                         'trace' => $e->getTraceAsString()
                     ]);
-                    // Optional: Move to an error directory
-                    // $errorPath = storage_path('app/air_files_error');
-                    // if (!File::isDirectory($errorPath)) { File::makeDirectory($errorPath, 0755, true, true); }
-                    // File::move($filePath, $errorPath . '/' . $fileName);
+
+                    $errorPath = storage_path("app/{$supplierName}/files_error");
+                    if (!File::isDirectory($errorPath)) {
+                        File::makeDirectory($errorPath, 0755, true, true);
+                    }
+                    File::move($filePath, $errorPath . '/' . $fileName);
+                    Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
                 }
 
                 $this->info('AIR file processing for supplier' . $supplierName . ' finished.');
@@ -255,7 +273,7 @@ class ProcessAirFiles extends Command
 
             return $processedData;
 
-        } elseif (in_array($extension, ['txt', 'text'])) {
+        } elseif (in_array($extension, ['txt', 'text', 'air'])) {
 
             $fileContent = File::get($filePath);
 
@@ -287,6 +305,7 @@ class ProcessAirFiles extends Command
                         'additional_info' => $extractedData['additional_info'] ?? 'N/A',
                         'ticket_number' => $extractedData['ticket_number'] ?? 'N/A',
                         'status' => $extractedData['status'] ?? 'N/A',
+                        'supplier_status' => $extractedData['status'] ?? 'N/A',
                         'reference' => $extractedData['reference'] ?? 'N/A',
                         'gds_office_id' => $extractedData['gds_office_id'] ?? 'N/A',
                         'type' => $extractedData['type'] ?? 'N/A',
@@ -344,10 +363,6 @@ class ProcessAirFiles extends Command
 
     protected function saveTask($companyId, $data) : array
     {
-        $taskFlightDetails = $data['task_flight_details'] ?? [];
-
-        unset($data['task_flight_details']);
-
         $existingTask = Task::where('reference' , $data['reference'])
             ->where('company_id' , $companyId)
             ->where('status' , $data['status'])
@@ -374,21 +389,23 @@ class ProcessAirFiles extends Command
             ];
         }
 
-        DB::beginTransaction();
 
         try {
             $data['company_id'] = $companyId;
             $data['total'] = $data['price'] + $data['surcharge'] + $data['tax'] + $data['penalty_fee'];
+            $data['enabled'] = true;
 
-            $task = Task::create($data);
+            $taskController = new TaskController();
 
-            if (!empty($taskFlightDetails)) {
-                $taskFlightDetails['task_id'] = $task->id;
-                TaskFlightDetail::create($taskFlightDetails);
+            $request = new Request($data);
+            $response = $taskController->store($request);
+
+            if ($response->getStatusCode() !== 201) {
+                Log::error("Failed to save task: " . $response->getContent());
+                throw new Exception("Failed to save task: " . $response->getContent());
             }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (Exception $e) {
             Log::error("Failed to save task: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
@@ -399,7 +416,8 @@ class ProcessAirFiles extends Command
             ];
         }
 
-        DB::commit();
+        $task = $response->getData();
+
         return [
             'status' => 'success',
             'message' => 'Task saved successfully',

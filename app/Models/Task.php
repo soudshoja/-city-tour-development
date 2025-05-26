@@ -17,6 +17,7 @@ class Task extends Model
         'supplier_id',
         'type',
         'status',
+        'supplier_status',
         'original_task_id',
         'client_name',
         'reference',

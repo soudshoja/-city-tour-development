@@ -267,14 +267,14 @@
                                             @can('create', 'App\Models\Invoice')
                                                 <td>
                                                     <label class="custom-checkbox"
-                                                        data-tooltip="{{ !$task->is_complete ? 'Task info is not complete' : 'Select task' }}">
+                                                        data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
 
                                                         @if ($task->status !== 'refund')
                                                             <input type="checkbox"
                                                                 class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
                                                                 value="{{ $task->id }}"
                                                                 data-status="{{ $task->status }}"
-                                                                {{ $task->invoiceDetail || !$task->is_complete || $task->linkedTask ? 'disabled' : '' }}>
+                                                                {{ $task->invoiceDetail || !$task->enabled || $task->linkedTask ? 'disabled' : '' }}>
                                                         @else
                                                             <input type="checkbox"
                                                                 class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
@@ -938,10 +938,14 @@
 
 
                         } else {
-                            alert('Failed to update task status');
+                            alert(data.message || 'Failed to update task status');
+                            // this.checked = !isEnabled;
                         }
                     })
-                    .catch(error => console.error('Error:', error));
+                    .catch(error => console.error('Error:', error))
+                    .finally(()=>{
+                            window.location.reload();
+                    });
             });
         });
 

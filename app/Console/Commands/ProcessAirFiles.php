@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\AI\AIManager;
 use App\Http\Controllers\TaskController;
+use App\Models\Agent;
+use App\Models\Branch;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
@@ -81,7 +83,6 @@ class ProcessAirFiles extends Command
 
                     $extractedData = $this->processWithAiTool($filePath, $fileName);
 
-
                     if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
                         Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
                         $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
@@ -90,7 +91,67 @@ class ProcessAirFiles extends Command
 
                     $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
 
-                    $response = $this->saveTask(1,$extractedData['data']);
+                    $agentName = $extractedData['data']['agent_name'] ?? null;
+                    $agentEmail = $extractedData['data']['agent_email'] ?? null;
+
+                    if( !$agentName || !$agentEmail) {
+                        Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
+                        $this->warn("Missing agent information in {$fileName}. File will remain in place.");
+
+                        $errorPath = storage_path("app/{$supplierName}/files_error");
+
+                        $this->moveFileWithLogging(
+                            $filePath,
+                            $errorPath,
+                            $fileName,
+                            'Missing agent information'
+                        );
+
+                        continue;
+                    }
+
+                    $agent = Agent::where('name', $agentName)
+                        ->orWhere('email', $agentEmail)
+                        ->first();
+                    
+                    if (!$agent) {
+                        Log::warning("AIR File Processing: Agent not found for {$fileName}. Creating new agent.");
+                        $this->warn("Agent not found for {$fileName}. Creating new agent.");
+
+                        $errorPath = storage_path("app/{$supplierName}/files_error");
+                        $this->moveFileWithLogging(
+                            $filePath,
+                            $errorPath,
+                            $fileName,
+                            'Agent not found'
+                        );
+
+                        continue;
+                    }
+
+                    $branchId = $agent->branch_id;
+
+                    $branch = Branch::find($branchId);
+
+                    if (!$branch) {
+                        Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
+                        $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
+
+                        $errorPath = storage_path("app/{$supplierName}/files_error");
+
+                        $this->moveFileWithLogging(
+                            $filePath,
+                            $errorPath,
+                            $fileName,
+                            'Branch not found'
+                        );
+
+                        continue;
+                    }
+
+                    $companyId = $branch->company_id;
+
+                    $response = $this->saveTask($companyId,$extractedData['data']);
 
                     if ($response['status'] === 'error') {
                         if(isset($response['code']) && $response['code'] === 409) {
@@ -102,10 +163,14 @@ class ProcessAirFiles extends Command
                             $this->error("Failed to save task for {$fileName}: " . $response['message']);
 
                             $errorPath = storage_path("app/{$supplierName}/files_error");
-                            if (!File::isDirectory($errorPath)) {
-                                File::makeDirectory($errorPath, 0755, true, true);
-                            }
-                            File::move($filePath, $errorPath . '/' . $fileName);
+
+                            $this->moveFileWithLogging(
+                                $filePath,
+                                $errorPath,
+                                $fileName,
+                                'Failed to save task'
+                            );
+
                             Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
                             $this->info("File {$fileName} moved to error directory due to save failure.");
                             continue;
@@ -117,10 +182,13 @@ class ProcessAirFiles extends Command
 
                     // Move the file to the processed directory
                     $successPath = storage_path("app/{$supplierName}/files_processed");
-                    if (!File::isDirectory($successPath)) {
-                        File::makeDirectory($successPath, 0755, true, true);
-                    }
-                    File::move($filePath, $successPath . '/' . $fileName);
+
+                    $this->moveFileWithLogging(
+                        $filePath,
+                        $successPath,
+                        $fileName,
+                        'Successfully processed and saved task'
+                    );
 
                     Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
 
@@ -132,10 +200,14 @@ class ProcessAirFiles extends Command
                     ]);
 
                     $errorPath = storage_path("app/{$supplierName}/files_error");
-                    if (!File::isDirectory($errorPath)) {
-                        File::makeDirectory($errorPath, 0755, true, true);
-                    }
-                    File::move($filePath, $errorPath . '/' . $fileName);
+
+                    $this->moveFileWithLogging(
+                        $filePath,
+                        $errorPath,
+                        $fileName,
+                        'Error during processing'
+                    );
+
                     Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
                 }
 
@@ -193,6 +265,7 @@ class ProcessAirFiles extends Command
                         'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
                         'type' => $task['type'] ?? 'N/A',
                         'agent_name' => $task['agent_name'] ?? 'N/A',
+                        'agent_email' => $task['agent_email'] ?? 'N/A',
                         'client_name' => $task['client_name'] ?? 'N/A',
                         'supplier_name' => $task['supplier_name'] ?? 'N/A',
                         'supplier_country' => $task['supplier_country'] ?? 'N/A',
@@ -241,6 +314,7 @@ class ProcessAirFiles extends Command
                         'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
                         'type' => $task['type'] ?? 'N/A',
                         'agent_name' => $task['agent_name'] ?? 'N/A',
+                        'agent_email' => $task['agent_email'] ?? 'N/A',
                         'client_name' => $task['client_name'] ?? 'N/A',
                         'supplier_name' => $task['supplier_name'] ?? 'N/A',
                         'supplier_country' => $task['supplier_country'] ?? null,
@@ -424,5 +498,30 @@ class ProcessAirFiles extends Command
             'task' => $task,
         ];
 
+    }
+
+    protected function moveFileWithLogging(
+        string $sourcePath,
+        string $destinationDir,
+        string $fileName,
+        string $reason = ''
+    )
+    {
+        if (!File::isDirectory($destinationDir)) {
+            File::makeDirectory($destinationDir, 0755, true, true);
+            Log::info("Created directory: {$destinationDir}");
+        }
+
+        $destinationPath = $destinationDir . '/' . $fileName;
+
+        // Move the file
+        File::move($sourcePath, $destinationPath);
+
+        $msg = "Moved file {$fileName} to {$destinationDir}";
+        if ($reason) {
+            $msg .= " ({$reason})";
+        }
+        Log::info($msg);
+        $this->info($msg);
     }
 }

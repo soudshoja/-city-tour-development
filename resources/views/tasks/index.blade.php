@@ -497,14 +497,17 @@
                                                                             <select disabled
                                                                                 id="agent_id_select_{{ $task->id }}"
                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                <option value="">Choose Agent
-                                                                                </option>
+                                                                                <option value=""
+                                                                                    {{ empty($task->agent?->id) ? 'selected' : '' }}>
+                                                                                    Choose Agent</option>
                                                                                 @foreach ($agents as $agent)
                                                                                     <option value="{{ $agent->id }}"
                                                                                         {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
                                                                                         {{ $agent->name }}
                                                                                     </option>
                                                                                 @endforeach
+
+
                                                                             </select>
 
                                                                             <input type="hidden" name="agent_id"
@@ -943,8 +946,8 @@
                         }
                     })
                     .catch(error => console.error('Error:', error))
-                    .finally(()=>{
-                            window.location.reload();
+                    .finally(() => {
+                        window.location.reload();
                     });
             });
         });

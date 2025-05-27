@@ -401,9 +401,11 @@
                     <div id="paymentMethod" class="mt-4">
                         <h2 class="text-lg font-semibold mb-3 text-gray-700">
                             <span> Payment Type</span>
-                            <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span>
-                            <span>
-                            </span>
+
+                            @if ($invoice->payment_type)
+                                : <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span>
+                            @endif
+
                         </h2>
                         <input type="hidden" id="paymentTypeSaved" name="payment_type_saved"
                             value="{{ $invoice->payment_type }}">
@@ -446,22 +448,22 @@
 
                                     </div>
                                 @else
-                                    @if ($creditUsed)
+                                    @if ($creditUsed && $creditUsed->amount < 0)
                                         <a target="_blank"
                                             href="{{ url('/invoice/' . $invoice->invoice_number) }}"><button
                                                 type="button"
                                                 class="rounded-full flex flex-col items-center justify-center w-full
                                             px-4 py-2 border border-gray-300 
                                             bg-green-500 text-white shadow-xl">
-                                                <span>Credit (KWD
-                                                    {{ number_format(abs($creditUsed->amount), 2) ?? 0 }}) has
+                                                <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }} KWD
+                                                    has
                                                     been utilized.
                                                 </span>
                                                 <span>Current balance of credit for {{ $selectedClient->name }}:
-                                                    KWD{{ $balanceCredit }}</span>
+                                                    {{ $balanceCredit }} KWD</span>
                                             </button></a>
                                     @else
-                                        @if ($balanceCredit > 0)
+                                        @if ($balanceCredit > 0 && $invoice->payment_type == '')
                                             <button type="button" @click="generateInvoiceWithCreditModal = true"
                                                 class="rounded-full flex flex-col items-center justify-center w-full
                                             px-4 py-2 border border-gray-300 
@@ -469,7 +471,16 @@
                                             hover:bg-green-500 hover:text-white hover:shadow-xl">
                                                 <span> Still Paying With Client Credit?</span>
                                                 <span> Current balance of credit for {{ $selectedClient->name }}:
-                                                    KWD{{ $balanceCredit }}</span>
+                                                    {{ $balanceCredit }} KWD</span>
+                                            </button>
+                                        @else
+                                            <button type="button"
+                                                class="rounded-full flex flex-col items-center justify-center w-full
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2 shadow">
+
+                                                <span>Current balance of credit for {{ $selectedClient->name }}:
+                                                    {{ $balanceCredit }} KWD</span>
                                             </button>
                                         @endif
                                     @endif
@@ -479,9 +490,9 @@
                                             @click.away="generateInvoiceWithCreditModal = false">
                                             <header class="text-lg font-semibold mb-4">
                                                 Would you
-                                                like to generate a new invoice to top up the client's credit<br>
-                                                by using the current credit balance of {{ $balanceCredit }} KWD by
-                                                {{ $selectedClient->name }}?
+                                                like to pay the invoice by using the {{ $selectedClient->name }}'s
+                                                credit balance
+                                                ({{ $balanceCredit }} KWD)?
                                             </header>
 
                                             <main>
@@ -491,7 +502,7 @@
 
                                                     <div class="space-y-4 mb-6">
                                                         <!-- Option 1 -->
-                                                        <label
+                                                        {{-- <label
                                                             class="flex items-center p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
                                                             :class="{ 'bg-gray-100': option === 'generate_yes' }">
                                                             <input type="radio" name="selected_option"
@@ -500,7 +511,7 @@
                                                                 x-model="option">
                                                             <span class="text-gray-800 text-base">[Yes] Generate new
                                                                 invoice to topup the remaining balance.</span>
-                                                        </label>
+                                                        </label> --}}
 
                                                         <!-- Option 2 -->
                                                         <label
@@ -510,27 +521,30 @@
                                                                 value="generate_no"
                                                                 class="form-radio h-5 w-5 text-blue-600 mr-3"
                                                                 x-model="option">
-                                                            <span class="text-gray-800 text-base">[No] Set the same
+                                                            <span class="text-gray-800 text-base">[Yes] Set the
+                                                                same
                                                                 invoice as paid in advance.</span>
                                                         </label>
 
-                                                        @if ($balanceCredit > 0)
-                                                            <!-- Option 3 -->
-                                                            <label
-                                                                class="flex flex-col p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
-                                                                :class="{ 'bg-gray-100': option === 'use_credit' }">
-                                                                <div class="flex items-center">
-                                                                    <input type="radio" name="selected_option"
-                                                                        value="use_credit"
-                                                                        class="form-radio h-5 w-5 text-green-600 mr-3"
-                                                                        x-model="option">
-                                                                    <span class="text-gray-800 text-base">
-                                                                        [No] Pay the
-                                                                        remaining balance in the same invoice.
-                                                                    </span>
-                                                                </div>
-                                                            </label>
-                                                        @endif
+                                                        <!-- Option 3 -->
+                                                        <label
+                                                            class="flex flex-col p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
+                                                            :class="{ 'bg-gray-100': option === 'use_credit' }">
+                                                            <div class="flex items-center">
+                                                                <input type="radio" name="selected_option"
+                                                                    value="use_credit"
+                                                                    class="form-radio h-5 w-5 text-green-600 mr-3"
+                                                                    x-model="option">
+                                                                <span class="text-gray-800 text-base">
+                                                                    [Yes] Pay the
+                                                                    remaining balance
+                                                                    ({{ number_format($balanceCredit - $invoice->amount, 2) }}
+                                                                    KWD)
+                                                                    in the same invoice.
+                                                                </span>
+                                                            </div>
+                                                        </label>
+
                                                     </div>
 
                                                     <input type="hidden" name="invoice_id"

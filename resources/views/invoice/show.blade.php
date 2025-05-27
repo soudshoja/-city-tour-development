@@ -397,13 +397,7 @@
     @if ($invoice->is_client_credit == 1)
         <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6 text-center">
             <p class="text-lg font-semibold text-green-500">
-                This is invoice paid by client credit.
-            </p>
-        </div>
-    @elseif ($invoice->is_client_credit == 2)
-        <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6 text-center">
-            <p class="text-lg font-semibold text-blue-500">
-                This is invoice paid for topup the client credit.
+                This invoice has been applied with the client credit.
             </p>
         </div>
     @else

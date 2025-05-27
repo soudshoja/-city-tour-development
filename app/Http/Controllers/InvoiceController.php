@@ -122,7 +122,7 @@ class InvoiceController extends Controller
         if (auth()->user()->role_id == Role::ADMIN) {
             return view('invoice.maintenance'); // Show the maintenance page
         }
-
+        //dd($request->all());
         $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
         $taskIdsArray = [];
 
@@ -151,7 +151,7 @@ class InvoiceController extends Controller
         }
         $taskIdsArray = array_map('intval', $taskIdsArray);
         $taskIdsArray = Arr::flatten($taskIdsArray);
-        
+        //dd($taskIdsArray);
         if (count($taskIdsArray) !== count(Arr::flatten($taskIdsArray, 1))) {
             throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
         }
@@ -451,7 +451,7 @@ class InvoiceController extends Controller
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
 
         $client = Client::find($clientId);
-        $balanceCredit = Credit::getTotalCreditsByClient($clientId);
+        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
         //dd($credit, $balanceCredit);
         if ($credit) {
             if ($amount > $balanceCredit) {
@@ -459,24 +459,39 @@ class InvoiceController extends Controller
                     'success' => false,
                     'message' => 'Client credit is not enough!',
                 ]);
+            } else {
+                try {
+                    Credit::create([
+                        'company_id'  => $invoice->client->agent->branch->company_id,
+                        'client_id'   => $invoice->client->id,
+                        'invoice_id'  => $invoice->id,
+                        'type'        => 'Invoice',
+                        'description' => 'Payment for ' . $invoice->invoice_number,
+                        'amount'      => -($amount), 
+                    ]); 
+                } catch (Exception $e) {
+                    Log::error('Failed to create Credit: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to create credit record!',
+                    ]);
+                }                 
             }
+
         }
 
         try {
 
-            $invoicepartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
-            if (!$invoicepartial) {
-                $invoicepartial = InvoicePartial::create([
-                    'invoice_id' => $invoiceId,
-                    'invoice_number' => $invoiceNumber,
-                    'client_id' => $clientId,
-                    'amount' => $amount,
-                    'status' => $credit ? 'paid' : 'unpaid',
-                    'expiry_date' => $date,
-                    'type' => $type,
-                    'payment_gateway' => $gateway,
-                ]);
-            }
+            $invoicepartial = InvoicePartial::create([
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'client_id' => $clientId,
+                'amount' => $amount,
+                'status' => $credit ? 'paid' : 'unpaid',
+                'expiry_date' => $date,
+                'type' => $type,
+                'payment_gateway' => $gateway,
+            ]);
 
             $invoice->payment_type = $type;
             $invoice->status = $credit ? 'paid' : 'unpaid';
@@ -491,28 +506,7 @@ class InvoiceController extends Controller
             ]);
         }
 
-
-        if ($invoice->is_client_credit == true) {
-            // $newAmountCredit = $client->credit - $amount;
-            // $clientController = new ClientController();
-            // $clientController->updateCredit($clientId, $newAmountCredit);
-            // Create Credit Record
-            try{
-                $creditSubmit = Credit::create([
-                    'company_id'  => $invoice->client->agent->branch->company_id,
-                    'client_id'   => $clientId,
-                    'type'        => 'Invoice',
-                    'description' => 'Payment by Credit: ' . $invoice->invoice_number,
-                    'amount'      => -($invoice->amount),
-                ]);
-            } catch (Exception $e) {
-                Log::error('Failed to create Credit: ' . $e->getMessage());
-                return response()->json('Something Went Wrong', 500);
-            }
-
-        }
-
-        $invoiceDetail = InvoiceDetail::where('invoice_id', $invoiceId)->first();
+        $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
         $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
 
         $tasks = Task::with('invoiceDetail','agent')->whereIn('id', $tasksId)->get();
@@ -527,7 +521,7 @@ class InvoiceController extends Controller
                 'transaction_type' => 'credit',
                 'amount' =>  $invoice->amount,
                 'date' => Carbon::now(),
-                'description' => 'Invoice:' . $invoiceNumber . ' Generated',
+                'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
                 'invoice_id' => $invoice->id,
                 'reference_type' => 'Invoice',
             ]);
@@ -546,7 +540,7 @@ class InvoiceController extends Controller
         foreach($tasks as $task){
             Log::info('Preparing to add journal entry', [
                 'task_id' => $task->id ?? null,
-                'invoice_id' => $invoiceId,
+                'invoice_id' => $invoice->id,
                 'invoice_detail_id' => $invoiceDetail->id ?? null,
                 'transaction_id' => $transaction->id ?? null,
                 'client_name' => $invoice->client->name ?? null,
@@ -555,10 +549,10 @@ class InvoiceController extends Controller
             
             $response = $this->addJournalEntry(
                 $task,
-                $invoiceId,
+                $invoice->id,
                 $invoiceDetail->id,
                 $transaction->id,
-                $client->name,
+                $invoice->client->name,
             );
 
             if ($response['status'] == 'error') {
@@ -573,7 +567,7 @@ class InvoiceController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Invoice Partial created successfully!',
-            'invoiceId' => $invoiceId,
+            'invoiceId' => $invoice->id,
         ]);
      
     }
@@ -747,6 +741,7 @@ class InvoiceController extends Controller
         ]);
     }
 
+
     public function addJournalEntry(
         $task,
         $invoiceId,
@@ -754,208 +749,207 @@ class InvoiceController extends Controller
         $transactionId,
         $clientName,
     ) {
-
         Log::info('addJournalEntry method called', [
-    'task_id' => $task->id ?? null,
-    'invoice_id' => $invoiceId,
-]);
-        //dd($task, $invoiceId, $invoiceDetailId, $transactionId, $clientName);
-
-        $invoice = Invoice::where('id', $invoiceId)->first();
-
-        if(!$invoice) {
-            Log::error('Invoice not found', ['invoice_id' => $invoiceId]);
-            return [
-                'status' => 'error',
-                'message' => 'Invoice not found!',
-            ];
-        }
-
-        $accountsToBeUpdate = [];
-
-        if($invoice->is_client_credit){
-            $liabilities = Account::where('name', 'like', 'Liabilities%')
-                ->where('company_id', $task->company_id)
-                ->first();
-            
-            if (!$liabilities) {
-                Log::error('Missing liabilities account', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
-                return [
-                    'status' => 'error',
-                    'message' => 'Account not found!',
-                ];
-            }
-            
-            $advances = Account::where('name', 'Advances')
-                ->where('company_id', $task->company_id)
-                ->where('parent_id', $liabilities->id)
-                ->first();
-            
-            if (!$advances) {
-                Log::error('Missing advances account', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
-                return [
-                    'status' => 'error',
-                    'message' => 'Account not found!',
-                ];
-            }
-
-            $clientAdvance = Account::where('name', 'like', '%Clients%')
-                ->where('company_id', $task->company_id)
-                ->where('parent_id', $advances->id)
-                ->where('root_id', $liabilities->id)
-                ->first();
-            
-            if ($clientAdvance) {
-                $clientAdvance->description = 'Invoice created for (Assets): ' . $clientName;
-                $clientAdvance->debit_credit = 'debit';
-                $clientAdvance->amount = $task->invoiceDetail->task_price;
-
-                $accountsToBeUpdate[] = $clientAdvance;
-            }
-
-        } else {
-            $accountReceivable = Account::where('name', 'Accounts Receivable')
-                ->where('company_id', $task->company_id)
-                ->first();
-
-            if (!$accountReceivable) {
-                Log::error('Missing accountReceivable', ['task_id' => $task->id ?? null, 'company_id' => $task->company_id ?? null]);
-                return [
-                    'status' => 'error',
-                    'message' => 'Account not found!',
-                ];
-            }
-
-            $clientAccount = Account::where('name', 'like', '%Clients%')
-                ->where('company_id', $task->company_id)
-                ->where('parent_id', $accountReceivable->id)
-                ->first();
-
-            if ($clientAccount) {
-                $clientAccount->description = 'Invoice created for (Assets): ' . $clientName;
-                $clientAccount->debit_credit = 'debit';
-                $clientAccount->amount = $task->invoiceDetail->task_price;
-
-                $accountsToBeUpdate[] = $clientAccount;
-            }
-        }
-
-        if ($task['type'] == 'flight') {
-            $detailsAccount =  Account::where('name', 'like', 'Flight Booking%')
-                ->where('company_id', $task->company_id)
-                ->first();
-        } else {
-            $detailsAccount =  Account::where('name', 'like', '%Hotel Booking%')
-                ->where('company_id', $task->company_id)
-                ->first();
-        }
-
-        if ($detailsAccount) {
-            $detailsAccount->description = 'Invoice created for (Income): ' . $task['additional_info'];
-            $detailsAccount->debit_credit = 'credit';
-            $detailsAccount->amount = $task->invoiceDetail->task_price;
-
-            $accountsToBeUpdate[] = $detailsAccount;
-        }
-        $commissionCalculate = 0.15 * ($task->invoiceDetail->task_price - $task->total);
-
-        $commissionExpenses =  Account::where('name', 'like', 'Commissions Expense (Agents)%')
-            ->where('company_id', $task->company_id)
-            ->first();
-
-        if ($commissionExpenses) {
-            $commissionExpenses->description = 'Agents Commissions for (Expenses): ' . $task['agent']['name'];
-            $commissionExpenses->debit_credit = 'debit';
-            $commissionExpenses->amount = $commissionCalculate;
-
-            $accountsToBeUpdate[] = $commissionExpenses;
-        }
-
-        $AccruedCommissionsAgent = Account::where('name', 'like', 'Commissions (Agents)%')
-            ->where('company_id', $task->company_id)
-            ->first();
-
-        if ($AccruedCommissionsAgent) {
-            $AccruedCommissionsAgent->description = 'Agents Commissions for (Liabilities): ' . $task['agent']['name'];
-            $AccruedCommissionsAgent->debit_credit = 'credit';
-            $AccruedCommissionsAgent->amount = $commissionCalculate;
-
-            $accountsToBeUpdate[] = $AccruedCommissionsAgent;
-        }
-
-
-        if ( (!$advances && !$clientAccount) || !$detailsAccount || !$commissionExpenses || !$AccruedCommissionsAgent) {
-            Log::error(
-                'Failed to find account for journal entry',
-                [
-                    'advances' => $advances,
-                    'clientAccount' => $clientAccount,
-                    'detailsAccount' => $detailsAccount,
-                    'commissionExpenses' => $commissionExpenses,
-                    'AccruedCommissionsAgent' => $AccruedCommissionsAgent,
-                    'task' => $task,
-                ]
-            );
-            return [
-                'status' => 'error',
-                'message' => 'Account not found!',
-            ];
-        }
-
-        Log::info('Client credit flag and accounts to update', [
-            'is_client_credit' => $invoice->is_client_credit,
-            'accountsToBeUpdate' => $accountsToBeUpdate,
+            'task_id' => $task->id ?? null,
+            'invoice_id' => $invoiceId,
         ]);
 
+        $invoice = Invoice::find($invoiceId);
+
+        if (!$invoice) {
+            Log::error('Invoice not found', ['invoice_id' => $invoiceId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Invoice not found!',
+            ]);
+        }
+
+        // Client account (Asset)
         try {
-            foreach ($accountsToBeUpdate as $account) {
-                $journalDataCreate = [
+            if ($invoice->is_client_credit === 1) {
+                $liabilities = Account::where('name', 'like', 'Liabilities%')
+                    ->where('company_id', $task->company_id)
+                    ->first();
+
+                $advances = Account::where('name', 'Advances')
+                    ->where('company_id', $task->company_id)
+                    ->where('parent_id', optional($liabilities)->id)
+                    ->first();
+
+                $clientAdvance = Account::where('name', 'Client')
+                    ->where('company_id', $task->company_id)
+                    ->where('parent_id', optional($advances)->id)
+                    ->where('root_id', optional($liabilities)->id)
+                    ->first();
+
+                if ($clientAdvance) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $task->agent->branch_id ?? null,
+                        'company_id' => $task->company_id ?? null,
+                        'account_id' => $clientAdvance->id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => now(),
+                        'description' => 'Invoice created for (Assets): ' . $clientName,
+                        'debit' => $task->invoiceDetail->task_price,
+                        'credit' => 0,
+                        'balance' => $clientAdvance->balance ?? 0,
+                        'name' => $clientAdvance->name,
+                        'type' => 'receivable',
+                        'currency' => $task->currency ?? 'USD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $task->invoiceDetail->task_price,
+                    ]);
+                }
+            } else {
+                $accountReceivable = Account::where('name', 'Accounts Receivable')
+                    ->where('company_id', $task->company_id)
+                    ->first();
+
+                $clientAccount = Account::where('name', 'Clients')
+                    ->where('company_id', $task->company_id)
+                    ->where('parent_id', optional($accountReceivable)->id)
+                    ->first();
+
+                if ($clientAccount) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $task->agent->branch_id ?? null,
+                        'company_id' => $task->company_id ?? null,
+                        'account_id' => $clientAccount->id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => Carbon::now(),
+                        'description' => 'Invoice created for (Assets): ' . $clientName,
+                        'debit' => $task->invoiceDetail->task_price,
+                        'credit' => 0,
+                        'balance' => $clientAccount->balance ?? 0,
+                        'name' => $clientAccount->name,
+                        'type' => 'receivable',
+                        'currency' => $task->currency ?? 'USD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $task->invoiceDetail->task_price,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Client Asset Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create client asset entry',
+            ]);
+        }
+
+        // Booking account (Income)
+        try {
+            $detailsAccount = Account::where('name', 'like', $task['type'] == 'flight' ? 'Flight Booking%' : '%Hotel Booking%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if ($detailsAccount) {
+                JournalEntry::create([
                     'transaction_id' => $transactionId,
                     'branch_id' => $task->agent->branch_id ?? null,
                     'company_id' => $task->company_id ?? null,
-                    'account_id' =>  $account->id ?? null,
-                    'invoice_id' =>  $invoiceId,
-                    'invoice_detail_id' =>  $invoiceDetailId,
+                    'account_id' => $detailsAccount->id,
+                    'invoice_id' => $invoiceId,
+                    'invoice_detail_id' => $invoiceDetailId,
                     'transaction_date' => now(),
-                    'description' => $account->description ?? '',
-                    'debit' => $account->debit_credit == 'debit' ? $account->amount : 0,
-                    'credit' => $account->debit_credit == 'credit' ? $account->amount : 0,
-                    'balance' => $account->balance ?? 0,
-                    'name' =>  $account->name ?? '',
-                    'type' => $account->debit_credit == 'debit' ? 'receivable' : 'payable',
-                    // Add other required fields with sensible defaults or nulls
+                    'description' => 'Invoice created for (Income): ' . $task['additional_info'],
+                    'debit' => 0,
+                    'credit' => $task->invoiceDetail->task_price,
+                    'balance' => $detailsAccount->balance ?? 0,
+                    'name' => $detailsAccount->name,
+                    'type' => 'payable',
                     'currency' => $task->currency ?? 'USD',
                     'exchange_rate' => $task->exchange_rate ?? 1.00,
-                    'amount' => $account->amount ?? 0,
-                ];
-
-                // Log the data before creation
-                foreach (['transaction_id', 'branch_id', 'company_id', 'account_id', 'invoice_id', 'invoice_detail_id', 'name', 'description'] as $field) {
-                    if (empty($journalDataCreate[$field]) && $journalDataCreate[$field] !== 0) {
-                        Log::error("Missing required field for JournalEntry: $field", [
-                            'journalDataCreate' => $journalDataCreate,
-                            'task' => $task,
-                            'account' => $account,
-                        ]);
-                    }
-                }
-
-                Log::info('Creating JournalEntry', $journalDataCreate);
-
-                JournalEntry::create($journalDataCreate);
+                    'amount' => $task->invoiceDetail->task_price,
+                ]);
             }
-        } catch (Exception $e) {
-            Log::error('Failed to create Journal Entry: ' . $e->getMessage(), [
-                'task' => $task,
-                'accountsToBeUpdate' => $accountsToBeUpdate,
-            ]);
-            return [
-                'status' => 'error',
-                'message' => 'Failed to create journal entry',
-            ];
+        } catch (\Exception $e) {
+            Log::error('Income Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create income entry',
+            ]);        
         }
+
+        // Commission (Expense)
+        try {
+            $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+
+            $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if ($commissionExpenses) {
+                JournalEntry::create([
+                    'transaction_id' => $transactionId,
+                    'branch_id' => $task->agent->branch_id ?? null,
+                    'company_id' => $task->company_id ?? null,
+                    'account_id' => $commissionExpenses->id,
+                    'invoice_id' => $invoiceId,
+                    'invoice_detail_id' => $invoiceDetailId,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Agents Commissions for (Expenses): ' . $task['agent']['name'],
+                    'debit' => $commission,
+                    'credit' => 0,
+                    'balance' => $commissionExpenses->balance ?? 0,
+                    'name' => $commissionExpenses->name,
+                    'type' => 'receivable',
+                    'currency' => $task->currency ?? 'USD',
+                    'exchange_rate' => $task->exchange_rate ?? 1.00,
+                    'amount' => $commission,
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Commission Expense Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create commission expense entry',
+            ]);
+        }
+
+        // Commission (Liability)
+        try {
+            $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+
+            $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if ($accruedCommissions) {
+                JournalEntry::create([
+                    'transaction_id' => $transactionId,
+                    'branch_id' => $task->agent->branch_id ?? null,
+                    'company_id' => $task->company_id ?? null,
+                    'account_id' => $accruedCommissions->id,
+                    'invoice_id' => $invoiceId,
+                    'invoice_detail_id' => $invoiceDetailId,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Agents Commissions for (Liabilities): ' . $task['agent']['name'],
+                    'debit' => 0,
+                    'credit' => $commission,
+                    'balance' => $accruedCommissions->balance ?? 0,
+                    'name' => $accruedCommissions->name,
+                    'type' => 'payable',
+                    'currency' => $task->currency ?? 'USD',
+                    'exchange_rate' => $task->exchange_rate ?? 1.00,
+                    'amount' => $commission,
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Commission Liability Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create commission liability entry',
+            ]);
+        }
+
         return ['status' => 'success'];
     }
+
 
 
     public function clientAdd(Request $request)
@@ -1371,36 +1365,30 @@ class InvoiceController extends Controller
         $balanceCredit = Credit::getTotalCreditsByClient($client->id);
         $balance = $amount - ($balanceCredit);
 
-        if ($option === 'use_credit') {           
-            if ($balanceCredit <= 0) {
+        if ($balanceCredit <= 0) {
                 return redirect()->back()->with('error', 'Client has no available credit balance.');
-            }
+        }
+        $creditSubmit = Credit::create([
+            'company_id'  => $invoice->client->agent->branch->company_id,
+            'client_id'   => $invoice->client->id,
+            'invoice_id'  => $invoice->id,
+            'type'        => 'Invoice',
+            'description' => 'Payment for ' . $invoice->invoice_number,
+            'amount'      => -($balanceCredit),
+        ]); 
 
+        if ($option === 'use_credit') {           
             try {
-
-                $creditSubmit = Credit::create([
-                    'company_id'  => $invoice->client->agent->branch->company_id,
-                    'client_id'   => $invoice->client->id,
-                    'invoice_id'  => $invoice->id,
-                    'type'        => 'Invoice',
-                    'description' => 'Payment for ' . $invoice->invoice_number,
-                    'amount'      => -($balanceCredit),
-                ]);    
-
-                $existingPartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
-
-                if (!$existingPartial) {
-                    $invoicePartial = InvoicePartial::create([
-                        'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'client_id' => $client->id,
-                        'agent_id' => $agent->id,
-                        'amount' => $amount,
-                        'status' => 'unpaid',
-                        'type' => 'full',
-                        'payment_gateway' => $gateway,
-                    ]);
-                }
+                $invoicePartial = InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'amount' => $amount,
+                    'status' => 'unpaid',
+                    'type' => 'full',
+                    'payment_gateway' => $gateway,
+                ]);
 
                 // Save the invoice type
                 $invoice->status = 'unpaid';
@@ -1408,33 +1396,72 @@ class InvoiceController extends Controller
                 $invoice->is_client_credit = 1; 
                 $invoice->save();
 
-                // // Create Payment Request
-                // $paymentRequest = new Request([
-                //     'client_id' => $client->id,
-                //     'agent_id' => $agent->id,
-                //     'invoice_id' => $invoice->id,
-                //     'amount' => $balance,
-                //     'type' => 'full',
-                //     'payment_gateway' => $gateway,
-                //     'notes' => 'Payment link created for invoice: ' . $invoice->invoice_number . ' with balance of: ' . $balance,
-                // ]);
+                // Record the transaction and journal entries
+                $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
+                $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
 
-                // $paymentController = new PaymentController();
-                // $response = $paymentController->paymentStoreLinkProcess($paymentRequest);
+                $tasks = Task::with('invoiceDetail','agent')->whereIn('id', $tasksId)->get();
 
-                // if ($response['status'] === 'error') {
-                //     $invoicePartial->delete();
-                //     return redirect()->back()->with('error', 'Failed to create payment link.');
-                // }
+                DB::beginTransaction();
+                try {
+                    $transaction = Transaction::create([
+                        'company_id' => $tasks[0]->company_id,
+                        'branch_id' => $tasks[0]->agent->branch_id,
+                        'entity_id' => $tasks[0]->company_id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'credit',
+                        'amount' =>  $invoice->amount,
+                        'date' => Carbon::now(),
+                        'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
+                        'invoice_id' => $invoice->id,
+                        'reference_type' => 'Invoice',
+                    ]);
+                } catch (Exception $e) {
 
-                // $payment = $response['data'];
+                    DB::rollBack();
+
+                    Log::error('Failed to create Transactions: ' . $e->getMessage());
+                    return response()->json('Something Went Wrong', 500);
+                }
+                DB::commit();
+            
+
+                DB::beginTransaction();
+
+                foreach($tasks as $task){
+                    Log::info('Preparing to add journal entry', [
+                        'task_id' => $task->id ?? null,
+                        'invoice_id' => $invoice->id,
+                        'invoice_detail_id' => $invoiceDetail->id ?? null,
+                        'transaction_id' => $transaction->id ?? null,
+                        'client_name' => $invoice->client->name ?? null,
+                        'task' => $task,
+                    ]);
+                    
+                    $response = $this->addJournalEntry(
+                        $task,
+                        $invoice->id,
+                        $invoiceDetail->id,
+                        $transaction->id,
+                        $invoice->client->name,
+                    );
+
+                    if ($response['status'] == 'error') {
+                        DB::rollBack();
+                        Log::error('Journal entry creation failed', ['response' => $response]);
+                        return response()->json($response['message'], 500);
+                    }
+                }
+
+                DB::commit();
 
                 return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Client credit applied. Invoice link created successfully!');
 
             } catch (Exception $e) {
-                logger('Failed to apply client credit: ' . $e->getMessage());
-                return redirect()->back()->with('error', 'Failed to apply client credit.');
+                logger('Failed to pay invoice by credit: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to pay invoice by credit.');
             }
+
         }
 
         if ($option === 'generate_yes') {
@@ -1442,66 +1469,36 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', 'Payment gateway is required.');
             }
 
-            $balanceCredit = Credit::getTotalCreditsByClient($client->id);
-            $balance = $amount - $balanceCredit;
-            if ($balanceCredit <= 0) {
-                return redirect()->back()->with('error', 'Client has no available credit balance.');
-            }
-
             try {
+                // Create new invoice
                 $newinvoice = Invoice::create([
-                    'invoice_number' => $invoice->invoice_number.'-TC-'.now()->format('Yis'),
+                    'invoice_number' => $invoice->invoice_number . '-TC-' . now()->format('Yis'),
                     'agent_id' => $invoice->client->agent->id,
                     'client_id' => $invoice->client->id,
                     'sub_amount' => $balance,
                     'amount' => $balance,
                     'currency' => 'KWD',
                     'status' => 'unpaid',
-                    'is_client_credit' => 2, 
+                    'is_client_credit' => 2,
                     'payment_type' => 'full',
-                    'invoice_date' => Carbon::now(),
-                    'due_date' => Carbon::now(),
+                    'invoice_date' => now(),
+                    'due_date' => now(),
                 ]);
-            } catch (Exception $e) {
-                Log::error('Failed to create invoice: ' . $e->getMessage());
-                return response()->json('Invoice creation failed!', 500);
-            }
 
-            $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
-            $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
-
-            try {
-                // Create new InvoiceDetail
-                $invoiceDetail = InvoiceDetail::create([
+                // Create invoice detail
+                $newInvoiceDetail = InvoiceDetail::create([
                     'invoice_id' => $newinvoice->id,
                     'invoice_number' => $newinvoice->invoice_number,
-                    'task_id' => $tasksId[0], 
+                    'task_id' => $invoice->invoiceDetails->pluck('task_id')->first(),
                     'task_description' => 'Topup Client Credit',
-                    'task_price' =>  $balance,
+                    'task_price' => $balance,
                     'paid' => false,
                 ]);
-            } catch (Exception $e) {
-                Log::error('Failed to create invoice detail: ' . $e->getMessage());
-                return response()->json('Invoice detail creation failed!', 500);
-            }
 
-            try {
-                //utilize the credit
-                $creditSubmit = Credit::create([
-                    'company_id'  => $invoice->client->agent->branch->company_id,
-                    'client_id'   => $invoice->client->id,
-                    'invoice_id'  => $invoice->id,
-                    'type'        => 'Invoice',
-                    'description' => 'Payment for ' . $invoice->invoice_number,
-                    'amount'      => -($balanceCredit),
-                ]);                
-
-                // Create InvoicePartial
-                $existingPartial = InvoicePartial::where('invoice_id', $newinvoice->id)->first();
-
-                if (!$existingPartial) {
-                    $invoicePartial = InvoicePartial::create([
-                        'invoice_id' => $newinvoice->id,
+                // Create invoice partial
+                $invoicePartial = InvoicePartial::firstOrCreate(
+                    ['invoice_id' => $newinvoice->id],
+                    [
                         'invoice_number' => $newinvoice->invoice_number,
                         'client_id' => $newinvoice->client_id,
                         'agent_id' => $newinvoice->agent_id,
@@ -1509,10 +1506,10 @@ class InvoiceController extends Controller
                         'status' => 'unpaid',
                         'type' => 'full',
                         'payment_gateway' => $gateway,
-                    ]);
-                }
+                    ]
+                );
 
-                // Create Payment Request
+                // Create payment link
                 $paymentRequest = new Request([
                     'client_id' => $newinvoice->client_id,
                     'agent_id' => $newinvoice->agent_id,
@@ -1531,10 +1528,57 @@ class InvoiceController extends Controller
                     return redirect()->back()->with('error', 'Failed to create payment link.');
                 }
 
+                // Create transaction & journal entry for the NEW invoice
+                $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
+                $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
+
+                DB::beginTransaction();
+                $transaction = Transaction::create([
+                    'company_id' => $tasks[0]->company_id,
+                    'branch_id' => $tasks[0]->agent->branch_id,
+                    'entity_id' => $tasks[0]->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $newinvoice->amount,
+                    'date' => now(),
+                    'description' => 'Invoice:' . $newinvoice->invoice_number . ' Generated',
+                    'invoice_id' => $newinvoice->id,
+                    'reference_type' => 'Invoice',
+                ]);
+
+                // Add journal entries
+                foreach ($tasks as $task) {
+                    Log::info('Preparing to add journal entry', [
+                        'task_id' => $task->id ?? null,
+                        'invoice_id' => $newinvoice->id,
+                        'invoice_detail_id' => $newInvoiceDetail->id ?? null,
+                        'transaction_id' => $transaction->id ?? null,
+                        'client_name' => $newinvoice->client->name ?? null,
+                    ]);
+
+                    $journalResponse = $this->addJournalEntry(
+                        $task,
+                        $newinvoice->id,
+                        $newInvoiceDetail->id,
+                        $transaction->id,
+                        $newinvoice->client->name
+                    );
+
+                    if ($journalResponse['status'] === 'error') {
+                        DB::rollBack();
+                        Log::error('Journal entry creation failed', ['response' => $journalResponse]);
+                        return response()->json($journalResponse['message'], 500);
+                    }
+                }
+
+                DB::commit();
+
                 $payment = $response['data'];
-                return redirect()->route('payment.link.show', $payment->id)->with('status', 'Invoice link created successfully!');
+                return redirect()->route('payment.link.show', $payment->id)
+                    ->with('status', 'Invoice link created successfully!');
             } catch (Exception $e) {
-                logger('Failed to create invoice/payment link: ' . $e->getMessage());
+                DB::rollBack();
+                Log::error('Failed to create invoice/payment link: ' . $e->getMessage());
                 return redirect()->back()->with('error', 'Something went wrong!');
             }
         }
@@ -1545,12 +1589,7 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', 'Payment gateway is required.');
             }
 
-            $balanceCredit = Credit::getTotalCreditsByClient($client->id);
-            $balance = $amount - $balanceCredit;
-            if ($balanceCredit <= 0) {
-                return redirect()->back()->with('error', 'Client has no available credit balance.');
-            }
-            
+            DB::beginTransaction();
             try {
                 // Set as paid
                 $invoice->status = 'paid';
@@ -1559,39 +1598,76 @@ class InvoiceController extends Controller
                 $invoice->payment_type = 'full';
                 $invoice->save();
 
-                //utilize the credit
-                $creditSubmit = Credit::create([
-                    'company_id'  => $invoice->client->agent->branch->company_id,
-                    'client_id'   => $invoice->client->id,
-                    'invoice_id'  => $invoice->id,
-                    'type'        => 'Invoice',
-                    'description' => 'Payment for ' . $invoice->invoice_number,
-                    'amount'      => -($balanceCredit),
-                ]);                
+                // Create InvoicePartial if not exists
+                InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'amount' => $amount,
+                    'status' => 'paid',
+                    'type' => 'full',
+                    'payment_gateway' => $gateway,
+                ]);
 
-                // Create InvoicePartial
-                $existingPartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
+                // Record the transaction and journal entries
+                $invoiceDetails = InvoiceDetail::where('invoice_id', $invoice->id)->get();
+                $tasksId = $invoiceDetails->pluck('task_id')->toArray();
+                $invoiceDetail = $invoiceDetails->first(); // For use later
+                $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
 
-                if (!$existingPartial) {
-                    $invoicePartial = InvoicePartial::create([
+                // Create transaction
+                $transaction = Transaction::create([
+                    'company_id' => $tasks[0]->company_id ?? null,
+                    'branch_id' => $tasks[0]->agent->branch_id ?? null,
+                    'entity_id' => $tasks[0]->company_id ?? null,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $invoice->amount,
+                    'date' => Carbon::now(),
+                    'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
+                    'invoice_id' => $invoice->id,
+                    'reference_type' => 'Invoice',
+                ]);
+
+                // Add journal entries
+                foreach ($tasks as $task) {
+                    Log::info('Preparing to add journal entry', [
+                        'task_id' => $task->id,
                         'invoice_id' => $invoice->id,
-                        'invoice_number' => $invoice->invoice_number,
-                        'client_id' => $client->id,
-                        'agent_id' => $agent->id,
-                        'amount' => $amount,
-                        'status' => 'paid',
-                        'type' => 'full',
-                        'payment_gateway' => $gateway,
+                        'invoice_detail_id' => $invoiceDetail->id ?? null,
+                        'transaction_id' => $transaction->id,
+                        'client_name' => $invoice->client->name ?? null,
+                        'task' => $task,
                     ]);
+
+                    $response = $this->addJournalEntry(
+                        $task,
+                        $invoice->id,
+                        $invoiceDetail->id,
+                        $transaction->id,
+                        $invoice->client->name ?? null
+                    );
+
+                    if ($response['status'] === 'error') {
+                        DB::rollBack();
+                        Log::error('Journal entry creation failed', ['response' => $response]);
+                        return response()->json($response['message'], 500);
+                    }
                 }
 
+                DB::commit();
 
-                return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Invoice is getting advance paid successfully!');
+                return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Invoice paid successfully!');
+
+
             } catch (Exception $e) {
-                logger('Failed to create invoice/payment link: ' . $e->getMessage());
+                DB::rollBack();
+                logger('Failed to process invoice/payment: ' . $e->getMessage());
                 return redirect()->back()->with('error', 'Something went wrong!');
             }
         }
+
 
 
         return redirect()->back()->with('error', 'Invalid option selected.');

@@ -161,28 +161,28 @@
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                         <x-application-logo class="custom-logo-size" />
                         @if ($selectedCompany)
-                        <div class="pl-2">
-                            <h3>{{ $selectedCompany->name }}</h3>
-                            <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
-                            <p>{{ $selectedCompany->email }}</p>
-                            <p>{{ $selectedCompany->phone }}</p>
-                        </div>
+                            <div class="pl-2">
+                                <h3>{{ $selectedCompany->name }}</h3>
+                                <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                                <p>{{ $selectedCompany->email }}</p>
+                                <p>{{ $selectedCompany->phone }}</p>
+                            </div>
                         @else
-                        <div class="custom-select w-full border rounded-lg mt-4">
-                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
-                            </div>
-                            <div
-                                class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                @foreach ($companies as $company)
-                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                    data-value="{{ $company->id }}">
-                                    {{ $company->name }}
+                            <div class="custom-select w-full border rounded-lg mt-4">
+                                <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                                 </div>
-                                @endforeach
-                            </div>
+                                <div
+                                    class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                    @foreach ($companies as $company)
+                                        <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                            data-value="{{ $company->id }}">
+                                            {{ $company->name }}
+                                        </div>
+                                    @endforeach
+                                </div>
 
-                            <input type="hidden" name="branch_id" id="selectedBranch">
-                        </div>
+                                <input type="hidden" name="branch_id" id="selectedBranch">
+                            </div>
 
                         @endif
 
@@ -191,10 +191,10 @@
                             <div
                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                    data-value="{{ $branch->id }}">
-                                    {{ $branch->name }}
-                                </div>
+                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                        data-value="{{ $branch->id }}">
+                                        {{ $branch->name }}
+                                    </div>
                                 @endforeach
                             </div>
 
@@ -296,33 +296,33 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                            <button id="select-agent" type="button" onclick="openAgentModal()"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button id="select-agent" type="button" onclick="openAgentModal()"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                            stroke-width="1.5" stroke-linecap="round" />
+                                    </svg><span class="pl-5">Choose Agent</span>
+                                </button>
                             @else
-                            <button disabled id="select-agent" type="button"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button disabled id="select-agent" type="button"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                             city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                            stroke-width="1.5" stroke-linecap="round" />
+                                    </svg><span class="pl-5">Choose Agent</span>
+                                </button>
                             @endcan
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
@@ -495,7 +495,7 @@
                                 <select id="payment_gateway" name="payment_gateway"
                                     class="border border-gray-300 p-2 rounded-lg mt-4 w-full">
                                     @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -726,7 +726,8 @@
                                                 <!-- Buttons -->
 
                                                 <div>
-                                                    <button onclick="savePartial('split')" id="splitbutton" type="button"
+                                                    <button onclick="savePartial('split')" id="splitbutton"
+                                                        type="button"
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
 
@@ -789,8 +790,8 @@
                                                     <select id="payment_gateway1" name="payment_gateway1"
                                                         class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                        <option value="{{ $gateway }}">{{ $gateway }}
-                                                        </option>
+                                                            <option value="{{ $gateway }}">{{ $gateway }}
+                                                            </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -815,7 +816,8 @@
 
                                             <div class="flex space-x-4 mt-15">
 
-                                                <button onclick="savePartial('partial')" id="partialbutton" type="button"
+                                                <button onclick="savePartial('partial')" id="partialbutton"
+                                                    type="button"
                                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
 
@@ -869,10 +871,10 @@
                                     class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                                     <!-- Dynamic list items go here -->
                                     @foreach ($agents as $agent)
-                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
-                                        onclick="chooseTasksAgent('{{ $agent }}')">
-                                        {{ $agent->name }}
-                                    </li>
+                                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
+                                            onclick="chooseTasksAgent('{{ $agent }}')">
+                                            {{ $agent->name }}
+                                        </li>
                                     @endforeach
                                 </ul>
                                 <!-- ./List of Agents -->
@@ -2984,36 +2986,55 @@
             }, 500);
         }
 
-        function renderClientCredit(client){
-            // console.log('renderClientCredit', client);
-            let clientCredit = document.getElementById('client-credit');
+        function renderClientCredit(client) {
+            const clientCredit = document.getElementById('client-credit');
             clientCredit.innerHTML = '';
 
             let totalAmount = 0;
-
             items.forEach(item => {
                 totalAmount += parseFloat(item.total);
             });
 
-            if (client) {
-                clientCredit.innerHTML = `
-                    <p class="text-gray-700">${client.name} Credit: ${client.credit} KWD</p>
-                `;
-            } else {
+            if (!client) {
                 clientCredit.innerHTML = `<p class="text-gray-700">No client selected</p>`;
+                return;
             }
 
-            if (totalAmount > client.credit) {
-                clientCredit.innerHTML += `
-                    <p class="text-red-500">Total Amount exceeds ${client.name} Credit</p>
-                `;
-            } else {
-                clientCredit.innerHTML += `
-                    <p class="text-green-500">Total Amount is within Client Credit</p>
-                `;
-            }
+            fetch(`/clients/${client.id}/credit-balance`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const currentCredit = parseFloat(data.credit);
+                    console.log('Total Amount:', totalAmount);
 
+                    clientCredit.innerHTML = `
+                <p class="text-gray-700 font-semibold">${client.name} Credit: 
+                    <span class="${currentCredit >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${currentCredit.toFixed(2)} KWD
+                    </span>
+                </p>
+            `;
+
+                    if (totalAmount > currentCredit) {
+                        clientCredit.innerHTML += `
+                    <p class="text-red-500 font-medium">Total Amount exceeds ${client.name}'s Credit</p>
+                `;
+                    } else {
+                        clientCredit.innerHTML += `
+                    <p class="text-green-500 font-medium">Total Amount is within Client Credit</p>
+                `;
+                    }
+                })
+                .catch(error => {
+                    clientCredit.innerHTML =
+                        `<p class="text-red-500">Error fetching credit balance: ${error.message}</p>`;
+                });
         }
+
 
         function renderPaymentLink(clientId = null) {
 
@@ -3033,7 +3054,8 @@
             filteredPayments.forEach(payment => {
                 let paymentDiv = document.createElement('button');
                 paymentDiv.className = 'mb-2';
-                paymentDiv.classList.add('payment-link-button', 'p-2', 'border', 'rounded', 'bg-gray-100', 'hover:bg-blue-200');
+                paymentDiv.classList.add('payment-link-button', 'p-2', 'border', 'rounded', 'bg-gray-100',
+                    'hover:bg-blue-200');
                 paymentDiv.onclick = function() {
 
                     paymentDiv.classList.remove('bg-gray-100', 'hover:bg-blue-200');

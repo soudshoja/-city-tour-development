@@ -21,13 +21,16 @@ class CreditController extends Controller
         $user = Auth::user();
 
         if ($user->role_id == Role::ADMIN) {
-            $allCreditRecords = Credit::with('client')->get();
+            $allCreditRecords = Credit::with('client')
+                ->orderBy('id', 'desc')
+                ->get();
             $totalCredits = Credit::count();
             $totalCreditsAmount = Credit::sum('amount');
 
         } elseif ($user->role_id == Role::COMPANY) {
             $allCreditRecords = Credit::with('client')
                 ->where('company_id', $user->company->id)
+                ->orderBy('id', 'desc')
                 ->get();
             $totalCredits = Credit::where('company_id', $user->company->id)->count();
             $totalCreditsAmount = Credit::where('company_id', $user->company->id)->sum('amount');
@@ -36,6 +39,7 @@ class CreditController extends Controller
             $allCreditRecords = Credit::with('client')
                 ->where('client_id', $user->client->id)
                 ->where('company_id', $user->company->id)
+                ->orderBy('id', 'desc')
                 ->get();
             $totalCredits = Credit::where('client_id', $user->client->id)
                 ->where('company_id', $user->company->id)
@@ -77,7 +81,7 @@ class CreditController extends Controller
         $credits = Credit::where('client_id', $request->client_id)
             ->whereDate('created_at', '>=', $request->from)
             ->whereDate('created_at', '<=', $request->to)
-            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->get(['created_at', 'type', 'description', 'amount']);
 
         return response()->json($credits->map(function ($credit) {

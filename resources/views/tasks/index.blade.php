@@ -885,10 +885,11 @@
                 let input = document.createElement('input');
                 input.type = 'text';
                 input.name = 'supplier_ref';
-                input.placeholder = 'Client Reference Id';
+                input.placeholder = 'Coming Soon...';
                 input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3');
+                    'dark:text-gray-300', 'p-3', 'disabled:opacity-75', 'disabled:cursor-not-allowed');
+                input.disabled = true;
                 formTaskContainer.appendChild(input);
             } else if (supplier.name === 'Amadeus') {
                 const fileInput = document.createElement('input');

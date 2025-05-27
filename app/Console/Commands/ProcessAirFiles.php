@@ -93,8 +93,9 @@ class ProcessAirFiles extends Command
 
                     $agentName = $extractedData['data']['agent_name'] ?? null;
                     $agentEmail = $extractedData['data']['agent_email'] ?? null;
+                    $agentAmadeusId = $extractedData['data']['agent_amadeus_id'] ?? null;
 
-                    if( !$agentName || !$agentEmail) {
+                    if( !$agentName || !$agentEmail || !$agentAmadeusId) {
                         Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
                         $this->warn("Missing agent information in {$fileName}. File will remain in place.");
 
@@ -110,8 +111,9 @@ class ProcessAirFiles extends Command
                         continue;
                     }
 
-                    $agent = Agent::where('name', $agentName)
-                        ->orWhere('email', $agentEmail)
+                    $agent = Agent::where('name', 'like', $agentName)
+                        ->orWhere('email', 'like', $agentEmail)
+                        ->orWhere('amadeus_id', 'like', $agentAmadeusId)
                         ->first();
                     
                     if (!$agent) {
@@ -128,6 +130,7 @@ class ProcessAirFiles extends Command
 
                         continue;
                     }
+
 
                     $branchId = $agent->branch_id;
 
@@ -149,6 +152,7 @@ class ProcessAirFiles extends Command
                         continue;
                     }
 
+                    $extractedData['data']['agent_id'] = $agent->id;
                     $companyId = $branch->company_id;
 
                     $response = $this->saveTask($companyId,$extractedData['data']);
@@ -266,6 +270,7 @@ class ProcessAirFiles extends Command
                         'type' => $task['type'] ?? 'N/A',
                         'agent_name' => $task['agent_name'] ?? 'N/A',
                         'agent_email' => $task['agent_email'] ?? 'N/A',
+                        'agent_amadeus_id' => $task['agent_amadeus_id'] ?? 'N/A',
                         'client_name' => $task['client_name'] ?? 'N/A',
                         'supplier_name' => $task['supplier_name'] ?? 'N/A',
                         'supplier_country' => $task['supplier_country'] ?? 'N/A',
@@ -384,6 +389,8 @@ class ProcessAirFiles extends Command
                         'gds_office_id' => $extractedData['gds_office_id'] ?? 'N/A',
                         'type' => $extractedData['type'] ?? 'N/A',
                         'agent_name' => $extractedData['agent_name'] ?? 'N/A',
+                        'agent_email' => $extractedData['agent_email'] ?? 'N/A',
+                        'agent_amadeus_id' => $extractedData['agent_amadeus_id'] ?? 'N/A',
                         'client_name' => $extractedData['client_name'] ?? 'N/A',
                         'supplier_name' => $extractedData['supplier_name'] ?? 'N/A',
                         'supplier_country' => $extractedData['supplier_country'] ?? 'N/A',

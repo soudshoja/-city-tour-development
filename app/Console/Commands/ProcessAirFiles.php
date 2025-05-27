@@ -3,13 +3,19 @@
 namespace App\Console\Commands;
 
 use App\AI\AIManager;
+use App\Http\Controllers\TaskController;
+use App\Models\Agent;
+use App\Models\Branch;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
+use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+
 // If your AI tool is a class or service, you might need to import it here
 // use App\Services\YourAiProcessingService;
 
@@ -77,7 +83,6 @@ class ProcessAirFiles extends Command
 
                     $extractedData = $this->processWithAiTool($filePath, $fileName);
 
-
                     if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
                         Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
                         $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
@@ -86,7 +91,71 @@ class ProcessAirFiles extends Command
 
                     $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
 
-                    $response = $this->saveTask(1,$extractedData['data']);
+                    $agentName = $extractedData['data']['agent_name'] ?? null;
+                    $agentEmail = $extractedData['data']['agent_email'] ?? null;
+                    $agentAmadeusId = $extractedData['data']['agent_amadeus_id'] ?? null;
+
+                    if( !$agentName || !$agentEmail || !$agentAmadeusId) {
+                        Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
+                        $this->warn("Missing agent information in {$fileName}. File will remain in place.");
+
+                        $errorPath = storage_path("app/{$supplierName}/files_error");
+
+                        $this->moveFileWithLogging(
+                            $filePath,
+                            $errorPath,
+                            $fileName,
+                            'Missing agent information'
+                        );
+
+                        continue;
+                    }
+
+                    $agent = Agent::where('name', 'like', $agentName)
+                        ->orWhere('email', 'like', $agentEmail)
+                        ->orWhere('amadeus_id', 'like', $agentAmadeusId)
+                        ->first();
+                    
+                    if (!$agent) {
+                        Log::warning("AIR File Processing: Agent not found for {$fileName}. Creating new agent.");
+                        $this->warn("Agent not found for {$fileName}. Creating new agent.");
+
+                        $errorPath = storage_path("app/{$supplierName}/files_error");
+                        $this->moveFileWithLogging(
+                            $filePath,
+                            $errorPath,
+                            $fileName,
+                            'Agent not found'
+                        );
+
+                        continue;
+                    }
+
+
+                    $branchId = $agent->branch_id;
+
+                    $branch = Branch::find($branchId);
+
+                    if (!$branch) {
+                        Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
+                        $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
+
+                        $errorPath = storage_path("app/{$supplierName}/files_error");
+
+                        $this->moveFileWithLogging(
+                            $filePath,
+                            $errorPath,
+                            $fileName,
+                            'Branch not found'
+                        );
+
+                        continue;
+                    }
+
+                    $extractedData['data']['agent_id'] = $agent->id;
+                    $companyId = $branch->company_id;
+
+                    $response = $this->saveTask($companyId,$extractedData['data']);
 
                     if ($response['status'] === 'error') {
                         if(isset($response['code']) && $response['code'] === 409) {
@@ -96,6 +165,18 @@ class ProcessAirFiles extends Command
                         } else {
                             Log::error("Failed to save task for {$fileName}: " . $response['message']);
                             $this->error("Failed to save task for {$fileName}: " . $response['message']);
+
+                            $errorPath = storage_path("app/{$supplierName}/files_error");
+
+                            $this->moveFileWithLogging(
+                                $filePath,
+                                $errorPath,
+                                $fileName,
+                                'Failed to save task'
+                            );
+
+                            Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                            $this->info("File {$fileName} moved to error directory due to save failure.");
                             continue;
                         }
                     }
@@ -104,21 +185,34 @@ class ProcessAirFiles extends Command
                     $this->info("File {$fileName} processed successfully by AI tool.");
 
                     // Move the file to the processed directory
-                    $destinationPath = storage_path("app/{$supplierName}/files_processed") . '/' . $fileName;
-                    File::move($filePath, $destinationPath);
+                    $successPath = storage_path("app/{$supplierName}/files_processed");
 
-                    Log::info("AIR File Processing: Successfully moved {$fileName} to {$destinationPath}.");
+                    $this->moveFileWithLogging(
+                        $filePath,
+                        $successPath,
+                        $fileName,
+                        'Successfully processed and saved task'
+                    );
 
-                } catch (\Exception $e) {
+                    Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
+
+                } catch (Exception $e) {
                     $this->error("Error processing file {$fileName}: " . $e->getMessage());
                     Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
                         'file' => $fileName,
                         'trace' => $e->getTraceAsString()
                     ]);
-                    // Optional: Move to an error directory
-                    // $errorPath = storage_path('app/air_files_error');
-                    // if (!File::isDirectory($errorPath)) { File::makeDirectory($errorPath, 0755, true, true); }
-                    // File::move($filePath, $errorPath . '/' . $fileName);
+
+                    $errorPath = storage_path("app/{$supplierName}/files_error");
+
+                    $this->moveFileWithLogging(
+                        $filePath,
+                        $errorPath,
+                        $fileName,
+                        'Error during processing'
+                    );
+
+                    Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
                 }
 
                 $this->info('AIR file processing for supplier' . $supplierName . ' finished.');
@@ -175,6 +269,8 @@ class ProcessAirFiles extends Command
                         'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
                         'type' => $task['type'] ?? 'N/A',
                         'agent_name' => $task['agent_name'] ?? 'N/A',
+                        'agent_email' => $task['agent_email'] ?? 'N/A',
+                        'agent_amadeus_id' => $task['agent_amadeus_id'] ?? 'N/A',
                         'client_name' => $task['client_name'] ?? 'N/A',
                         'supplier_name' => $task['supplier_name'] ?? 'N/A',
                         'supplier_country' => $task['supplier_country'] ?? 'N/A',
@@ -223,6 +319,7 @@ class ProcessAirFiles extends Command
                         'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
                         'type' => $task['type'] ?? 'N/A',
                         'agent_name' => $task['agent_name'] ?? 'N/A',
+                        'agent_email' => $task['agent_email'] ?? 'N/A',
                         'client_name' => $task['client_name'] ?? 'N/A',
                         'supplier_name' => $task['supplier_name'] ?? 'N/A',
                         'supplier_country' => $task['supplier_country'] ?? null,
@@ -255,7 +352,7 @@ class ProcessAirFiles extends Command
 
             return $processedData;
 
-        } elseif (in_array($extension, ['txt', 'text'])) {
+        } elseif (in_array($extension, ['txt', 'text', 'air'])) {
 
             $fileContent = File::get($filePath);
 
@@ -287,10 +384,13 @@ class ProcessAirFiles extends Command
                         'additional_info' => $extractedData['additional_info'] ?? 'N/A',
                         'ticket_number' => $extractedData['ticket_number'] ?? 'N/A',
                         'status' => $extractedData['status'] ?? 'N/A',
+                        'supplier_status' => $extractedData['status'] ?? 'N/A',
                         'reference' => $extractedData['reference'] ?? 'N/A',
                         'gds_office_id' => $extractedData['gds_office_id'] ?? 'N/A',
                         'type' => $extractedData['type'] ?? 'N/A',
                         'agent_name' => $extractedData['agent_name'] ?? 'N/A',
+                        'agent_email' => $extractedData['agent_email'] ?? 'N/A',
+                        'agent_amadeus_id' => $extractedData['agent_amadeus_id'] ?? 'N/A',
                         'client_name' => $extractedData['client_name'] ?? 'N/A',
                         'supplier_name' => $extractedData['supplier_name'] ?? 'N/A',
                         'supplier_country' => $extractedData['supplier_country'] ?? 'N/A',
@@ -344,10 +444,6 @@ class ProcessAirFiles extends Command
 
     protected function saveTask($companyId, $data) : array
     {
-        $taskFlightDetails = $data['task_flight_details'] ?? [];
-
-        unset($data['task_flight_details']);
-
         $existingTask = Task::where('reference' , $data['reference'])
             ->where('company_id' , $companyId)
             ->where('status' , $data['status'])
@@ -374,21 +470,23 @@ class ProcessAirFiles extends Command
             ];
         }
 
-        DB::beginTransaction();
 
         try {
             $data['company_id'] = $companyId;
             $data['total'] = $data['price'] + $data['surcharge'] + $data['tax'] + $data['penalty_fee'];
+            $data['enabled'] = true;
 
-            $task = Task::create($data);
+            $taskController = new TaskController();
 
-            if (!empty($taskFlightDetails)) {
-                $taskFlightDetails['task_id'] = $task->id;
-                TaskFlightDetail::create($taskFlightDetails);
+            $request = new Request($data);
+            $response = $taskController->store($request);
+
+            if ($response->getStatusCode() !== 201) {
+                Log::error("Failed to save task: " . $response->getContent());
+                throw new Exception("Failed to save task: " . $response->getContent());
             }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (Exception $e) {
             Log::error("Failed to save task: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
@@ -399,12 +497,38 @@ class ProcessAirFiles extends Command
             ];
         }
 
-        DB::commit();
+        $task = $response->getData();
+
         return [
             'status' => 'success',
             'message' => 'Task saved successfully',
             'task' => $task,
         ];
 
+    }
+
+    protected function moveFileWithLogging(
+        string $sourcePath,
+        string $destinationDir,
+        string $fileName,
+        string $reason = ''
+    )
+    {
+        if (!File::isDirectory($destinationDir)) {
+            File::makeDirectory($destinationDir, 0755, true, true);
+            Log::info("Created directory: {$destinationDir}");
+        }
+
+        $destinationPath = $destinationDir . '/' . $fileName;
+
+        // Move the file
+        File::move($sourcePath, $destinationPath);
+
+        $msg = "Moved file {$fileName} to {$destinationDir}";
+        if ($reason) {
+            $msg .= " ({$reason})";
+        }
+        Log::info($msg);
+        $this->info($msg);
     }
 }

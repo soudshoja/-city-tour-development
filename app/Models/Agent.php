@@ -20,6 +20,7 @@ class Agent extends Model
         'user_id',
         'name',
         'tbo_reference',
+        'amadeus_id',
         'email',
         'type_id',
         'phone_number',

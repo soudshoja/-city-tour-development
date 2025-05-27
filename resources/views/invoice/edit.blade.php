@@ -160,12 +160,12 @@
 
                         <div class="pl-2">
                             @if ($company)
-                            <h3>{{ $company->name }}</h3>
-                            <p>{!! nl2br(e($company->address)) !!}</p>
-                            <p>{{ $company->email }}</p>
-                            <p>{{ $company->phone }}</p>
+                                <h3>{{ $company->name }}</h3>
+                                <p>{!! nl2br(e($company->address)) !!}</p>
+                                <p>{{ $company->email }}</p>
+                                <p>{{ $company->phone }}</p>
                             @else
-                            <p>No company assigned</p>
+                                <p>No company assigned</p>
                             @endif
                         </div>
 
@@ -174,10 +174,10 @@
                             <div
                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                    data-value="{{ $branch->id }}">
-                                    {{ $branch->name }}
-                                </div>
+                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                        data-value="{{ $branch->id }}">
+                                        {{ $branch->name }}
+                                    </div>
                                 @endforeach
                             </div>
 
@@ -202,8 +202,8 @@
 
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Due Date:</label>
-                            <input id="duedate" type="date" name="duedate" value={{ $dueDate }}
-                                class="w-full form-input" />
+                            <input id="duedate" type="date" name="duedate" class="w-full form-input"
+                                value={{ $dueDate }} />
                         </div>
 
 
@@ -270,33 +270,33 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                            <button id="select-agent" type="button" onclick="openAgentModal()"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button id="select-agent" type="button" onclick="openAgentModal()"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                            stroke-width="1.5" stroke-linecap="round" />
+                                    </svg><span class="pl-5">Choose Agent</span>
+                                </button>
                             @else
-                            <button disabled id="select-agent" type="button"
-                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                <button disabled id="select-agent" type="button"
+                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                    <path
-                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                        fill="#004c9e" />
-                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                        stroke-width="1.5" stroke-linecap="round" />
-                                </svg><span class="pl-5">Choose Agent</span>
-                            </button>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                        <path
+                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                            fill="#004c9e" />
+                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                            stroke-width="1.5" stroke-linecap="round" />
+                                    </svg><span class="pl-5">Choose Agent</span>
+                                </button>
                             @endcan
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
@@ -400,92 +400,184 @@
                     <!-- Payment Type Section -->
                     <div id="paymentMethod" class="mt-4">
                         <h2 class="text-lg font-semibold mb-3 text-gray-700">
-                            <span> Payment Type : </span>
-                            <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span>
-                            <span>
-                            </span>
+                            <span> Payment Type</span>
+
+                            @if ($invoice->payment_type)
+                                : <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span>
+                            @endif
+
                         </h2>
-                        <input type="hidden" id="paymentTypeSaved" name="payment_type_saved" value="{{ $invoice->payment_type }}">
+                        <input type="hidden" id="paymentTypeSaved" name="payment_type_saved"
+                            value="{{ $invoice->payment_type }}">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                            <div x-data="{ clientCreditModal: false, generateInvoiceWithCreditModal :false }">
-                                @if($invoice->amount < $selectedClient->credit)
+                            <div x-data="{ clientCreditModal: false, generateInvoiceWithCreditModal: false }">
+                                @php
+                                    $balanceCredit = \App\Models\Credit::getTotalCreditsByClient($selectedClient->id);
+                                @endphp
+                                @if ($invoice->amount < $balanceCredit)
                                     <button type="button" @click="clientCreditModal = true"
                                         class="rounded-full flex flex-col items-center justify-center w-full
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl"
-                                        {{ $invoice->amount > $selectedClient->credit ? 'disabled' : '' }}>
-                                        <span class="font-medium">{{$selectedClient->name}}: {{$selectedClient->credit}}KWD</span>
-                                        @if($invoice->amount > $selectedClient->credit)
-                                        <span class="text-red-500">Credit Limit Exceeded</span>
+                                        {{ $invoice->amount > $balanceCredit ? 'disabled' : '' }}>
+                                        <span class="font-medium">{{ $selectedClient->name }}:
+                                            KWD {{ $balanceCredit }}</span>
+                                        @if ($invoice->amount > $balanceCredit)
+                                            <span class="text-red-500">Credit Limit Exceeded</span>
                                         @endif
                                     </button>
-                                    <div
-                                        x-cloak
-                                        x-show="clientCreditModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+                                    <div x-cloak x-show="clientCreditModal"
+                                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
                                         <div class="bg-white rounded-lg p-6 shadow-lg">
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
-                                            <p class="text-gray-600">The client has a credit limit of {{$selectedClient->credit}} KWD.</p>
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want
+                                                to proceed with this payment?</h2>
+                                            <p class="text-gray-600">The client has a credit limit of
+                                                {{ $balanceCredit }} KWD.</p>
                                             <p>
-                                                <span>After payment: {{ $selectedClient->credit }} - {{ $invoice->amount }} = {{ $selectedClient->credit - $invoice->amount }} KWD</span>
+                                                <span>After payment: {{ $balanceCredit }} - {{ $invoice->amount }} =
+                                                    {{ $balanceCredit - $invoice->amount }} KWD</span>
                                             </p>
                                             <div class="mt-4 flex justify-end">
-                                                <button @click="savePartial('credit')" class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
-                                                <button @click="clientCreditModal = false" class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                                                <button @click="savePartial('credit')"
+                                                    class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
+                                                <button @click="clientCreditModal = false"
+                                                    class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
                                             </div>
                                         </div>
 
                                     </div>
+                                @else
+                                    @if ($creditUsed && $creditUsed->amount < 0)
+                                        <a target="_blank"
+                                            href="{{ url('/invoice/' . $invoice->invoice_number) }}"><button
+                                                type="button"
+                                                class="rounded-full flex flex-col items-center justify-center w-full
+                                            px-4 py-2 border border-gray-300 
+                                            bg-green-500 text-white shadow-xl">
+                                                <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }} KWD
+                                                    has
+                                                    been utilized.
+                                                </span>
+                                                <span>Current balance of credit for {{ $selectedClient->name }}:
+                                                    {{ $balanceCredit }} KWD</span>
+                                            </button></a>
                                     @else
-                                    <button type="button" @click="generateInvoiceWithCreditModal = true"
-                                        class="rounded-full flex flex-col items-center justify-center w-full
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span> Still Paying With Client Credit?</span>
-                                        <span> {{$selectedClient->name}}: {{ $selectedClient->credit}} KWD</span>
-                                    </button>
-                                    <div
-                                        x-cloak
-                                        x-show="generateInvoiceWithCreditModal"
+                                        @if ($balanceCredit > 0 && $invoice->payment_type == '')
+                                            <button type="button" @click="generateInvoiceWithCreditModal = true"
+                                                class="rounded-full flex flex-col items-center justify-center w-full
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2 
+                                            hover:bg-green-500 hover:text-white hover:shadow-xl">
+                                                <span> Still Paying With Client Credit?</span>
+                                                <span> Current balance of credit for {{ $selectedClient->name }}:
+                                                    {{ $balanceCredit }} KWD</span>
+                                            </button>
+                                        @else
+                                            <button type="button"
+                                                class="rounded-full flex flex-col items-center justify-center w-full
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2 shadow">
+
+                                                <span>Current balance of credit for {{ $selectedClient->name }}:
+                                                    {{ $balanceCredit }} KWD</span>
+                                            </button>
+                                        @endif
+                                    @endif
+                                    <div x-cloak x-show="generateInvoiceWithCreditModal"
                                         class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-75 transition-opacity">
-                                        <div class="min-h-40 min-w-40 p-3 bg-white rounded shadow" @click.away="generateInvoiceWithCreditModal = false">
-                                            <header>
-                                                Do you want to generate new invoice to add to the client credit?
+                                        <div class="min-h-40 min-w-40 p-7 bg-white rounded shadow"
+                                            @click.away="generateInvoiceWithCreditModal = false">
+                                            <header class="text-lg font-semibold mb-4">
+                                                Would you
+                                                like to pay the invoice by using the {{ $selectedClient->name }}'s
+                                                credit balance
+                                                ({{ $balanceCredit }} KWD)?
                                             </header>
+
                                             <main>
-                                                <form action="{{ route('invoice.client-credit') }}" method="POST">
+                                                <form action="{{ route('invoice.client-credit') }}" method="POST"
+                                                    x-data="{ option: '' }" x-cloak>
                                                     @csrf
-                                                    <div class="flex items-center space-x-2">
-                                                        <input type="radio" id="yesRadio" name="choice-invoice" value="yes" class="form-radio choice-invoice h-5 w-5 text-blue-600">
-                                                        <label for="yesRadio" class="text-gray-700">Yes</label>
-                                                        <input type="radio" id="noRadio" name="choice-invoice" value="no" class="form-radio choice-invoice h-5 w-5 text-blue-600 ml-4">
-                                                        <label for="noRadio" class="text-gray-700">No</label>
+
+                                                    <div class="space-y-4 mb-6">
+                                                        <!-- Option 1 -->
+                                                        {{-- <label
+                                                            class="flex items-center p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
+                                                            :class="{ 'bg-gray-100': option === 'generate_yes' }">
+                                                            <input type="radio" name="selected_option"
+                                                                value="generate_yes"
+                                                                class="form-radio h-5 w-5 text-blue-600 mr-3"
+                                                                x-model="option">
+                                                            <span class="text-gray-800 text-base">[Yes] Generate new
+                                                                invoice to topup the remaining balance.</span>
+                                                        </label> --}}
+
+                                                        <!-- Option 2 -->
+                                                        <label
+                                                            class="flex items-center p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
+                                                            :class="{ 'bg-gray-100': option === 'generate_no' }">
+                                                            <input type="radio" name="selected_option"
+                                                                value="generate_no"
+                                                                class="form-radio h-5 w-5 text-blue-600 mr-3"
+                                                                x-model="option">
+                                                            <span class="text-gray-800 text-base">[Yes] Set the
+                                                                same
+                                                                invoice as paid in advance.</span>
+                                                        </label>
+
+                                                        <!-- Option 3 -->
+                                                        <label
+                                                            class="flex flex-col p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
+                                                            :class="{ 'bg-gray-100': option === 'use_credit' }">
+                                                            <div class="flex items-center">
+                                                                <input type="radio" name="selected_option"
+                                                                    value="use_credit"
+                                                                    class="form-radio h-5 w-5 text-green-600 mr-3"
+                                                                    x-model="option">
+                                                                <span class="text-gray-800 text-base">
+                                                                    [Yes] Pay the
+                                                                    remaining balance
+                                                                    ({{ number_format($balanceCredit - $invoice->amount, 2) }}
+                                                                    KWD)
+                                                                    in the same invoice.
+                                                                </span>
+                                                            </div>
+                                                        </label>
+
                                                     </div>
-                                                    <div id="yes-chosen">
-                                                        <div>
-                                                            <select name="payment_gateway" id="" class="w-full p-2 my-2">
-                                                                @foreach ($paymentGateways as $gateway)
-                                                                <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                        <input type="hidden" name="invoice_id" value="{{ $invoice->id}}">
-                                                        <x-primary-button>
-                                                            Submit
-                                                        </x-primary-button>
+
+                                                    <input type="hidden" name="invoice_id"
+                                                        value="{{ $invoice->id }}">
+                                                    <input type="hidden" name="payment_gateway"
+                                                        x-bind:value="option === 'generate_yes' ? $refs.gateway.value : ''">
+
+                                                    <div x-show="option === 'generate_yes'" x-cloak class="mb-4">
+                                                        <label for="payment_gateway"
+                                                            class="block mb-1 text-sm text-gray-700">
+                                                            Payment Gateway
+                                                        </label>
+                                                        <select id="payment_gateway" name="payment_gateway"
+                                                            x-ref="gateway"
+                                                            class="w-full p-2 border border-gray-300 rounded">
+                                                            @foreach ($paymentGateways as $gateway)
+                                                                <option value="{{ $gateway }}">
+                                                                    {{ $gateway }}</option>
+                                                            @endforeach
+                                                        </select>
                                                     </div>
-                                                    <div id="no-chosen">
-                                                        <x-primary-button>
-                                                            Submit
-                                                        </x-primary-button>
+
+                                                    <div class="mt-6 flex justify-end">
+                                                        <x-primary-button x-show="option !== ''"
+                                                            x-cloak>Submit</x-primary-button>
                                                     </div>
                                                 </form>
                                             </main>
-
                                         </div>
                                     </div>
-                                    @endif
+
+
+                                @endif
                             </div>
                             <!-- <div
                                     class="rounded-full flex items-center justify-center 
@@ -494,8 +586,8 @@
                                         peer-checked:text-white
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
-                                        {{ $invoice->amount > $selectedClient->credit ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500 hover:text-white hover:shadow-xl' }}">
-                                    <span class="font-medium">{{$selectedClient->name}}: {{$selectedClient->credit}}KWD</span>
+                                        {{ $invoice->amount > $balanceCredit ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500 hover:text-white hover:shadow-xl' }}">
+                                    <span class="font-medium">{{ $selectedClient->name }}: KWD {{ $balanceCredit }}</span>
                                 </div> -->
 
                             <!-- Full Payment Tab -->
@@ -558,7 +650,7 @@
                                 <select id="payment_gateway" name="payment_gateway"
                                     class="border border-gray-300 p-2 rounded w-full">
                                     @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -806,7 +898,8 @@
                                                 <!-- Buttons -->
 
                                                 <div>
-                                                    <button type="button" id="splitbutton" onclick="savePartial('split')"
+                                                    <button type="button" id="splitbutton"
+                                                        onclick="savePartial('split')"
                                                         class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
                                                         <span id="button-icon-split" class="mr-2"></span>
@@ -868,8 +961,8 @@
                                                     <select id="payment_gateway1" name="payment_gateway1"
                                                         class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                        <option value="{{ $gateway }}">{{ $gateway }}
-                                                        </option>
+                                                            <option value="{{ $gateway }}">{{ $gateway }}
+                                                            </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -893,7 +986,8 @@
                                                 partial payments must match the invoice total.</p>
 
                                             <div class="flex space-x-4 mt-5">
-                                                <button id="partialbutton" onclick="savePartial('partial')" type="button"
+                                                <button id="partialbutton" onclick="savePartial('partial')"
+                                                    type="button"
                                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                             city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10  rounded-full shadow">
                                                     <span id="button-icon-partial" class="mr-2"></span>
@@ -945,10 +1039,10 @@
                                     class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                                     <!-- Dynamic list items go here -->
                                     @foreach ($agents as $agent)
-                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
-                                        onclick="chooseTasksAgent('{{ $agent }}')">
-                                        {{ $agent->name }}
-                                    </li>
+                                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
+                                            onclick="chooseTasksAgent('{{ $agent }}')">
+                                            {{ $agent->name }}
+                                        </li>
                                     @endforeach
                                 </ul>
                                 <!-- ./List of Agents -->
@@ -2815,7 +2909,8 @@
             const paymentTypeSaved = paymentTypeSavedInput ? paymentTypeSavedInput.value : '';
 
             if (paymentTypeSaved) {
-                const matchingRadio = document.querySelector(`input[name="payment_type"][value="${paymentTypeSaved}"]`);
+                const matchingRadio = document.querySelector(
+                    `input[name="payment_type"][value="${paymentTypeSaved}"]`);
                 if (matchingRadio) {
                     matchingRadio.checked = true;
 

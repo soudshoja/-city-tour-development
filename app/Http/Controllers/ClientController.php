@@ -183,6 +183,8 @@ class ClientController extends Controller
         $unpaid = $invoicesPart->flatMap->invoicePartials->where('status', '<>', 'paid')->sum('amount');
 
         $clients = Client::with('agent.branch')->get();
+        $balanceCredit = Credit::getTotalCreditsByClient($id);
+
         // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
         // $childClients = ClientGroup::where('parent_client_id', $id)
         //     ->with('childClient') // Load related child clients
@@ -204,7 +206,7 @@ class ClientController extends Controller
         //         ];
         //     });
 
-        return view('clients.new-profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'clients')); // Ensure the view exists
+        return view('clients.new-profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'clients', 'balanceCredit')); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -581,21 +583,21 @@ class ClientController extends Controller
             $receivableAccountId = $receivableAccount->id;
 
             if ($bankPaymentFee) {
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $client->agent->branch->id,
-                    'company_id' => $client->agent->branch->company->id,
-                    'account_id' =>  $receivableAccountId,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->name,
-                    'debit' => 0,
-                    'credit' => $payment->amount,
-                    'balance' => null,
-                    'name' =>  $client->name,
-                    'type' => 'receivable',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $receivableAccountId
-                ]);
+                // JournalEntry::create([
+                //     'transaction_id' => $transaction->id,
+                //     'branch_id' => $client->agent->branch->id,
+                //     'company_id' => $client->agent->branch->company->id,
+                //     'account_id' =>  $receivableAccountId,
+                //     'transaction_date' => Carbon::now(),
+                //     'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->name,
+                //     'debit' => 0,
+                //     'credit' => $payment->amount,
+                //     'balance' => null,
+                //     'name' =>  $client->name,
+                //     'type' => 'receivable',
+                //     'voucher_number' => $payment->voucher_number,
+                //     'type_reference_id' => $receivableAccountId
+                // ]);
 
 
                 // Create record to payment_gateway assets coa account (OK)
@@ -606,7 +608,7 @@ class ClientController extends Controller
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Client Pays by ' . $client->name . ' via (Assets): ' . $bankPaymentFee->name,
-                    'debit' => $payment->amount - $defaultPaymentGatewayFee,
+                    'debit' => $payment->amount, //'debit' => $payment->amount - $defaultPaymentGatewayFee,
                     'credit' => 0,
                     'name' =>  $bankPaymentFee->name,
                     'type' => 'bank',
@@ -642,8 +644,23 @@ class ClientController extends Controller
             }
 
 
-            $client->credit += $payment->amount;
-            $client->save();
+            // $client->credit += $payment->amount;
+            // $client->save();
+
+            // Insert credit table
+            $topupCreditClientData = [
+                'company_id'  => $client->agent->branch->company->id,
+                'client_id'   => $client->id,
+                'type'        => 'Topup',
+                'description' => 'Topup Credit via ' . $payment->voucher_number,
+                'amount'      => $payment->amount,
+            ];
+
+            Log::info('Creating Credit record:', $topupCreditClientData);
+
+            Credit::create($topupCreditClientData);
+
+
         } catch (Exception $e) {
             DB::rollBack();
             logger('Error adding credit: ' . $e->getMessage());
@@ -668,8 +685,31 @@ class ClientController extends Controller
     {
         try {
             $client = Client::findOrFail($id);
-            $client->credit = $amount;
-            $client->save();
+            // $client->credit = $amount;
+            // $client->save();
+
+            $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+            $difference = $amount - $balanceCredit;
+
+            Log::info('Credit Update', [
+                'client_id'       => $client->id,
+                'client_name'     => $client->name,
+                'current_balance' => $balanceCredit,
+                'new_amount'      => $amount,
+                'difference'      => $difference,
+                'change_type'     => $difference > 0 ? 'Increase' : ($difference < 0 ? 'Decrease' : 'No change'),
+            ]);
+
+            if ($difference != 0) {
+                Credit::create([
+                    'company_id'  => $client->agent->branch->company->id,
+                    'client_id'   => $client->id,
+                    'type'        => 'Update Credit',
+                    'description' => 'Update Credit for ' . $client->name,
+                    'amount'      => $difference, 
+                ]);
+            }
+
         } catch (Exception $e) {
             logger('Error updating credit: ' . $e->getMessage());
             return [
@@ -684,7 +724,7 @@ class ClientController extends Controller
             'message' => 'Credit updated successfully',
             'data' => [
                 'client_id' => $client->id,
-                'credit' => $client->credit,
+                'credit' => $difference,
             ],
         ];
     }
@@ -697,7 +737,8 @@ class ClientController extends Controller
     }
 
     public function refundProcess($id, Request $request)
-    {
+    {   
+        //dd($id, $request->all());
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'agent_id' => 'required|exists:agents,id',
@@ -711,13 +752,15 @@ class ClientController extends Controller
         }
 
         $client = Client::findOrFail($id);
-
-        if ($client->credit < $request->amount) {
+        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+        if ($balanceCredit < $request->amount) {
             return [
                 'status' => 'error',
                 'message' => 'Insufficient credit',
             ];
         }
+
+        //dd($balanceCredit);
 
         DB::beginTransaction();
 
@@ -815,8 +858,10 @@ class ClientController extends Controller
                 'type_reference_id' => $refundPayable->id
             ]);
 
-            $client->credit -= $request->amount;
-            $client->save();
+            // $client->credit -= $request->amount;
+            // $client->save();
+
+
 
             RefundClient::create([
                 'client_id' => $client->id,
@@ -826,6 +871,20 @@ class ClientController extends Controller
                 'currency' => 'KWD',
                 'remark' => $request->remark,
             ]);
+
+            try{
+                Credit::create([
+                    'company_id'  => $client->agent->branch->company->id,
+                    'client_id'   => $client->id,
+                    'type'        => 'Refund Credit',
+                    'description' => 'Refund Credit for ' . $client->name,
+                    'amount'      => -($request->amount),
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to create Credit: ' . $e->getMessage());
+                return response()->json('Something Went Wrong', 500);
+            }
+
 
         } catch (Exception $e) {
             DB::rollBack();
@@ -843,7 +902,7 @@ class ClientController extends Controller
             'message' => 'Credit refunded successfully',
             'data' => [
                 'client_id' => $client->id,
-                'credit' => $client->credit,
+                'credit' => $request->amount,
             ],
         ];    
     }

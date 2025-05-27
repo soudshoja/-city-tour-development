@@ -161,6 +161,7 @@ class OpenAIClient implements AIClientInterface
             - `gds_office_id`: GDS office ID, if available.
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
+            - `agent_email`: email of the agent handling the task.
             - `client_name`: name of the client associated with the task.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
                 You can refer the supplier from this list: $supplierList
@@ -225,6 +226,7 @@ class OpenAIClient implements AIClientInterface
             'gds_office_id': 'gds_office_id',
             'type': 'flight',
             'agent_name': 'agent name',
+            'agent_email': 'agent email',
             'client_name': 'client name',
             'supplier_name': 'Amadeus',
             'supplier_country': 'Kuwait',
@@ -295,6 +297,8 @@ class OpenAIClient implements AIClientInterface
                 'company_name' => 'company_name or agency name',
                 'type' => 'flight or hotel',
                 'status' => 'status',
+                'agent_name' => 'agent_name',
+                'agent_email' => 'agent_email',
                 'client_name' => 'client_name',
                 'reference' => 'reference',
                 'gds_office_id' => 'gds_office_id',

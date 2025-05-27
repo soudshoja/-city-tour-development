@@ -179,7 +179,7 @@ class TaskController extends Controller
             'tax' => 'required|numeric',
             'penalty_fee' => 'nullable|numeric',
             'client_name' => 'nullable|string',
-            'agent_id' => 'nullable',
+            'agent_id' => 'required',
             'client_id' => 'nullable|exists:clients,id',
             'additional_info' => 'nullable|string',
             'taxes_record' => 'nullable|string',
@@ -224,7 +224,7 @@ class TaskController extends Controller
 
         $penaltyFee = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
 
-        if($validatedData['status'] == 'reissued'){
+        if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void') {
             $originalTask = Task::where('reference', $validatedData['reference'])
                 ->where('supplier_id', $validatedData['supplier_id'])
                 ->where('company_id', $validatedData['company_id'])
@@ -235,7 +235,7 @@ class TaskController extends Controller
                 Log::warning('Original task not found for reference: ' , $validatedData);
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'This is reissued ticket, but original ticket not found.',
+                    'message' => 'Original task not found',
                 ], 404);
             }
 
@@ -244,29 +244,9 @@ class TaskController extends Controller
 
         $validatedData['total'] = $validatedData['price'] + $validatedData['tax'] + $penaltyFee;
 
-        if($validatedData['status'] == 'refund'){
-            $originalTask = Task::where('ticket_number', $validatedData['ticket_number'])
-                ->where('supplier_id', $validatedData['supplier_id'])
-                ->where('company_id', $validatedData['company_id'])
-                ->where('status', 'issued')
-                ->first();
-            
-            if (!$originalTask) {
-                Log::warning('Original task not found for reference: ' , $validatedData);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'This is refund ticket, but original ticket not found.',
-                ], 404);
-            }
-
-            $validatedData['original_task_id'] = $originalTask->id; 
-        }
-
-        
         DB::beginTransaction();
 
         try {
-
             Log::debug('Task Data:', $validatedData);
 
             $task = Task::create($validatedData);
@@ -283,19 +263,149 @@ class TaskController extends Controller
                 Log::info('Refund task created, skipping hotel/flight details saving process.');
             }
 
-            if ($task->status === 'void') {
-                Log::info('Check for invoice created for this task.');
 
-                $originalTask = Task::where('reference', $task->reference)
-                    ->where('supplier_id', $task->supplier_id)
+            $agent = $task->agent;
+
+            if (!$agent) {
+                throw new Exception('Agent not found for the task.');
+            }
+
+            $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$supplierCompany) {
+                throw new Exception('Supplier company not activated or not found.');
+            }
+
+            // $supplierCompanyAccount = Account::where('supplier_company_id', $supplierCompany->account_id)
+            //     ->where('company_id', $task->company_id)
+            //     ->first();
+
+            // if (!$supplierCompanyAccount) {
+            //     throw new Exception('Supplier account not found.');
+            // }
+
+            $liabilities = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            $expenses = Account::where('name', 'like', '%Expenses%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$liabilities || !$expenses) {
+                throw new Exception('Assets or Expenses account not found.');
+            }
+
+            $receivableAccount = Account::where('name', 'like', '%Receivable%')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            $payableFallback = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $task->company_id)
+                ->first();
+
+            if (!$receivableAccount) {
+                throw new Exception('Receivable account not found.');
+            }
+
+            $payableAccountId = $supplierCompany->account->id ?? $payableFallback->id;
+
+            if (!$payableAccountId) {
+                throw new Exception('No valid payable account found.');
+            }
+
+            $supplierAccount = Account::where('supplier_company_id', $supplierCompany->id)
+                ->where('company_id', $task->company_id)
+                ->get();
+
+            if (!$supplierAccount) {
+                throw new Exception('Supplier account not found.');
+            }
+
+            $supplierPayable = collect();
+            $supplierCost = collect();
+
+            if ($task->type == 'flight') {
+                $supplierPayable = Account::where('name', $supplier->name)
                     ->where('company_id', $task->company_id)
-                    ->where('status', '!=', 'void')
+                    ->where('root_id', $liabilities->id)
                     ->first();
 
-                if (!$originalTask) {
-                    Log::warning('Original task not found for reference: ' . $task->reference);
-                    throw new Exception('Original task not found.');
+                $supplierCost = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $expenses->id)
+                    ->first();
+            } elseif ($task->type == 'hotel') {
+
+                $supplierPayable = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->first();
+
+                $supplierCost = Account::where('name', $supplier->name)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $expenses->id)
+                    ->first();
+            }
+
+            if (!$supplierCost || !$supplierPayable) {
+                throw new Exception('Supplier account not found.');
+            }
+
+
+            if ($task->status == 'issued') {
+                $transaction = Transaction::create([
+                    'branch_id' => $task->agent->branch_id,
+                    'company_id' => $task->company_id,
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $task->total,
+                    'date' => Carbon::now(),
+                    'description' => 'Task created: ' . $task->reference,
+                    'reference_type' => 'Payment',
+                ]);
+
+                if (!$transaction) {
+                    throw new Exception('Transaction creation failed.');
                 }
+
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierCost->id,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
+                    'name' => $supplierCompany->supplier->name,
+                    'debit' => $task->total,
+                    'credit' => 0,
+                    'balance' => $task->total,
+                    'type' => 'payable',
+                ]);
+
+
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierPayable->id,
+                    'task_id' => $task->id,
+                    'transaction_date' => Carbon::now(),
+                    'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
+                    'name' => $supplierCompany->supplier->name,
+                    'debit' => 0,
+                    'credit' => $task->total,
+                    'balance' => $task->total,
+                    'type' => 'payable',
+                ]);
+            }
+
+            if ($task->status === 'void') {
+                Log::info('Check for invoice created for this task.');
 
                 $payment = Payment::whereHas('partials.invoice.invoiceDetails', function ($query) use ($originalTask) {
                     $query->where('task_id', $originalTask->id);
@@ -314,289 +424,147 @@ class TaskController extends Controller
                 return $this->ReverseUnpaidVoidedTask($originalTask);
             }
 
-            $agent = $task->agent;
-            if (!$agent) {
-                $task->enabled = false;
-                $task->save();
+            if ($task->status == 'refund') {
 
-            } else {
+                if (!empty($task->supplier?->name)) {
+                    $accountSupplierName = $task->supplier->name;
+                }
 
-                $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
+                // Get or create Supplier Refund Account
+                $assetsPayableAccount = Account::where('name', 'Accounts Payable')
                     ->where('company_id', $task->company_id)
+                    ->where('root_id', 2)
                     ->first();
 
-                if (!$supplierCompany) {
-                    throw new Exception('Supplier company not activated or not found.');
-                }
-
-                // $supplierCompanyAccount = Account::where('supplier_company_id', $supplierCompany->account_id)
-                //     ->where('company_id', $task->company_id)
-                //     ->first();
-
-                // if (!$supplierCompanyAccount) {
-                //     throw new Exception('Supplier account not found.');
-                // }
-
-                $liabilities = Account::where('name', 'like', '%Liabilities%')
+                $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')
                     ->where('company_id', $task->company_id)
+                    ->where('root_id', $assetsPayableAccount->root_id)
                     ->first();
 
-                $expenses = Account::where('name', 'like', '%Expenses%')
-                    ->where('company_id', $task->company_id)
-                    ->first();
-
-                if (!$liabilities || !$expenses) {
-                    throw new Exception('Assets or Expenses account not found.');
-                }
-
-                $receivableAccount = Account::where('name', 'like', '%Receivable%')
-                    ->where('company_id', $task->company_id)
-                    ->first();
-
-                $payableFallback = Account::where('name', 'Accounts Payable')
-                    ->where('company_id', $task->company_id)
-                    ->first();
-
-                if (!$receivableAccount) {
-                    throw new Exception('Receivable account not found.');
-                }
-
-                $payableAccountId = $supplierCompany->account->id ?? $payableFallback->id;
-
-                if (!$payableAccountId) {
-                    throw new Exception('No valid payable account found.');
-                }
-
-                $supplierAccount = Account::where('supplier_company_id', $supplierCompany->id)
-                    ->where('company_id', $task->company_id)
-                    ->get();
-
-                if (!$supplierAccount) {
-                    throw new Exception('Supplier account not found.');
-                }
-
-                $supplierPayable = collect();
-                $supplierCost = collect();
-
-                if ($task->type == 'flight') {
-                    $supplierPayable = Account::where('name', $supplier->name)
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', $liabilities->id)
-                        ->first();
-
-                    $supplierCost = Account::where('name', $supplier->name)
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', $expenses->id)
-                        ->first();
-                } elseif ($task->type == 'hotel') {
-
-                    $supplierPayable = Account::where('name', $supplier->name)
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', $liabilities->id)
-                        ->first();
-
-                    $supplierCost = Account::where('name', $supplier->name)
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', $expenses->id)
-                        ->first();
-                }
-
-                if (!$supplierCost || !$supplierPayable) {
-                    throw new Exception('Supplier account not found.');
-                }
-
-
-                if ($task->status !== 'refund') {
-                    $transaction = Transaction::create([
-                        'branch_id' => $task->agent->branch_id,
-                        'company_id' => $task->company_id,
-                        'entity_id' => $task->company_id,
-                        'entity_type' => 'company',
-                        'transaction_type' => 'credit',
-                        'amount' => $task->total,
-                        'date' => Carbon::now(),
-                        'description' => 'Task created: ' . $task->reference,
-                        'reference_type' => 'Payment',
+                if (!$supplierRefundAccount) {
+                    $supplierRefundAccountId = Account::create([
+                        'name' => $accountSupplierName,
+                        'parent_id' => $assetsPayableAccount->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $assetsPayableAccount->root_id,
+                        'code' => $assetsPayableAccount->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $assetsPayableAccount->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
 
-                    if (!$transaction) {
-                        throw new Exception('Transaction creation failed.');
-                    }
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $task->company_id,
-                        'branch_id' => $task->agent->branch_id,
-                        'account_id' => $supplierCost->id,
-                        'task_id' => $task->id,
-                        'transaction_date' => Carbon::now(),
-                        'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
-                        'name' => $supplierCompany->supplier->name,
-                        'debit' => $task->total,
-                        'credit' => 0,
-                        'balance' => $task->total,
-                        'type' => 'payable',
-                    ]);
-
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $task->company_id,
-                        'branch_id' => $task->agent->branch_id,
-                        'account_id' => $supplierPayable->id,
-                        'task_id' => $task->id,
-                        'transaction_date' => Carbon::now(),
-                        'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
-                        'name' => $supplierCompany->supplier->name,
-                        'debit' => 0,
-                        'credit' => $task->total,
-                        'balance' => $task->total,
-                        'type' => 'payable',
-                    ]);
+                    $supplierRefundAccountEntry =  $supplierRefundAccountId;
                 } else {
-
-                    if (!empty($task->supplier?->name)) {
-                        $accountSupplierName = $task->supplier->name;
-                    }
-
-                    // Get or create Supplier Refund Account
-                    $assetsPayableAccount = Account::where('name', 'Accounts Payable')
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', 2)
-                        ->first();
-
-                    $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', $assetsPayableAccount->root_id)
-                        ->first();
-
-                    if (!$supplierRefundAccount) {
-                        $supplierRefundAccountId = Account::create([
-                            'name' => $accountSupplierName,
-                            'parent_id' => $assetsPayableAccount->id,
-                            'company_id' => Auth::user()->company->id,
-                            'branch_id' => Auth::user()->branch_id,
-                            'root_id' => $assetsPayableAccount->root_id,
-                            'code' => $assetsPayableAccount->code + 1,
-                            'account_type' => 'asset',
-                            'report_type' => 'balance sheet',
-                            'level' => $assetsPayableAccount->level + 1,
-                            'is_group' => 0,
-                            'disabled' => 0,
-                            'actual_balance' => 0.00,
-                            'budget_balance' => 0.00,
-                            'variance' => 0.00,
-                            'currency' => 'KWD',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        $supplierRefundAccountEntry =  $supplierRefundAccountId;
-                    } else {
-                        $supplierRefundAccountEntry =  $supplierRefundAccount;
-                    }
-
-                    // Get Expense Account
-                    $expensesDirectExpenses = Account::where('name', 'LIKE', '%Direct Expenses%')
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', 5)
-                        ->first();
-                    $accountSupplierRefundExpenses = ucfirst($task->type) . 's Cost';
-
-                    $supplierRefundExpenses = Account::where('name', $accountSupplierRefundExpenses)
-                        ->where('company_id', $task->company_id)
-                        ->where('root_id', $expensesDirectExpenses->root_id)
-                        ->first();
-
-                    if (!$supplierRefundExpenses) {
-                        $supplierRefundExpensesId = Account::create([
-                            'name' => $accountSupplierRefundExpenses,
-                            'parent_id' => $expensesDirectExpenses->id,
-                            'company_id' => Auth::user()->company->id,
-                            'branch_id' => Auth::user()->branch_id,
-                            'root_id' => $expensesDirectExpenses->root_id,
-                            'code' => $expensesDirectExpenses->code + 1,
-                            'account_type' => 'asset',
-                            'report_type' => 'balance sheet',
-                            'level' => $expensesDirectExpenses->level + 1,
-                            'is_group' => 0,
-                            'disabled' => 0,
-                            'actual_balance' => 0.00,
-                            'budget_balance' => 0.00,
-                            'variance' => 0.00,
-                            'currency' => 'KWD',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        $supplierRefundExpensesEntry =  $supplierRefundExpensesId;
-                    } else {
-                        $supplierRefundExpensesEntry =  $supplierRefundExpenses;
-                    }
-
-                    // Create Transaction Record
-                    $transaction = Transaction::create([
-                        'entity_id' => $task->company_id,
-                        'entity_type' => 'company',
-                        'company_id' => $task->company_id,
-                        'branch_id' => $task->agent->branch_id,
-                        'transaction_type' => 'debit',
-                        'amount' => $task->total,
-                        'date' => Carbon::now(),
-                        'description' => 'Refund Task: ' . $task->reference,
-                        'reference_type' => 'Refund',
-                        'name' => $task->client_name,
-
-                    ]);
-
-                    if (!$transaction) {
-                        throw new Exception('Refund Transaction for creation failed.');
-                    }
-
-                    JournalEntry::create([
-                        'transaction_date' => Carbon::now(),
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $task->company_id,
-                        'branch_id' => $task->agent->branch_id,
-                        'account_id' => $supplierRefundAccountEntry->id,
-                        'description' => 'Refund Task - Supplier refunds us (Liabilities): ' . $supplierRefundAccountEntry->name . '',
-                        'debit' => $task->total,
-                        'credit' => 0,
-                        'name' => $supplierRefundAccountEntry->name,
-                        'type' => 'refund',
-                    ]);
-
-                    JournalEntry::create([
-                        'transaction_date' => Carbon::now(),
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $task->company_id,
-                        'branch_id' => $task->agent->branch_id,
-                        'account_id' => $supplierRefundExpensesEntry->id,
-                        'description' => 'Refund Task - Flight cost return (Expenses): ' . $supplierRefundExpensesEntry->name . '',
-                        'debit' => 0,
-                        'credit' => $task->total,
-                        'name' => $supplierRefundExpensesEntry->name,
-                        'type' => 'refund',
-                    ]);
+                    $supplierRefundAccountEntry =  $supplierRefundAccount;
                 }
 
+                // Get Expense Account
+                $expensesDirectExpenses = Account::where('name', 'LIKE', '%Direct Expenses%')
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', 5)
+                    ->first();
+                $accountSupplierRefundExpenses = ucfirst($task->type) . 's Cost';
 
-                // JournalEntry::create([
-                //     'transaction_id' => $transaction->id,
-                //     'company_id' => $task->company_id,
-                //     'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
-                //     'account_id' => $receivableAccount->id,
-                //     'task_id' => $task->id,
-                //     'transaction_date' => Carbon::now(),
-                //     'description' => 'Records Direct Expenses',
-                //     'name' => $task->client_name ?? 'N/A',
-                //     'debit' => $task->total,
-                //     'credit' => 0,
-                //     'balance' => $task->total,
-                //     'type' => 'receivable',
-                // ]);
+                $supplierRefundExpenses = Account::where('name', $accountSupplierRefundExpenses)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $expensesDirectExpenses->root_id)
+                    ->first();
 
-          
+                if (!$supplierRefundExpenses) {
+                    $supplierRefundExpensesId = Account::create([
+                        'name' => $accountSupplierRefundExpenses,
+                        'parent_id' => $expensesDirectExpenses->id,
+                        'company_id' => Auth::user()->company->id,
+                        'branch_id' => Auth::user()->branch_id,
+                        'root_id' => $expensesDirectExpenses->root_id,
+                        'code' => $expensesDirectExpenses->code + 1,
+                        'account_type' => 'asset',
+                        'report_type' => 'balance sheet',
+                        'level' => $expensesDirectExpenses->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $supplierRefundExpensesEntry =  $supplierRefundExpensesId;
+                } else {
+                    $supplierRefundExpensesEntry =  $supplierRefundExpenses;
+                }
+
+                // Create Transaction Record
+                $transaction = Transaction::create([
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'transaction_type' => 'debit',
+                    'amount' => $task->total,
+                    'date' => Carbon::now(),
+                    'description' => 'Refund Task: ' . $task->reference,
+                    'reference_type' => 'Refund',
+                    'name' => $task->client_name,
+
+                ]);
+
+                if (!$transaction) {
+                    throw new Exception('Refund Transaction for creation failed.');
+                }
+
+                JournalEntry::create([
+                    'transaction_date' => Carbon::now(),
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierRefundAccountEntry->id,
+                    'description' => 'Refund Task - Supplier refunds us (Liabilities): ' . $supplierRefundAccountEntry->name . '',
+                    'debit' => $task->total,
+                    'credit' => 0,
+                    'name' => $supplierRefundAccountEntry->name,
+                    'type' => 'refund',
+                ]);
+
+                JournalEntry::create([
+                    'transaction_date' => Carbon::now(),
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_id' => $supplierRefundExpensesEntry->id,
+                    'description' => 'Refund Task - Flight cost return (Expenses): ' . $supplierRefundExpensesEntry->name . '',
+                    'debit' => 0,
+                    'credit' => $task->total,
+                    'name' => $supplierRefundExpensesEntry->name,
+                    'type' => 'refund',
+                ]);
             }
+
+
+            // JournalEntry::create([
+            //     'transaction_id' => $transaction->id,
+            //     'company_id' => $task->company_id,
+            //     'branch_id' => $task->agent->branch_id ?? auth()->user()->branch->id ?? null,
+            //     'account_id' => $receivableAccount->id,
+            //     'task_id' => $task->id,
+            //     'transaction_date' => Carbon::now(),
+            //     'description' => 'Records Direct Expenses',
+            //     'name' => $task->client_name ?? 'N/A',
+            //     'debit' => $task->total,
+            //     'credit' => 0,
+            //     'balance' => $task->total,
+            //     'type' => 'receivable',
+            // ]);
 
 
         } catch (Exception $e) {
@@ -776,6 +744,11 @@ class TaskController extends Controller
     public function toggleStatus(Request $request, Task $task)
     {
         $task->enabled = $request->is_enabled;
+
+        if($task->enabled && !$task->is_complete){
+            return response()->json(['success' => false, 'message' => 'Task is not complete. Please complete the task before enabling it.'], 400);
+        }
+
         $task->save();
 
         return response()->json(['success' => true]);
@@ -847,6 +820,13 @@ class TaskController extends Controller
             try {
                 $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total', 'status']));
                 $task->client_name = $client->name;
+
+                if($task->is_complete){
+                    $task->enabled = true;
+                } else {
+                    $task->enabled = false;
+                }
+
                 $task->save();
 
                 $transaction = Transaction::with('journalEntries')->where('description', 'like', '%' . $task->reference . '%')->first();
@@ -939,7 +919,6 @@ class TaskController extends Controller
                 ? ($response['data']['status'] === 'void' ? 0 : $response['data']['total'])
                 : 0,
         ]);
-        
 
         $responseWithoutJson = $this->store($newRequest);
 
@@ -1217,7 +1196,7 @@ class TaskController extends Controller
             if ($cancellationDate) {
                 $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
 
-                if(Date::now()->greaterThan($cancellationDate)){
+                if(Date::now()->greaterThanOrEqualTo($cancellationDate)){
                     $status = 'issued';
                 } else {
                     $status = 'confirmed';

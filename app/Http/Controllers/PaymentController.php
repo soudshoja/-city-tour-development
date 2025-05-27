@@ -419,10 +419,10 @@ class PaymentController extends Controller
                     'account_id' =>  $receivableAccountId,
                     'invoice_detail_id' =>  $invoiceDetail->id,
                     'transaction_date' => Carbon::now(),
-                        'description' => 'Client Pays via '.$bankPaymentFee->name.' by (Assets): ' . $client->name,
+                    'description' => 'Client Pays via '.$bankPaymentFee->name.' by (Assets): ' . $client->name,
                     'debit' => 0,
                     'credit' => $totalPaidAmount,
-                        'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
+                    'balance' => $invoiceDetail['task_price']-$totalPaidAmount,
                     'name' =>  $client->name,
                     'type' => 'receivable',
                     'voucher_number' => $payment->voucher_number,
@@ -441,7 +441,7 @@ class PaymentController extends Controller
                         'invoice_detail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
                             'description' => 'Client Pays by '. $client->name .' via (Assets): ' . $bankPaymentFee->name,
-                            'debit' => $totalPaidAmount-$defaultPaymentGatewayFee,
+                            'debit' => $totalPaidAmount, //$totalPaidAmount-$defaultPaymentGatewayFee
                             'credit' =>0,
                             'balance' => $invoiceDetail['task_price']-$totalPaidAmount, 
                         'name' =>  $bankPaymentFee->name,
@@ -1160,38 +1160,38 @@ class PaymentController extends Controller
                 $invoice->save();
             }
 
-            if ($invoice->is_client_credit == 2) {
-                $creditSubmit = Credit::create([
-                    'company_id'  => $invoice->client->agent->branch->company_id,
-                    'client_id'   => $invoice->client->id,
-                    'invoice_id'  => $invoice->id,
-                    'type'        => 'Topup',
-                    'description' => 'Topup Client Credit for ' . $invoice->client->name,
-                    'amount'      => $invoice->amount,
-                ]);    
-            }
+            // if ($invoice->is_client_credit == 2) {
+            //     $creditSubmit = Credit::create([
+            //         'company_id'  => $invoice->client->agent->branch->company_id,
+            //         'client_id'   => $invoice->client->id,
+            //         'invoice_id'  => $invoice->id,
+            //         'type'        => 'Topup',
+            //         'description' => 'Topup Client Credit for ' . $invoice->client->name,
+            //         'amount'      => $invoice->amount,
+            //     ]);    
+            // }
 
-            $croppedOriginalInvoiceNo = Str::before($invoice->invoice_number, '-TC-');
+            // $croppedOriginalInvoiceNo = Str::before($invoice->invoice_number, '-TC-');
 
-            $originalInvoice = Invoice::where('invoice_number', $croppedOriginalInvoiceNo)
-                ->where('is_client_credit', 1)
-                ->where('status', 'unpaid')
-                ->first();
+            // $originalInvoice = Invoice::where('invoice_number', $croppedOriginalInvoiceNo)
+            //     ->where('is_client_credit', 1)
+            //     ->where('status', 'unpaid')
+            //     ->first();
 
-            if ($originalInvoice) {
-                $originalInvoice->status = 'paid';
-                $originalInvoice->paid_date = now();
-                $originalInvoice->save();
+            // if ($originalInvoice) {
+            //     $originalInvoice->status = 'paid';
+            //     $originalInvoice->paid_date = now();
+            //     $originalInvoice->save();
 
-                $creditSubmit = Credit::create([
-                    'company_id'  => $originalInvoice->client->agent->branch->company_id,
-                    'client_id'   => $originalInvoice->client->id,
-                    'invoice_id'  => $originalInvoice->id,
-                    'type'        => 'Topup',
-                    'description' => 'Payment for ' . $originalInvoice->invoice_number,
-                    'amount'      => -($invoice->amount),
-                ]);  
-            }
+            //     $creditSubmit = Credit::create([
+            //         'company_id'  => $originalInvoice->client->agent->branch->company_id,
+            //         'client_id'   => $originalInvoice->client->id,
+            //         'invoice_id'  => $originalInvoice->id,
+            //         'type'        => 'Topup',
+            //         'description' => 'Payment for ' . $originalInvoice->invoice_number,
+            //         'amount'      => -($invoice->amount),
+            //     ]);  
+            // }
 
             //dd($process);
 

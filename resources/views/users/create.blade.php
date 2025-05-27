@@ -505,13 +505,13 @@
                                                 </span>
                                             </div>
 
-                                            <div class="mb-4 flex items-center relative">
+                                            <div class="mb-4 flex gap-2 items-center relative">
                                                 <div class="relative">
                                                     <select name="dial_code" id="dial_code"
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
                                                         <option value="{{ $country->dialing_code }}">
-                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                            {{ $country->name }} ({{ $country->dialing_code }})
                                                         </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->
@@ -532,14 +532,23 @@
                                             </div>
                                         </div>
 
-                                        <div class="mb-6 flex items-center relative">
-                                            <input type="password" name="password" class="custom-input" required
-                                                placeholder="Agent Password *" autocomplete="on">
-                                            <span class="tooltip-container ml-2 cursor-pointer">
-                                                <span class="tooltip-icon">!</span>
-                                                <span class="tooltip">Password must be at least 8 characters long and
-                                                    include numbers.</span>
-                                            </span>
+                                        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="flex gap-2 items-center relative">
+                                                <input type="password" name="password" class="custom-input" required
+                                                    placeholder="Agent Password *" autocomplete="on">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Password must be at least 8 characters long and
+                                                        include numbers.</span>
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center relative">
+                                                <input type="text" placeholder="Amadeus ID " name="amadeus_id" class="custom-input">
+                                                <!-- <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Enter the Amadeus ID for the agent.</span>
+                                                </span> -->
+                                            </div>
                                         </div>
 
                                         <div class="flex w-full my-3 gap-5">
@@ -730,7 +739,7 @@
                                         {{-- <div
                                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($agents) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3"> --}}
                                         @if(auth()->user()->agent)
-                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                        <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
                                         @else
                                         <select
                                             class="custom-select w-full border rounded-lg px-4 py-2 dark:text-white dark:bg-gray-700"

@@ -1181,6 +1181,26 @@ class TaskController extends Controller
 
         $cancellationPolicy = [];
 
+        if($agentId === null) {
+            $agent = $reservation['agent'];
+
+            if (!$agent) {
+                throw new Exception('Agent not found in reservation data');
+            }
+
+            $agentInDB = Agent::where('name', $agent['name'])
+                            ->orWhere('email', 'like', $agent['email'])
+                            ->orWhere('phone', 'like', $agent['phone'])
+                            ->first();
+            
+            if ($agentInDB) {
+                $agentId = $agentInDB->id;
+            } else {
+                Log::channel('magic_holidays')->error('Agent not found in database: ' , $agent);
+                throw new Exception('Agent not found in database');
+            }
+        }
+
         if (isset($reservation['service']['cancellationPolicy'])) {
             logger('Cancellation Policy: ', $reservation['service']['cancellationPolicy']);
 

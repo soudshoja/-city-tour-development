@@ -17,6 +17,7 @@ use App\Models\Account;
 use App\Models\AgentType;
 use App\Models\Branch;
 use App\Models\Role;
+use App\Models\SupplierCompany;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -102,7 +103,13 @@ class AgentController extends Controller
         $paid = Invoice::where('status', 'paid')->where('agent_id', $id)->sum('amount');
         $unpaid = Invoice::where('status', '<>', 'paid')->where('agent_id', $id)->sum('amount');
         $agentType = AgentType::all();
-
+        $company = Company::find($agent->branch->company_id);
+        $supplierCompany = SupplierCompany::with('supplier')
+            ->where('company_id', $company->id)
+            ->get()
+            ->pluck('supplier.name')
+            ->toArray();
+        
         // Return the main view with paginated data
         return view('agents.agentsShow', compact(
             'agent',
@@ -113,22 +120,23 @@ class AgentController extends Controller
             'paid',
             'unpaid',
             'taskInvoiced',
-            'taskNotInvoiced'
+            'taskNotInvoiced',
+            'supplierCompany',
         ));
     }
 
-    public function edit($id)
-    {
-        $agent = Agent::find($id);
-        $branches = collect();
+    // public function edit($id)
+    // {
+    //     $agent = Agent::find($id);
+    //     $branches = collect();
 
-        $user = auth()->user();
-        if ($user->role_id == Role::COMPANY) {
-            $branches = Branch::where('company_id', $user->company->id)->get();
-        }
+    //     $user = auth()->user();
+    //     if ($user->role_id == Role::COMPANY) {
+    //         $branches = Branch::where('company_id', $user->company->id)->get();
+    //     }
 
-        return view('agents.agentsEdit', compact('agent', 'branches'));
-    }
+    //     return view('agents.agentsEdit', compact('agent', 'branches'));
+    // }
 
 
     public function update(Request $request, $id)
@@ -154,6 +162,7 @@ class AgentController extends Controller
             'dial_code' => 'nullable|string|max:30',
             'phone' => 'required|string',
             'branch_id' => 'required',
+            'amadeus_id' => 'nullable|string|max:255',
             // 'company_id' => 'required',
             'type_id' => 'required',
         ]);
@@ -201,6 +210,7 @@ class AgentController extends Controller
                 'email' => $request->email,
                 'phone_number' => $request->dial_code . $request->phone,
                 'type_id' => $request->type_id,
+                'amadeus_id' => $request->amadeus_id,
             ]);
         } catch (Exception $e) {
             $user->delete();

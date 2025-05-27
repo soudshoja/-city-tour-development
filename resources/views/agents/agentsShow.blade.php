@@ -192,15 +192,27 @@
                         <select name="type_id" id="type"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             @foreach($agentType as $type)
-                                <option value="{{ $type->id }}" {{ $agent->type_id == $type->id ? 'selected' : '' }}>
-                                    {{ $type->name }}
-                                </option>
+                            <option value="{{ $type->id }}" {{ $agent->type_id == $type->id ? 'selected' : '' }}>
+                                {{ $type->name }}
+                            </option>
                             @endforeach
 
                         </select>
                     </div>
 
+                    @if(in_array('Amadeus', $supplierCompany))
+                    <label for="amadeus_id" class="block text-gray-700 font-semibold mb-2">Amadeus ID</label>
+                    <input
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
+                        type="text" name="amadeus_id" id="amadeus_id" placeholder="Amadeus ID" value="{{ $agent->amadeus_id }}">
+                    @endif
 
+                    @if(in_array('TBO Holiday', $supplierCompany))
+                    <label for="tbo_reference" class="block text-gray-700 font-semibold mb-2">TBO Reference</label>
+                    <input
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300"
+                        type="text" name="tbo_reference" id="tbo_reference" placeholder="TBO Reference" value="{{ $agent->tbo_reference }}">
+                    @endif
 
                     <!-- Submit Button -->
                     <div class="flex space-x-2">
@@ -297,42 +309,42 @@
                     @else
                     <div class="overflow-auto">
 
-                    <table class="w-inherit bg-white border border-gray-300 mt-4 overflow-auto">
-                        <thead>
-                            <tr>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">client Name</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Paid (KWD)</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Pending (KWD)</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Email</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Phone</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Address</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($clients as $client)
-                            <tr>
-                                <td class="py-4 px-6 border-b">{{ $client->name }}</td>
-                                <td class="py-4 px-6 border-b">
-                                    <x-paid>
-                                        {{ $client->paid }}
-                                    </x-paid>
-                                </td>
-                                <td class="py-4 px-6 border-b">
-                                    <x-unpaid>
-                                        {{ $client->unpaid }}
-                                    </x-unpaid>
-                                </td>
-                                <td class="py-4 px-6 border-b">{{ $client->email }}</td>
-                                <td class="py-4 px-6 border-b">{{ $client->phone }}</td>
-                                <td class="py-4 px-6 border-b">{{ $client->address }}</td>
-                                <td class="py-4 px-6 border-b">
-                                    <a href="#" class="text-indigo-500">View</a>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                        <table class="w-inherit bg-white border border-gray-300 mt-4 overflow-auto">
+                            <thead>
+                                <tr>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">client Name</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Paid (KWD)</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Pending (KWD)</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Email</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Phone</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Address</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($clients as $client)
+                                <tr>
+                                    <td class="py-4 px-6 border-b">{{ $client->name }}</td>
+                                    <td class="py-4 px-6 border-b">
+                                        <x-paid>
+                                            {{ $client->paid }}
+                                        </x-paid>
+                                    </td>
+                                    <td class="py-4 px-6 border-b">
+                                        <x-unpaid>
+                                            {{ $client->unpaid }}
+                                        </x-unpaid>
+                                    </td>
+                                    <td class="py-4 px-6 border-b">{{ $client->email }}</td>
+                                    <td class="py-4 px-6 border-b">{{ $client->phone }}</td>
+                                    <td class="py-4 px-6 border-b">{{ $client->address }}</td>
+                                    <td class="py-4 px-6 border-b">
+                                        <a href="#" class="text-indigo-500">View</a>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                     <div class="mt-4">
                         {{ $clients->appends(['section' => 'clients'])->links() }}

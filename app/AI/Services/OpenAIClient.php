@@ -5,6 +5,7 @@ namespace App\AI\Services;
 use App\AI\Contracts\AIClientInterface;
 use App\Enums\TaskType;
 use App\Http\Traits\HttpRequestTrait;
+use App\Models\Agent;
 use App\Models\Airport;
 use App\Models\Supplier;
 use App\Models\Task;
@@ -143,6 +144,8 @@ class OpenAIClient implements AIClientInterface
 
         $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
 
+        $agentAmadeusIdList = Agent::limit(10)->pluck('amadeus_id');
+
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
         
@@ -162,6 +165,8 @@ class OpenAIClient implements AIClientInterface
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
             - `agent_email`: email of the agent handling the task.
+            - `agent_amadeus_id`: Amadeus ID of the agent handling the task. its located on C line of the file. The character often have 6 characters, 4 digit with 2 letters, like '1234AB'. However, the list of characters usually have 2 extra letters at the end, like '1234ABAS'. The last 2 letters are referring to the role of the agent (AS refer to agent, SU refer to the supplier), so you can just remove the last 2 letters and keep the first 6 characters. for example, if the agent amadeus id is '1234ABAS', you can just set it to '1234AB'. 
+            This is example list of amadeus id: $agentAmadeusIdList
             - `client_name`: name of the client associated with the task.
             - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
                 You can refer the supplier from this list: $supplierList
@@ -227,6 +232,7 @@ class OpenAIClient implements AIClientInterface
             'type': 'flight',
             'agent_name': 'agent name',
             'agent_email': 'agent email',
+            'agent_amadeus_id': 'agent amadeus id',
             'client_name': 'client name',
             'supplier_name': 'Amadeus',
             'supplier_country': 'Kuwait',
@@ -299,6 +305,7 @@ class OpenAIClient implements AIClientInterface
                 'status' => 'status',
                 'agent_name' => 'agent_name',
                 'agent_email' => 'agent_email',
+                'agent_amadeus_id' => 'agent_amadeus_id',
                 'client_name' => 'client_name',
                 'reference' => 'reference',
                 'gds_office_id' => 'gds_office_id',

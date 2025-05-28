@@ -6,6 +6,7 @@ use App\AI\AIManager;
 use App\Http\Controllers\TaskController;
 use App\Models\Agent;
 use App\Models\Branch;
+use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
@@ -29,6 +30,7 @@ class ProcessAirFiles extends Command
     // protected $processedFilesPath;
     protected $aiManager;
     protected $suppliers;
+    protected $companies;
 
     public function __construct(AIManager $aiManager)
     {
@@ -38,6 +40,7 @@ class ProcessAirFiles extends Command
         // $this->processedFilesPath = storage_path('app/air_files_processed');
         $this->aiManager = $aiManager;
         $this->suppliers = Supplier::all();
+        $this->companies = Company::all();
     }
 
     public function handle()
@@ -45,178 +48,175 @@ class ProcessAirFiles extends Command
         $this->info('Starting AIR file processing from root/air-files directory...');
         Log::info('AIR File Processing: Service started.');
 
-        foreach($this->suppliers as $supplier) {
-            $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
+        foreach ($this->companies as $company) {
+            $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
 
-            $filePath = storage_path("app/{$supplierName}/files_unprocessed");
+            foreach ($this->suppliers as $supplier) {
+                $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
 
-            if (!File::isDirectory($filePath)) {
-                $this->error("Source directory not found: {$filePath}");
-                Log::error("AIR File Processing: Source directory {$filePath} not found.");
-                File::makeDirectory($filePath, 0755, true, true); // Optionally create it
-                $this->info("Created source directory: {$filePath}, please ensure files are pushed here.");
-                return 1;
-            }
+                $filePath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
 
-            if (!File::isDirectory($filePath)) {
-                File::makeDirectory($filePath, 0755, true, true);
-                $this->info("Created processed files directory: {$supplierName}/files_processed");
-            }
-
-            $filesToProcess = File::files($filePath);
-
-            if (empty($filesToProcess)) {
-                $this->info("No new files found in {$supplierName} air-files directory to process.");
-                Log::info("AIR File Processing: No new files found in {$supplierName}.");
-                continue; // Skip to the next supplier
-            }
-
-            $this->info(count($filesToProcess) . ' file(s) found in air-files.');
-            foreach ($filesToProcess as $file) { // $file is an SplFileInfo object
-                $filePath = $file->getRealPath();
-                $fileName = $file->getFilename();
-
-                $this->info("Processing file: {$fileName}");
-                Log::info("AIR File Processing: Starting file {$fileName}");
-
-                try {
-
-                    $extractedData = $this->processWithAiTool($filePath, $fileName);
-
-                    if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
-                        Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
-                        $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
-                        continue;
-                    }
-
-                    $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
-
-                    $agentName = $extractedData['data']['agent_name'] ?? null;
-                    $agentEmail = $extractedData['data']['agent_email'] ?? null;
-                    $agentAmadeusId = $extractedData['data']['agent_amadeus_id'] ?? null;
-
-                    if( !$agentName || !$agentEmail || !$agentAmadeusId) {
-                        Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
-                        $this->warn("Missing agent information in {$fileName}. File will remain in place.");
-
-                        $errorPath = storage_path("app/{$supplierName}/files_error");
-
-                        $this->moveFileWithLogging(
-                            $filePath,
-                            $errorPath,
-                            $fileName,
-                            'Missing agent information'
-                        );
-
-                        continue;
-                    }
-
-                    $agent = Agent::where('name', 'like', $agentName)
-                        ->orWhere('email', 'like', $agentEmail)
-                        ->orWhere('amadeus_id', 'like', $agentAmadeusId)
-                        ->first();
-                    
-                    if (!$agent) {
-                        Log::warning("AIR File Processing: Agent not found for {$fileName}. Creating new agent.");
-                        $this->warn("Agent not found for {$fileName}. Creating new agent.");
-
-                        $errorPath = storage_path("app/{$supplierName}/files_error");
-                        $this->moveFileWithLogging(
-                            $filePath,
-                            $errorPath,
-                            $fileName,
-                            'Agent not found'
-                        );
-
-                        continue;
-                    }
-
-
-                    $branchId = $agent->branch_id;
-
-                    $branch = Branch::find($branchId);
-
-                    if (!$branch) {
-                        Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
-                        $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
-
-                        $errorPath = storage_path("app/{$supplierName}/files_error");
-
-                        $this->moveFileWithLogging(
-                            $filePath,
-                            $errorPath,
-                            $fileName,
-                            'Branch not found'
-                        );
-
-                        continue;
-                    }
-
-                    $extractedData['data']['agent_id'] = $agent->id;
-                    $companyId = $branch->company_id;
-
-                    $response = $this->saveTask($companyId,$extractedData['data']);
-
-                    if ($response['status'] === 'error') {
-                        if(isset($response['code']) && $response['code'] === 409) {
-                            Log::info("Task already exists for {$fileName}. Skipping save.");
-                            $this->info("Task already exists for {$fileName}. Skipping save.");
-                            continue;
-                        } else {
-                            Log::error("Failed to save task for {$fileName}: " . $response['message']);
-                            $this->error("Failed to save task for {$fileName}: " . $response['message']);
-
-                            $errorPath = storage_path("app/{$supplierName}/files_error");
-
-                            $this->moveFileWithLogging(
-                                $filePath,
-                                $errorPath,
-                                $fileName,
-                                'Failed to save task'
-                            );
-
-                            Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
-                            $this->info("File {$fileName} moved to error directory due to save failure.");
-                            continue;
-                        }
-                    }
-
-                    Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
-                    $this->info("File {$fileName} processed successfully by AI tool.");
-
-                    // Move the file to the processed directory
-                    $successPath = storage_path("app/{$supplierName}/files_processed");
-
-                    $this->moveFileWithLogging(
-                        $filePath,
-                        $successPath,
-                        $fileName,
-                        'Successfully processed and saved task'
-                    );
-
-                    Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
-
-                } catch (Exception $e) {
-                    $this->error("Error processing file {$fileName}: " . $e->getMessage());
-                    Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
-                        'file' => $fileName,
-                        'trace' => $e->getTraceAsString()
-                    ]);
-
-                    $errorPath = storage_path("app/{$supplierName}/files_error");
-
-                    $this->moveFileWithLogging(
-                        $filePath,
-                        $errorPath,
-                        $fileName,
-                        'Error during processing'
-                    );
-
-                    Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                if (!File::isDirectory($filePath)) {
+                    $this->error("Source directory not found: {$filePath}");
+                    Log::error("AIR File Processing: Source directory {$filePath} not found.");
+                    File::makeDirectory($filePath, 0755, true, true); // Optionally create it
+                    $this->info("Created source directory: {$filePath}, please ensure files are pushed here.");
+                    continue;
                 }
 
-                $this->info('AIR file processing for supplier' . $supplierName . ' finished.');
-                Log::info('AIR File Processing: Finished processing for supplier ' . $supplierName . '.');
+                $filesToProcess = File::files($filePath);
+
+                if (empty($filesToProcess)) {
+                    $this->info("No new files found in {$companyName}/{$supplierName} air-files directory to process.");
+                    Log::info("AIR File Processing: No new files found in {$companyName}/{$supplierName}.");
+                    continue; // Skip to the next supplier
+                }
+
+                $this->info(count($filesToProcess) . " file(s) found in {$companyName}/{$supplierName} air-files.");
+                foreach ($filesToProcess as $file) { // $file is an SplFileInfo object
+                    $fileRealPath = $file->getRealPath();
+                    $fileName = $file->getFilename();
+
+                    $this->info("Processing file: {$fileName}");
+                    Log::info("AIR File Processing: Starting file {$fileName}");
+
+                    try {
+
+                        $extractedData = $this->processWithAiTool($fileRealPath, $fileName);
+
+                        if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
+                            Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
+                            $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
+                            continue;
+                        }
+
+                        $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
+
+                        $agentName = $extractedData['data']['agent_name'] ?? null;
+                        $agentEmail = $extractedData['data']['agent_email'] ?? null;
+                        $agentAmadeusId = $extractedData['data']['agent_amadeus_id'] ?? null;
+
+                        if (!$agentName || !$agentEmail || !$agentAmadeusId) {
+                            Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
+                            $this->warn("Missing agent information in {$fileName}. File will remain in place.");
+
+                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+
+                            $this->moveFileWithLogging(
+                                $fileRealPath,
+                                $errorPath,
+                                $fileName,
+                                'Missing agent information'
+                            );
+
+                            continue;
+                        }
+
+                        $agent = Agent::where('name', 'like', $agentName)
+                            ->orWhere('email', 'like', $agentEmail)
+                            ->orWhere('amadeus_id', 'like', $agentAmadeusId)
+                            ->first();
+
+                        if (!$agent) {
+                            Log::warning("AIR File Processing: Agent not found for {$fileName}. Creating new agent.");
+                            $this->warn("Agent not found for {$fileName}. Creating new agent.");
+
+                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                            $this->moveFileWithLogging(
+                                $fileRealPath,
+                                $errorPath,
+                                $fileName,
+                                'Agent not found'
+                            );
+
+                            continue;
+                        }
+
+                        $branchId = $agent->branch_id;
+
+                        $branch = Branch::find($branchId);
+
+                        if (!$branch) {
+                            Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
+                            $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
+
+                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+
+                            $this->moveFileWithLogging(
+                                $fileRealPath,
+                                $errorPath,
+                                $fileName,
+                                'Branch not found'
+                            );
+
+                            continue;
+                        }
+
+                        $extractedData['data']['agent_id'] = $agent->id;
+                        $companyId = $branch->company_id;
+
+                        $response = $this->saveTask($companyId, $extractedData['data']);
+
+                        if ($response['status'] === 'error') {
+                            if (isset($response['code']) && $response['code'] === 409) {
+                                Log::info("Task already exists for {$fileName}. Skipping save.");
+                                $this->info("Task already exists for {$fileName}. Skipping save.");
+                                continue;
+                            } else {
+                                Log::error("Failed to save task for {$fileName}: " . $response['message']);
+                                $this->error("Failed to save task for {$fileName}: " . $response['message']);
+
+                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+
+                                $this->moveFileWithLogging(
+                                    $fileRealPath,
+                                    $errorPath,
+                                    $fileName,
+                                    'Failed to save task'
+                                );
+
+                                Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                                $this->info("File {$fileName} moved to error directory due to save failure.");
+                                continue;
+                            }
+                        }
+
+                        Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
+                        $this->info("File {$fileName} processed successfully by AI tool.");
+
+                        // Move the file to the processed directory
+                        $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+
+                        $this->moveFileWithLogging(
+                            $fileRealPath,
+                            $successPath,
+                            $fileName,
+                            'Successfully processed and saved task'
+                        );
+
+                        Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
+                    } catch (Exception $e) {
+                        $this->error("Error processing file {$fileName}: " . $e->getMessage());
+                        Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
+                            'file' => $fileName,
+                            'trace' => $e->getTraceAsString()
+                        ]);
+
+                        $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+
+                        $this->moveFileWithLogging(
+                            $fileRealPath,
+                            $errorPath,
+                            $fileName,
+                            'Error during processing'
+                        );
+
+                        Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                    }
+
+                    $this->info('AIR file processing for supplier ' . $supplierName . ' in company ' . $companyName . ' finished.');
+                    Log::info('AIR File Processing: Finished processing for supplier ' . $supplierName . ' in company ' . $companyName . '.');
+                }
             }
         }
         Log::info('AIR File Processing: Service finished.');

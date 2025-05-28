@@ -356,6 +356,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
+
     });
 
 
@@ -491,6 +492,8 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', [CreditController::class, 'index'])->name('index');
         Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
+        Route::post('/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}', [CreditController::class, 'useCreditNow'])->name('useCreditNow');
+
 
     });
 

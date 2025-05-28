@@ -877,11 +877,26 @@ class InvoiceController extends Controller
 
         // Commission (Expense)
         try {
-            $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
 
-            $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
-                ->where('company_id', $task->company_id)
-                ->first();
+            $agent = $task->agent;
+
+            if(!$agent) {
+                Log::error('Agent not found for task', ['task_id' => $task->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Agent not found for task',
+                ]);
+            }
+
+            if ($agent->agentType == 'Commission' || $agent->agentType == 'Both') {
+                $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+
+                $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
+                    ->where('company_id', $task->company_id)
+                    ->first();
+            } else {
+                $commissionExpenses = null;
+            }
 
             if ($commissionExpenses) {
                 JournalEntry::create([

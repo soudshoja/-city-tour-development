@@ -459,29 +459,10 @@ class InvoiceController extends Controller
                     'success' => false,
                     'message' => 'Client credit is not enough!',
                 ]);
-            } else {
-                try {
-                    Credit::create([
-                        'company_id'  => $invoice->client->agent->branch->company_id,
-                        'client_id'   => $invoice->client->id,
-                        'invoice_id'  => $invoice->id,
-                        'type'        => 'Invoice',
-                        'description' => 'Payment for ' . $invoice->invoice_number,
-                        'amount'      => -($amount), 
-                    ]); 
-                } catch (Exception $e) {
-                    Log::error('Failed to create Credit: ' . $e->getMessage());
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to create credit record!',
-                    ]);
-                }                 
-            }
-
+            } 
         }
 
         try {
-
             $invoicepartial = InvoicePartial::create([
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
@@ -492,6 +473,27 @@ class InvoiceController extends Controller
                 'type' => $type,
                 'payment_gateway' => $gateway,
             ]);
+
+                if ($credit && $type == 'full') {
+                    //insert credit record
+                    try {
+                        Credit::create([
+                            'company_id'  => $invoice->client->agent->branch->company_id,
+                            'client_id'   => $invoice->client->id,
+                            'invoice_id'  => $invoice->id,
+                            'invoice_partial_id'  => $invoicepartial->id,
+                            'type'        => 'Invoice',
+                            'description' => 'Payment for ' . $invoice->invoice_number,
+                            'amount'      => -($amount), 
+                        ]); 
+                    } catch (Exception $e) {
+                        Log::error('Failed to create Credit: ' . $e->getMessage());
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to create credit record!',
+                        ]);
+                    } 
+                }
 
             $invoice->payment_type = $type;
             $invoice->status = $credit ? 'paid' : 'unpaid';
@@ -1072,13 +1074,16 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        // $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
-        //     ->where('company_id', $invoice->agent->branch->company_id)
-        //     ->where('type', 'Invoice')
-        //     ->orderBy('id', 'asc')
-        //     ->get();
         $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('company_id', $invoice->agent->branch->company_id)
+            ->where('type', 'Invoice')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
+            ->where('invoice_partial_id', $invoicePartials->first()?->id)
             ->where('client_id', $invoice->client_id)
+            ->where('type', 'Invoice')
             ->orderBy('id', 'asc')
             ->get();
 
@@ -1087,7 +1092,7 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'company', 'checkUtilizeCredit'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'company', 'checkUtilizeCredit', 'checkUtilizeCreditPartial'));
     }
 
     public function generatePdf(string $invoiceNumber)
@@ -1120,7 +1125,20 @@ class InvoiceController extends Controller
 
         $invoiceDetails = $invoice->invoiceDetails;
 
-        return view('invoice.split', compact('invoice', 'invoiceDetails', 'invoicePartial'));
+        $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('invoice_partial_id', $invoicePartial->id)
+            ->where('client_id', $invoice->client_id)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
+            ->where('invoice_partial_id', $invoicePartial->id)
+            ->where('client_id', $invoice->client_id)
+            ->where('type', 'Invoice')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return view('invoice.split', compact('invoice', 'invoiceDetails', 'invoicePartial', 'checkUtilizeCredit', 'checkUtilizeCreditPartial'));
     }
 
 
@@ -1383,33 +1401,74 @@ class InvoiceController extends Controller
         if ($balanceCredit <= 0) {
                 return redirect()->back()->with('error', 'Client has no available credit balance.');
         }
-        $creditSubmit = Credit::create([
-            'company_id'  => $invoice->client->agent->branch->company_id,
-            'client_id'   => $invoice->client->id,
-            'invoice_id'  => $invoice->id,
-            'type'        => 'Invoice',
-            'description' => 'Payment for ' . $invoice->invoice_number,
-            'amount'      => -($balanceCredit),
-        ]); 
+        if ($balance > 0) {
+            $typePayment = 'partial';
+        }elseif ($balance == 0) {
+            $typePayment = 'full';
+        }
 
         if ($option === 'use_credit') {           
-            try {
-                $invoicePartial = InvoicePartial::create([
-                    'invoice_id' => $invoice->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'client_id' => $client->id,
-                    'agent_id' => $agent->id,
-                    'amount' => $amount,
-                    'status' => 'unpaid',
-                    'type' => 'full',
-                    'payment_gateway' => $gateway,
-                ]);
+            try {   
+                if ($typePayment === 'full') {
+                    $invoicePartial = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $client->id,
+                        'agent_id' => $agent->id,
+                        'amount' => $amount,
+                        'status' => 'paid',
+                        'type' => $typePayment,
+                        'payment_gateway' => $gateway,
+                    ]);
 
-                // Save the invoice type
-                $invoice->status = 'unpaid';
-                $invoice->payment_type = 'full';
-                $invoice->is_client_credit = 1; 
-                $invoice->save();
+                    // Save the invoice type
+                    $invoice->status = 'paid';
+                    $invoice->payment_type = 'full';
+                    $invoice->is_client_credit = 1; 
+                    $invoice->save();
+                }
+
+                if ($typePayment === 'partial') {
+                    $invoicePartial = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $client->id,
+                        'agent_id' => $agent->id,
+                        'amount' => $balance,
+                        'status' => 'unpaid',
+                        'type' => $typePayment,
+                        'payment_gateway' => $gateway,
+                    ]);
+
+                    //2nd partial for credit utilization
+                    $invoicePartialCredit = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $client->id,
+                        'agent_id' => $agent->id,
+                        'amount' => $balanceCredit,
+                        'status' => 'paid',
+                        'type' => $typePayment,
+                        'payment_gateway' => $gateway,
+                    ]);
+
+                    // Save the invoice type
+                    $invoice->status = 'unpaid';
+                    $invoice->payment_type = 'partial';
+                    $invoice->is_client_credit = 1; 
+                    $invoice->save();
+
+                    $creditSubmit = Credit::create([
+                        'company_id'  => $invoice->client->agent->branch->company_id,
+                        'client_id'   => $invoice->client->id,
+                        'invoice_id'  => $invoice->id,
+                        'invoice_partial_id'  => $invoicePartialCredit->id,
+                        'type'        => 'Invoice',
+                        'description' => 'Payment for ' . $invoice->invoice_number,
+                        'amount'      => -($balanceCredit),
+                    ]); 
+
+                }
 
                 // Record the transaction and journal entries
                 $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
@@ -1619,7 +1678,7 @@ class InvoiceController extends Controller
                     'invoice_number' => $invoice->invoice_number,
                     'client_id' => $client->id,
                     'agent_id' => $agent->id,
-                    'amount' => $amount,
+                    'amount' => $balance,
                     'status' => 'paid',
                     'type' => 'full',
                     'payment_gateway' => $gateway,
@@ -1687,8 +1746,6 @@ class InvoiceController extends Controller
 
         return redirect()->back()->with('error', 'Invalid option selected.');
     }
-
-
 
     public function createInvoiceWithLoss(Request $request)
     {

@@ -414,7 +414,7 @@
                                 @php
                                     $balanceCredit = \App\Models\Credit::getTotalCreditsByClient($selectedClient->id);
                                 @endphp
-                                @if ($invoice->amount < $balanceCredit)
+                                @if ($invoice->amount <= $balanceCredit)
                                     <button type="button" @click="clientCreditModal = true"
                                         class="rounded-full flex flex-col items-center justify-center w-full
                                         px-4 py-2 border border-gray-300 
@@ -455,7 +455,8 @@
                                                 class="rounded-full flex flex-col items-center justify-center w-full
                                             px-4 py-2 border border-gray-300 
                                             bg-green-500 text-white shadow-xl">
-                                                <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }} KWD
+                                                <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }}
+                                                    KWD
                                                     has
                                                     been utilized.
                                                 </span>

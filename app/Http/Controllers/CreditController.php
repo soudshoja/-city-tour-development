@@ -7,8 +7,10 @@ use App\Models\InvoiceDetail;
 use App\Models\Refund;
 use App\Models\Account;
 use App\Models\Credit;
+use App\Models\InvoicePartial;
 use App\Models\Transaction;
 use App\Models\Role;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -93,6 +95,47 @@ class CreditController extends Controller
             ];
         }));
     }
+
+    public function useCreditNow(Invoice $invoice, InvoicePartial $invoicePartial, $balanceCredit)
+    {
+        //dd($invoice, $invoicePartial, $balanceCredit);
+        $client = $invoice->client;
+        $currentClientCredit = Credit::getTotalCreditsByClient($client->id);
+
+        if ($currentClientCredit <= 0) {
+            return redirect()->back()->with('error', 'No client\'s credit available.');
+        }
+
+        $creditSubmit = Credit::create([
+            'company_id'         => $client->agent->branch->company_id,
+            'client_id'          => $client->id,
+            'invoice_id'         => $invoice->id,
+            'invoice_partial_id' => $invoicePartial->id,
+            'type'               => 'Invoice',
+            'description'        => 'Payment for ' . $invoice->invoice_number,
+            'amount'             => -($balanceCredit),
+        ]);
+
+        if ($invoicePartial->amount <= $balanceCredit) {
+            $invoicePartial->status = 'paid';
+            $invoicePartial->save();   
+        }
+
+        // Check if all partials are marked as 'paid'
+        $allPaid = InvoicePartial::where('invoice_id', $invoice->id)
+            ->where('status', '!=', 'paid')
+            ->doesntExist();
+
+        // If all are paid, update the invoice status
+        if ($allPaid) {
+            $invoice->status = 'paid';
+            $invoice->paid_date = Carbon::now();
+            $invoice->save();
+        }
+
+        return redirect()->back()->with('success', 'Credit used for splitted invoice.');
+    }
+
 
 
 }

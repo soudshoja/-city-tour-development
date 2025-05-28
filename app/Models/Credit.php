@@ -13,6 +13,7 @@ class Credit extends Model
         'company_id',
         'client_id',
         'invoice_id',
+        'invoice_partial_id',
         'type',
         'description',
         'amount',
@@ -35,8 +36,20 @@ class Credit extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+        public function invoicePartial()
+    {
+        return $this->belongsTo(invoicePartial::class);
+    }
+
     public static function getTotalCreditsByClient($clientId)
     {
         return self::where('client_id', $clientId)->sum('amount');
+    }
+
+    public static function getTotalUtilizeCreditsByClientPartial($clientId, $partialId)
+    {
+        return self::where('client_id', $clientId)
+            ->where('invoice_partial_id', $partialId)
+            ->sum('amount');
     }
 }

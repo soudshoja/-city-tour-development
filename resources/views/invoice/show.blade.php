@@ -59,6 +59,8 @@
         }
     </style>
     <!-- Scripts -->
+    <script src="//unpkg.com/alpinejs" defer></script>
+
     <script src="https://code.jquery.com/jquery-3.7.1.slim.js"
         integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
 
@@ -77,9 +79,18 @@
             {{ session('error') }}
         </div>
     @endif
-
+    @if ($invoice->status === 'paid')
+        <div
+            class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
+            <div class="flex items-center justify-between text-white">
+                <p class="text-3xl">PAID</p>
+                <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
+            </div>
+        </div>
+    @endif
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
+
         <div class="flex justify-between items-center mb-8">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800">INVOICE</h1>
@@ -205,6 +216,7 @@
             <table class="min-w-full mb-8 border border-gray-200">
                 <thead>
                     <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                        <th class="px-4 py-2 border">Split #</th>
                         <th class="px-4 py-2 border">Link</th>
                         <th class="px-4 py-2 border">Client</th>
                         <th class="px-4 py-2 border">Expiry Date</th>
@@ -213,24 +225,94 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $count = 1;
+                    @endphp
                     @foreach ($invoicePartials as $partial)
-                        <tr class="text-sm text-gray-700">
+                        @php
+                            $creditBalance = \App\Models\Credit::getTotalCreditsByClient($partial->client->id);
+                        @endphp
 
+                        <tr x-data="{ open: false }" class="text-sm text-gray-700">
+                            <td class="px-4 py-2 border">
+                                {{ $count }}
+                            </td>
                             <td class="px-4 py-2 border">
                                 <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
                                     class="text-blue-500 underline" target="_blank">
                                     View Details
                                 </a>
                             </td>
-                            <td class="px-4 py-2 border">{{ $partial->client->name }}</td>
+
+                            <td class="px-4 py-2 border">
+                                {{ $partial->client->name }}
+
+                                @if ($creditBalance > 0 && $partial->status === 'unpaid')
+                                    <br>Credit Balance: {{ number_format($creditBalance, 2) }} |
+                                    <button @click="open = true" type="button" class="text-blue-600 underline text">
+                                        Use now to pay this payment split?
+                                    </button>
+                                @endif
+
+                                <!-- Modal -->
+                                <div x-show="open" x-cloak
+                                    class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                                    <div @click.away="open = false"
+                                        class="bg-white p-6 rounded shadow max-w-md w-full">
+                                        <h2 class="text-lg font-semibold mb-4">Confirm Credit Use</h2>
+                                        <p class="text-sm mb-6">Use credit balance to pay this invoice split?</p>
+                                        <div class="flex justify-end space-x-3">
+                                            <button @click="open = false"
+                                                class="px-4 py-2 text-sm bg-gray-300 rounded">No</button>
+                                            @php
+                                                $checkBalance =
+                                                    $partial->amount >= $creditBalance
+                                                        ? $creditBalance
+                                                        : $partial->amount;
+                                            @endphp
+
+                                            <form method="POST"
+                                                action="{{ route('credits.useCreditNow', [
+                                                    'invoice' => $partial->invoice_id,
+                                                    'invoicePartial' => $partial->id,
+                                                    'balanceCredit' => $checkBalance,
+                                                ]) }}">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="px-4 py-2 text-sm bg-blue-600 text-white rounded">
+                                                    Yes
+                                                </button>
+                                            </form>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            @php
+                                $checkUtilizeCreditPartial = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial(
+                                    $partial->client_id,
+                                    $partial->id,
+                                );
+                            @endphp
                             <td class="px-4 py-2 border">
                                 {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                             </td>
                             <td class="px-4 py-2 border">{{ $partial->status }}</td>
-                            <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                            <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}
+                                @if ($checkUtilizeCreditPartial != 0)
+                                    <br>Credit utilized: {{ number_format($checkUtilizeCreditPartial, 2) }}
+                                @endif
+                            </td>
                         </tr>
+                        @php
+                            $count++;
+                        @endphp
                     @endforeach
                 </tbody>
+
+
+
             </table>
         @endif
 
@@ -248,6 +330,7 @@
                     @foreach ($checkUtilizeCredit as $credit)
                         <div class="flex justify-between py-2 border-b border-gray-200">
                             <span>Client's Credit ({{ $credit->created_at->format('d M Y') }}):</span>
+
                             <span>{{ number_format($credit->amount, 2) }}</span>
                         </div>
                     @endforeach
@@ -296,11 +379,12 @@
                                 class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                                 Pay Now
                             </button>
+                            <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
+                                {{ number_format($invoice->amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}
+                            </span>
                         @endif
-                        <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                            {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount') - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}
-                        </span>
                     </div>
+
                     <div id="loadingSpinner" class="hidden mt-2">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         Processing...
@@ -400,66 +484,87 @@
                 This invoice has been applied with the client credit.
             </p>
         </div>
-    @else
-        @if ($invoice->status === 'paid' || $invoice->status === 'partial')
-            <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
-                <div class="invoice">
-                    <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
-                        <h3 class="text-xl font-semibold text-green-700 mb-2">Payment Receipt</h3>
-                    </div>
+    @endif
+    @if ($invoice->status === 'paid' || $invoice->status === 'partial')
+        <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-6">
+            <div class="invoice">
+                <div class="payment-status bg-green-100 p-6 rounded-lg mt-4">
+                    <h3 class="text-xl font-semibold text-green-700 mb-2">Payment Receipt</h3>
+                </div>
 
-                    <table class="min-w-full mb-8 border border-gray-200">
-                        <thead>
-                            <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                                <th class="px-4 py-2 border">Receipt #</th>
-                                <th class="px-4 py-2 border">Reference</th>
-                                <th class="px-4 py-2 border">Payment Date</th>
-                                <th class="px-4 py-2 border">Payment Gateway</th>
-                                <th class="px-4 py-2 border">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($paidPartials as $partial)
-                                <tr class="text-sm text-gray-700">
-                                    <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
+                <table class="min-w-full mb-8 border border-gray-200">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                            <th class="px-4 py-2 border">Receipt #</th>
+                            <th class="px-4 py-2 border">Reference</th>
+                            <th class="px-4 py-2 border">Payment Date</th>
+                            <th class="px-4 py-2 border">Payment Gateway</th>
+                            <th class="px-4 py-2 border">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($paidPartials as $partial)
+                            <tr class="text-sm text-gray-700">
+                                <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
+                                @php
+                                    $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial(
+                                        $partial->client_id,
+                                        $partial->id,
+                                    );
+                                @endphp
+                                @if ($paymentReferenceCredit)
+                                    <td class="px-4 py-2 border">Client Credit by {{ $partial->client->name }}
+                                        ({{ $paymentReferenceCredit }})
+                                    </td>
+                                    </td>
+                                @else
                                     <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}
                                     </td>
-                                    <td class="px-4 py-2 border">
-                                        {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : 'N/A' }}
+                                @endif
+                                <td class="px-4 py-2 border">
+                                    {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
+                                </td>
+
+
+                                @if ($paymentReferenceCredit)
+                                    <td class="px-4 py-2 border">Client Credit
                                     </td>
+                                    </td>
+                                @else
                                     <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
-                                    <td class="px-4 py-2 border">
-                                        {{ number_format($partial->amount ?? 0, 2) }}
+                                @endif
 
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                <td class="px-4 py-2 border">
+                                    {{ number_format($partial->amount ?? 0, 2) }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
 
-                    <div class="flex justify-end mb-8">
-                        <div class="w-1/3 text-sm">
-                            <div class="flex justify-between py-2 border-b border-gray-200">
-                                <span>Balance:</span>
-                                <span id="balance"></span>
-                            </div>
+                <div class="flex justify-end mb-8">
+                    <div class="w-1/3 text-sm">
+                        <div class="flex justify-between py-2 border-b border-gray-200">
+                            <span>Balance:</span>
+                            <span id="balance"></span>
                         </div>
-                    </div>
-
-
-                    <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
-                        <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
-                        <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been
-                            sent to
-                            your address.</p>
                     </div>
                 </div>
 
 
-
+                <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
+                    <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
+                    <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been
+                        sent to
+                        your address.</p>
+                </div>
             </div>
-        @endif
+
+
+
+        </div>
     @endif
+
 
     <script>
         let invoice = @json($invoice);
@@ -590,6 +695,7 @@
             });
         });
     </script>
+
 </body>
 
 </html>

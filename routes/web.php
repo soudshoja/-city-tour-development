@@ -287,7 +287,7 @@ Route::middleware(['auth'])->group(function () {
 
     // MyMyFatoorah
     Route::get('callback',[MyFatoorahController :: class,'callback'])->name('myfatoorah.callback');
-    Route::get('/pay-now', [MyFatoorahController::class, 'index'])->name('myfatoorah.paynow');
+    Route::get('/myfatoorah/pay-now', [MyFatoorahController::class, 'index'])->name('myfatoorah.paynow');
     Route::get('checkout', [MyFatoorahController::class, 'checkout'])->name('myfatoorah.checkout');
 
 
@@ -384,6 +384,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose');
         Route::get('/process', [PaymentController::class, 'process'])->name('process');
         Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
+        //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
@@ -497,6 +498,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
 
+
+
 });
 
 Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
@@ -563,6 +566,15 @@ route::get('/todolist', [ToDoListController::class, 'index'])->name('todolist.in
 route::post('/todolist', [ToDoListController::class, 'store'])->name('todolist.store');
 route::get('/todolist/{id}', [ToDoListController::class, 'show'])->name('todolist.show');
 route::get('/todolist/{id}/edit', [ToDoListController::class, 'edit'])->name('todolist.edit');
+
+
+// Route to show the test form
+Route::get('/payment/test', function () {
+    return view('payment_test');
+});
+
+Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, 'handleMyFatoorahCallback'])->name('payments.callback');
+Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
 
 

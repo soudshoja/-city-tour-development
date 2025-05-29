@@ -493,8 +493,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [CreditController::class, 'index'])->name('index');
         Route::get('/filter', [CreditController::class, 'filter'])->name('filter');
         Route::post('/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}', [CreditController::class, 'useCreditNow'])->name('useCreditNow');
-
-
+        Route::post('/topup', [CreditController::class, 'creditTopup'])->name('topup');
     });
 
 

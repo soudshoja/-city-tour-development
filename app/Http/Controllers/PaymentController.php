@@ -30,7 +30,12 @@ use App\Models\Credit;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Http;
 use App\Support\PaymentGateway\Tap;
+use App\Support\PaymentGateway\MyFatoorah;
+use MyFatoorah\Library\API\Payment\MyFatoorahPayment;
+use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
+use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
 use Google\Rpc\Context\AttributeContext\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -220,22 +225,82 @@ class PaymentController extends Controller
         }
 
         if (strtolower($data['payment_method']) === 'myfatoorah') {
-            $mfController = new \App\Http\Controllers\MyFatoorahController();
+            $apiKey = config('services.myfatoorah.api_key');
+            $baseUrl = config('services.myfatoorah.base_url');
 
-            $queryParams = http_build_query([
-                'oid' => $invoice->id,
+            $amount = $data['total_amount'];
+            $invoiceNumber = $invoice->invoice_number;
+
+            $initResponse = Http::withHeaders([
+                'Authorization' => "Bearer $apiKey",
+                'Content-Type' => 'application/json',
+            ])->post("$baseUrl/v2/InitiatePayment", [
+                'InvoiceValue' => $amount,
+                'CurrencyIso' => 'KWD',
             ]);
 
-            $payment->status = 'initiate';
-            $payment->save();
+            if (!$initResponse->successful()) {
+                Log::error('InitiatePayment failed', ['response' => $initResponse->body()]);
+                return response()->json(['error' => 'InitiatePayment failed.'], 500);
+            }
 
-            return response()->json([
-                'success' => 'Redirecting to MyFatoorah',
-                'url' => route('myfatoorah.paynow') . '?' . $queryParams
-                // 'url' => route('myfatoorah.paynow') . '?' . http_build_query(['oid' => $invoice->id])
+            $paymentMethodId = $initResponse['Data']['PaymentMethods'][0]['PaymentMethodId'] ?? null;
 
+            if (!$paymentMethodId) {
+                Log::error('PaymentMethodId not found', ['response' => $initResponse->json()]);
+                return response()->json(['error' => 'PaymentMethodId not found.'], 500);
+            }
+
+            // Step 2: Execute Payment
+            $executeResponse = Http::withHeaders([
+                'Authorization' => "Bearer $apiKey",
+                'Content-Type' => 'application/json',
+            ])->post("$baseUrl/v2/ExecutePayment", [
+                "PaymentMethodId" => $paymentMethodId,
+                "InvoiceValue" => $amount,
+                "CustomerName" => $invoice->client->name ?? 'Customer',
+                "CustomerEmail" => $data['client_email'] ?? 'email@example.com',
+                "MobileCountryCode" => "+965",
+                "CustomerMobile" => $data['client_mobile'] ?? '50000000',
+                "DisplayCurrencyIso" => "KWD",
+                "CallBackUrl" => route('payments.callback'), 
+                "ErrorUrl" => route('payments.error'),
+                "Language" => "en",
+                "CustomerReference" => $invoiceNumber,
+                "UserDefinedField" => $invoice->id, 
+                "InvoiceItems" => [
+                    [
+                        "ItemName" => "Invoice " . $invoiceNumber,
+                        "Quantity" => 1,
+                        "UnitPrice" => $amount,
+                    ]
+                ],
             ]);
+
+            if ($executeResponse->successful()) {
+                $resData = $executeResponse->json();
+                Log::info('ExecutePayment response:', $resData);
+
+                $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
+
+                if ($invoiceUrl) {
+                    $payment->payment_reference = $resData['Data']['InvoiceId'] ?? null;
+                    $payment->status = 'initiate';
+                    $payment->save();
+
+                    return response()->json([
+                        'success' => 'Redirecting to MyFatoorah',
+                        'url' => $invoiceUrl,
+                    ]);
+                }
+
+                return response()->json(['error' => 'PaymentURL not found.'], 500);
+            } else {
+                Log::error('ExecutePayment failed', ['response' => $executeResponse->body()]);
+                return response()->json(['error' => 'ExecutePayment failed.'], 500);
+            }
         }
+
         return response()->json(['error' => 'Unsupported payment method'], 400);
     }
 
@@ -989,7 +1054,7 @@ class PaymentController extends Controller
             $process = 'invoice';
         }
         $paymentMethod = $payment->payment_method;
-
+        //dd($paymentMethod);
         if (strtolower($paymentMethod) === 'tap') {
             $requestTap = [
                 'amount' => $payment->amount,
@@ -1030,14 +1095,43 @@ class PaymentController extends Controller
             return redirect($response['transaction']['url']);
         }
 
-        return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
+        if ($paymentMethod === 'myfatoorah') {
+                $mfData = [
+                    'CustomerName'       => optional($payment->client)->name ?? 'Customer',
+                    'InvoiceValue'       => $payment->amount,
+                    'DisplayCurrencyIso' => $payment->currency ?? 'KWD',
+                    'CustomerEmail'      => optional($payment->client)->email ?? 'example@email.com',
+                    'CallBackUrl'        => route('payments.callback'),
+                    'ErrorUrl'           => route('payments.error'),
+                    'MobileCountryCode'  => '+965',
+                    'CustomerMobile'     => optional($payment->client)->phone ?? '50000000',
+                    'Language'           => 'en',
+                    'UserDefinedField'   => json_encode([
+                        'voucher_number' => $payment->voucher_number,
+                        'payment_id' => $payment->id,
+                        'payment_gateway' => $paymentMethod,
+                        'process' => $process,
+                    ]),
+                ];
+
+                $mf = new \App\Http\Controllers\MyFatoorahController();
+                $response = $mf->getInvoiceURL($mfData);
+
+                if (isset($response['IsSuccess']) && $response['IsSuccess'] === true) {
+                    return redirect($response['InvoiceURL']);
+                }
+
+                return redirect()->back()->with('error', 'Failed to create MyFatoorah invoice.');
     }
 
-    public function paymentLinkProcess(Request $request)
-    {
-        $tapId = $request->tap_id;
+    return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
+}
 
-        $tap = new Tap();
+public function paymentLinkProcess(Request $request)
+{
+    $tapId = $request->tap_id;
+
+    $tap = new Tap();
 
         $response = $tap->getCharge($tapId);
 
@@ -1206,6 +1300,86 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment successful!');
     }
 
+    public function handleMyFatoorahCallback(Request $request)
+    {
+        try {
+            Log::info('MyFatoorah callback received', ['request' => $request->all()]);
+
+            $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
+            if (!$paymentId) {
+                return redirect('/invoices')->with('error', 'Invalid payment callback data.');
+            }
+
+            $payment = Payment::where('payment_reference', $paymentId)->first();
+            if (!$payment) {
+                return redirect('/invoices')->with('error', 'Payment not found.');
+            }
+
+            if ($payment->status === 'completed') {
+                return redirect('/invoices')->with('success', 'Payment was already completed.');
+            }
+
+            // Verify payment status via API
+            $apiKey = config('services.myfatoorah.api_key');
+            $baseUrl = config('services.myfatoorah.base_url');
+
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer $apiKey",
+                'Content-Type' => 'application/json',
+            ])->get("$baseUrl/v2/GetPaymentStatus", [
+                'Key' => $paymentId,
+                'KeyType' => 'PaymentId',
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Failed to verify payment status', ['response' => $response->body()]);
+                return redirect('/invoices')->with('error', 'Unable to verify payment status.');
+            }
+
+            $status = $response->json('Data.InvoiceStatus');
+
+            if ($status !== 'Paid') {
+                Log::warning('Payment not marked as Paid by gateway', ['status' => $status]);
+                return redirect('/invoices')->with('error', 'Payment not completed.');
+            }
+
+            $payment->status = 'completed';
+            $payment->save();
+
+            return redirect('/invoices')->with('success', 'Payment completed successfully!');
+        } catch (\Exception $e) {
+            Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
+            return redirect('/invoices')->with('error', 'Something went wrong. Please contact support.');
+        }
+    }
+
+
+
+    public function handleMyFatoorahError(Request $request)
+    {
+        Log::error('MyFatoorah error callback', [
+            'request' => $request->all(),
+            'query' => $request->query(),
+            'input' => $request->input(),
+        ]);
+
+        $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
+
+        // Optionally update payment status as failed or cancelled
+        if ($paymentId) {
+            $payment = Payment::where('payment_reference', $paymentId)->first();
+            if ($payment) {
+                $payment->status = 'failed';
+                $payment->save();
+            }
+        }
+
+        // Redirect or show a friendly error page
+        return redirect('/invoices')->with('error', 'Payment was not completed or was cancelled.');
+    }
+
+
+
     public function paymentUpdateLink($paymentId, Request $request)
     {
         $payment = Payment::find($paymentId);
@@ -1223,4 +1397,6 @@ class PaymentController extends Controller
     {
 
     }
+
+
 }

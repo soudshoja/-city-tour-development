@@ -463,7 +463,7 @@ class InvoiceController extends Controller
         }
 
         try {
-            $invoicepartial = InvoicePartial::create([
+            $invoicePartial = InvoicePartial::create([
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
@@ -481,7 +481,7 @@ class InvoiceController extends Controller
                             'company_id'  => $invoice->client->agent->branch->company_id,
                             'client_id'   => $invoice->client->id,
                             'invoice_id'  => $invoice->id,
-                            'invoice_partial_id'  => $invoicepartial->id,
+                            'invoice_partial_id'  => $invoicePartial->id,
                             'type'        => 'Invoice',
                             'description' => 'Payment for ' . $invoice->invoice_number,
                             'amount'      => -($amount), 
@@ -530,6 +530,10 @@ class InvoiceController extends Controller
         } catch (Exception $e) {
 
             DB::rollBack();
+            $invoicePartial->delete();
+            $invoice->payment_type = null;
+            $invoice->status = 'unpaid';
+            $invoice->is_client_credit = false;
 
             Log::error('Failed to create Transactions: ' . $e->getMessage());
             return response()->json('Something Went Wrong', 500);
@@ -556,9 +560,15 @@ class InvoiceController extends Controller
                 $transaction->id,
                 $invoice->client->name,
             );
-
+            Log::info('Journal entry response', ['response' => $response]);
             if ($response['status'] == 'error') {
                 DB::rollBack();
+
+                $invoicePartial->delete();
+                $invoice->payment_type = null;
+                $invoice->status = 'unpaid';
+                $invoice->is_client_credit = false;
+
                 Log::error('Journal entry creation failed', ['response' => $response]);
                 return response()->json($response['message'], 500);
             }
@@ -755,7 +765,6 @@ class InvoiceController extends Controller
             'task_id' => $task->id ?? null,
             'invoice_id' => $invoiceId,
         ]);
-
         $invoice = Invoice::find($invoiceId);
 
         if (!$invoice) {
@@ -881,7 +890,7 @@ class InvoiceController extends Controller
         try {
 
             $agent = $task->agent;
-
+            
             if(!$agent) {
                 Log::error('Agent not found for task', ['task_id' => $task->id]);
                 return response()->json([
@@ -890,7 +899,8 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            if ($agent->agentType == 'Commission' || $agent->agentType == 'Both') {
+            Log::info('agent type:', $agent->agentType);
+            if ($agent->agentType->name == 'Commission' || $agent->agentType->name == 'Both') {
                 $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
 
                 $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')

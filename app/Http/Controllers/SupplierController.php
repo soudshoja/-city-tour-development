@@ -211,7 +211,7 @@ class SupplierController extends Controller
         if($ref) {
             $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
         } else {
-            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations?page=1';
+            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations';
         }
 
         $scopes = ['read:reservations'];

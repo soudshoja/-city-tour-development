@@ -2369,7 +2369,7 @@
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                 const partialRows = document.querySelectorAll('#split-rows1 tr');
-                const gateway = document.getElementById('payment_gateway')?.value;
+                const gateway = document.getElementById('payment_gateway')?.value || '';
 
                 const partialData = [];
 
@@ -2414,7 +2414,7 @@
                 }
 
             } else if (mode === 'credit') {
-                const gateway = document.getElementById('payment_gateway').value;
+                const gateway = document.getElementById('payment_gateway_option').value;
                 const date = document.getElementById('duedate').value;
                 const amount = document.getElementById('subTotal').value;
                 const fullData = [];
@@ -2462,7 +2462,11 @@
             const csrfToken = "{{ csrf_token() }}";
             const invoiceId = document.getElementById('invoiceId').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
-            const gateway = document.getElementById('payment_gateway').value;
+            if (type === 'full' || type === 'credit') {
+                const gateway = document.getElementById('payment_gateway_option').value;
+            } else {
+                const gateway = document.getElementById('payment_gateway').value;
+            }
             const amount = data.amount;
 
             if (type === 'full') {

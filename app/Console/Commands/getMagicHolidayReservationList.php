@@ -36,7 +36,7 @@ class getMagicHolidayReservationList extends Command
         })->with(['suppliers' => function ($query) {
             $query->where('name', 'Magic Holiday');
         }, 'suppliers.credentials'])->get();
-   }      
+    }
 
     public function handle()
     {
@@ -49,25 +49,25 @@ class getMagicHolidayReservationList extends Command
             if ($company->suppliers->isNotEmpty()) {
 
                 foreach ($company->suppliers as $supplier) {
-                    
+
                     $this->info("Magic Holiday found for company: " . $company->name);
 
                     if ($supplier->credentials->isEmpty()) {
-                       $this->error('Magic Holiday credentials not found for company: ' . $company->name);
-                       continue;
-                    } 
-                
-                    if($supplier->name == 'Magic Holiday'){
+                        $this->error('Magic Holiday credentials not found for company: ' . $company->name);
+                        continue;
+                    }
+
+                    if ($supplier->name == 'Magic Holiday') {
 
                         foreach ($supplier->credentials as $credential) {
 
                             $this->info("Processing Magic Holiday credentials for company: " . $company->name);
 
-                            if($credential->type == 'oauth'){
+                            if ($credential->type == 'oauth') {
 
                                 $this->info("Processing Magic Holiday OAuth credentials for company: " . $company->name);
 
-                                if($credential->client_id == null || $credential->client_secret == null){
+                                if ($credential->client_id == null || $credential->client_secret == null) {
                                     $this->error('Magic Holiday OAuth credentials not found for company: ' . $company->name);
                                     continue;
                                 }
@@ -96,9 +96,9 @@ class getMagicHolidayReservationList extends Command
                                     $this->info('Magic Holiday task received successfully');
                                     foreach ($data['_embedded']['reservation'] as $reservation) {
                                         Log::channel('magic_holidays')->info('Processing reservation: ', $reservation);
-                                        $taskController = new TaskController(); 
+                                        $taskController = new TaskController();
 
-                                        try{
+                                        try {
                                             $response = $taskController->processSingleReservation($reservation, null, $companyId);
 
                                             if ($response['status'] == 'error') {
@@ -110,7 +110,6 @@ class getMagicHolidayReservationList extends Command
                                             } else {
                                                 $this->error('Reservation ID not found in the response');
                                             }
-
                                         } catch (Exception $e) {
                                             Log::channel('magic_holidays')->error('Error processing reservation: ', ['error' => $e->getMessage()]);
                                             $this->error('Error processing reservation: ' . $e->getMessage());
@@ -132,7 +131,6 @@ class getMagicHolidayReservationList extends Command
             } else {
                 $this->error("No suppliers found for this company.");
             }
-
         }
 
         return 1;
@@ -165,8 +163,7 @@ class getMagicHolidayReservationList extends Command
         array $header = [],
         array $data = [],
         array $scopes = ['read:reservations']
-    )
-    {
+    ) {
 
         $responseCredential = $this->getClientCredential(
             $clientId,
@@ -174,7 +171,7 @@ class getMagicHolidayReservationList extends Command
             $scopes
         );
 
-        if(isset($responseCredential['error'])){
+        if (isset($responseCredential['error'])) {
             return [
                 'status' => 'error',
                 'data' => $responseCredential,
@@ -198,28 +195,28 @@ class getMagicHolidayReservationList extends Command
         ]);
 
         $data = json_encode($data);
-        
-         
-         switch ($method) {
+
+
+        switch ($method) {
             case 'GET':
-            $response = $this->getRequest($url, $header);
-            break;
+                $response = $this->getRequest($url, $header);
+                break;
             case 'POST':
-            $response = $this->postRequest($url, $header, $data);
-            break;
+                $response = $this->postRequest($url, $header, $data);
+                break;
             case 'PUT':
-            $response = $this->putRequest($url, $header, $data);
-            break;
+                $response = $this->putRequest($url, $header, $data);
+                break;
             case 'DELETE':
-            $response = $this->deleteRequest($url, $header);
-            break;
+                $response = $this->deleteRequest($url, $header);
+                break;
             default:
-            throw new \InvalidArgumentException("Unsupported HTTP method: $method");
+                throw new \InvalidArgumentException("Unsupported HTTP method: $method");
         }
 
         Log::channel('magic_holidays')->info('Response', $response);
 
-        if(isset($response['status']) && $response['status'] !== 200){
+        if (isset($response['status']) && $response['status'] !== 200) {
             return [
                 'status' => 'error',
                 'data' => $response,
@@ -237,8 +234,7 @@ class getMagicHolidayReservationList extends Command
         string $clientId,
         string $clientSecret,
         array $scopes
-    )
-    {
+    ) {
         $tokenUrl = config('services.magic-holiday.token_url');
 
         $data = [
@@ -267,9 +263,9 @@ class getMagicHolidayReservationList extends Command
         $data = $this->getClientCredential($clientId, $clientSecret, ['write:reservations-webhooks']);
 
 
-        if(isset($data['error'])){
+        if (isset($data['error'])) {
             return;
-        } 
+        }
 
         $accessToken = $data['token_type'] . ' ' . $data['access_token'];
 
@@ -282,7 +278,7 @@ class getMagicHolidayReservationList extends Command
         $data = [
             'url' => route('suppliers.magic-webhook-callback'),
         ];
-        
+
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Request', [
             'url' => $url,
             'header' => $header,
@@ -298,7 +294,7 @@ class getMagicHolidayReservationList extends Command
             $data,
             ['write:reservations-webhooks']
         );
-        
+
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Response', $response);
 
         return;

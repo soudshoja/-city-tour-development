@@ -248,69 +248,69 @@ class ChargeController extends Controller
                 'amount' => $request->get('amount'),
                 'type' => $request->get('type'),
                 'description' => $request->get('description'),
-                'acc_bank_id' => $request->get('acc_bank_id'),
+                //'acc_bank_id' => $request->get('acc_bank_id'),
                 // 'acc_fee_id' => $request->get('acc_fee_id'),
                 // 'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
             ]);
 
 
-            // Fetch COA for Payment Gateway Fee (Expenses)  
-            $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first(); // Query if the account exists
+            // // Fetch COA for Payment Gateway Fee (Expenses)  
+            // $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first(); // Query if the account exists
 
-            // Check if child account exists for Payment Gateway Charges
-            $childCoaPaymentGateway = Account::where('parent_id', $coaPaymentGateway ? $coaPaymentGateway->id : null)
-                ->where('name', 'like', '%' . $request->get('name') . '%')
-                ->first(); 
+            // // Check if child account exists for Payment Gateway Charges
+            // $childCoaPaymentGateway = Account::where('parent_id', $coaPaymentGateway ? $coaPaymentGateway->id : null)
+            //     ->where('name', 'like', '%' . $request->get('name') . '%')
+            //     ->first(); 
 
-            // Create new account for Payment Gateway Fee if not found
-            if (!$childCoaPaymentGateway) {
+            // // Create new account for Payment Gateway Fee if not found
+            // if (!$childCoaPaymentGateway) {
 
-                // Create new Payment Gateway Fee account
-                $coaPaymentGateway = Account::create([
-                    'name' => $request->name,
-                    'parent_id' => $coaPaymentGateway->id,
-                    'company_id' => Auth::user()->company->id,
-                    'branch_id' => Auth::user()->branch_id,
-                    'account_type' => 'expense',
-                    'report_type' => 'profit loss',
-                    'level' => 4,
-                    'is_group' => 0,
-                    'disabled' => 0,
-                    'actual_balance' => 0.00,
-                    'budget_balance' => 0.00,
-                    'variance' => 0.00,
-                    'currency' => 'KWD',
-                ]);
-            }
+            //     // Create new Payment Gateway Fee account
+            //     $coaPaymentGateway = Account::create([
+            //         'name' => $request->name,
+            //         'parent_id' => $coaPaymentGateway->id,
+            //         'company_id' => Auth::user()->company->id,
+            //         'branch_id' => Auth::user()->branch_id,
+            //         'account_type' => 'expense',
+            //         'report_type' => 'profit loss',
+            //         'level' => 4,
+            //         'is_group' => 0,
+            //         'disabled' => 0,
+            //         'actual_balance' => 0.00,
+            //         'budget_balance' => 0.00,
+            //         'variance' => 0.00,
+            //         'currency' => 'KWD',
+            //     ]);
+            // }
 
-            // Fetch COA for Payment Gateway (Assets)  
-            $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first(); // Query if the account exists
+            // // Fetch COA for Payment Gateway (Assets)  
+            // $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first(); // Query if the account exists
 
-            // Check if child account exists for Payment Gateway Bank Account
-            $childCoaPaymentGatewayBankAcc = Account::where('parent_id', $coaPaymentGatewayBankAcc ? $coaPaymentGatewayBankAcc->id : null)
-                ->where('name', 'like', '%' . $request->get('name') . '%')
-                ->first(); 
+            // // Check if child account exists for Payment Gateway Bank Account
+            // $childCoaPaymentGatewayBankAcc = Account::where('parent_id', $coaPaymentGatewayBankAcc ? $coaPaymentGatewayBankAcc->id : null)
+            //     ->where('name', 'like', '%' . $request->get('name') . '%')
+            //     ->first(); 
 
-            // Create new account for Payment Gateway Bank if not found
-            if (!$childCoaPaymentGatewayBankAcc) {
+            // // Create new account for Payment Gateway Bank if not found
+            // if (!$childCoaPaymentGatewayBankAcc) {
 
-                // Create new Payment Gateway Bank account
-                $coaPaymentGatewayBankAcc = Account::create([
-                    'name' => $request->name,
-                    'parent_id' => $coaPaymentGatewayBankAcc,
-                    'company_id' => Auth::user()->company->id,
-                    'branch_id' => Auth::user()->branch_id,
-                    'account_type' => 'asset',
-                    'report_type' => 'balance sheet',
-                    'level' => 4,
-                    'is_group' => 0,
-                    'disabled' => 0,
-                    'actual_balance' => 0.00,
-                    'budget_balance' => 0.00,
-                    'variance' => 0.00,
-                    'currency' => 'KWD',
-                ]);
-            }
+            //     // Create new Payment Gateway Bank account
+            //     $coaPaymentGatewayBankAcc = Account::create([
+            //         'name' => $request->name,
+            //         'parent_id' => $coaPaymentGatewayBankAcc,
+            //         'company_id' => Auth::user()->company->id,
+            //         'branch_id' => Auth::user()->branch_id,
+            //         'account_type' => 'asset',
+            //         'report_type' => 'balance sheet',
+            //         'level' => 4,
+            //         'is_group' => 0,
+            //         'disabled' => 0,
+            //         'actual_balance' => 0.00,
+            //         'budget_balance' => 0.00,
+            //         'variance' => 0.00,
+            //         'currency' => 'KWD',
+            //     ]);
+            // }
 
             // Commit the transaction
             DB::commit();

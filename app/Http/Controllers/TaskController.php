@@ -172,7 +172,8 @@ class TaskController extends Controller
             'company_id' => 'required|exists:companies,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'reference' => 'required|string',
-            'gds_office_id' => 'nullable|string',
+            'created_by' => 'nullable|string',
+            'issued_by' => 'nullable|string',
             'status' => 'required|string',
             'supplier_status' => 'required|string',
             'price' => 'required|numeric',
@@ -1171,7 +1172,7 @@ class TaskController extends Controller
         return redirect()->back()->with('error', 'Does not have task from supplier');
     }
 
-    private function processSingleReservation($reservation, $agentId = null, $companyId)
+    public function processSingleReservation($reservation, $agentId = null, $companyId)
     {
         $clientName = $reservation['service']['passengers'][0]['firstName'] ? $reservation['service']['passengers'][0]['firstName'] . ' ' . $reservation['service']['passengers'][0]['lastName'] : null;
         $hotel = $reservation['service']['hotel'] ?? null;
@@ -1190,14 +1191,14 @@ class TaskController extends Controller
 
             $agentInDB = Agent::where('name', $agent['name'])
                             ->orWhere('email', 'like', $agent['email'])
-                            ->orWhere('phone', 'like', $agent['phone'])
+                            ->orWhere('phone_number', 'like', $agent['telephone'])
                             ->first();
             
             if ($agentInDB) {
                 $agentId = $agentInDB->id;
             } else {
-                Log::channel('magic_holidays')->error('Agent not found in database: ' , $agent);
-                throw new Exception('Agent not found in database');
+                Log::channel('magic_holidays')->error('Agent ' . $agent['name'] . ' not found in database');
+                throw new Exception('Agent ' . $agent['name'] . ' not found in database');
             }
         }
 
@@ -1312,7 +1313,25 @@ class TaskController extends Controller
                 'company_id' => $companyId,
             ]);
 
-            $response = $this->store($request);
+            $existingTask = Task::where('reference', $taskData['reference'])
+                ->where('agent_id', $taskData['agent_id'])
+                ->where('supplier_id', $taskData['supplier_id'])
+                ->first();
+
+            if ($existingTask) {
+                if ($existingTask->supplier_status !== $taskData['supplier_status']) {
+                    $existingTask->supplier_status = $taskData['supplier_status'];
+                    $existingTask->status = $taskData['status'];
+                    $existingTask->save();
+                    Log::channel('magic_holidays')->info('Updated existing task: ' . $existingTask->reference);
+                    continue; // Skip creating a new task if it already exists but update the status
+                } else {
+                    Log::channel('magic_holidays')->info('Existing task already exists: ' . $existingTask->reference);
+                    continue; // Skip creating a new task if it already exists
+                }
+            } else {
+                $response = $this->store($request);
+            }
 
             $response = json_decode($response->getContent(), true);
             logger('Task created: ', $response);

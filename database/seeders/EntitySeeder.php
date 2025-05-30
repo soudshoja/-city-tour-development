@@ -261,59 +261,68 @@ class EntitySeeder extends Seeder
         ->where('company_id', $userCompany->company->id)
         ->first();  // Use first() to get a single model, not a collection
 
-    
         try {
-            $paymentGatewayName = 'Tap'; 
+            $paymentGatewayNames = ['Tap', 'MyFatoorah', 'Hesabe'];
 
-            $coaPaymentGateway = Account::where('name', 'like', '%' . $paymentGatewayName . '%') 
-            ->where('company_id', $userCompany->company->id)
-            ->orWhere(function ($query) { // Find accounts where the parent name is 'Payment Gateway Charges'
-                $query->whereHas('parent', function ($query) {
-                    $query->where('name', 'Payment Gateway Charges');
-                });
-            })
-            ->first();
+            foreach ($paymentGatewayNames as $paymentGatewayName) {
+                $coaPaymentGateway = Account::where('name', 'like', '%' . $paymentGatewayName . '%')
+                    ->where('company_id', $userCompany->company->id)
+                    ->orWhere(function ($query) {
+                        $query->whereHas('parent', function ($query) {
+                            $query->where('name', 'Payment Gateway Charges');
+                        });
+                    })
+                    ->first();
 
-            $asset = Account::where('name', 'Assets')->first();
+                if (!$coaPaymentGateway) {
+                    throw new Exception("COA account for {$paymentGatewayName} not found.");
+                }
 
-            // Create Account for Payment Gateway Bank Fee (if it doesn't exist)
-            $newAccountBankFee = Account::create([
-                'name' =>   $paymentGatewayName,
-                'code' => '1310',
-                'root_id' => $asset->id, 
-                'parent_id' => $coaPaymentGatewayBankAcc->id,  // Use the id of the fetched model
-                'company_id' => $userCompany->company->id,
-                'branch_id' => $userCompany->branch_id, 
-                'account_type' => 'asset', 
-                'report_type' => 'balance sheet', 
-                'level' => 4, 
-                'is_group' => 0, 
-                'disabled' => 0, 
-                'actual_balance' => 0.00, 
-                'budget_balance' => 0.00, 
-                'variance' => 0.00,
-                'currency' => 'KWD', // Define currency
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                $asset = Account::where('name', 'Assets')->first();
 
-            $kuwaitBankAccount = Account::where('name', 'Kuwait International Bank')->first();
-            
-            if (!$kuwaitBankAccount) {
-                throw new Exception("Kuwait International Bank account not found.");
+                // Create a new sub-account under the payment gateway parent (if needed)
+                $newAccountBankFee = Account::create([
+                    'name' => $paymentGatewayName,
+                    'code' => '1310', // You might want to dynamically generate this code if needed
+                    'root_id' => $asset->id,
+                    'parent_id' => $coaPaymentGateway->id,
+                    'company_id' => $userCompany->company->id,
+                    'branch_id' => $userCompany->branch_id,
+                    'account_type' => 'asset',
+                    'report_type' => 'balance sheet',
+                    'level' => 4,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => 'KWD',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $kuwaitBankAccount = Account::where('name', 'Kuwait International Bank')->first();
+                if (!$kuwaitBankAccount) {
+                    throw new Exception("Kuwait International Bank account not found.");
+                }
+
+                $coaChargesAcc = Account::where('name', 'like', '%' . $paymentGatewayName . ' Charges%')
+                    ->where('company_id', $userCompany->company->id)
+                    ->first();
+
+                Charge::create([
+                    'name' => $paymentGatewayName,
+                    'description' => 'Payment Gateway Fee',
+                    'type' => 'Payment Gateway',
+                    'amount' => 0.25,
+                    'acc_fee_id' => $coaChargesAcc->id,
+                    'acc_bank_id' => $kuwaitBankAccount->id,
+                    'acc_fee_bank_id' => $newAccountBankFee->id,
+                    'company_id' => $userCompany->company->id,
+                    'branch_id' => $userCompany->branch->id,
+                ]);
             }
 
-            $charge = Charge::create([
-                'name' => $paymentGatewayName,
-                'description' => 'Payment Gateway Fee',
-                'type' => 'Payment Gateway',
-                'amount' => 0.25,
-                'acc_fee_id' => $coaPaymentGateway->id,
-                'acc_bank_id' => $kuwaitBankAccount->id,
-                'acc_fee_bank_id' => $newAccountBankFee->id, 
-                'company_id' => $userCompany->company->id, 
-                'branch_id' => $userCompany->branch->id, 
-            ]);
     
             // Commit the transaction
 
@@ -321,6 +330,8 @@ class EntitySeeder extends Seeder
             DB::rollBack();
             throw $e;
         }
+
+
 
         DB::commit();
     }

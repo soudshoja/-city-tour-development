@@ -11,6 +11,7 @@ class Branch extends Model
 
     protected $fillable = [
         'user_id',
+        'gds_office_id',
         'name',
         'email',
         'phone',

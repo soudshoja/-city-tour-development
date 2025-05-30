@@ -7,6 +7,8 @@ use App\Enums\TaskType;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Agent;
 use App\Models\Airport;
+use App\Models\Branch;
+use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
@@ -146,6 +148,27 @@ class OpenAIClient implements AIClientInterface
 
         $agentAmadeusIdList = Agent::limit(10)->pluck('amadeus_id');
 
+        $exampleGdsId = [
+            'KWIKT2619',
+            'KWIKT2843',
+            'KWIKT2844',
+        ];
+
+        $companiesGdsId = Company::whereNotNull('gds_office_id')
+            ->pluck('gds_office_id')
+            ->toArray();
+
+        $branchesGdsId = Branch::whereNotNull('gds_office_id')
+            ->pluck('gds_office_id')
+            ->toArray();
+        
+        $gdsOfficeIdList = array_merge($companiesGdsId, $branchesGdsId);
+
+        $gdsOfficeIdList = array_merge($gdsOfficeIdList, $exampleGdsId);
+
+        $gdsOfficeIdList = json_encode($gdsOfficeIdList);
+
+
         $prompt = "
         You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
         
@@ -161,7 +184,8 @@ class OpenAIClient implements AIClientInterface
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
             - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type. make sure to result in only one value of float type.
             - `reference`: Reference code for the task. use the full gds pnr code from the file.
-            - `gds_office_id`: GDS office ID, if available.
+            - `created_by`: GDS office ID, this indicates who created the task. Usually on line before line A , and to know who created the task, it is the first GDS office ID in the line
+            - `issued_by`: GDS office ID, this indicates who issued/pay the task. Usually on line before line A , and to know who issued the task, it is the last GDS office ID in the line/ or line after it. (still before line A), this is the example of real gds office id: $gdsOfficeIdList
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
             - `agent_name`: name of the agent handling the task.
             - `agent_email`: email of the agent handling the task.
@@ -228,7 +252,8 @@ class OpenAIClient implements AIClientInterface
             'penalty_fee': '10.00',
             'refund_charge': '0.250+0.900',
             'reference': 'ticket_number',
-            'gds_office_id': 'gds_office_id',
+            'created_by': 'KWIKT2619', //example of gds office id
+            'issued_by': 'KWIKT2844', //example of gds office id
             'type': 'flight',
             'agent_name': 'agent name',
             'agent_email': 'agent email',

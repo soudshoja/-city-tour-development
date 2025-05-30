@@ -41,6 +41,11 @@ return [
         'url' => env('TAP_URL') . '/v2',
     ],
 
+    'myfatoorah' => [
+        'api_key' => env('MYFATOORAH_API_KEY'),
+        'base_url' => env('MYFATOORAH_BASE_URL'),
+    ],
+
     'convert-api' => [
         'secret' => env('CONVERT_API_SECRET'),
     ],

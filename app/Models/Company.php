@@ -16,6 +16,7 @@ class Company extends Model
         'name',
         'user_id',
         'country_id',
+        'gds_office_id',
         'status',
         'code',
         'email',

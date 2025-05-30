@@ -224,8 +224,8 @@
                                         Enable/Disable</th> <!-- New column header -->
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                         Reference</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS
-                                        Office Id</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
                                         Name</th>
                                     @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
@@ -571,7 +571,10 @@
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->reference }}</td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->gds_office_id ?? 'Not Set' }}
+                                                {{ $task->created_by ?? 'Not Set' }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->issued_by ?? 'Not Set' }}
                                             </td>
                                             <td
                                                 class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">

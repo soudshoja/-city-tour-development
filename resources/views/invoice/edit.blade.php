@@ -648,18 +648,25 @@
                         <section id="payment_gateway_section" class="mb-6">
                             <div class="mt-4">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                <select id="payment_gateway" name="payment_gateway"
+                                @php
+                                    $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway;
+                                @endphp
+
+                                <select id="payment_gateway_option" name="payment_gateway_option"
                                     class="border border-gray-300 p-2 rounded w-full">
-                                    @foreach ($paymentGateways as $gateway)
-                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                    @endforeach
+                                    <option value="Tap" {{ $selectedGateway === 'Tap' ? 'selected' : '' }}>Tap
+                                    </option>
+                                    <option value="MyFatoorah"
+                                        {{ $selectedGateway === 'MyFatoorah' ? 'selected' : '' }}>MyFatoorah</option>
+                                    <option value="Hesabe" {{ $selectedGateway === 'Hesabe' ? 'selected' : '' }}>
+                                        Hesabe</option>
                                 </select>
                             </div>
                             <div class="mt-4">
-                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
+                                <button id="update-invoice-btn" type="button"
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
-                                        hover:bg-[#f7b14f] hover:shadow-xl hover:text-white transition">
+                                        hover:bg-[#f7b14f] hover:shadow-xl hover:text-black transition">
 
                                     <span id="button-icon-full" class="mr-2 inline-block">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -1349,6 +1356,15 @@
 
         // Run the check on page load and whenever the input value changes
         document.addEventListener('DOMContentLoaded', checkInvoiceId);
+        document.addEventListener('DOMContentLoaded', function() {
+            const saveBtn = document.getElementById('update-invoice-btn');
+
+            saveBtn.addEventListener('click', function() {
+                savePartial('full');
+            });
+        });
+
+
         invoiceIdInput.addEventListener('input', checkInvoiceId);
 
 
@@ -2234,9 +2250,8 @@
 
 
         function savePartial(mode) {
-
             if (mode === 'full') {
-                const gateway = document.getElementById('payment_gateway').value;
+                const gateway = document.getElementById('payment_gateway_option')?.value;
                 const date = document.getElementById('duedate').value;
                 const amount = document.getElementById('subTotal').value;
                 const fullData = [];
@@ -2336,7 +2351,7 @@
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                 const partialRows = document.querySelectorAll('#split-rows1 tr');
-                const gateway = document.getElementById('payment_gateway1').value;
+                const gateway = document.getElementById('payment_gateway')?.value || '';
 
                 const partialData = [];
 
@@ -2381,7 +2396,7 @@
                 }
 
             } else if (mode === 'credit') {
-                const gateway = document.getElementById('payment_gateway').value;
+                const gateway = document.getElementById('payment_gateway_option').value;
                 const date = document.getElementById('duedate').value;
                 const amount = document.getElementById('subTotal').value;
                 const fullData = [];
@@ -2429,6 +2444,11 @@
             const csrfToken = "{{ csrf_token() }}";
             const invoiceId = document.getElementById('invoiceId').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
+            if (type === 'full' || type === 'credit') {
+                const gateway = document.getElementById('payment_gateway_option').value;
+            } else {
+                const gateway = document.getElementById('payment_gateway').value;
+            }
             const amount = data.amount;
 
             if (type === 'full') {

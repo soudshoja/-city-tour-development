@@ -6,13 +6,101 @@
 
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Transaction of Credits</h2>
-            <div data-tooltip="total of credits"
+            {{-- <div data-tooltip="total of credits"
                 class="relative w-auto p-2 h-12 flex items-center justify-center DarkBGcolor shadow-sm rounded-xl">
                 <span class="text-xl font-bold text-white">{{ number_format($totalCreditsAmount, 2) }}</span>
-            </div>
+            </div> --}}
         </div>
         <!-- add new credit & refresh page -->
         <div class="flex items-center gap-5">
+            <div x-data="{ showTopupModal: false }" data-tooltip="Credit Topup">
+                <a href="javascript:void(0)"
+                    @click="showTopupModal = true"
+                    class="w-12 h-12 flex items-center justify-center text-white bg-blue-700 hover:bg-blue-900 border border-gray-300 rounded-full shadow transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                </a>
+
+                <div x-show="showTopupModal" @click.away="showTopupModal = false" x-transition
+                    class="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+
+                    <form action="{{ route('credits.topup')}}" method="POST" class="bg-white rounded p-6 w-full max-w-md" @click.stop>
+                        @csrf
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-semibold text-gray-800">New Client Top Up</h2>
+                            <button @click="showTopupModal = false" class="text-gray-500 hover:text-gray-700 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        @if(auth()->user()->role_id == App\Models\Role::COMPANY)
+                        <div class="mb-4">
+                            <label for="agent" class="block text-sm font-medium text-gray-700">Agent</label>
+                            <select name="agent_id" id="payment_agent_id"
+                                class="p-2 mt-1 block w-full border-gray-300 rounded-full shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select Agent</option>
+                                @foreach ($agents as $agent)
+                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
+
+                        <div class="mb-4">
+                            <label for="client" class="block text-sm font-medium text-gray-700">Client</label>
+                            <select name="client_id" id="payment_client_id"
+                                class="p-2 mt-1 block w-full border-gray-300 rounded-full shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select Client</option>
+                                @foreach ($clients as $client)
+                                <option value="{{ $client->id }}">{{ $client->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Amount</label>
+                            <input type="number" name="amount" step="0.01" required
+                                class="form-input mt-1 w-full rounded-full">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                            <select name="currency" id="currency" class="p-2 mt-1 block w-full border-gray-300 rounded-full shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                @foreach ($currencies as $currency)
+                                <option value="{{ $currency->iso_code }}" {{ $currency->country && $currency->country->name == 'Kuwait' ? 'selected' : '' }}>
+                                    {{ $currency->name }}
+                                </option>
+                                @endforeach
+                            </select>
+
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700">Notes</label>
+                            <textarea name="description"
+                                class="form-textarea mt-1 w-full rounded-xl resize-none"></textarea>
+                        </div>
+
+                        <div class="flex justify-center gap-4">
+                            <button @click="showTopupModal = false"
+                                class="px-4 py-2 rounded-full bg-white text-gray-700 hover:bg-gray-300 shadow-md transition">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition">
+                                Top Up
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div data-tooltip="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -23,7 +111,6 @@
                         opacity=".5" />
                 </svg>
             </div>
-
         </div>
 
 
@@ -74,38 +161,38 @@
                             </thead>
                             <tbody>
                                 @if ($allCreditRecords->isEmpty())
-                                    <tr>
-                                        <td colspan="5" class="text-center p-3 text-sm font-semibold text-gray-500 ">
-                                            No data for now.... Create new!</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="5" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        No data for now.... Create new!</td>
+                                </tr>
                                 @else
-                                    @foreach ($allCreditRecords as $recCredits)
-                                        <tr>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $recCredits->created_at }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $recCredits->client->name ?? '' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $recCredits->client->agent->name ?? '' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $recCredits->description ?? '' }}
-                                            </td>
-                                            <td
-                                                class="p-3 text-sm font-bold {{ $recCredits->amount < 0 ? 'text-red-500' : 'text-green-600' }}">
-                                                {{ number_format($recCredits->amount, 2) }}
-                                            </td>
-                                            <td class="p-3 text-sm">
-                                                <div class="flex items-center space-x-2">
+                                @foreach ($allCreditRecords as $recCredits)
+                                <tr>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $recCredits->created_at }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $recCredits->client->name ?? '' }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $recCredits->client->agent->name ?? '' }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $recCredits->description ?? '' }}
+                                    </td>
+                                    <td
+                                        class="p-3 text-sm font-bold {{ $recCredits->amount < 0 ? 'text-red-500' : 'text-green-600' }}">
+                                        {{ number_format($recCredits->amount, 2) }}
+                                    </td>
+                                    <td class="p-3 text-sm">
+                                        <div class="flex items-center space-x-2">
 
-                                                </div>
+                                        </div>
 
-                                            </td>
+                                    </td>
 
-                                        </tr>
-                                    @endforeach
+                                </tr>
+                                @endforeach
                                 @endif
                             </tbody>
                         </table>

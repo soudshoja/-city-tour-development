@@ -134,6 +134,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'magic_webhook' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/magic_holidays/magic_webhook.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'magic_holidays_error' => [
             'driver' => 'single',
             'path' => storage_path('logs/magic_holidays/magic_holidays_error.log'),

@@ -112,14 +112,15 @@ class ProcessAirFiles extends Command
                             continue;
                         }
 
+                        // By default, 'like' is case-insensitive in MySQL (the default Laravel DB), but case-sensitive in PostgreSQL unless using ILIKE.
                         $agent = Agent::where('name', 'like', $agentName)
                             ->orWhere('email', 'like', $agentEmail)
                             ->orWhere('amadeus_id', 'like', $agentAmadeusId)
                             ->first();
 
                         if (!$agent) {
-                            Log::warning("AIR File Processing: Agent not found for {$fileName}. Creating new agent.");
-                            $this->warn("Agent not found for {$fileName}. Creating new agent.");
+                            Log::warning("AIR File Processing: Agent not found for {$fileName}.");
+                            $this->warn("Agent not found for {$fileName}.");
 
                             $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
                             $this->moveFileWithLogging(
@@ -316,7 +317,8 @@ class ProcessAirFiles extends Command
                         'ticket_number' => $task['ticket_number'] ?? 'N/A',
                         'status' => $task['status'] ?? 'N/A',
                         'reference' => $task['reference'] ?? 'N/A',
-                        'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
+                        'created_by' => $task['created_by'] ?? null,
+                        'issued_by' => $task['issued_by'] ?? null,
                         'type' => $task['type'] ?? 'N/A',
                         'agent_name' => $task['agent_name'] ?? 'N/A',
                         'agent_email' => $task['agent_email'] ?? 'N/A',
@@ -386,7 +388,8 @@ class ProcessAirFiles extends Command
                         'status' => $extractedData['status'] ?? 'N/A',
                         'supplier_status' => $extractedData['status'] ?? 'N/A',
                         'reference' => $extractedData['reference'] ?? 'N/A',
-                        'gds_office_id' => $extractedData['gds_office_id'] ?? 'N/A',
+                        'created_by' => $extractedData['created_by'] ?? null,
+                        'issued_by' => $extractedData['issued_by'] ?? null,
                         'type' => $extractedData['type'] ?? 'N/A',
                         'agent_name' => $extractedData['agent_name'] ?? 'N/A',
                         'agent_email' => $extractedData['agent_email'] ?? 'N/A',

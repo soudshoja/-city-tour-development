@@ -11,12 +11,14 @@ class Credit extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'client_id',
         'invoice_id',
         'invoice_partial_id',
         'type',
         'description',
         'amount',
+        'topup_by',
         'created_at',
         'updated_at',
     ];

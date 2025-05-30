@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
+use App\Models\Task;
 use DateTime;
 use Generator;
 use GuzzleHttp\Client;
@@ -211,7 +212,7 @@ class SupplierController extends Controller
         if($ref) {
             $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
         } else {
-            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations?page=1';
+            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations';
         }
 
         $scopes = ['read:reservations'];
@@ -351,8 +352,154 @@ class SupplierController extends Controller
 
     public function magicReserveWebhookCallback(Request $request)
     {
-        Log::channel('magic_holidays')->info('Magic Holiday Webhook Callback', $request->all());
+        Log::channel('magic_webhook')->info('Magic Holiday Webhook Callback', $request->all());
 
-        return response()->json(['status' => 'success']);
+        $id = $request->input('id');
+        $event = $request->input('event');
+        $data = $request->input('data');
+
+        if(!$id || !$event || !$data) {
+            Log::channel('magic_webhook')->error('Invalid webhook data', $request->all());
+
+            return response()
+                ->json([
+                    'title' => 'Invalid Webhook Data',
+                    'type' => route('suppliers.magic-webhook-docs'),
+                    'status' => 400,
+                    'detail' => 'Missing required fields: id, event, or data.'
+                ], 400)
+                ->header('X-RateLimit-Limit', 1000)
+                ->header('X-RateLimit-Remaining', 999)
+                ->header('X-RateLimit-Reset', time() + 3600)
+                ->header('Content-Type', 'application/problem+json');
+        }
+        if($event == 'status.change'){
+            $data = json_decode($data, true);
+
+            $currentStatus = $data['current_status'] ?? null;
+            $previousStatus = $data['previous_status'] ?? null;
+
+            if(!$currentStatus || !$previousStatus) {
+                Log::channel('magic_webhook')->error('Invalid webhook data for status change', $request->all());
+
+                return response()
+                    ->json([
+                        'title' => 'Invalid Webhook Data',
+                        'type' => route('suppliers.magic-webhook-docs'),
+                        'status' => 400,
+                        'detail' => 'Missing required fields: current_status, previous_status, or amendments.'
+                    ], 400)
+                    ->header('X-RateLimit-Limit', 1000)
+                    ->header('X-RateLimit-Remaining', 999)
+                    ->header('X-RateLimit-Reset', time() + 3600)
+                    ->header('Content-Type', 'application/problem+json');
+            }
+
+            Log::channel('magic_webhook')->info('Status Change Event', [
+                'current_status' => $currentStatus,
+                'previous_status' => $previousStatus,
+                'data' => $data
+            ]);
+
+            $amendments = $data['amendments'] ?? null;
+            
+            if(!$amendments){
+
+                Log::channel('magic_webhook')->info('No amendments found for status change', $request->all());
+
+                return response()
+                    ->json([
+                        'title' => 'No Amendments Found',
+                        'type' => route('suppliers.magic-webhook-docs'),
+                        'status' => 200,
+                        'detail' => 'No amendments found for the status change.'
+                    ], 200)
+                    ->header('X-RateLimit-Limit', 1000)
+                    ->header('X-RateLimit-Remaining', 999)
+                    ->header('X-RateLimit-Reset', time() + 3600)
+                    ->header('Content-Type', 'application/hal+json');
+            }
+
+            $group = $amendments['group'] ?? null;
+            $original = $amendments['original'] ?? null;
+            $amendedBy = $amendments['amendedBy'] ?? null;
+
+            if(!$group || !$original || !$amendedBy) {
+                Log::channel('magic_webhook')->error('Invalid webhook data for status change amendments', $request->all());
+
+                return response()
+                    ->json([
+                        'title' => 'Invalid Webhook Data',
+                        'type' => route('suppliers.magic-webhook-docs'),
+                        'status' => 400,
+                        'detail' => 'Missing required fields: group, original, or amendedBy.'
+                    ], 400)
+                    ->header('X-RateLimit-Limit', 1000)
+                    ->header('X-RateLimit-Remaining', 999)
+                    ->header('X-RateLimit-Reset', time() + 3600)
+                    ->header('Content-Type', 'application/problem+json');
+            }
+
+            $magicHolidaySupplier = Supplier::where('name', 'Magic Holiday')->first();
+
+            if(!$magicHolidaySupplier) {
+                Log::channel('magic_webhook')->error('Magic Holiday supplier not found', $request->all());
+
+                return response()
+                    ->json([
+                        'title' => 'Something went wrong, contact our support team',
+                        'type' => route('suppliers.magic-webhook-docs'),
+                        'status' => 500,
+                        'detail' => 'Server error',
+                    ], 500)
+                    ->header('X-RateLimit-Limit', 1000)
+                    ->header('X-RateLimit-Remaining', 999)
+                    ->header('X-RateLimit-Reset', time() + 3600)
+                    ->header('Content-Type', 'application/problem+json');
+            }
+
+            $existingReservation = Task::where('reference', $original)
+                ->where('supplier_id', $magicHolidaySupplier->id)
+                ->first();
+            
+            if(!$existingReservation) {
+                Log::channel('magic_webhook')->error('Reservation not found for original reference', [
+                    'original' => $original,
+                    'supplier_id' => $magicHolidaySupplier->id,
+                ]);
+
+                return response()
+                    ->json([
+                        'title' => 'Reservation Not Found',
+                        'type' => route('suppliers.magic-webhook-docs'),
+                        'status' => 404,
+                        'detail' => 'Reservation not found for the original reference: ' . $original
+                    ], 404)
+                    ->header('X-RateLimit-Limit', 1000)
+                    ->header('X-RateLimit-Remaining', 999)
+                    ->header('X-RateLimit-Reset', time() + 3600)
+                    ->header('Content-Type', 'application/problem+json');
+            }
+
+            $existingReservation->supplier_status = $currentStatus;
+            $existingReservation->save();
+
+            Log::channel('magic_webhook')->info('Reservation updated', [
+                'reference' => $existingReservation->reference,
+                'supplier_status' => $currentStatus,
+            ]);
+        }
+
+        return response()
+            ->json(['received' => true])
+            ->header('X-RateLimit-Limit', 1000)
+            ->header('X-RateLimit-Remaining', 999)
+            ->header('X-RateLimit-Reset', time() + 3600)
+            ->header('Content-Type', 'application/hal+json');
+    }
+
+    public function magicReserveWebhookDocs()
+    {
+        return  view('docs.webhook.magic-holiday');
     }
 }

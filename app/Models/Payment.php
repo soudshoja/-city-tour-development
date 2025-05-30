@@ -64,4 +64,10 @@ class Payment extends Model
     {
         return $this->hasOne(TapPayment::class);
     }
+
+    public function myFatoorahPayment()
+    {
+        return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
+    }
+
 }

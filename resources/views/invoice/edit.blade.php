@@ -662,6 +662,17 @@
                                         Hesabe</option>
                                 </select>
                             </div>
+                            <div class="mt-4" 
+                                x-data="{ selectedGateway: '' }" 
+                                x-init="$watch('selectedGateway', () => {}); selectedGateway = document.getElementById('payment_gateway_option').value; document.getElementById('payment_gateway_option').addEventListener('change', e => selectedGateway = e.target.value)" 
+                                x-cloak x-show="selectedGateway === 'MyFatoorah'" x-transition>
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
+                                <select name="payment_method" id="payment_method" class="border border-gray-300 p-2 rounded w-full">
+                                    @foreach ($paymentMethods as $methods)
+                                        <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="mt-4">
                                 <button id="update-invoice-btn" type="button"
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
@@ -945,15 +956,16 @@
                                                 </div>
                                             </div>
 
-                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                            <div x-data="{ paymentGateway: '' }"
+                                                x-init="paymentGateway = document.getElementById('payment_gateway1').value;
+                                                        document.getElementById('payment_gateway1').addEventListener('change', e => paymentGateway = e.target.value)"
+                                                class="grid grid-cols-3 gap-4 mb-5">
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1"
-                                                        for="split-into1">Split into *</label>
+                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
                                                     <select id="split-into1"
-                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                        onchange="updateRows1()">
-                                                        <option value="" disabled selected>Select a value
-                                                        </option>
+                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm"
+                                                            onchange="updateRows1()">
+                                                        <option value="" disabled selected>Select a value</option>
                                                         <option value="1">1</option>
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
@@ -962,15 +974,21 @@
                                                         <option value="6">6</option>
                                                     </select>
                                                 </div>
-
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1">Payment
-                                                        Gateway</label>
+                                                    <label class="block text-sm font-medium mb-1">Payment Gateway</label>
                                                     <select id="payment_gateway1" name="payment_gateway1"
-                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}
-                                                            </option>
+                                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div x-cloak x-show="paymentGateway === 'MyFatoorah'" x-transition>
+                                                    <label class="block text-sm font-medium mb-1">Payment Method</label>
+                                                    <select name="payment_method1" id="payment_method1"
+                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                        @foreach ($paymentMethods as $methods)
+                                                            <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -2449,6 +2467,8 @@
 
             if (type === 'full') {
                 const clientId = document.getElementById('receiverId').value;
+                const gateway = document.getElementById('payment_gateway_option').value;
+                const method = gateway === 'MyFatoorah' ? (document.getElementById('payment_method')?.value) : null;
 
                 try {
                     for (const item of data) {
@@ -2472,7 +2492,8 @@
                                 type,
                                 date,
                                 amount,
-                                gateway
+                                gateway,
+                                method
                             }),
                         });
 
@@ -2496,6 +2517,7 @@
                 let button = document.getElementById("splitbutton");
                 button.disabled = true;
                 button.innerText = "Saving..."; // Change text while saving
+                const method = data.method;
 
                 // Handle split payment, generate links for each row
                 try {
@@ -2526,7 +2548,8 @@
                                 type,
                                 date,
                                 amount,
-                                gateway
+                                gateway,
+                                method
                             }),
                         });
 
@@ -2553,6 +2576,9 @@
             } else if (type === 'partial') {
                 // Handle partial payment as before
                 const clientId = document.getElementById('receiverId').value;
+                const selectedGateway = document.getElementById('payment_gateway1').value;
+                const method = selectedGateway === 'MyFatoorah'
+                    ? (document.getElementById('payment_method1')?.value) : null;
 
                 try {
 
@@ -2576,7 +2602,8 @@
                                 type,
                                 date,
                                 amount,
-                                gateway
+                                gateway: selectedGateway,
+                                method
                             }),
                         });
 

@@ -81,7 +81,8 @@ class PaymentController extends Controller
             'client_phone' => 'required|string|max:15',
             // 'selected_items' => 'required|array',
             'total_amount' => 'required|numeric',
-            'payment_method' => 'required|string',
+            'payment_gateway' => 'required|string',
+            'payment_method' => 'nullable|string',
             'invoice_partial_id' => 'required|array'
         ]);
 
@@ -97,6 +98,7 @@ class PaymentController extends Controller
             'client_email' => $request->client_email,
             'client_phone' => $request->client_phone,
             'total_amount' => $request->total_amount,
+            'payment_gateway' => $request->payment_gateway,
             'payment_method' => $request->payment_method,
             'invoice_partial_id' =>  $request->invoice_partial_id,
             'selected_partials' => $selectedPartials,
@@ -168,7 +170,7 @@ class PaymentController extends Controller
             'currency' => 'KWD',
             'payment_date' => Carbon::now(),
             'amount' => $data['total_amount'],
-            'payment_method' => $data['payment_method'],
+            'payment_method' => $data['payment_gateway'],
             'status' => 'pending',
             'payment_reference' => $invoice->id,
             'invoice_id' => $invoice->id,
@@ -176,7 +178,7 @@ class PaymentController extends Controller
             'agent_id' => $invoice->agent_id
         ]);
 
-        if (strtolower($data['payment_method']) === 'tap') {
+        if (strtolower($data['payment_gateway']) === 'tap') {
 
             $requestTap = [
                 'amount' => $data['total_amount'],
@@ -224,34 +226,34 @@ class PaymentController extends Controller
             ]);
         }
 
-        if (strtolower($data['payment_method']) === 'myfatoorah') {
+        if (strtolower($data['payment_gateway']) === 'myfatoorah') {
             $apiKey = config('services.myfatoorah.api_key');
             $baseUrl = config('services.myfatoorah.base_url');
 
             $amount = $data['total_amount'];
             $invoiceNumber = $invoice->invoice_number;
 
-            // Step 1: Initiate Payment
-            $initResponse = Http::withHeaders([
-                'Authorization' => "Bearer $apiKey",
-                'Content-Type' => 'application/json',
-            ])->post("$baseUrl/v2/InitiatePayment", [
-                'InvoiceValue' => $amount,
-                'CurrencyIso' => 'KWD',
-            ]);
+            // // Step 1: Initiate Payment
+            // $initResponse = Http::withHeaders([
+            //     'Authorization' => "Bearer $apiKey",
+            //     'Content-Type' => 'application/json',
+            // ])->post("$baseUrl/v2/InitiatePayment", [
+            //     'InvoiceValue' => $amount,
+            //     'CurrencyIso' => 'KWD',
+            // ]);
 
-            if (!$initResponse->successful()) {
-                Log::error('MyFatoorah: InitiatePayment failed', ['response' => $initResponse->body()]);
-                return response()->json(['error' => 'InitiatePayment failed.'], 500);
-            }
+            // if (!$initResponse->successful()) {
+            //     Log::error('MyFatoorah: InitiatePayment failed', ['response' => $initResponse->body()]);
+            //     return response()->json(['error' => 'InitiatePayment failed.'], 500);
+            // }
 
-            $initData = $initResponse->json();
-            $paymentMethodId = $initData['Data']['PaymentMethods'][0]['PaymentMethodId'] ?? null;
+            // $initData = $initResponse->json();
+            $paymentMethodId = $data['payment_method'];
 
-            if (!$paymentMethodId) {
-                Log::error('MyFatoorah: PaymentMethodId not found', ['response' => $initData]);
-                return response()->json(['error' => 'PaymentMethodId not found.'], 500);
-            }
+            // if (!$paymentMethodId) {
+            //     Log::error('MyFatoorah: PaymentMethodId not found', ['response' => $initData]);
+            //     return response()->json(['error' => 'PaymentMethodId not found.'], 500);
+            // }
 
             // Step 2: Execute Payment
             $executePayload = [

@@ -43,7 +43,12 @@ return [
 
     'myfatoorah' => [
         'api_key' => env('MYFATOORAH_API_KEY'),
-        'base_url' => env('MYFATOORAH_BASE_URL'),
+        'base_url' => env('APP_ENV') == 'production' ? env('MYFATOORAH_LIVE_URL') : env('MYFATOORAH_BASE_URL'),
+        'test_mode'           => env('MYFATOORAH_TEST_MODE', true),
+        'country_iso'         => env('MYFATOORAH_COUNTRY_ISO', 'KWT'),
+        'save_card'           => env('MYFATOORAH_SAVE_CARD', false),
+        'webhook_secret_key'  => env('MYFATOORAH_WEBHOOK_SECRET', ''),
+        'register_apple_pay'  => env('MYFATOORAH_APPLE_PAY', false),
     ],
 
     'convert-api' => [

@@ -27,13 +27,13 @@ use App\Models\Charge;
 use App\Models\Currency;
 use App\Models\Role;
 use App\Models\Credit;
+use App\Models\MyFatoorahPayment;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Http;
 use App\Support\PaymentGateway\Tap;
 use App\Support\PaymentGateway\MyFatoorah;
-use MyFatoorah\Library\API\Payment\MyFatoorahPayment;
 use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
 use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
 use Google\Rpc\Context\AttributeContext\Response;
@@ -1367,10 +1367,33 @@ public function paymentLinkProcess(Request $request)
             if ($payment->invoice) {
                 $payment->invoice->status = 'paid';
                 $payment->invoice->save();
+
+                $matchingPartial = $payment->invoice->invoicePartials
+                    ->where('invoice_number', $payment->invoice->invoice_number)
+                    ->first();
+
+                if ($matchingPartial) {
+                    $matchingPartial->status = 'paid';
+                    $matchingPartial->payment_id = $payment->id; // Save the payment ID to each partial
+                    $matchingPartial->save();
+                }
+
+                $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
+
+                MyFatoorahPayment::create([
+                    'payment_int_id' => $payment->id,
+                    'payment_id' => $transaction['PaymentId'] ?? null,
+                    'invoice_id' => $statusData['Data']['InvoiceId'],
+                    'invoice_status' => $statusData['Data']['InvoiceStatus'],
+                    'customer_reference' => $payment->invoice->invoice_number,
+                    'payload' => $statusData, 
+                ]);
+
+
             }
 
-            return redirect()->route('invoices.index')
-                            ->with('success', 'Payment completed successfully!');
+            return redirect()->route('invoice.show', $payment->invoice->invoice_number)->with('success', 'Payment completed successfully!');
+
                             
         } catch (\Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);

@@ -899,7 +899,6 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            Log::info('agent type:', $agent->agentType);
             if ($agent->agentType->name == 'Commission' || $agent->agentType->name == 'Both') {
                 $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
 

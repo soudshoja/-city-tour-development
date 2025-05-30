@@ -16,6 +16,7 @@ use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\InvoiceDetail;
 use App\Models\Task;
+use App\Models\PaymentMethod;
 use Exception;
 use Illuminate\Http\Request;
 use App\Models\InvoiceSequence;
@@ -391,6 +392,7 @@ class InvoiceController extends Controller
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
+        $paymentMethods = PaymentMethod::all();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
@@ -417,6 +419,7 @@ class InvoiceController extends Controller
             'selectedAgent',
             'selectedClient',
             'paymentGateways',
+            'paymentMethods',
             'invoiceDate',
             'invprice',
             'dueDate',
@@ -436,6 +439,7 @@ class InvoiceController extends Controller
             'type' => 'required|string',
             'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
+            'method' => 'nullable|string',
             'credit' => 'nullable|boolean'
         ]);
 
@@ -446,6 +450,7 @@ class InvoiceController extends Controller
         $date = $request->input('date');
         $amount = $request->input('amount');
         $gateway = $request->input('gateway');
+        $method = $request->input('method') ?? null;
         $credit = $request->input('credit', false); // Default to false if not provided
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
@@ -472,6 +477,7 @@ class InvoiceController extends Controller
                 'expiry_date' => $date,
                 'type' => $type,
                 'payment_gateway' => $gateway,
+                'payment_method' => $method,
             ]);
 
                 if ($credit && $type == 'full') {
@@ -1098,11 +1104,12 @@ class InvoiceController extends Controller
             ->get();
 
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
+        $paymentMethod = $invoicePartials->first()?->payment_method;
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'company', 'checkUtilizeCredit', 'checkUtilizeCreditPartial'));
+        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'paymentMethod', 'company', 'checkUtilizeCredit', 'checkUtilizeCreditPartial'));
     }
 
     public function generatePdf(string $invoiceNumber)

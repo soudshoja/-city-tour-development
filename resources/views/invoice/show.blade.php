@@ -371,7 +371,8 @@
                     <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                     <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
                     <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-                    <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
+                    <input type="hidden" name="payment_gateway" value="{{ $paymentGateway }}">
+                    <input type="hidden" name="payment_method" value="{{ $paymentMethod }}">
 
                     <div class="flex items-center gap-2">
                         @if ($invoice->payment_type !== 'split')

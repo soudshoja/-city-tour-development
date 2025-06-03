@@ -27,9 +27,9 @@ class MyFatoorahController extends Controller {
      */
     public function __construct() {
         $this->mfConfig = [
-            'apiKey'      => config('myfatoorah.api_key'),
-            'isTest'      => config('myfatoorah.test_mode'),
-            'countryCode' => config('myfatoorah.country_iso'),
+            'apiKey'      => config('services.myfatoorah.api_key'),
+            'isTest'      => config('services.myfatoorah.test_mode'),
+            'countryCode' => config('services.myfatoorah.country_iso'),
         ];
     }
 
@@ -171,11 +171,11 @@ return [
             $customerId = request('customerId');
 
             //You can use the user defined field if you want to save card
-            $userDefinedField = config('myfatoorah.save_card') && $customerId ? "CK-$customerId" : '';
+            $userDefinedField = config('services.myfatoorah.save_card') && $customerId ? "CK-$customerId" : '';
 
             //Get the enabled gateways at your MyFatoorah acount to be displayed on checkout page
             $mfObj          = new MyFatoorahPaymentEmbedded($this->mfConfig);
-            $paymentMethods = $mfObj->getCheckoutGateways($order['total'], $order['currency'], config('myfatoorah.register_apple_pay'));
+            $paymentMethods = $mfObj->getCheckoutGateways($order['total'], $order['currency'], config('services.myfatoorah.register_apple_pay'));
 
             if (empty($paymentMethods['all'])) {
                 throw new Exception('noPaymentGateways');
@@ -206,7 +206,7 @@ return [
     public function webhook(Request $request) {
         try {
             //Validate webhook_secret_key
-            $secretKey = config('myfatoorah.webhook_secret_key');
+            $secretKey = config('services.myfatoorah.webhook_secret_key');
             if (empty($secretKey)) {
                 return response(null, 404);
             }

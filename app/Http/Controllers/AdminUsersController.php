@@ -23,8 +23,31 @@ class AdminUsersController extends Controller
 {
     public function index()
     {
-        $usersCount = User::all()->count();
-        $users = User::with('roles')->get();
+        if(auth()->user()->role_id == Role::ADMIN) {
+            $users = User::with('roles')->get();
+        } else if(auth()->user()->role_id == Role::COMPANY) {
+
+            $branches = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
+            $branchUsers = User::with('roles')
+                ->whereHas('branch', function($query) use ($branches) {
+                    $query->whereIn('id', $branches);
+                })
+                ->get();
+
+            $agents = Agent::whereIn('branch_id', $branches)->get();
+            $agentUsers = User::with('roles')
+                ->whereHas('agent', function($query) use ($agents) {
+                    $query->whereIn('id', $agents->pluck('id'));
+                })
+                ->get();
+
+            $users = $branchUsers->merge($agentUsers)->unique('id');
+
+        } else {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $usersCount = $users->count();
         
         return view('users.index', compact('users', 'usersCount'));
     }

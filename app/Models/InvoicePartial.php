@@ -19,6 +19,7 @@ class InvoicePartial extends Model
         'expiry_date',  
         'type',    
         'payment_gateway',
+        'payment_method',
         'payment_id',
     ];
     

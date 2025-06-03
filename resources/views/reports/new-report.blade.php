@@ -317,5 +317,4 @@
                 });
         });
     </script>
-    </script>
 </x-app-layout>

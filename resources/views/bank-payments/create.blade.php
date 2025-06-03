@@ -1028,8 +1028,6 @@
             closeModal();
         }
 
-
-
         function appendLastSearchedDateOption(searchedDate) {
             const select = document.getElementById('bankpaymenttype');
             const existingOption = document.querySelector(`#bankpaymenttype option[value="LastSearch:${searchedDate}"]`);

@@ -252,7 +252,7 @@ class BankPaymentController extends Controller
                             ->where('reconciled', '!=', 2)
                             ->update([
                                 'reconciled' => 1,
-                                'reconciled_ref_id' => $journalEntryRec->id,  
+                                'reconciled_ref_id' => $journalEntryRec->id,
                             ]);
                     }
                 }

@@ -409,6 +409,105 @@ class ReportController extends Controller
         ]);
     }
 
+    public function accountsReconciliationReport(Request $request)
+    {
+        // Default dates
+        $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
+        $to = $request->input('to', Carbon::now()->endOfMonth()->toDateString());
+
+        // Add validation for the new reconciled filter option
+        $request->merge(['from' => $from, 'to' => $to])->validate([
+            'from' => 'required|date',
+            'to' => 'required|date|after_or_equal:from',
+            'reconciled' => 'nullable|in:both,yes,no',
+        ]);
+
+        $supplierName = $request->input('supplier');
+        $reconciledFilter = $request->input('reconciled', 'both'); // default 'both'
+        $user = auth()->user();
+
+        $accountPayable = Account::where('name', 'Accounts Payable')->first();
+        if (!$accountPayable) {
+            return back()->with('error', 'Accounts Payable account not found.');
+        }
+
+        // Query totals grouped by account_id
+        $totalsByAccountQuery = DB::table('journal_entries')
+            ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
+            ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
+            ->select(
+                'journal_entries.account_id',
+                DB::raw('SUM(COALESCE(journal_entries.credit, 0)) - SUM(COALESCE(journal_entries.debit, 0)) AS total')
+            )
+            ->where('journal_entries.company_id', $user->company->id)
+            ->where('journal_entries.branch_id', $user->branch->id)
+            ->whereBetween('journal_entries.transaction_date', [$from, $to])
+            ->whereIn('root_a.name', ['Liabilities']);
+
+        if ($supplierName) {
+            $totalsByAccountQuery->where('journal_entries.name', 'LIKE', "%{$supplierName}%");
+        }
+
+        // Apply reconcile filter to totals query
+        if ($reconciledFilter === 'yes') {
+            $totalsByAccountQuery->where('journal_entries.reconciled', 1);
+        } elseif ($reconciledFilter === 'no') {
+            $totalsByAccountQuery->where('journal_entries.reconciled', 0);
+        }
+        // 'both' means no filter on reconciled
+
+        $totalsByAccount = $totalsByAccountQuery
+            ->groupBy('journal_entries.account_id')
+            ->havingRaw('total > 0')
+            ->get()
+            ->pluck('total', 'account_id');
+
+        // Fetch journal entries filtered by reconcile status
+        $entriesQuery = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
+            ->where('company_id', $user->company->id)
+            ->where('branch_id', $user->branch->id)
+            ->whereBetween('transaction_date', [$from, $to])
+            ->where('credit', '!=', 0)
+            ->whereNull('voucher_number')
+            ->whereHas('account.root', function ($q) {
+                $q->where('name', 'Liabilities');
+            });
+
+        if ($supplierName) {
+            $entriesQuery->where('name', 'LIKE', "%{$supplierName}%");
+        }
+
+        // Apply reconcile filter to journal entries
+        if ($reconciledFilter === 'yes') {
+            $entriesQuery->where('reconciled', 1);
+        } elseif ($reconciledFilter === 'no') {
+            $entriesQuery->where('reconciled', 0);
+        }
+
+        $transactions = $entriesQuery
+            ->with(['account', 'account.root'])
+            ->orderBy('transaction_date')
+            ->get();
+
+        // Supplier options for datalist
+        $suppliers = Supplier::query()
+            ->when($supplierName, fn($q) => $q->where('name', 'LIKE', "%{$supplierName}%"))
+            ->orderBy('name')
+            ->get();
+
+        return view('reports.acc-reconcile', [
+            'accountPayable' => $accountPayable,
+            'totalsByAccount' => $totalsByAccount,
+            'transactions' => $transactions,
+            'from' => $from,
+            'to' => $to,
+            'supplier' => $supplierName,
+            'suppliers' => $suppliers,
+            'reconciled' => $reconciledFilter, // pass to view for form select default
+        ]);
+    }
+
+
     public function getAccounts(Request $request)
     {
         $user = auth()->user();

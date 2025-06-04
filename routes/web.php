@@ -328,6 +328,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/total-bank', [ReportController::class, 'totalBank'])->name('total-bank');
         Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable');
         Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
+        Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile');
     });
 
     // INVOICE

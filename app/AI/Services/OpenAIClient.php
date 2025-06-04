@@ -181,6 +181,7 @@ class OpenAIClient implements AIClientInterface
             - 'exchange_currency': Currency used after exchange, if the file has different currency, you can use the exchanged currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'KWD' as the exchange currency.
             - `original_price`: Original price of the task before exchange currency, if the file has different currency, you can use the original price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use '32.000' as the original price. if this field is not available, you can set it to null.
             - `original_currency`: Original currency of the task before exchange currency, if the file has different currency, you can use the original currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'EGP' or 'USD' as the original currency. if this field is not available, you can set it to null.
+            - `total`: Total amount for the task in float type. This is usually more than the price, because it includes the price, tax and any other fees. You don't need to calculate the total, just use the total amount stated in the file, which is usually stated at then end of line where the price is stated. if you see the total amount is same as the price, it usually means that there is no tax or any other fees.
             - `surcharge`: Any surcharge applied in float type.
             - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
             - `tax`: Total tax amount in float type.
@@ -252,6 +253,7 @@ class OpenAIClient implements AIClientInterface
             'exchange_currency': 'KWD',
             'original_price': 100.00,
             'original_currency': 'USD',
+            'total': 115.00,
             'surcharge': 10.00,
             'tax': 5.00,
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',

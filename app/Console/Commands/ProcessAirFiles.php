@@ -302,6 +302,7 @@ class ProcessAirFiles extends Command
                         'exchange_currency' => $task['exchange_currency'] ?? null,
                         'original_price' => $task['original_price'] ?? null,
                         'original_currency' => $task['original_currency'] ?? null,
+                        'total' => $task['total'] ?? null,
                         'surcharge' => $task['surcharge'] ?? null,
                         'tax' => $task['tax'] ?? null,
                         'taxes_record' => $task['taxes_record'] ?? 'N/A',
@@ -355,6 +356,7 @@ class ProcessAirFiles extends Command
                         'exchange_currency' => $task['exchange_currency'] ?? null,
                         'original_price' => $task['original_price'] ?? null,
                         'original_currency' => $task['original_currency'] ?? null,
+                        'total' => $task['total'] ?? null,
                         'surcharge' => $task['surcharge'] ?? null,
                         'tax' => $task['tax'] ?? null,
                         'taxes_record' => $task['taxes_record'] ?? 'N/A',
@@ -450,6 +452,7 @@ class ProcessAirFiles extends Command
                         'exchange_currency' => $extractedData['exchange_currency'] ?? null,
                         'original_price' => $extractedData['original_price'] ?? null,
                         'original_currency' => $extractedData['original_currency'] ?? null,
+                        'total' => $extractedData['total'] ?? null,
                         'surcharge' => $extractedData['surcharge'] ?? null,
                         'tax' => $extractedData['tax'] ?? null,
                         'taxes_record' => $extractedData['taxes_record'] ?? 'N/A',
@@ -507,7 +510,6 @@ class ProcessAirFiles extends Command
 
         try {
             $data['company_id'] = $companyId;
-            $data['total'] = $data['price'];
             $data['enabled'] = true;
 
             $taskController = new TaskController();

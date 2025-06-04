@@ -180,6 +180,7 @@ class TaskController extends Controller
             'exchange_currency' => 'nullable|string',
             'original_price' => 'nullable|numeric',
             'original_currency' => 'nullable|string',
+            'total' => 'required|numeric',
             'tax' => 'required|numeric',
             'penalty_fee' => 'nullable|numeric',
             'client_name' => 'nullable|string',
@@ -246,7 +247,7 @@ class TaskController extends Controller
             $validatedData['original_task_id'] = $originalTask->id; 
         }
 
-        $validatedData['total'] = $validatedData['price'];
+        // $validatedData['total'] = $validatedData['price'];
 
         DB::beginTransaction();
 

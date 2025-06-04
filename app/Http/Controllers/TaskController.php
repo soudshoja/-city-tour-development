@@ -243,7 +243,7 @@ class TaskController extends Controller
             $validatedData['original_task_id'] = $originalTask->id; 
         }
 
-        $validatedData['total'] = $validatedData['price'] + $validatedData['tax'] + $penaltyFee;
+        $validatedData['total'] = $validatedData['price'];
 
         DB::beginTransaction();
 

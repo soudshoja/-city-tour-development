@@ -488,7 +488,7 @@ class ProcessAirFiles extends Command
 
         try {
             $data['company_id'] = $companyId;
-            $data['total'] = $data['price'] + $data['surcharge'] + $data['tax'] + $data['penalty_fee'];
+            $data['total'] = $data['price'];
             $data['enabled'] = true;
 
             $taskController = new TaskController();

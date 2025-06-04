@@ -177,7 +177,10 @@ class OpenAIClient implements AIClientInterface
             - `ticket_number`: Ticket number. 
             - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
             - `refund_date`: Date of refund if applicable.
-            - `price`: Price of the task in float type.
+            - `price`: Price of the task in float type. You may found files with different currency, but the air file already provide the exchange price beside the original price, so just use the exchanged price as the price. usually our default currency is KWD, so if the file has KWD as the currency, you can just use the price as is. If the file has different currency, you can use the exchanged price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use the exchanged price, which is the next or first value after the semicolon, so in this case, you can just use '30.000' as the price.
+            - 'exchange_currency': Currency used after exchange, if the file has different currency, you can use the exchanged currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'KWD' as the exchange currency.
+            - `original_price`: Original price of the task before exchange currency, if the file has different currency, you can use the original price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use '32.000' as the original price. if this field is not available, you can set it to null.
+            - `original_currency`: Original currency of the task before exchange currency, if the file has different currency, you can use the original currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'EGP' or 'USD' as the original currency. if this field is not available, you can set it to null.
             - `surcharge`: Any surcharge applied in float type.
             - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
             - `tax`: Total tax amount in float type.
@@ -246,6 +249,9 @@ class OpenAIClient implements AIClientInterface
             'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
             'status': 'completed'/ 'hold' / 'confirmed',
             'price': 100.00,
+            'exchange_currency': 'KWD',
+            'original_price': 100.00,
+            'original_currency': 'USD',
             'surcharge': 10.00,
             'tax': 5.00,
             'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
@@ -337,6 +343,9 @@ class OpenAIClient implements AIClientInterface
                 'duration' => 'duration',
                 'payment_type' => 'payment_type',
                 'price' => 0,
+                'exchange_currency' => 'KWD',
+                'original_price' => 0,
+                'original_currency' => 'USD',
                 'tax' => 0,
                 'surcharge' => 0,
                 'penalty_fee' => 0,

@@ -242,7 +242,12 @@
                 Reports</a>
             </menuitem> -->
             <menuitem><a href="{{ route('reports.new-report') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Report</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
+                Pay/Receive</a>
+            </menuitem>
+            <menuitem><a href="{{ route('reports.acc-reconcile') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
+                Reconcile</a>
             </menuitem>
             <menuitem><a href="{{ route('coa.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transaction

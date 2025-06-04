@@ -87,6 +87,18 @@ class ProcessAirFiles extends Command
                         if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
                             Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
                             $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
+
+                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");                            
+
+                            $this->moveFileWithLogging(
+                                $fileRealPath,
+                                $errorPath,
+                                $fileName,
+                                'AI tool returned no data'
+                            );
+
+                            Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+
                             continue;
                         }
 

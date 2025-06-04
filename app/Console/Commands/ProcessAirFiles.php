@@ -174,6 +174,15 @@ class ProcessAirFiles extends Command
                             if (isset($response['code']) && $response['code'] === 409) {
                                 Log::info("Task already exists for {$fileName}. Skipping save.");
                                 $this->info("Task already exists for {$fileName}. Skipping save.");
+
+                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                $this->moveFileWithLogging(
+                                    $fileRealPath,
+                                    $errorPath,
+                                    $fileName,
+                                    'Task already exists'
+                                );
+
                                 continue;
                             } else {
                                 Log::error("Failed to save task for {$fileName}: " . $response['message']);
@@ -194,7 +203,7 @@ class ProcessAirFiles extends Command
                             }
                         }
 
-                        Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
+                        // Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
                         $this->info("File {$fileName} processed successfully by AI tool.");
 
                         // Move the file to the processed directory
@@ -290,6 +299,9 @@ class ProcessAirFiles extends Command
                         'cancellation_policy' => $task['cancellation_policy'] ?? null,
                         'venue' => $task['venue'] ?? null,
                         'price' => $task['price'] ?? null,
+                        'exchange_currency' => $task['exchange_currency'] ?? null,
+                        'original_price' => $task['original_price'] ?? null,
+                        'original_currency' => $task['original_currency'] ?? null,
                         'surcharge' => $task['surcharge'] ?? null,
                         'tax' => $task['tax'] ?? null,
                         'taxes_record' => $task['taxes_record'] ?? 'N/A',
@@ -340,6 +352,9 @@ class ProcessAirFiles extends Command
                         'cancellation_policy' => $task['cancellation_policy'] ?? null,
                         'venue' => $task['venue'] ?? null,
                         'price' => $task['price'] ?? null,
+                        'exchange_currency' => $task['exchange_currency'] ?? null,
+                        'original_price' => $task['original_price'] ?? null,
+                        'original_currency' => $task['original_currency'] ?? null,
                         'surcharge' => $task['surcharge'] ?? null,
                         'tax' => $task['tax'] ?? null,
                         'taxes_record' => $task['taxes_record'] ?? 'N/A',
@@ -380,7 +395,7 @@ class ProcessAirFiles extends Command
                     return null;
                 }
 
-                Log::info("AI Tool processing response for {$fileName}: " . json_encode($response));
+                // Log::info("AI Tool processing response for {$fileName}: " . json_encode($response));
 
                 $extractedData = $response['data'] ?? null;
 
@@ -432,6 +447,9 @@ class ProcessAirFiles extends Command
                             'ticket_number' => $extractedData['task_flight_details']['ticket_number'] ?? 'N/A',
                         ],
                         'price' => $extractedData['price'] ?? null,
+                        'exchange_currency' => $extractedData['exchange_currency'] ?? null,
+                        'original_price' => $extractedData['original_price'] ?? null,
+                        'original_currency' => $extractedData['original_currency'] ?? null,
                         'surcharge' => $extractedData['surcharge'] ?? null,
                         'tax' => $extractedData['tax'] ?? null,
                         'taxes_record' => $extractedData['taxes_record'] ?? 'N/A',
@@ -466,11 +484,13 @@ class ProcessAirFiles extends Command
 
         if ($existingTask) {
             Log::info("Task with reference {$data['reference']} already exists. Skipping save.");
+
             return [
                 'status' => 'error',
                 'message' => 'Task already exists',
                 'code' => 409,
             ];
+
         }
 
         $supplier = Supplier::where('name', 'Amadeus')->first();
@@ -484,7 +504,6 @@ class ProcessAirFiles extends Command
                 'message' => 'Supplier not found',
             ];
         }
-
 
         try {
             $data['company_id'] = $companyId;

@@ -9,16 +9,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\Role;
 use Exception;
 
 class ChargeController extends Controller
 {
     public function index()
     {
-        if (Auth::user()->role->name == 'company') {
+        if (Auth::user()->role->id == Role::COMPANY) {
             $totalCharges = Charge::where('company_id', Auth::user()->company->id)->count();
             $charges = Charge::where('company_id', Auth::user()->company->id)->get();
-        } elseif (Auth::user()->role->name == 'branch') {
+        } elseif (Auth::user()->role->id == Role::BRANCH) {
             $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->count();
             $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
         } else {
@@ -42,6 +43,8 @@ class ChargeController extends Controller
             'id' => $charge->id,
             'name' => $charge->name,
             'type' => $charge->type,
+            'charge_type' => $charge->charge_type,
+            'paid_by' => $charge->paid_by,
             'description' => $charge->description,
             'amount' => $charge->amount,
         ]);
@@ -86,7 +89,7 @@ class ChargeController extends Controller
         $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first();
 
         $childCoaPaymentGateway = Account::where('parent_id', $coaPaymentGateway->id)
-            ->where('name', 'like', '%' . $request->name . '%') 
+            ->where('name',  $request->name) 
             ->first(); 
 
             if ($childCoaPaymentGateway) {
@@ -108,6 +111,8 @@ class ChargeController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'type' => 'required|string|max:255',
+            'charge_type' => 'required',
+            'paid_by' => 'required',
             'amount' => 'required|numeric|min:0.01',
         ]);
 
@@ -178,6 +183,8 @@ class ChargeController extends Controller
                 'acc_fee_bank_id' => $newAccountBankFee->id, 
                 'company_id' => Auth::user()->company->id, 
                 'branch_id' => Auth::user()->branch->id, 
+                'charge_type' => $request->get('charge_type'),
+                'paid_by' => $request->get('paid_by'),
             ]);
     
             // Commit the transaction

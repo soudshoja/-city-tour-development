@@ -181,4 +181,33 @@ class AdminUsersController extends Controller
         // Return view with the companies data
         return view('admin.companiesList', compact('companies', 'companiesCount'));
     }
+
+    public function updateInfo(Request $request, User $user)
+    {
+        $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|email',
+            'phone' => 'required|string',
+            'source_role' => 'required|in:company,branch,agent',
+        ]);
+
+        $roleType = $request->input('source_role');
+        $fields = [
+            'name' => $request->name,
+            'email' => $request->email,
+            $roleType === 'agent' ? 'phone_number' : 'phone' => $request->phone,
+        ];
+
+        if ($roleType === 'company' && $user->company) {
+            $user->company->update($fields);
+        } elseif ($roleType === 'branch' && $user->branch) {
+            $user->branch->update($fields);
+        } elseif ($roleType === 'agent' && $user->agent) {
+            $user->agent->update($fields);
+        }
+
+        return redirect()->back()->with('success', 'Information updated successfully.');
+    }
+
+
 }

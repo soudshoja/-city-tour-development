@@ -909,7 +909,7 @@ class TaskController extends Controller
         $supplier = Supplier::where('name', 'like', $response['data']['supplier_name'])->first();
 
         $newRequest->merge([
-            'enabled' => true,
+            'enabled' => false,
             'agent_id' => $request->agent_id,
             'supplier_id' => $supplier->id,
             'company_id' => $companyId,

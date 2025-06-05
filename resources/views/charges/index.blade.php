@@ -73,8 +73,10 @@
                             <thead>
                                 <tr>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Charge Name</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Paid By</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                 </tr>
@@ -92,7 +94,11 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->type }}
                                             </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->paid_by }}
+                                            </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->amount }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->charge_type }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $charge->description }}</td>

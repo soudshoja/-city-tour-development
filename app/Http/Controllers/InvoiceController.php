@@ -24,6 +24,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Credit;
+use App\Services\ChargeService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
@@ -40,20 +41,20 @@ class InvoiceController extends Controller
 
     public function index()
     {
- 
+
         $user = Auth::user();
 
-       // Gate::authorize('viewAny', Invoice::class);
+        // Gate::authorize('viewAny', Invoice::class);
 
         // Get all agents under the company
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $agents = Agent::with(['branch'])->get();
-        } else if($user->role_id == Role::COMPANY){
+        } else if ($user->role_id == Role::COMPANY) {
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company->id);
             }])->get();
             $companyId = $user->company->id;
-        } else if($user->role_id == Role::AGENT){
+        } else if ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $companyId = $user->agent->branch->company_id;
         } else {
@@ -63,21 +64,21 @@ class InvoiceController extends Controller
         $agentIds = $agents->pluck('id');
         // Get invoices related to those agents
         // $invoices = Invoice::with('agent.branch','invoiceDetails.task','client')->whereIn('agent_id', $agentIds)->paginate(500);
-     
+
         $invoices = Invoice::with([
-            'agent.branch', 
+            'agent.branch',
             'invoiceDetails.task.supplier',
             // 'invoiceDetails.task.hotelDetails.room', 
             'client'
         ])
-        ->whereIn('agent_id', $agentIds)
-        ->whereHas('agent.branch', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })
-        ->paginate(500);
-    // Get clients related to the agents
+            ->whereIn('agent_id', $agentIds)
+            ->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
+            })
+            ->paginate(500);
+        // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
-      
+
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
 
@@ -86,7 +87,7 @@ class InvoiceController extends Controller
         $types = Task::distinct()->pluck('type');
         $totalInvoices = $invoices->total();
 
-        return view('invoice.index', compact('invoices', 'types', 'suppliers','branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
+        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
     }
 
     public function salelist()
@@ -119,7 +120,7 @@ class InvoiceController extends Controller
 
 
     public function create(Request $request)
-    {   
+    {
         if (auth()->user()->role_id == Role::ADMIN) {
             return view('invoice.maintenance'); // Show the maintenance page
         }
@@ -135,14 +136,14 @@ class InvoiceController extends Controller
             } else {
                 $taskIdsArray = $taskIds; // Single task
             }
-        
+
             foreach ($taskIdsArray as $taskId) {
                 $task = Task::find($taskId);
-        
+
                 if (!$task) {
                     return Redirect::route('tasks.index')->with('error', 'Task not found!');
                 }
-        
+
                 if (!$task->is_complete) {
                     return Redirect::route('tasks.index')->with('error', 'Task does not have full information!');
                 }
@@ -158,27 +159,26 @@ class InvoiceController extends Controller
         }
 
         $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
-       
+
         $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
-        
+
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
-                return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);                    
+                return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
             }
-            
+
             //check miss data
-            if($task->flightDetails) {
+            if ($task->flightDetails) {
                 if (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from)) {
                     return redirect()->back()->with('error', 'The task record is missing important flight data.');
                 }
             }
-            if($task->hotelDetails) {
+            if ($task->hotelDetails) {
                 //dd($task->hotelDetails->hotel->id);
                 if (!isset($task->hotelDetails->hotel)) {
                     return redirect()->back()->with('error', 'The task record is missing important hotel data.');
-                }                
+                }
             }
-
         }
 
         $selectedTasks = $selectedTasks->map(function ($task) {
@@ -198,20 +198,18 @@ class InvoiceController extends Controller
         $agents = collect();
         $clients = collect();
 
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $agents = Agent::get();
             $clients = Client::get();
             $branches = Branch::get();
             $companies = Company::get();
-            
-        }elseif ($user->role_id == Role::COMPANY) {
-            
+        } elseif ($user->role_id == Role::COMPANY) {
+
             $company = Company::with('branches.agents')->find($user->company->id);
             $agents = $company->branches->flatMap->agents;
             $clients = $agents->flatMap->clients;
             $branches = $company->branches;
             $selectedCompany = $company;
-
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
@@ -220,7 +218,7 @@ class InvoiceController extends Controller
             $branches = $company->branches;
             $selectedCompany = $company;
         }
-        
+
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
 
         if (!$invoiceSequence) {
@@ -256,22 +254,22 @@ class InvoiceController extends Controller
             $selectedAgent = null;
         }
 
-       $payments = Payment::whereIn('agent_id', $agents->pluck('id'))
-                ->where('invoice_id', null)
-                ->get();
-         
+        $payments = Payment::whereIn('agent_id', $agents->pluck('id'))
+            ->where('invoice_id', null)
+            ->get();
+
         // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
         // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
         //     return $agent['id'];
         // }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
 
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $agentId = Agent::get()->pluck('id');
-        } else if($user->role_id == Role::COMPANY){
+        } else if ($user->role_id == Role::COMPANY) {
             $agentId = $user->company->branches->flatMap->agents->pluck('id');
-        } else if($user->role_id == Role::BRANCH){
+        } else if ($user->role_id == Role::BRANCH) {
             $agentId = $user->branch->agents->pluck('id');
-        } else if($user->role_id == Role::AGENT){
+        } else if ($user->role_id == Role::AGENT) {
             $agentId = (array)$user->agent->id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
@@ -357,7 +355,7 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        if($invoice->status == 'paid'){
+        if ($invoice->status == 'paid') {
             return redirect()->route('invoices.index')->with('error', 'Cannot edit a paid invoice!');
         }
 
@@ -379,16 +377,16 @@ class InvoiceController extends Controller
             return $task;
         });
         $selectedTasks = $invoice->invoiceDetails
-        ->filter(fn($invoiceDetail) => $invoiceDetail->task) // Remove null tasks
-        ->map(function ($invoiceDetail) use ($invoice) {
-            $task = $invoiceDetail->task;
-            $task->agent_name = optional($task->agent)->name;
-            $task->branch_name = optional(optional($task->agent)->branch)->name;
-            $task->task_price = $invoiceDetail->task_price;
-            $task->invprice = (float) $invoice->amount;
-            return $task;
-        });
-    
+            ->filter(fn($invoiceDetail) => $invoiceDetail->task) // Remove null tasks
+            ->map(function ($invoiceDetail) use ($invoice) {
+                $task = $invoiceDetail->task;
+                $task->agent_name = optional($task->agent)->name;
+                $task->branch_name = optional(optional($task->agent)->branch)->name;
+                $task->task_price = $invoiceDetail->task_price;
+                $task->invprice = (float) $invoice->amount;
+                return $task;
+            });
+
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
         //dd('testing',$clients);
@@ -457,7 +455,28 @@ class InvoiceController extends Controller
         $credit = $request->input('credit', false); // Default to false if not provided
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
+        $companyId = $invoice->agent->branch->company_id;
 
+        if (strtolower($gateway) === 'myfatoorah' && $method) {
+            try {
+                $gatewayFee = ChargeService::FatoorahCharge($invoice->amount, $method, $companyId);
+            } catch (\Exception $e) {
+                Log::error('FatoorahCharge exception during partial save', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $method,
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
+        } else {
+            $gatewayFee = ChargeService::TapCharge([
+                'amount' => $invoice->amount,
+                'client_id' => $invoice->client_id,
+                'agent_id' => $invoice->agent_id,
+                'currency' => $invoice->currency
+            ], $gateway);
+        }
+        
         $client = Client::find($clientId);
         $balanceCredit = Credit::getTotalCreditsByClient($client->id);
         //dd($credit, $balanceCredit);
@@ -467,7 +486,7 @@ class InvoiceController extends Controller
                     'success' => false,
                     'message' => 'Client credit is not enough!',
                 ]);
-            } 
+            }
         }
 
         try {
@@ -475,7 +494,8 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
-                'amount' => $amount,
+                'service_charge' => $gatewayFee['fee'] ?? 0,
+                'amount' => $gatewayFee['finalAmount'],
                 'status' => $credit ? 'paid' : 'unpaid',
                 'expiry_date' => $date,
                 'type' => $type,
@@ -483,32 +503,31 @@ class InvoiceController extends Controller
                 'payment_method' => $method,
             ]);
 
-                if ($credit && $type == 'full') {
-                    //insert credit record
-                    try {
-                        Credit::create([
-                            'company_id'  => $invoice->client->agent->branch->company_id,
-                            'client_id'   => $invoice->client->id,
-                            'invoice_id'  => $invoice->id,
-                            'invoice_partial_id'  => $invoicePartial->id,
-                            'type'        => 'Invoice',
-                            'description' => 'Payment for ' . $invoice->invoice_number,
-                            'amount'      => -($amount), 
-                        ]); 
-                    } catch (Exception $e) {
-                        Log::error('Failed to create Credit: ' . $e->getMessage());
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to create credit record!',
-                        ]);
-                    } 
+            if ($credit && $type == 'full') {
+                //insert credit record
+                try {
+                    Credit::create([
+                        'company_id'  => $invoice->client->agent->branch->company_id,
+                        'client_id'   => $invoice->client->id,
+                        'invoice_id'  => $invoice->id,
+                        'invoice_partial_id'  => $invoicePartial->id,
+                        'type'        => 'Invoice',
+                        'description' => 'Payment for ' . $invoice->invoice_number,
+                        'amount'      => - ($amount),
+                    ]);
+                } catch (Exception $e) {
+                    Log::error('Failed to create Credit: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to create credit record!',
+                    ]);
                 }
+            }
 
             $invoice->payment_type = $type;
             $invoice->status = $credit ? 'paid' : 'unpaid';
             $invoice->is_client_credit = $credit;
             $invoice->save();
-
         } catch (Exception $e) {
             Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
             return response()->json([
@@ -520,7 +539,7 @@ class InvoiceController extends Controller
         $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
         $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
 
-        $tasks = Task::with('invoiceDetail','agent')->whereIn('id', $tasksId)->get();
+        $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
 
         DB::beginTransaction();
         try {
@@ -548,11 +567,11 @@ class InvoiceController extends Controller
             return response()->json('Something Went Wrong', 500);
         }
         DB::commit();
-      
+
 
         DB::beginTransaction();
 
-        foreach($tasks as $task){
+        foreach ($tasks as $task) {
             Log::info('Preparing to add journal entry', [
                 'task_id' => $task->id ?? null,
                 'invoice_id' => $invoice->id,
@@ -561,7 +580,7 @@ class InvoiceController extends Controller
                 'client_name' => $invoice->client->name ?? null,
                 'task' => $task,
             ]);
-            
+
             $response = $this->addJournalEntry(
                 $task,
                 $invoice->id,
@@ -590,7 +609,6 @@ class InvoiceController extends Controller
             'message' => 'Invoice Partial created successfully!',
             'invoiceId' => $invoice->id,
         ]);
-     
     }
 
     public function removePartial(Request $request)
@@ -674,7 +692,7 @@ class InvoiceController extends Controller
         $branchId = $agent ? $agent->branch_id : null;
 
 
-        if(!$agent || !$companyId || !$branchId) {
+        if (!$agent || !$companyId || !$branchId) {
 
             Log::error('Some of this data is missing', [
                 'agent' => $agent,
@@ -737,7 +755,7 @@ class InvoiceController extends Controller
                     return response()->json('Something Went Wrong', 500);
                 }
 
-             
+
 
                 // Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
                 // if ($payableAccount) {
@@ -750,7 +768,7 @@ class InvoiceController extends Controller
                 //     $PayablechildAccountId = null; // Handle case when no parent account is found
                 // }
 
-         
+
 
             }
         }
@@ -892,15 +910,15 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create income entry',
-            ]);        
+            ]);
         }
 
         // Commission (Expense)
         try {
 
             $agent = $task->agent;
-            
-            if(!$agent) {
+
+            if (!$agent) {
                 Log::error('Agent not found for task', ['task_id' => $task->id]);
                 return response()->json([
                     'success' => false,
@@ -1030,7 +1048,7 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
 
-       // Gate::authorize('viewAny', Invoice::class);
+        // Gate::authorize('viewAny', Invoice::class);
 
         // Get all agents under the company
         $agents = Agent::with(['branch' => function ($query) use ($user) {
@@ -1049,17 +1067,17 @@ class InvoiceController extends Controller
         //   ->paginate(500);
 
         $invoices = Invoice::with([
-            'agent.branch', 
-            'invoiceDetails.task.supplier', 
-            'invoicePartials', 
+            'agent.branch',
+            'invoiceDetails.task.supplier',
+            'invoicePartials',
             'client'
         ])
-        ->whereIn('agent_id', $agentIds)
-        ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
-        ->whereHas('agent.branch', function ($query) use ($user) {
-            $query->where('company_id', $user->company->id);
-        })
-        ->paginate(500);
+            ->whereIn('agent_id', $agentIds)
+            ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
+            ->whereHas('agent.branch', function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            })
+            ->paginate(500);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
@@ -1071,7 +1089,7 @@ class InvoiceController extends Controller
         $types = Task::distinct()->pluck('type');
         $totalInvoices = $invoices->total();
 
-        return view('invoice.link', compact('invoices', 'types', 'suppliers','branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
+        return view('invoice.link', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
     }
 
     /**
@@ -1082,12 +1100,14 @@ class InvoiceController extends Controller
 
     public function show(string $invoiceNumber)
     {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company', 'client', 'invoiceDetails')
+            ->first();
 
-        // Retrieve the invoice based on the invoice number
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
-        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)->with('client', 'invoice', 'payment')->get();
+        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
+            ->with('client', 'invoice', 'payment')
+            ->get();
 
-        // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
@@ -1105,13 +1125,52 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'tap';
+        $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
         $paymentMethod = $invoicePartials->first()?->payment_method;
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
+        $companyId = $invoice->agent->branch->company_id;
 
-        return view('invoice.show', compact('invoice', 'invoiceDetails', 'invoicePartials', 'paidPartials', 'paymentGateway', 'paymentMethod', 'company', 'checkUtilizeCredit', 'checkUtilizeCreditPartial'));
+        Log::info('ChargeService Debug - Pre Check', [
+            'gateway' => $paymentGateway,
+            'method' => $paymentMethod,
+            'company_id' => $companyId,
+        ]);
+
+        if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
+            try {
+                $gatewayFee = ChargeService::FatoorahCharge($invoice->amount, $paymentMethod, $companyId);
+            } catch (\Exception $e) {
+                Log::error('FatoorahCharge exception', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $paymentMethod,
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
+        } else {
+            Log::info('ChargeService: Using TapCharge instead', ['gateway' => $paymentGateway]);
+            $gatewayFee = ChargeService::TapCharge([
+                'amount' => $invoice->amount,
+                'client_id' => $invoice->client_id,
+                'agent_id' => $invoice->agent_id,
+                'currency' => $invoice->currency
+            ], $paymentGateway);
+        }
+
+        return view('invoice.show', compact(
+            'invoice',
+            'invoiceDetails',
+            'invoicePartials',
+            'paidPartials',
+            'paymentGateway',
+            'paymentMethod',
+            'company',
+            'checkUtilizeCredit',
+            'checkUtilizeCreditPartial',
+            'gatewayFee'
+        ));
     }
 
     public function generatePdf(string $invoiceNumber)
@@ -1160,8 +1219,6 @@ class InvoiceController extends Controller
         return view('invoice.split', compact('invoice', 'invoiceDetails', 'invoicePartial', 'checkUtilizeCredit', 'checkUtilizeCreditPartial'));
     }
 
-
-
     public function sendInvoice(string $invoiceNumber)
     {
 
@@ -1203,7 +1260,7 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'currency' => 'required|string',
         ]);
-    
+
         $tasks = $request->input('tasks');
         $duedate = $request->input('duedate');
         $invdate = $request->input('invdate');
@@ -1212,24 +1269,24 @@ class InvoiceController extends Controller
         $agentId = $request->input('agentId');
         $invoiceNumber = $request->input('invoiceNumber');
         $currency = $request->input('currency');
-    
+
         $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
-    
+
         try {
             // 🔹 Find the existing invoice
             $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
-    
+
             if (!$invoice) {
                 return response()->json(['error' => 'Invoice not found.'], 404);
             }
-    
+
             // 🔹 Delete related records before updating
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
             Transaction::where('invoice_id', $invoice->id)->delete();
             JournalEntry::where('invoice_id', $invoice->id)->delete();
-    
+
             // 🔹 Update invoice
             $invoice->update([
                 'agent_id' => $agentId,
@@ -1241,7 +1298,7 @@ class InvoiceController extends Controller
                 'invoice_date' => $invdate,
                 'due_date' => $duedate,
             ]);
-    
+
             // 🔹 Re-insert related records
             foreach ($tasks as $task) {
                 try {
@@ -1249,7 +1306,7 @@ class InvoiceController extends Controller
                     $supplier = Supplier::where('id', $task['supplier_id'])->first();
                     $client = Client::where('id', $task['client_id'])->first();
                     $agent = Agent::where('id', $task['agent_id'])->first();
-    
+
                     // Create new InvoiceDetail
                     $invoiceDetail = InvoiceDetail::create([
                         'invoice_id' => $invoice->id,
@@ -1263,7 +1320,7 @@ class InvoiceController extends Controller
                         'markup_price' => $task['invprice'] - $selectedtask->total,
                         'paid' => false,
                     ]);
-    
+
                     // Create a new Transaction
                     $transaction = Transaction::create([
                         'branch_id' => $branchId,
@@ -1276,7 +1333,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
                     ]);
-    
+
                     // Update General Ledger Entries
                     JournalEntry::create([
                         'transaction_id' => $transaction->id,
@@ -1293,7 +1350,7 @@ class InvoiceController extends Controller
                         'name' => $supplier->name,
                         'type' => 'payable',
                     ]);
-    
+
                     JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'branch_id' => $branchId,
@@ -1309,7 +1366,7 @@ class InvoiceController extends Controller
                         'name' =>  $client->name,
                         'type' => 'receivable',
                     ]);
-    
+
                     // Update Task Status
                     $selectedtask->status = 'Assigned';
                     $selectedtask->save();
@@ -1318,7 +1375,7 @@ class InvoiceController extends Controller
                     return response()->json('Failed to update InvoiceDetails for task: ' . $task['description'], 500);
                 }
             }
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice updated successfully!',
@@ -1329,7 +1386,7 @@ class InvoiceController extends Controller
             return response()->json('Invoice update failed!', 500);
         }
     }
-    
+
 
     public function delete(Request $request, string $id)
     {
@@ -1344,10 +1401,9 @@ class InvoiceController extends Controller
             JournalEntry::where('invoice_id', $invoice->id)->delete();
             Transaction::where('invoice_id', $invoice->id)->delete();
 
-             $invoice->delete();
+            $invoice->delete();
 
-             return redirect()->route('invoices.index')->with('status', 'Invoice deleted successfully!');
-
+            return redirect()->route('invoices.index')->with('status', 'Invoice deleted successfully!');
         } catch (Exception $error) {
             logger('Failed to delete invoice: ' . $error->getMessage());
             return redirect()->back()->with('error', 'Failed to delete invoice!');
@@ -1418,16 +1474,16 @@ class InvoiceController extends Controller
         $balance = $amount - ($balanceCredit);
 
         if ($balanceCredit <= 0) {
-                return redirect()->back()->with('error', 'Client has no available credit balance.');
+            return redirect()->back()->with('error', 'Client has no available credit balance.');
         }
         if ($balance > 0) {
             $typePayment = 'partial';
-        }elseif ($balance == 0) {
+        } elseif ($balance == 0) {
             $typePayment = 'full';
         }
 
-        if ($option === 'use_credit') {           
-            try {   
+        if ($option === 'use_credit') {
+            try {
                 if ($typePayment === 'full') {
                     $invoicePartial = InvoicePartial::create([
                         'invoice_id' => $invoice->id,
@@ -1443,7 +1499,7 @@ class InvoiceController extends Controller
                     // Save the invoice type
                     $invoice->status = 'paid';
                     $invoice->payment_type = 'full';
-                    $invoice->is_client_credit = 1; 
+                    $invoice->is_client_credit = 1;
                     $invoice->save();
                 }
 
@@ -1474,7 +1530,7 @@ class InvoiceController extends Controller
                     // Save the invoice type
                     $invoice->status = 'unpaid';
                     $invoice->payment_type = 'partial';
-                    $invoice->is_client_credit = 1; 
+                    $invoice->is_client_credit = 1;
                     $invoice->save();
 
                     $creditSubmit = Credit::create([
@@ -1484,16 +1540,15 @@ class InvoiceController extends Controller
                         'invoice_partial_id'  => $invoicePartialCredit->id,
                         'type'        => 'Invoice',
                         'description' => 'Payment for ' . $invoice->invoice_number,
-                        'amount'      => -($balanceCredit),
-                    ]); 
-
+                        'amount'      => - ($balanceCredit),
+                    ]);
                 }
 
                 // Record the transaction and journal entries
                 $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
                 $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
 
-                $tasks = Task::with('invoiceDetail','agent')->whereIn('id', $tasksId)->get();
+                $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
 
                 DB::beginTransaction();
                 try {
@@ -1517,11 +1572,11 @@ class InvoiceController extends Controller
                     return response()->json('Something Went Wrong', 500);
                 }
                 DB::commit();
-            
+
 
                 DB::beginTransaction();
 
-                foreach($tasks as $task){
+                foreach ($tasks as $task) {
                     Log::info('Preparing to add journal entry', [
                         'task_id' => $task->id ?? null,
                         'invoice_id' => $invoice->id,
@@ -1530,7 +1585,7 @@ class InvoiceController extends Controller
                         'client_name' => $invoice->client->name ?? null,
                         'task' => $task,
                     ]);
-                    
+
                     $response = $this->addJournalEntry(
                         $task,
                         $invoice->id,
@@ -1549,12 +1604,10 @@ class InvoiceController extends Controller
                 DB::commit();
 
                 return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Client credit applied. Invoice link created successfully!');
-
             } catch (Exception $e) {
                 logger('Failed to pay invoice by credit: ' . $e->getMessage());
                 return redirect()->back()->with('error', 'Failed to pay invoice by credit.');
             }
-
         }
 
         if ($option === 'generate_yes') {
@@ -1752,8 +1805,6 @@ class InvoiceController extends Controller
                 DB::commit();
 
                 return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Invoice paid successfully!');
-
-
             } catch (Exception $e) {
                 DB::rollBack();
                 logger('Failed to process invoice/payment: ' . $e->getMessage());

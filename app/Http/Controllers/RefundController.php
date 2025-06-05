@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\Task;
 use App\Models\JournalEntry;
 use App\Models\Credit;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -26,14 +27,14 @@ class RefundController extends Controller
     public function index()
     {
         $user = Auth::user();
-        if (Auth::user()->role->name === 'company') {
+        if (Auth::user()->role->id == Role::COMPANY) {
             $agents = $user->company->branches->pluck('agents')->flatten();
             $refundClients = $agents->pluck('refundClients')->flatten();
             $refunds = Refund::with('task.client', 'task.agent')
                 ->where('company_id', Auth::user()->company->id)
                 ->orderBy('id', 'desc')
                 ->get();
-        } elseif (Auth::user()->role->name === 'branch') {
+        } elseif (Auth::user()->role->id == Role::BRANCH) {
             $refundClients = $user->branch->agents->refundClients;
             $refunds = Refund::with('task.client', 'task.agent')
                 ->where('branch_id', Auth::user()->branch->id)

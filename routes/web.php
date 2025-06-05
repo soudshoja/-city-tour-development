@@ -52,6 +52,23 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Route::put('/profile/password/request', [ProfileController::class, 'requestPasswordUpdate'])->name('profile.password.request-update');
+
+    // Route::post('/profile/password/verify-code', [ProfileController::class, 'showConfirmCodeForm'])->name('profile.password.confirm-code');
+    // Route::get('/profile/password/confirm-password-code', [ProfileController::class, 'verifyCode'])->name('profile.password.confirm-password-code');
+
+    // Route::get('/profile/password/update', [ProfileController::class, 'showPasswordForm'])->name('profile.password.update-password-form');
+    // Route::put('/profile/password/update', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
+
+    // Route::post('/profile/password/request', [ProfileController::class, 'requestPasswordUpdate'])->name('profile.password.request-update');
+    // Route::get('/profile/password/verify-code', [ProfileController::class, 'showConfirmCodeForm'])->name('profile.password.confirm-code');
+    // Route::post('/profile/password/verify-code', [ProfileController::class, 'verifyCode'])->name('profile.password.verify-code');
+    // Route::get('/profile/password/update', [ProfileController::class, 'showPasswordForm'])->name('profile.password.update-password-form');
+    // Route::put('/profile/password/update', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
+
+
     // ROUTE THAT DOESN'T HAVE CONTROLLER
     Route::get('pin', function () {
         return view('auth.pin');
@@ -82,6 +99,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
         Route::get('/edit/{roleId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
+        Route::put('/{user}/update-info', [AdminUsersController::class, 'updateInfo'])->name('users.updateInfo');
+
     });
 
     // Agents list

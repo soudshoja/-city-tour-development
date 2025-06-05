@@ -21,6 +21,7 @@ use App\Models\RefundClient;
 use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\Credit;
+use App\Services\ChargeService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -155,7 +156,7 @@ class ClientController extends Controller
     {
         $user = Auth::user();
 
-        if($user->role_id == Role::COMPANY) {
+        if ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
@@ -540,6 +541,13 @@ class ClientController extends Controller
                 'message' => 'Client not found',
             ];
         }
+        $chargeData = $payment->payment_method === 'myfatoorah'
+            ? ChargeService::FatoorahCharge($payment->amount, $payment->method_id)
+            : ChargeService::TapCharge($payment, $payment->payment_method ?? 'Tap');
+        $finalAmount = $chargeData['finalAmount'];
+        $fee = $chargeData['fee'];
+        $paidBy = $chargeData['paid_by'];
+        $netReceived = $chargeData['netReceived'];
 
         DB::beginTransaction();
 
@@ -608,7 +616,7 @@ class ClientController extends Controller
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Client Pays by ' . $client->name . ' via (Assets): ' . $bankPaymentFee->name,
-                    'debit' => $payment->amount, //'debit' => $payment->amount - $defaultPaymentGatewayFee,
+                    'debit' => $paidBy === 'Company' ? $netReceived : $payment->amount,
                     'credit' => 0,
                     'name' =>  $bankPaymentFee->name,
                     'type' => 'bank',
@@ -616,7 +624,7 @@ class ClientController extends Controller
                     'type_reference_id' => $bankPaymentFee->id
                 ]);
 
-                $bankPaymentFee->actual_balance += $payment->amount - $defaultPaymentGatewayFee;
+                $bankPaymentFee->actual_balance += ($paidBy === 'Company' ? $netReceived : $payment->amount - $defaultPaymentGatewayFee);
                 $bankPaymentFee->save();
             }
 
@@ -624,22 +632,24 @@ class ClientController extends Controller
 
             if ($tapAccount) {
                 JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'company_id' => $client->agent->branch->company->id,
-                    'branch_id' => $client->agent->branch->id,
-                    'account_id' =>  $tapAccount->id,
-                    'voucher_number' => $payment->voucher_number,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Record Payment Gateway Charge (Expenses): ' . $tapAccount->name,
-                    'debit' => $defaultPaymentGatewayFee,
-                    'credit' => 0,
-                    'balance' => $tapAccount->actual_balance,
-                    'name' =>  $tapAccount->name,
-                    'type' => 'charges',
+                    'transaction_id'    => $transaction->id,
+                    'company_id'        => $client->agent->branch->company->id,
+                    'branch_id'         => $client->agent->branch->id,
+                    'account_id'        => $tapAccount->id,
+                    'voucher_number'    => $payment->voucher_number,
+                    'transaction_date'  => Carbon::now(),
+                    'description'       => ($paidBy === 'Company'
+                        ? 'Company Pays Tap Gateway Fee: '
+                        : 'Client Pays Tap Gateway Fee: ') . $tapAccount->name,
+                    'debit'             => $defaultPaymentGatewayFee,
+                    'credit'            => 0,
+                    'balance'           => $tapAccount->actual_balance + $defaultPaymentGatewayFee,
+                    'name'              => $tapAccount->name,
+                    'type'              => 'charges',
                     'type_reference_id' => $tapAccount->id
                 ]);
 
-                $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
+                $tapAccount->actual_balance += $defaultPaymentGatewayFee;
                 $tapAccount->save();
             }
 
@@ -659,8 +669,6 @@ class ClientController extends Controller
             Log::info('Creating Credit record:', $topupCreditClientData);
 
             Credit::create($topupCreditClientData);
-
-
         } catch (Exception $e) {
             DB::rollBack();
             logger('Error adding credit: ' . $e->getMessage());
@@ -706,10 +714,9 @@ class ClientController extends Controller
                     'client_id'   => $client->id,
                     'type'        => 'Update Credit',
                     'description' => 'Update Credit for ' . $client->name,
-                    'amount'      => $difference, 
+                    'amount'      => $difference,
                 ]);
             }
-
         } catch (Exception $e) {
             logger('Error updating credit: ' . $e->getMessage());
             return [
@@ -737,14 +744,14 @@ class ClientController extends Controller
     }
 
     public function refundProcess($id, Request $request)
-    {   
+    {
         //dd($id, $request->all());
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'agent_id' => 'required|exists:agents,id',
         ]);
 
-        if($request->amount <= 0) {
+        if ($request->amount <= 0) {
             return [
                 'status' => 'error',
                 'message' => 'Refund amount must be greater than zero',
@@ -765,7 +772,7 @@ class ClientController extends Controller
         DB::beginTransaction();
 
         try {
-    
+
             $liabilities = Account::where('name', 'Liabilities')
                 ->where('company_id', $client->agent->branch->company->id)
                 ->first();
@@ -778,7 +785,7 @@ class ClientController extends Controller
                 ->where('company_id', $client->agent->branch->company->id)
                 ->where('parent_id', $liabilities->id)
                 ->first();
-            
+
             if (!$advances) {
                 throw new Exception('Advances account not found');
             }
@@ -788,7 +795,7 @@ class ClientController extends Controller
                 ->where('parent_id', $advances->id)
                 ->where('root_id', $liabilities->id)
                 ->first();
-            
+
             if (!$clientAdvance) {
                 throw new Exception('Client Advance account not found');
             }
@@ -807,7 +814,7 @@ class ClientController extends Controller
                 ->where('parent_id', $refundPayable->id)
                 ->where('root_id', $liabilities->id)
                 ->first();
-            
+
             if (!$clientRefund) {
                 throw new Exception('Client Refund account not found');
             }
@@ -872,20 +879,18 @@ class ClientController extends Controller
                 'remark' => $request->remark,
             ]);
 
-            try{
+            try {
                 Credit::create([
                     'company_id'  => $client->agent->branch->company->id,
                     'client_id'   => $client->id,
                     'type'        => 'Refund Credit',
                     'description' => 'Refund Credit for ' . $client->name,
-                    'amount'      => -($request->amount),
+                    'amount'      => - ($request->amount),
                 ]);
             } catch (Exception $e) {
                 Log::error('Failed to create Credit: ' . $e->getMessage());
                 return response()->json('Something Went Wrong', 500);
             }
-
-
         } catch (Exception $e) {
             DB::rollBack();
             logger('Error processing refund: ' . $e->getMessage());
@@ -904,34 +909,33 @@ class ClientController extends Controller
                 'client_id' => $client->id,
                 'credit' => $request->amount,
             ],
-        ];    
+        ];
     }
 
-        public function getAgent($id)
-        {
-            $client = Client::with('agent')->find($id);
+    public function getAgent($id)
+    {
+        $client = Client::with('agent')->find($id);
 
-            if (!$client) {
-                return response()->json(['error' => 'Client not found'], 404);
-            }
-
-            if (!$client->agent) {
-                return response()->json(['error' => 'No agent assigned to this client'], 404);
-            }
-
-            return response()->json([
-                'agent' => [
-                    'id' => $client->agent->id,
-                    'name' => $client->agent->name,
-                ],
-            ]);
+        if (!$client) {
+            return response()->json(['error' => 'Client not found'], 404);
         }
 
-        // get Credit balance of a client
-        public function getCreditBalance($id)
-        {
-            $credit = Credit::getTotalCreditsByClient($id);
-            return response()->json(['credit' => $credit]);
+        if (!$client->agent) {
+            return response()->json(['error' => 'No agent assigned to this client'], 404);
         }
 
+        return response()->json([
+            'agent' => [
+                'id' => $client->agent->id,
+                'name' => $client->agent->name,
+            ],
+        ]);
+    }
+
+    // get Credit balance of a client
+    public function getCreditBalance($id)
+    {
+        $credit = Credit::getTotalCreditsByClient($id);
+        return response()->json(['credit' => $credit]);
+    }
 }

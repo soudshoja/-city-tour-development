@@ -277,7 +277,10 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
         $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
-        $agentId = is_array($agentId) ? $agentId : [$agentId];
+        //$agentId = is_array($agentId) ? $agentId : [$agentId];
+        $agentId = Arr::flatten((array) $agentId);
+        Log::info('Agent ID: ', ['agentId' => $agentId]);
+
         $clientId = $selectedClient ? $selectedClient->id : null;
         // Log::info('agentId', ['agentId' => $agentId]);
         // dd(gettype($agentId));

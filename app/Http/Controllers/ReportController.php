@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
+use App\Models\Role;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
@@ -381,9 +382,9 @@ class ReportController extends Controller
         $branches = Branch::where('company_id', $companyId)->get();
         $user = auth()->user();
 
-        if (Auth::user()->role->name == 'admin') {
+        if (Auth::user()->role->id == Role::ADMIN) {
             $suppliers = Supplier::with('companies')->get();
-        } elseif (Auth::user()->role->name == 'company') {
+        } elseif (Auth::user()->role->id == Role::COMPANY) {
             $suppliers = SupplierCompany::where('company_id', $user->company->id)
                 ->with('supplier')
                 ->get();

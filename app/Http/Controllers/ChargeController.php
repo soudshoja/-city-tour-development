@@ -9,16 +9,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\Role;
 use Exception;
 
 class ChargeController extends Controller
 {
     public function index()
     {
-        if (Auth::user()->role->name == 'company') {
+        if (Auth::user()->role->id == Role::COMPANY) {
             $totalCharges = Charge::where('company_id', Auth::user()->company->id)->count();
             $charges = Charge::where('company_id', Auth::user()->company->id)->get();
-        } elseif (Auth::user()->role->name == 'branch') {
+        } elseif (Auth::user()->role->id == Role::BRANCH) {
             $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->count();
             $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
         } else {

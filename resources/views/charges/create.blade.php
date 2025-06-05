@@ -40,7 +40,24 @@
                             value="{{ old('amount', '0.25') }}" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                     </div>
-
+                    <!-- Charges Type -->
+                    <div>
+                        <label for="charge_type" class="block text-gray-700 font-semibold mb-2">Charges Type</label>
+                        <select name="charge_type" id="charge_type" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="Flat Rate" selected>Flat Rate</option>
+                            <option value="Percent" selected>Percent</option>
+                        </select>
+                    </div>
+                    <!-- Paid By -->
+                    <div>
+                        <label for="paid_by" class="block text-gray-700 font-semibold mb-2">Paid By</label>
+                        <select name="paid_by" id="paid_by" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="Client" selected>Client</option>
+                            <option value="Company" selected>Company</option>
+                        </select>
+                    </div>
 
                     {{-- <!-- COA for Payment Gateway Fee -->
                     <div>

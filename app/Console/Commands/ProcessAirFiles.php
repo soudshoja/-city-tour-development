@@ -510,7 +510,7 @@ class ProcessAirFiles extends Command
 
         try {
             $data['company_id'] = $companyId;
-            $data['enabled'] = true;
+            $data['enabled'] = false;
 
             $taskController = new TaskController();
 

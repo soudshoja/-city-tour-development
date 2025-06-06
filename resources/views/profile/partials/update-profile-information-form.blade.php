@@ -61,7 +61,7 @@
             </div>
         @endif
 
-        @php
+        {{-- @php
             $selectedBank = $bankAccounts->firstWhere('id', (int) old('acc_bank_id', $user->acc_bank_id));
         @endphp
 
@@ -93,7 +93,7 @@
                     </span>
                 </a>
             </p>
-        </div>
+        </div> --}}
 
         <div class="mt-4">
             <x-input-label for="role" :value="__('Role')" />

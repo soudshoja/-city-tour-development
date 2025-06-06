@@ -877,6 +877,13 @@
                                         </li>
                                     @endforeach
                                 </ul>
+                                <p id="noAgentsFound" class="flex flex-col items-center justify-center py-6 text-center text-gray-500 text-sm gap-2 hidden">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9.75 9.75a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zm3 0a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zM12 21a9 9 0 100-18 9 9 0 000 18z" />
+                                    </svg>
+                                    <span>No agents found matching your search</span>
+                                </p>
                                 <!-- ./List of Agents -->
                             </div>
                         </div>
@@ -2092,7 +2099,7 @@
                 // Update input fields for agent
                 document.getElementById('agentName').value = agent.name;
                 document.getElementById('agentEmail').value = agent.email;
-                document.getElementById('agentPhone').value = agent.phone;
+                document.getElementById('agentPhone').value = agent.phone_number;
 
                 // Update the selected branch
                 document.getElementById('selectedBranch').value = branch.id;
@@ -2118,7 +2125,7 @@
             document.getElementById('agentId').value = agent.id;
             document.getElementById('agentName').value = agent.name;
             document.getElementById('agentEmail').value = agent.email;
-            document.getElementById('agentPhone').value = agent.phone;
+            document.getElementById('agentPhone').value = agent.phone_number;
         }
 
         generateInvoiceButton.addEventListener('click', async function(event) {
@@ -3155,6 +3162,27 @@
             renderClientList(clients);
             renderTaskList(tasks);
             renderClientCredit(selectedClient);
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('agentSearchInput');
+            const agentList = document.getElementById('agentList');
+            const listItems = agentList.getElementsByTagName('li');
+            const noAgentsFound = document.getElementById('noAgentsFound');
+
+            searchInput.addEventListener('input', function () {
+                const searchValue = this.value.toLowerCase();
+                let anyVisible = false;
+
+                Array.from(listItems).forEach(function (item) {
+                    const text = item.textContent.toLowerCase();
+                    const match = text.includes(searchValue);
+                    item.style.display = match ? '' : 'none';
+                    if (match) anyVisible = true;
+                });
+
+                noAgentsFound.classList.toggle('hidden', anyVisible);
+            });
         });
     </script>
 

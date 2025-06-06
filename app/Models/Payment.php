@@ -23,6 +23,7 @@ class Payment extends Model
         'payment_date',
         'notes',
         'amount',
+        'payment_gateway',
         'payment_method',
         'status',
         'account_number',

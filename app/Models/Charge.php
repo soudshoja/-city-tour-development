@@ -15,6 +15,7 @@ class Charge extends Model
         'description',
         'paid_by',
         'amount',
+        'is_active',
         'charge_type',
         'company_id',
         'branch_id',

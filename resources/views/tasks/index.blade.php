@@ -201,448 +201,469 @@
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
-                    <div class="dataTable-container h-max">
-                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
-                            <thead>
-                                <tr>
-                                    @can('create', 'App\Models\Invoice')
-                                        <th>
-                                            <label class="custom-checkbox">
-                                                <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
-                                                <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20"
-                                                    height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                    <rect width="18" height="18" x="3" y="3" fill="none"
-                                                        stroke="currentColor" stroke-linecap="round"
-                                                        stroke-linejoin="round" stroke-width="1" rx="4" />
-                                                </svg>
-                                            </label>
-                                        </th>
-                                    @endcan
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                        Actions</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                        Enable/Disable</th> <!-- New column header -->
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                        Reference</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
-                                        Name</th>
-                                    @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Branch Name</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Agent Name</th>
-                                    @endif
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
-                                    </th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                        Billing</th>
-                                    @can('viewPrice', 'App\Models\Task')
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
-                                        </th>
-                                    @endcan
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status
-                                    </th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                        Supplier</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-
-                                @if ($tasks->isEmpty())
+                    <div x-data="{ shown: 10 }">
+                        <div class="dataTable-container h-max">
+                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                                <thead>
                                     <tr>
-                                        <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No
-                                            tasks found</td>
-                                    </tr>
-                                @else
-                                    @foreach ($tasks as $key => $task)
-                                        <tr data-price="{{ $task->price }}"
-                                            data-supplier-id="{{ $task->supplier->id }}"
-                                            data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
-                                            data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}"
-                                            data-type="{{ $task->type }}"
-                                            data-client-id="{{ $task->client ? $task->client->id : null }}"
-                                            data-task-id="{{ $task->id }}" class="taskRow">
-                                            @can('create', 'App\Models\Invoice')
-                                                <td>
-                                                    <label class="custom-checkbox"
-                                                        data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
-
-                                                        @if ($task->status !== 'refund')
-                                                            <input type="checkbox"
-                                                                class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                                value="{{ $task->id }}"
-                                                                data-status="{{ $task->status }}"
-                                                                {{ $task->invoiceDetail || !$task->enabled || $task->linkedTask ? 'disabled' : '' }}>
-                                                        @else
-                                                            <input type="checkbox"
-                                                                class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                                value="{{ $task->id }}"
-                                                                data-status="{{ $task->status }}"
-                                                                {{ $task->refundDetail || !$task->is_complete ? 'disabled' : '' }}>
-                                                        @endif
-
-
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18"
-                                                            height="18" viewBox="0 0 24 24"
-                                                            class="checkbox-svg checkbox-border">
-                                                            <rect width="18" height="18" x="3" y="3"
-                                                                fill="none" stroke="currentColor"
-                                                                stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="1" rx="4" />
-                                                        </svg>
-                                                    </label>
-                                                </td>
-                                            @endcan
-                                            <td class="p-3 text-sm flex gap-3 justify-center">
-                                                <a data-tooltip="see task" href="javascript:void(0);"
-                                                    class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
-                                                    data-task-id="{{ $task->id }}"
-                                                    data-task-url="{{ route('tasks.show', $task->id) }}">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="22"
-                                                        height="22" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path
-                                                            d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                                        @can('create', 'App\Models\Invoice')
+                                            <th>
+                                                <label class="custom-checkbox">
+                                                    <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
+                                                    <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20"
+                                                        height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                        <rect width="18" height="18" x="3" y="3" fill="none"
+                                                            stroke="currentColor" stroke-linecap="round"
+                                                            stroke-linejoin="round" stroke-width="1" rx="4" />
                                                     </svg>
-                                                </a>
+                                                </label>
+                                            </th>
+                                        @endcan
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                            Actions</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                            Enable/Disable</th> <!-- New column header -->
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                            Reference</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
+                                            Name</th>
+                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Branch Name</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Agent Name</th>
+                                        @endif
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Date</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
+                                        </th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                            Billing</th>
+                                        @can('viewPrice', 'App\Models\Task')
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
+                                            </th>
+                                        @endcan
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status
+                                        </th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                            Supplier</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if ($tasks->isEmpty())
+                                        <tr>
+                                            <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No
+                                                tasks found</td>
+                                        </tr>
+                                    @else
+                                        @foreach ($tasks as $key => $task)
+                                            <tr x-show="{{ $key }} < shown" x-cloak data-price="{{ $task->price }}"
+                                                data-supplier-id="{{ $task->supplier->id }}"
+                                                data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
+                                                data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}"
+                                                data-type="{{ $task->type }}"
+                                                data-client-id="{{ $task->client ? $task->client->id : null }}"
+                                                data-task-id="{{ $task->id }}" class="taskRow">
+                                                @can('create', 'App\Models\Invoice')
+                                                    <td>
+                                                        <label class="custom-checkbox"
+                                                            data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
 
-                                                <div x-data="{ editTaskModal_{{ $task->id }}: false }">
-                                                    <a data-tooltip="edit task" href="javascript:void(0);"
-                                                        @click="editTaskModal_{{ $task->id }} = true">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18"
-                                                            height="18" viewBox="0 0 24 24">
-                                                            <path fill="none" stroke="currentColor"
-                                                                stroke-width="1.5"
-                                                                d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
+                                                            @if ($task->status !== 'refund')
+                                                                <input type="checkbox"
+                                                                    class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                                    value="{{ $task->id }}"
+                                                                    data-status="{{ $task->status }}"
+                                                                    {{ $task->invoiceDetail || !$task->enabled || $task->linkedTask ? 'disabled' : '' }}>
+                                                            @else
+                                                                <input type="checkbox"
+                                                                    class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                                    value="{{ $task->id }}"
+                                                                    data-status="{{ $task->status }}"
+                                                                    {{ $task->refundDetail || !$task->is_complete ? 'disabled' : '' }}>
+                                                            @endif
+
+
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                                height="18" viewBox="0 0 24 24"
+                                                                class="checkbox-svg checkbox-border">
+                                                                <rect width="18" height="18" x="3" y="3"
+                                                                    fill="none" stroke="currentColor"
+                                                                    stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="1" rx="4" />
+                                                            </svg>
+                                                        </label>
+                                                    </td>
+                                                @endcan
+                                                <td class="p-3 text-sm flex gap-3 justify-center">
+                                                    <a data-tooltip="see task" href="javascript:void(0);"
+                                                        class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
+                                                        data-task-id="{{ $task->id }}"
+                                                        data-task-url="{{ route('tasks.show', $task->id) }}">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="22"
+                                                            height="22" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path
+                                                                d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                                                         </svg>
                                                     </a>
-                                                    <div x-show="editTaskModal_{{ $task->id }}" x-cloak
-                                                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
 
-                                                        <form id="edit-task-form-{{ $task->id }}"
-                                                            action="{{ route('tasks.update', $task->id) }}"
-                                                            method="post"
-                                                            class="inline-flex flex-col gap-4 items-center">
-                                                            <div @click.away="editTaskModal_{{ $task->id }} = false"
-                                                                class="bg-white rounded-md border-2 w-full sm:w-120">
-                                                                <!-- Responsive modal width -->
-                                                                <div class="flex justify-between p-4">
-                                                                    <p class="font-semibold text-lg">
-                                                                        Update the following information if needed
-                                                                    </p>
-                                                                    <button type="button"
-                                                                        @click="editTaskModal_{{ $task->id }} = false"
-                                                                        class="text-red-500 font-bold">
-                                                                        &times;
-                                                                    </button>
-                                                                </div>
-                                                                <hr>
-                                                                @csrf
-                                                                @method('PUT')
-                                                                <div class="p-4 inline-flex flex-col gap-4">
+                                                    <div x-data="{ editTaskModal_{{ $task->id }}: false }">
+                                                        <a data-tooltip="edit task" href="javascript:void(0);"
+                                                            @click="editTaskModal_{{ $task->id }} = true">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                                height="18" viewBox="0 0 24 24">
+                                                                <path fill="none" stroke="currentColor"
+                                                                    stroke-width="1.5"
+                                                                    d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
+                                                            </svg>
+                                                        </a>
+                                                        <div x-show="editTaskModal_{{ $task->id }}" x-cloak
+                                                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
 
-                                                                    <!-- Reference Field -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="reference"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Reference:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->reference }}" readonly>
+                                                            <form id="edit-task-form-{{ $task->id }}"
+                                                                action="{{ route('tasks.update', $task->id) }}"
+                                                                method="post"
+                                                                class="inline-flex flex-col gap-4 items-center">
+                                                                <div @click.away="editTaskModal_{{ $task->id }} = false"
+                                                                    class="bg-white rounded-md border-2 w-full sm:w-120">
+                                                                    <!-- Responsive modal width -->
+                                                                    <div class="flex justify-between p-4">
+                                                                        <p class="font-semibold text-lg">
+                                                                            Update the following information if needed
+                                                                        </p>
+                                                                        <button type="button"
+                                                                            @click="editTaskModal_{{ $task->id }} = false"
+                                                                            class="text-red-500 font-bold">
+                                                                            &times;
+                                                                        </button>
                                                                     </div>
+                                                                    <hr>
+                                                                    @csrf
+                                                                    @method('PUT')
+                                                                    <div class="p-4 inline-flex flex-col gap-4">
 
-                                                                    <!-- Status Field -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="status"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
-                                                                        @if ($task->status === 'refund')
-                                                                            <select name="status" id="status"
-                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
-                                                                                disabled>
-                                                                                <option value="refund" selected>Refund
-                                                                                </option>
-                                                                            </select>
-                                                                            <input type="hidden" name="status"
-                                                                                value="refund">
-                                                                        @else
-                                                                            <select name="status" id="status"
-                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                <option value="">Set Status
-                                                                                </option>
-                                                                                <option value="Confirmed"
-                                                                                    {{ $task->status === 'confirmed' ? 'selected' : '' }}>
-                                                                                    Confirmed
-                                                                                </option>
-                                                                                <option value="Issued"
-                                                                                    {{ $task->status === 'issued' ? 'selected' : '' }}>
-                                                                                    Issued
-                                                                                </option>
-                                                                                <option value="Reissued"
-                                                                                    {{ $task->status === 'reissued' ? 'selected' : '' }}>
-                                                                                    Reissued
-                                                                                </option>
-                                                                                <option value="Refund"
-                                                                                    {{ $task->status === 'refund' ? 'selected' : '' }}>
-                                                                                    Refund
-                                                                                </option>
-                                                                                <option value="Void"
-                                                                                    {{ $task->status === 'void' ? 'selected' : '' }}>
-                                                                                    Void
-                                                                                </option>
-                                                                            </select>
-                                                                        @endif
-
-
-                                                                        @if ($task->status === 'refund')
-                                                                            <input type="hidden" name="status"
-                                                                                value="Refund">
-                                                                        @endif
-
-                                                                    </div>
-
-                                                                    <!-- Additional Info and Venue -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="additional_info"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Additional
-                                                                            Info:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->additional_info }} - {{ $task->venue }}"
-                                                                            readonly>
-                                                                    </div>
-
-                                                                    <!-- Supplier Name -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="supplier"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->supplier->name }}"
-                                                                            readonly>
-                                                                    </div>
-
-                                                                    <!-- Price -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="price"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Price:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->price }}" readonly>
-                                                                    </div>
-
-                                                                    <!-- Tax -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="tax"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Tax:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->tax }}"
-                                                                            placeholder="Tax" readonly>
-                                                                    </div>
-
-                                                                    <!-- Surcharge -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="surcharge"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Surcharge:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->surcharge }}"
-                                                                            placeholder="Surcharge" readonly>
-                                                                    </div>
-
-                                                                    <!-- Total -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="total"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Total:</label>
-                                                                        <input type="text" name="total"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3"
-                                                                            value="{{ $task->total }}"
-                                                                            placeholder="Total">
-                                                                    </div>
-
-                                                                    <!-- Task Type -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="type"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Task
-                                                                            Type:</label>
-                                                                        <input type="text"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                            value="{{ $task->type }}" readonly>
-                                                                    </div>
-
-                                                                    <!-- Client Selection -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="client_id"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
-                                                                        <select name="client_id"
-                                                                            id="tasks_client_id_{{ $task->id }}"
-                                                                            data-task-id="{{ $task->id }}"
-                                                                            class="client-select border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                            <option value="">Choose Client
-                                                                            </option>
-                                                                            @foreach ($clients as $client)
-                                                                                <option value="{{ $client->id }}"
-                                                                                    {{ $task->client && $task->client->id === $client->id ? 'selected' : '' }}>
-                                                                                    {{ $client->name }}
-                                                                                </option>
-                                                                            @endforeach
-                                                                        </select>
-                                                                    </div>
-
-                                                                    <!-- Agent Selection (Role-based) -->
-                                                                    @unlessrole('agent')
+                                                                        <!-- Reference Field -->
                                                                         <div class="flex items-center gap-4">
-                                                                            <label for="agent_id"
-                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Agent:</label>
-                                                                            <select disabled
-                                                                                id="agent_id_select_{{ $task->id }}"
-                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                <option value=""
-                                                                                    {{ empty($task->agent?->id) ? 'selected' : '' }}>
-                                                                                    Choose Agent</option>
-                                                                                @foreach ($agents as $agent)
-                                                                                    <option value="{{ $agent->id }}"
-                                                                                        {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
-                                                                                        {{ $agent->name }}
+                                                                            <label for="reference"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Reference:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->reference }}" readonly>
+                                                                        </div>
+
+                                                                        <!-- Status Field -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="status"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
+                                                                            @if ($task->status === 'refund')
+                                                                                <select name="status" id="status"
+                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
+                                                                                    disabled>
+                                                                                    <option value="refund" selected>Refund
                                                                                     </option>
-                                                                                @endforeach
+                                                                                </select>
+                                                                                <input type="hidden" name="status"
+                                                                                    value="refund">
+                                                                            @else
+                                                                                <select name="status" id="status"
+                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                                    <option value="">Set Status
+                                                                                    </option>
+                                                                                    <option value="Confirmed"
+                                                                                        {{ $task->status === 'confirmed' ? 'selected' : '' }}>
+                                                                                        Confirmed
+                                                                                    </option>
+                                                                                    <option value="Issued"
+                                                                                        {{ $task->status === 'issued' ? 'selected' : '' }}>
+                                                                                        Issued
+                                                                                    </option>
+                                                                                    <option value="Reissued"
+                                                                                        {{ $task->status === 'reissued' ? 'selected' : '' }}>
+                                                                                        Reissued
+                                                                                    </option>
+                                                                                    <option value="Refund"
+                                                                                        {{ $task->status === 'refund' ? 'selected' : '' }}>
+                                                                                        Refund
+                                                                                    </option>
+                                                                                    <option value="Void"
+                                                                                        {{ $task->status === 'void' ? 'selected' : '' }}>
+                                                                                        Void
+                                                                                    </option>
+                                                                                </select>
+                                                                            @endif
 
 
-                                                                            </select>
-
-                                                                            <input type="hidden" name="agent_id"
-                                                                                id="agent_id_hidden_{{ $task->id }}"
-                                                                                value="{{ $task->agent->id ?? '' }}">
-
+                                                                            @if ($task->status === 'refund')
+                                                                                <input type="hidden" name="status"
+                                                                                    value="Refund">
+                                                                            @endif
 
                                                                         </div>
-                                                                    @else
-                                                                        <input type="hidden" name="agent_id"
-                                                                            id="agent_id_{{ $task->id }}"
-                                                                            value="{{ Auth()->user()->agent->id }}">
-                                                                    @endunlessrole
 
-                                                                    <!-- Supplier Selection -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="supplier_id"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
-                                                                        <select disabled name="supplier_id"
-                                                                            id="supplier_id_{{ $task->id }}"
-                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                            @foreach ($suppliers as $supplier)
-                                                                                <option value="{{ $supplier->id }}"
-                                                                                    {{ $task->supplier ? ($task->supplier->id === $supplier->id ? 'selected' : '') : '' }}>
-                                                                                    {{ $supplier->name }}
+                                                                        <!-- Additional Info and Venue -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="additional_info"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Additional
+                                                                                Info:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->additional_info }} - {{ $task->venue }}"
+                                                                                readonly>
+                                                                        </div>
+
+                                                                        <!-- Supplier Name -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="supplier"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->supplier->name }}"
+                                                                                readonly>
+                                                                        </div>
+
+                                                                        <!-- Price -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="price"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Price:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->price }}" readonly>
+                                                                        </div>
+
+                                                                        <!-- Tax -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="tax"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Tax:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->tax }}"
+                                                                                placeholder="Tax" readonly>
+                                                                        </div>
+
+                                                                        <!-- Surcharge -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="surcharge"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Surcharge:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->surcharge }}"
+                                                                                placeholder="Surcharge" readonly>
+                                                                        </div>
+
+                                                                        <!-- Total -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="total"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Total:</label>
+                                                                            <input type="text" name="total"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3"
+                                                                                value="{{ $task->total }}"
+                                                                                placeholder="Total">
+                                                                        </div>
+
+                                                                        <!-- Task Type -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="type"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Task
+                                                                                Type:</label>
+                                                                            <input type="text"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                                value="{{ $task->type }}" readonly>
+                                                                        </div>
+
+                                                                        <!-- Client Selection -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="client_id"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
+                                                                            <select name="client_id"
+                                                                                id="tasks_client_id_{{ $task->id }}"
+                                                                                data-task-id="{{ $task->id }}"
+                                                                                class="client-select border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                                <option value="">Choose Client
                                                                                 </option>
-                                                                            @endforeach
-                                                                        </select>
-                                                                        <input type="hidden" name="supplier_id"
-                                                                            id="supplier_id_{{ $task->id }}"
-                                                                            value="{{ $task->supplier->id }}">
+                                                                                @foreach ($clients as $client)
+                                                                                    <option value="{{ $client->id }}"
+                                                                                        {{ $task->client && $task->client->id === $client->id ? 'selected' : '' }}>
+                                                                                        {{ $client->name }}
+                                                                                    </option>
+                                                                                @endforeach
+                                                                            </select>
+                                                                        </div>
+
+                                                                        <!-- Agent Selection (Role-based) -->
+                                                                        @unlessrole('agent')
+                                                                            <div class="flex items-center gap-4">
+                                                                                <label for="agent_id"
+                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Agent:</label>
+                                                                                <select disabled
+                                                                                    id="agent_id_select_{{ $task->id }}"
+                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                                    <option value=""
+                                                                                        {{ empty($task->agent?->id) ? 'selected' : '' }}>
+                                                                                        Choose Agent</option>
+                                                                                    @foreach ($agents as $agent)
+                                                                                        <option value="{{ $agent->id }}"
+                                                                                            {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
+                                                                                            {{ $agent->name }}
+                                                                                        </option>
+                                                                                    @endforeach
+
+
+                                                                                </select>
+
+                                                                                <input type="hidden" name="agent_id"
+                                                                                    id="agent_id_hidden_{{ $task->id }}"
+                                                                                    value="{{ $task->agent->id ?? '' }}">
+
+
+                                                                            </div>
+                                                                        @else
+                                                                            <input type="hidden" name="agent_id"
+                                                                                id="agent_id_{{ $task->id }}"
+                                                                                value="{{ Auth()->user()->agent->id }}">
+                                                                        @endunlessrole
+
+                                                                        <!-- Supplier Selection -->
+                                                                        <div class="flex items-center gap-4">
+                                                                            <label for="supplier_id"
+                                                                                class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
+                                                                            <select disabled name="supplier_id"
+                                                                                id="supplier_id_{{ $task->id }}"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                                @foreach ($suppliers as $supplier)
+                                                                                    <option value="{{ $supplier->id }}"
+                                                                                        {{ $task->supplier ? ($task->supplier->id === $supplier->id ? 'selected' : '') : '' }}>
+                                                                                        {{ $supplier->name }}
+                                                                                    </option>
+                                                                                @endforeach
+                                                                            </select>
+                                                                            <input type="hidden" name="supplier_id"
+                                                                                id="supplier_id_{{ $task->id }}"
+                                                                                value="{{ $task->supplier->id }}">
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div class="flex space-x-4 mt-2">
-                                                                <!-- Update Button -->
-                                                                <x-primary-button type="submit"
-                                                                    class="w-[200px] justify-center px-12 py-10 text-lg"
-                                                                    form="edit-task-form-{{ $task->id }}">
-                                                                    Update
-                                                                </x-primary-button>
-                                                            </div>
-                                                        </form>
+                                                                <div class="flex space-x-4 mt-2">
+                                                                    <!-- Update Button -->
+                                                                    <x-primary-button type="submit"
+                                                                        class="w-[200px] justify-center px-12 py-10 text-lg"
+                                                                        form="edit-task-form-{{ $task->id }}">
+                                                                        Update
+                                                                    </x-primary-button>
+                                                                </div>
+                                                            </form>
 
 
+                                                        </div>
                                                     </div>
-                                                </div>
 
 
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                <label class="switch">
-                                                    <input type="checkbox" class="toggle-task-status"
-                                                        data-task-id="{{ $task->id }}"
-                                                        {{ $task->enabled ? 'checked' : '' }}>
-                                                    <span class="slider round"></span>
-                                                </label>
-                                            </td>
+                                                </td>
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    <label class="switch">
+                                                        <input type="checkbox" class="toggle-task-status"
+                                                            data-task-id="{{ $task->id }}"
+                                                            {{ $task->enabled ? 'checked' : '' }}>
+                                                        <span class="slider round"></span>
+                                                    </label>
+                                                </td>
 
-                                            <!-- New column with switch button -->
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->reference }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->created_by ?? 'Not Set' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->issued_by ?? 'Not Set' }}
-                                            </td>
-                                            <td
-                                                class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
-                                                <p class="{{ $task->client ?? 'no-client' }}">
-                                                    {{ $task->client_name ?? 'Not Set' }}
-                                                </p>
-                                                @if ($task->client)
-                                                    <div data-tooltip="Client Linked">
-                                                        <svg width="24" height="24" viewBox="0 0 24 24"
-                                                            fill="none" xmlns="http://www.w3.org/2000/svg"
-                                                            class="fill-green-500">
-                                                            <path fill-rule="evenodd" clip-rule="evenodd"
-                                                                d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"
-                                                                fill="" />
-                                                        </svg>
-                                                    </div>
+                                                <!-- New column with switch button -->
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->reference }}</td>
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->created_by ?? 'Not Set' }}
+                                                </td>
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->issued_by ?? 'Not Set' }}
+                                                </td>
+                                                <td
+                                                    class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
+                                                    <p class="{{ $task->client ?? 'no-client' }}">
+                                                        {{ $task->client_name ?? 'Not Set' }}
+                                                    </p>
+                                                    @if ($task->client)
+                                                        <div data-tooltip="Client Linked">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24"
+                                                                fill="none" xmlns="http://www.w3.org/2000/svg"
+                                                                class="fill-green-500">
+                                                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                    d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"
+                                                                    fill="" />
+                                                            </svg>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                                        {{ $task->agent->branch->name ?? 'Not Set' }}
+                                                    </td>
+                                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                                        {{ $task->agent->name ?? 'Not Set' }}
+                                                    </td>
                                                 @endif
-                                            </td>
-                                            @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <td class="p-3 text-sm font-semibold text-gray-500">
-                                                    {{ $task->agent->branch->name ?? 'Not Set' }}
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    @if (Auth::user()->role_id == \App\Models\Role::ADMIN)
+                                                        {{ $task->formatted_date_time }}
+                                                    @else
+                                                        {{ $task->formatted_date }}
+                                                    @endif
                                                 </td>
-                                                <td class="p-3 text-sm font-semibold text-gray-500">
-                                                    {{ $task->agent->name ?? 'Not Set' }}
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->type }}
                                                 </td>
-                                            @endif
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->type }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                @if ($task->invoiceDetail)
-                                                    <a target="_blank"
-                                                        href="{{ route('invoice.show', $task->invoiceDetail->invoice_number) }}">
+                                                <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    @if ($task->invoiceDetail)
+                                                        <a target="_blank"
+                                                            href="{{ route('invoice.show', $task->invoiceDetail->invoice_number) }}">
+                                                            <span
+                                                                data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
+                                                                class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
+                                                                {{ $task->invoiceDetail->invoice_number }}
+                                                            </span>
+                                                        </a>
+                                                    @else
                                                         <span
-                                                            data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
-                                                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
-                                                            {{ $task->invoiceDetail->invoice_number }}
+                                                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
+                                                            Not Yet
                                                         </span>
-                                                    </a>
-                                                @else
-                                                    <span
-                                                        class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
-                                                        Not Yet
-                                                    </span>
-                                                @endif
-                                            </td>
-                                            @can('viewPrice', 'App\Models\Task')
-                                                <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">
-                                                    {{ $task->total }}
+                                                    @endif
                                                 </td>
-                                            @endcan
-                                            <td>
-                                                <span
-                                                    class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
-                                                    @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
-                                                    {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
-                                                </span>
-                                            </td>
-                                            <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->supplier->name }}
-                                            </td>
+                                                @can('viewPrice', 'App\Models\Task')
+                                                    <td class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">
+                                                        {{ $task->total }}
+                                                    </td>
+                                                @endcan
+                                                <td>
+                                                    <span
+                                                        class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
+                                                        @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
+                                                        {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
+                                                    </span>
+                                                </td>
+                                                <td class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->supplier->name }}
+                                                </td>
 
-                                        </tr>
-                                    @endforeach
-                                @endif
-                            </tbody>
-                        </table>
-
+                                            </tr>
+                                        @endforeach
+                                    @endif
+                                </tbody>
+                            </table>
+                            <div id="loadMoreWrapper" class="text-center my-4" x-show="shown < {{ count($tasks) }}" x-cloak>
+                                <button @click="shown += 10"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                    Load More
+                                </button>
+                            </div>
+                            <p id="noTasksFound" class="flex flex-col items-center justify-center py-6 text-center text-gray-500 text-sm gap-2 hidden">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9.75 9.75a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zm3 0a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zM12 21a9 9 0 100-18 9 9 0 000 18z" />
+                                </svg>
+                                <span>No tasks found matching your search</span>
+                            </p>
+                        </div>
                     </div>
 
 

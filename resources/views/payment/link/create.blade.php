@@ -31,13 +31,27 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
+                    <div x-data="{ selectedGateway: '' }">
                         <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
-                        <select name="payment_gateway" id="payment-gateway" class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select name="payment_gateway" id="payment-gateway"
+                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            x-model="selectedGateway">
+                            <option value="">Select Payment Gateway</option>
                             @foreach ($paymentGateways as $gateway)
                                 <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                             @endforeach
                         </select>
+                        <template x-if="selectedGateway === 'MyFatoorah'">
+                            <div class="mt-4">
+                                <label for="payment-method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select name="payment_method" id="payment-method"
+                                    class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    @foreach ($paymentMethods as $methods)
+                                        <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </template>
                     </div>
                     <div>
                         <label for="client" class="block text-sm font-medium text-gray-700">Client</label>

@@ -317,5 +317,115 @@ class WhatsappController extends Controller
             Log::error("Failed to download media: " . $response->body());
         }
     }
+
+    public function sendToResayilSimple(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|exists:clients,id',
+            'message' => 'required|string',
+        ]);
+
+        $client = Client::findOrFail($request->client_id);
+
+        // Prepare the payload
+        $payload = [
+            'phone' => $client->phone, 
+            'message' => $request->message,
+        ];
+
+        // Send using Laravel Http client
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Token' => '649b57775b72424de53d3d21baf8106a69a8c791bfebfb50959f5aa222aeab38d81e3023739f4dfd',
+        ])->post('https://api.resayil.io/v1/messages', $payload);
+
+        // Log the response
+        logger('Resayil API Response: ' . $response->body());
+
+        // Return result to frontend
+        if ($response->successful()) {
+            return back()->with('success', 'Message sent successfully via Resayil');
+        } else {
+            return back()->with('error', 'Failed to send message via Resayil: ' . $response->body());
+        }
+    }
+
+
+    public function shareInvoice(Request $request)
+    {
+        //dd($request);
+        $request->validate([
+            'clientid' => 'required|exists:clients,id',
+            'invoiceNumber' => 'required|string',
+        ]);
+
+        $client = Client::findOrFail($request->clientid);
+        $invoiceNumber = $request->invoiceNumber;
+
+        $invoiceLink = url("/invoice/{$invoiceNumber}");
+
+        $message = "Hello {$client->name}, here is your invoice link: $invoiceLink";
+
+        // Your Resayil API call logic here, e.g.,
+        $response = $this->sendToResayil($client->phone, $message);
+
+        if ($response['success'] ?? false) {
+            return back()->with('success', 'Invoice link shared via WhatsApp successfully!');
+        } else {
+            return back()->withErrors(['error' => 'Failed to send message.']);
+        }
+    }
+
+    public function handleResayilWebhook(Request $request)
+    {
+        // Log incoming webhook data for debugging
+        Log::debug('Resayil Webhook Received:', $request->all());
+
+        // Example: Extract relevant data
+        $messageId = $request->input('id');
+        $phone = $request->input('phone');
+        $status = $request->input('status');
+        $deliveryStatus = $request->input('deliveryStatus');
+        $webhookStatus = $request->input('webhookStatus');
+
+        return response()->json(['message' => 'Webhook received successfully']);
+    }
+
+    protected function sendToResayil($phone, $message)
+    {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => "https://api.resayil.io/v1/messages",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => json_encode([
+                'phone' => $phone,
+                'message' => $message,
+            ]),
+            CURLOPT_HTTPHEADER => [
+                "Content-Type: application/json",
+                "Token: " . config('services.resayil.api_key'), 
+            ],
+        ]);
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err) {
+            return ['success' => false, 'error' => $err];
+        } else {
+            $data = json_decode($response, true);
+            // Check Resayil response success status here accordingly
+            if (!empty($data['status']) && $data['status'] === 'success') {
+                return ['success' => true];
+            }
+            return ['success' => false, 'response' => $data];
+        }
+    }
+
+
+
     
 }

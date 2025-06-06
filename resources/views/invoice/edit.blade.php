@@ -662,12 +662,13 @@
                                         Hesabe</option>
                                 </select>
                             </div>
-                            <div class="mt-4" 
-                                x-data="{ selectedGateway: '' }" 
-                                x-init="$watch('selectedGateway', () => {}); selectedGateway = document.getElementById('payment_gateway_option').value; document.getElementById('payment_gateway_option').addEventListener('change', e => selectedGateway = e.target.value)" 
-                                x-cloak x-show="selectedGateway === 'MyFatoorah'" x-transition>
+                            <div class="mt-4" x-data="{ selectedGateway: '' }" x-init="$watch('selectedGateway', () => {});
+                            selectedGateway = document.getElementById('payment_gateway_option').value;
+                            document.getElementById('payment_gateway_option').addEventListener('change', e => selectedGateway = e.target.value)" x-cloak
+                                x-show="selectedGateway === 'MyFatoorah'" x-transition>
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
-                                <select name="payment_method" id="payment_method" class="border border-gray-300 p-2 rounded w-full">
+                                <select name="payment_method" id="payment_method"
+                                    class="border border-gray-300 p-2 rounded w-full">
                                     @foreach ($paymentMethods as $methods)
                                         <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
                                     @endforeach
@@ -703,10 +704,12 @@
 
                                 <!-- Share Buttons -->
                                 <div class="flex items-center gap-2 w-full">
-                                    <form id="whatsappForm" action="{{ route('whatsapp.send1') }}" method="POST"
-                                        onsubmit="showSpinner()">
+                                    <form id="whatsappForm" action="{{ route('whatsapp.share-invoice') }}"
+                                        method="POST" onsubmit="showSpinner()">
                                         @csrf
-                                        <input type="hidden" name="clientid" id="clientid">
+                                        <!-- Assuming you have a $client object or list -->
+                                        <input type="hidden" name="clientid" id="clientid"
+                                            value="{{ $client->id ?? '' }}">
                                         <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
 
                                         <button id="submitButton" type="submit"
@@ -956,16 +959,17 @@
                                                 </div>
                                             </div>
 
-                                            <div x-data="{ paymentGateway: '' }"
-                                                x-init="paymentGateway = document.getElementById('payment_gateway1').value;
-                                                        document.getElementById('payment_gateway1').addEventListener('change', e => paymentGateway = e.target.value)"
+                                            <div x-data="{ paymentGateway: '' }" x-init="paymentGateway = document.getElementById('payment_gateway1').value;
+                                            document.getElementById('payment_gateway1').addEventListener('change', e => paymentGateway = e.target.value)"
                                                 class="grid grid-cols-3 gap-4 mb-5">
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
+                                                    <label class="block text-sm font-medium mb-1"
+                                                        for="split-into1">Split into *</label>
                                                     <select id="split-into1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                            onchange="updateRows1()">
-                                                        <option value="" disabled selected>Select a value</option>
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
+                                                        onchange="updateRows1()">
+                                                        <option value="" disabled selected>Select a value
+                                                        </option>
                                                         <option value="1">1</option>
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
@@ -975,20 +979,24 @@
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label class="block text-sm font-medium mb-1">Payment Gateway</label>
+                                                    <label class="block text-sm font-medium mb-1">Payment
+                                                        Gateway</label>
                                                     <select id="payment_gateway1" name="payment_gateway1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                                            <option value="{{ $gateway }}">{{ $gateway }}
+                                                            </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
                                                 <div x-cloak x-show="paymentGateway === 'MyFatoorah'" x-transition>
-                                                    <label class="block text-sm font-medium mb-1">Payment Method</label>
+                                                    <label class="block text-sm font-medium mb-1">Payment
+                                                        Method</label>
                                                     <select name="payment_method1" id="payment_method1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentMethods as $methods)
-                                                            <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                                                            <option value="{{ $methods->id }}">
+                                                                {{ $methods->english_name }}</option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -2581,8 +2589,8 @@
                 // Handle partial payment as before
                 const clientId = document.getElementById('receiverId').value;
                 const selectedGateway = document.getElementById('payment_gateway1').value;
-                const method = selectedGateway === 'MyFatoorah'
-                    ? (document.getElementById('payment_method1')?.value) : null;
+                const method = selectedGateway === 'MyFatoorah' ?
+                    (document.getElementById('payment_method1')?.value) : null;
 
                 try {
 

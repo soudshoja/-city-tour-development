@@ -82,22 +82,20 @@ class ProcessAirFiles extends Command
 
                     try {
 
-                        $extractedData = $this->processWithAiTool($fileRealPath, $fileName);
+                        $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
 
-                        if ($extractedData === null || (is_array($extractedData) && empty($extractedData))) {
-                            Log::warning("AIR File Processing: AI tool returned no data or indicated an issue for {$fileName}. Skipping move, investigate.");
-                            $this->warn("AI tool returned no data for {$fileName}. File will remain in place.");
+                        if($extractedData['status'] === 'error') {
+                            Log::error("AIR File Processing: AI tool processing error for {$fileName}: " . $extractedData['message']);
+                            $this->error("AI tool processing error for {$fileName}: " . $extractedData['message']);
 
-                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");                            
+                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
 
                             $this->moveFileWithLogging(
                                 $fileRealPath,
                                 $errorPath,
                                 $fileName,
-                                'AI tool returned no data'
+                                'AI tool processing error'
                             );
-
-                            Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
 
                             continue;
                         }
@@ -131,7 +129,7 @@ class ProcessAirFiles extends Command
                             ->first();
 
                         if (!$agent) {
-                            Log::warning("AIR File Processing: Agent not found for {$fileName}.");
+                            Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
                             $this->warn("Agent not found for {$fileName}.");
 
                             $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
@@ -245,238 +243,6 @@ class ProcessAirFiles extends Command
         return 0;
     }
 
-    protected function processWithAiTool(string $filePath, string $fileName) : mixed
-    {
-
-        $this->info("Handing over content of {$fileName} to AI processing tool...");
-
-        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-        if ($extension === 'pdf') {
-            $response = $this->aiManager->extractPdfFiles($filePath);
-
-            Log::info("extractPdfFiles response for {$fileName}: " . json_encode($response));
-
-            if($response['status'] !== 'success') {
-                $errorMessage = $response['message'] ?? 'Unknown error occurred.';
-                Log::error("AI Tool processing failed for {$fileName}: " . $errorMessage);
-                $this->error("AI Tool processing failed for {$fileName}: " . $errorMessage);
-                return null;
-            }
-
-            $data = $response['data'] ?? null;
-
-            if(!$data) {
-                Log::error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
-                $this->error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
-                return null;
-            }
-
-            Log::info('Extracting data from AI Tool for ' . $fileName . ': ' . json_encode($data));
-
-            $task = $data['task'] ?? null;
-            $taskFlightDetails = $data['task_flight_details'] ?? null;
-            $taskHotelDetails = $data['task_hotel_details'] ?? null;
-
-            if ($task['type'] === 'flight') {
-                $processedData = [
-                    'status' => 'success',
-                    'message' => "Successfully processed {$fileName} using AI.",
-                    'original_filename' => $fileName,
-                    'data' => [
-                        'additional_info' => $task['additional_info'] ?? 'N/A',
-                        'ticket_number' => $task['ticket_number'] ?? 'N/A',
-                        'status' => $task['status'] ?? 'N/A',
-                        'reference' => $task['reference'] ?? 'N/A',
-                        'gds_office_id' => $task['gds_office_id'] ?? 'N/A',
-                        'type' => $task['type'] ?? 'N/A',
-                        'agent_name' => $task['agent_name'] ?? 'N/A',
-                        'agent_email' => $task['agent_email'] ?? 'N/A',
-                        'agent_amadeus_id' => $task['agent_amadeus_id'] ?? 'N/A',
-                        'client_name' => $task['client_name'] ?? 'N/A',
-                        'supplier_name' => $task['supplier_name'] ?? 'N/A',
-                        'supplier_country' => $task['supplier_country'] ?? 'N/A',
-                        'cancellation_policy' => $task['cancellation_policy'] ?? null,
-                        'venue' => $task['venue'] ?? null,
-                        'price' => $task['price'] ?? null,
-                        'exchange_currency' => $task['exchange_currency'] ?? null,
-                        'original_price' => $task['original_price'] ?? null,
-                        'original_currency' => $task['original_currency'] ?? null,
-                        'total' => $task['total'] ?? null,
-                        'surcharge' => $task['surcharge'] ?? null,
-                        'tax' => $task['tax'] ?? null,
-                        'taxes_record' => $task['taxes_record'] ?? 'N/A',
-                        'penalty_fee' => $task['penalty_fee'] ?? 0.00,
-                        'refund_charge' => $task['refund_charge'] ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                        'task_flight_details' => [
-                            'farebase' => $taskFlightDetails['farebase'] ?? null,
-                            'departure_time' => $taskFlightDetails['departure_time'] ?? null,
-                            'departure_from' => $taskFlightDetails['departure_from'] ?? null,
-                            'airport_from' => $taskFlightDetails['airport_from'] ?? 'N/A',
-                            'terminal_from' => $taskFlightDetails['terminal_from'] ?? 'N/A',
-                            'arrival_time' => $taskFlightDetails['arrival_time'] ?? null,
-                            'duration_time' => $taskFlightDetails['duration_time'] ?? 'N/A',
-                            'arrive_to' => $taskFlightDetails['arrive_to'] ?? 'N/A',
-                            'airport_to' => $taskFlightDetails['airport_to'] ?? 'N/A',
-                            'terminal_to' => $taskFlightDetails['terminal_to'] ?? 'N/A',
-                            'airline_name' => $taskFlightDetails['airline_name'] ?? 'N/A',
-                            'flight_number' => $taskFlightDetails['flight_number'] ?? 'N/A',
-                            'class_type' => $taskFlightDetails['class_type'] ?? 'N/A',
-                            'baggage_allowed' => $taskFlightDetails['baggage_allowed'] ?? 'N/A',
-                            'equipment' => $taskFlightDetails['equipment'] ?? null,
-                            'flight_meal' => $taskFlightDetails['flight_meal'] ?? null,
-                            'seat_no' => $taskFlightDetails['seat_no'] ?? null,
-                        ],
-                        
-                    ]
-                ];
-            } else if( $task['type'] === 'hotel'){
-                $processedData = [
-                    'status' => 'success',
-                    'message' => "Successfully processed {$fileName} using AI.",
-                    'original_filename' => $fileName,
-                    'data' => [
-                        'additional_info' => $task['additional_info'] ?? 'N/A',
-                        'ticket_number' => $task['ticket_number'] ?? 'N/A',
-                        'status' => $task['status'] ?? 'N/A',
-                        'reference' => $task['reference'] ?? 'N/A',
-                        'created_by' => $task['created_by'] ?? null,
-                        'issued_by' => $task['issued_by'] ?? null,
-                        'type' => $task['type'] ?? 'N/A',
-                        'agent_name' => $task['agent_name'] ?? 'N/A',
-                        'agent_email' => $task['agent_email'] ?? 'N/A',
-                        'client_name' => $task['client_name'] ?? 'N/A',
-                        'supplier_name' => $task['supplier_name'] ?? 'N/A',
-                        'supplier_country' => $task['supplier_country'] ?? null,
-                        'cancellation_policy' => $task['cancellation_policy'] ?? null,
-                        'venue' => $task['venue'] ?? null,
-                        'price' => $task['price'] ?? null,
-                        'exchange_currency' => $task['exchange_currency'] ?? null,
-                        'original_price' => $task['original_price'] ?? null,
-                        'original_currency' => $task['original_currency'] ?? null,
-                        'total' => $task['total'] ?? null,
-                        'surcharge' => $task['surcharge'] ?? null,
-                        'tax' => $task['tax'] ?? null,
-                        'taxes_record' => $task['taxes_record'] ?? 'N/A',
-                        'penalty_fee' => $task['penalty_fee'] ?? 0.00,
-                        'refund_charge' => $task['refund_charge'] ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                        'task_hotel_details' => [
-                            'hotel_name' => $taskHotelDetails['hotel_name'] ?? null,
-                            'check_in_date' => $taskHotelDetails['check_in_date'] ?? null,
-                            'check_out_date' => $taskHotelDetails['check_out_date'] ?? null,
-                            'room_type' => $taskHotelDetails['room_type'] ?? null,
-                            'number_of_rooms' => $taskHotelDetails['number_of_rooms'] ?? null,
-                            'number_of_guests' => $taskHotelDetails['number_of_guests'] ?? null,
-                            'meal_plan' => $taskHotelDetails['meal_plan'] ?? null,
-                        ],
-                    ]
-                ];
-
-            } else {
-                Log::warning("Unsupported task type in {$fileName}: {$task['type']}");
-                return null;
-            }
-
-            return $processedData;
-
-        } elseif (in_array($extension, ['txt', 'text', 'air'])) {
-
-            $fileContent = File::get($filePath);
-
-            try {
-                $response = $this->aiManager->extractAirFiles($fileContent);
-
-                if (!isset($response['status']) || $response['status'] !== 'success') {
-                    $errorMessage = $response['message'] ?? 'Unknown error occurred.';
-                    Log::error("AI Tool processing failed for {$fileName}: " . $errorMessage);
-                    $this->error("AI Tool processing failed for {$fileName}: " . $errorMessage);
-                    return null;
-                }
-
-                // Log::info("AI Tool processing response for {$fileName}: " . json_encode($response));
-
-                $extractedData = $response['data'] ?? null;
-
-                if (!$extractedData) {
-                    Log::error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
-                    $this->error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
-                    return null;
-                }
-
-                $processedData = [
-                    'status' => 'success',
-                    'message' => "Successfully processed {$fileName} using AI.",
-                    'original_filename' => $fileName,
-                    'data' => [
-                        'additional_info' => $extractedData['additional_info'] ?? 'N/A',
-                        'ticket_number' => $extractedData['ticket_number'] ?? 'N/A',
-                        'status' => $extractedData['status'] ?? 'N/A',
-                        'supplier_status' => $extractedData['status'] ?? 'N/A',
-                        'reference' => $extractedData['reference'] ?? 'N/A',
-                        'created_by' => $extractedData['created_by'] ?? null,
-                        'issued_by' => $extractedData['issued_by'] ?? null,
-                        'type' => $extractedData['type'] ?? 'N/A',
-                        'agent_name' => $extractedData['agent_name'] ?? 'N/A',
-                        'agent_email' => $extractedData['agent_email'] ?? 'N/A',
-                        'agent_amadeus_id' => $extractedData['agent_amadeus_id'] ?? 'N/A',
-                        'client_name' => $extractedData['client_name'] ?? 'N/A',
-                        'supplier_name' => $extractedData['supplier_name'] ?? 'N/A',
-                        'supplier_country' => $extractedData['supplier_country'] ?? 'N/A',
-                        'cancellation_policy' => $extractedData['cancellation_policy'] ?? 'N/A',
-                        'venue' => $extractedData['venue'] ?? 'N/A',
-                        'task_flight_details' => [
-                            'farebase' => $extractedData['task_flight_details']['farebase'] ?? null,
-                            'departure_time' => $extractedData['task_flight_details']['departure_time'] ?? null,
-                            'departure_from' => $extractedData['task_flight_details']['departure_from'] ?? null,
-                            'airport_from' => $extractedData['task_flight_details']['airport_from'] ?? 'N/A',
-                            'terminal_from' => $extractedData['task_flight_details']['terminal_from'] ?? 'N/A',
-                            'arrival_time' => $extractedData['task_flight_details']['arrival_time'] ?? null,
-                            'duration_time' => $extractedData['task_flight_details']['duration_time'] ?? 'N/A',
-                            'arrive_to' => $extractedData['task_flight_details']['arrive_to'] ?? 'N/A',
-                            'airport_to' => $extractedData['task_flight_details']['airport_to'] ?? 'N/A',
-                            'terminal_to' => $extractedData['task_flight_details']['terminal_to'] ?? 'N/A',
-                            'airline_name' => $extractedData['task_flight_details']['airline_name'] ?? 'N/A',
-                            'flight_number' => $extractedData['task_flight_details']['flight_number'] ?? 'N/A',
-                            'class_type' => $extractedData['task_flight_details']['class_type'] ?? 'N/A',
-                            'baggage_allowed' => $extractedData['task_flight_details']['baggage_allowed'] ?? 'N/A',
-                            'equipment' => $extractedData['task_flight_details']['equipment'] ?? 'N/A',
-                            'flight_meal' => $extractedData['task_flight_details']['flight_meal'] ?? 'N/A',
-                            'seat_no' => $extractedData['task_flight_details']['seat_no'] ?? 'N/A',
-                            'ticket_number' => $extractedData['task_flight_details']['ticket_number'] ?? 'N/A',
-                        ],
-                        'price' => $extractedData['price'] ?? null,
-                        'exchange_currency' => $extractedData['exchange_currency'] ?? null,
-                        'original_price' => $extractedData['original_price'] ?? null,
-                        'original_currency' => $extractedData['original_currency'] ?? null,
-                        'total' => $extractedData['total'] ?? null,
-                        'surcharge' => $extractedData['surcharge'] ?? null,
-                        'tax' => $extractedData['tax'] ?? null,
-                        'taxes_record' => $extractedData['taxes_record'] ?? 'N/A',
-                        'penalty_fee' => $extractedData['penalty_fee'] ?? 0.00,
-                        'refund_charge' => $extractedData['refund_charge'] ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                ];
-
-                return $processedData;
-            } catch (\Exception $e) {
-                Log::error("Exception occurred while processing {$fileName}: " . $e->getMessage(), [
-                    'trace' => $e->getTraceAsString()
-                ]);
-                $this->error("An error occurred while processing {$fileName}: " . $e->getMessage());
-                return null;
-            }
-        } else {
-            Log::warning("Unsupported file type for {$fileName}: {$extension}");
-            $this->warn("Unsupported file type for {$fileName}: {$extension}");
-            return null;
-        }
-    }
 
     protected function saveTask($companyId, $data) : array
     {

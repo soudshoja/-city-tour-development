@@ -3,16 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\AI\AIManager;
-use App\AIService;
 use App\Http\Traits\Converter;
 use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Models\Task;
-use App\Models\Item;
 use App\Models\Agent;
 use App\Models\TaskFlightDetail;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\TasksImport;
 use App\Models\Airline;
 use App\Models\Client;
 use App\Models\Country;
@@ -22,25 +18,16 @@ use App\Models\Supplier;
 use App\Models\Branch;
 use App\Models\Room;
 use App\Models\TaskHotelDetail;
-use App\Services\TextFileProcessor;
 use Barryvdh\DomPDF\Facade\Pdf;
-use ConvertApi\ConvertApi;
 use Exception;
-use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Models\Suppliers;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
-use App\Models\InvoiceDetail;
-use Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Date;
@@ -578,7 +565,7 @@ class TaskController extends Controller
             Log::error('Task creation failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Task creation failed: ' . $e->getMessage(),
+                'message' => 'Task creation failed. Something went wrong',
             ], 500);
         }
 
@@ -877,83 +864,57 @@ class TaskController extends Controller
 
         $file = $request->file('task_file')->store('public/tasks');
         if ($file) {
-            $content = $this->extractTaskFromFile($file);
+
+            $aiManager = new AIManager();
+
+            $filePath = storage_path('app/' . $file);
+            $fileName = $request->file('task_file')->getClientOriginalName();
+
+            $extractedData = $aiManager->processWithAiTool($filePath, $fileName);
+
+            if ($extractedData['status'] === 'error') {
+                Log::error("AIR File Processing: AI tool processing error for {$fileName}: " . $extractedData['message']);
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Something went wrong, please contact support.',
+                ];
+            }
+
+            $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
+
         } else {
 
-            $response = [
+            return [
                 'status' => 'error',
                 'message' => 'File upload failed.'
             ];
         }
 
-        $openai = new OpenAiController(new AIService);
-        $response = $openai->flightOrHotel($content);
+        $newRequest = new Request($extractedData['data']);
 
-        if ($response['status'] == 'error') {
-            return $response;
-        }
-
-        if ($response['data'] == 'flight') {
-            $response = $openai->extractFlightData($content);
-        } else {
-            $response = $openai->extractHotelData($content);
-        }
-
-        if ($response['status'] == 'error') {
-            return $response;
-        }
-
-        $newRequest = new Request($response['data']);
-
-
-        $supplier = Supplier::where('name', 'like', $response['data']['supplier_name'])->first();
+        $supplier = Supplier::where('name', 'like', $extractedData['data']['supplier_name'])->first();
 
         $newRequest->merge([
             'enabled' => false,
             'agent_id' => $request->agent_id,
             'supplier_id' => $supplier->id,
             'company_id' => $companyId,
-            'status' => $response['data']['status'] ?? 'issued',
-            'supplier_status' => $response['data']['status'] ?? 'issued',
-            'reference' => $response['data']['reference'] ?? 'Unknown',
-            'type' => $response['data']['type'] ?? 'Unknown',
-            'refund_date' => $response['data']['refund_date'] ?? null,
-            'price' => $response['data']['price'] ?? 0,
-            'tax' => $response['data']['tax'] ?? 0,
-            'total' => isset($response['data']['total']) 
-                ? ($response['data']['status'] === 'void' ? 0 : $response['data']['total'])
-                : 0,
+            'refund_date' => $extractedData['data']['refund_date'] ?? null,
         ]);
 
         $responseWithoutJson = $this->store($newRequest);
 
         $response = json_decode($responseWithoutJson->getContent(), true);
+
         if ($response['status'] == 'error') {
             return $response;
         }
-        $existingTask = Cache::get('imported_task');
 
-        if ($existingTask) {
-            Cache::forget('imported_task');
-        }
-
-        Cache::put('imported_task', $response['data'], now()->addHour(1));
         return $response;
     }
 
-    public function extractTaskFromFile($file)
-    {
-        $file = storage_path('app/' . $file);
-
-        if (File::extension($file) == 'pdf') {
-            $aiManager = new AIManager();
-            $contents = $this->pdfToText($file);
-        } else {
-            $contents = File::get($file);
-        }
-
-        return $contents;
-    }
+   
 
     public function exportCsv()
     {

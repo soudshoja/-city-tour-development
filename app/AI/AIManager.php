@@ -20,6 +20,11 @@ class AIManager
         return $this->client->chat($parameter);
     }
 
+    public function processWithAiTool(string $filePath, string $fileName)
+    {
+        return $this->client->processWithAiTool($filePath, $fileName);
+    }
+
     public function extractAirFiles($parameter)
     {
         return $this->client->extractAirFiles($parameter);

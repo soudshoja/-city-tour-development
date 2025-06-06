@@ -394,3 +394,31 @@ createInvoiceBtn.addEventListener("click", function () {
 closeTaskFloatingActions.addEventListener("click", function () {
     floatingActions.classList.add("hidden");
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('searchInput');
+    const myTable = document.getElementById('myTable');
+    const rows = myTable.querySelectorAll('tbody tr.taskRow');
+    const noTasksFound = document.getElementById('noTasksFound');
+    const loadMoreWrapper = document.getElementById('loadMoreWrapper');
+
+    searchInput.addEventListener('input', function () {
+        const keyword = this.value.toLowerCase().trim();
+        let matchFound = false;
+
+        rows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            const isMatch = rowText.includes(keyword);
+            row.style.display = isMatch ? '' : 'none';
+            if (isMatch) matchFound = true;
+        });
+
+        noTasksFound.classList.toggle('hidden', matchFound);
+        
+        if (keyword.length > 0) {
+            loadMoreWrapper.classList.add('hidden');
+        } else {
+            loadMoreWrapper.classList.remove('hidden');
+        }
+    });
+});

@@ -846,7 +846,6 @@ class TaskController extends Controller
     {
         $user = Auth::user();
 
-
         if ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
         } elseif ($user->role_id == Role::BRANCH) {
@@ -863,55 +862,100 @@ class TaskController extends Controller
         ]);
 
         $file = $request->file('task_file')->store('public/tasks');
-        if ($file) {
-
-            $aiManager = new AIManager();
-
-            $filePath = storage_path('app/' . $file);
-            $fileName = $request->file('task_file')->getClientOriginalName();
-
-            $extractedData = $aiManager->processWithAiTool($filePath, $fileName);
-
-            if ($extractedData['status'] === 'error') {
-                Log::error("AIR File Processing: AI tool processing error for {$fileName}: " . $extractedData['message']);
-
-                return [
-                    'status' => 'error',
-                    'message' => 'Something went wrong, please contact support.',
-                ];
-            }
-
-            $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
-
-        } else {
-
+        if (!$file) {
             return [
                 'status' => 'error',
                 'message' => 'File upload failed.'
             ];
         }
 
-        $newRequest = new Request($extractedData['data']);
+        $aiManager = new AIManager();
+        $filePath = storage_path('app/' . $file);
+        $fileName = $request->file('task_file')->getClientOriginalName();
 
-        $supplier = Supplier::where('name', 'like', $extractedData['data']['supplier_name'])->first();
+        $extractedData = $aiManager->processWithAiTool($filePath, $fileName);
 
-        $newRequest->merge([
-            'enabled' => false,
-            'agent_id' => $request->agent_id,
-            'supplier_id' => $supplier->id,
-            'company_id' => $companyId,
-            'refund_date' => $extractedData['data']['refund_date'] ?? null,
-        ]);
-
-        $responseWithoutJson = $this->store($newRequest);
-
-        $response = json_decode($responseWithoutJson->getContent(), true);
-
-        if ($response['status'] == 'error') {
-            return $response;
+        if ($extractedData['status'] === 'error') {
+            Log::error("AI tool processing error for {$fileName}: " . $extractedData['message']);
+            return [
+                'status' => 'error',
+                'message' => 'Something went wrong, please contact support.',
+            ];
         }
 
-        return $response;
+        $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
+
+        $responses = [];
+        $createdTasks = [];
+        $loop = 0;
+        foreach ($extractedData['data'] as $taskData) {
+            
+            $newRequest = new Request($taskData);
+
+            $supplier = Supplier::where('name', 'like', $taskData['supplier_name'])->first();
+
+            $newRequest->merge([
+                'enabled' => false,
+                'agent_id' => $request->agent_id,
+                'supplier_id' => $supplier->id,
+                'company_id' => $companyId,
+                'refund_date' => $taskData['refund_date'] ?? null,
+            ]);
+
+            $responseWithoutJson = $this->store($newRequest);
+            $response = json_decode($responseWithoutJson->getContent(), true);
+
+            if ($response['status'] == 'error') {
+                // Rollback all previously created tasks and related data
+                foreach ($createdTasks as $createdTask) {
+                    // Delete related flight/hotel details
+                    if ($createdTask->type === 'flight') {
+                        TaskFlightDetail::where('task_id', $createdTask->id)->delete();
+                    } elseif ($createdTask->type === 'hotel') {
+                        TaskHotelDetail::where('task_id', $createdTask->id)->delete();
+                    }
+                    // Delete related journal entries and transactions by finding journal entries via task_id
+                    $journalEntries = JournalEntry::where('task_id', $createdTask->id)->get();
+                    $transactionIds = $journalEntries->pluck('transaction_id')->unique();
+
+                    // Delete journal entries
+                    JournalEntry::where('task_id', $createdTask->id)->delete();
+
+                    // Delete related transactions
+                    Transaction::whereIn('id', $transactionIds)->delete();
+
+                    // Delete the task itself
+                    $createdTask->delete();
+                }
+
+                $responses = [
+                    'status' => 'error',
+                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . '. All previously saved tasks have been rolled back.',
+                    'error_detail' => $response['message'] ?? 'Unknown error',
+                    'success_tasks' => array_map(function ($t) {
+                        return $t->reference;
+                    }, $createdTasks),
+                    'failed_task' => $taskData['reference'] ?? '[unknown reference]',
+                ];
+                break;
+            } else {
+                // Save the created task for possible rollback
+                $createdTask = Task::find($response['data']['id']);
+                if ($createdTask) {
+                    $createdTasks[] = $createdTask;
+                }
+
+            }
+        }
+        $responses = [
+            'status' => 'success',
+            'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
+                return $t->reference;
+            }, $createdTasks)),
+            'created_tasks' => $createdTasks,
+        ];
+
+        return $responses;
     }
 
    
@@ -1443,7 +1487,7 @@ class TaskController extends Controller
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
             case 'Amadeus':
                 $response = $this->upload($request);
-
+                
                 return redirect()->back()->with($response['status'], $response['message']);
             default:
                 return redirect()->back()->with('error', 'This supplier will be available soon');

@@ -150,7 +150,6 @@ class OpenAIClient implements AIClientInterface
 
             if($response['status'] !== 'success') {
                 $errorMessage = $response['message'] ?? 'Unknown error occurred.';
-                Log::error("AI Tool processing failed for {$fileName}: " . $errorMessage);
 
                 return [
                     'status' => 'error',
@@ -322,61 +321,77 @@ class OpenAIClient implements AIClientInterface
                     ];
                 }
 
+                if(!is_array($extractedData)) {
+                    Log::error("AI Tool response for {$fileName} is not an array: " . json_last_error_msg());
+                    
+                    return [
+                        'status' => 'error',
+                        'message' => 'AI Tool response is not an array',
+                        'original_filename' => $fileName,
+                        'data' => null,
+                    ];
+                }
+
+                // Handle extractedData as an array of objects (multiple passengers/tickets)
                 $processedData = [
                     'status' => 'success',
                     'message' => "Successfully processed {$fileName} using AI.",
                     'original_filename' => $fileName,
-                    'data' => [
-                        'additional_info' => $extractedData['additional_info'] ?? 'N/A',
-                        'ticket_number' => $extractedData['ticket_number'] ?? 'N/A',
-                        'status' => $extractedData['status'] ?? 'N/A',
-                        'supplier_status' => $extractedData['status'] ?? 'N/A',
-                        'reference' => $extractedData['reference'] ?? 'N/A',
-                        'created_by' => $extractedData['created_by'] ?? null,
-                        'issued_by' => $extractedData['issued_by'] ?? null,
-                        'type' => $extractedData['type'] ?? 'N/A',
-                        'agent_name' => $extractedData['agent_name'] ?? 'N/A',
-                        'agent_email' => $extractedData['agent_email'] ?? 'N/A',
-                        'agent_amadeus_id' => $extractedData['agent_amadeus_id'] ?? 'N/A',
-                        'client_name' => $extractedData['client_name'] ?? 'N/A',
-                        'supplier_name' => $extractedData['supplier_name'] ?? 'N/A',
-                        'supplier_country' => $extractedData['supplier_country'] ?? 'N/A',
-                        'cancellation_policy' => $extractedData['cancellation_policy'] ?? 'N/A',
-                        'venue' => $extractedData['venue'] ?? 'N/A',
+                    'data' => [],
+                ];
+
+                foreach ($extractedData as $item) {
+                    $processedData['data'][] = [
+                        'additional_info' => $item['additional_info'] ?? 'N/A',
+                        'ticket_number' => $item['ticket_number'] ?? 'N/A',
+                        'status' => $item['status'] ?? 'N/A',
+                        'supplier_status' => $item['status'] ?? 'N/A',
+                        'reference' => $item['reference'] ?? 'N/A',
+                        'created_by' => $item['created_by'] ?? null,
+                        'issued_by' => $item['issued_by'] ?? null,
+                        'type' => $item['type'] ?? 'N/A',
+                        'agent_name' => $item['agent_name'] ?? 'N/A',
+                        'agent_email' => $item['agent_email'] ?? 'N/A',
+                        'agent_amadeus_id' => $item['agent_amadeus_id'] ?? 'N/A',
+                        'client_name' => $item['client_name'] ?? 'N/A',
+                        'supplier_name' => $item['supplier_name'] ?? 'N/A',
+                        'supplier_country' => $item['supplier_country'] ?? 'N/A',
+                        'cancellation_policy' => $item['cancellation_policy'] ?? 'N/A',
+                        'venue' => $item['venue'] ?? 'N/A',
                         'task_flight_details' => [
-                            'farebase' => $extractedData['task_flight_details']['farebase'] ?? null,
-                            'departure_time' => $extractedData['task_flight_details']['departure_time'] ?? null,
-                            'departure_from' => $extractedData['task_flight_details']['departure_from'] ?? null,
-                            'airport_from' => $extractedData['task_flight_details']['airport_from'] ?? 'N/A',
-                            'terminal_from' => $extractedData['task_flight_details']['terminal_from'] ?? 'N/A',
-                            'arrival_time' => $extractedData['task_flight_details']['arrival_time'] ?? null,
-                            'duration_time' => $extractedData['task_flight_details']['duration_time'] ?? 'N/A',
-                            'arrive_to' => $extractedData['task_flight_details']['arrive_to'] ?? 'N/A',
-                            'airport_to' => $extractedData['task_flight_details']['airport_to'] ?? 'N/A',
-                            'terminal_to' => $extractedData['task_flight_details']['terminal_to'] ?? 'N/A',
-                            'airline_name' => $extractedData['task_flight_details']['airline_name'] ?? 'N/A',
-                            'flight_number' => $extractedData['task_flight_details']['flight_number'] ?? 'N/A',
-                            'class_type' => $extractedData['task_flight_details']['class_type'] ?? 'N/A',
-                            'baggage_allowed' => $extractedData['task_flight_details']['baggage_allowed'] ?? 'N/A',
-                            'equipment' => $extractedData['task_flight_details']['equipment'] ?? 'N/A',
-                            'flight_meal' => $extractedData['task_flight_details']['flight_meal'] ?? 'N/A',
-                            'seat_no' => $extractedData['task_flight_details']['seat_no'] ?? 'N/A',
-                            'ticket_number' => $extractedData['task_flight_details']['ticket_number'] ?? 'N/A',
+                            'farebase' => $item['task_flight_details']['farebase'] ?? null,
+                            'departure_time' => $item['task_flight_details']['departure_time'] ?? null,
+                            'departure_from' => $item['task_flight_details']['departure_from'] ?? null,
+                            'airport_from' => $item['task_flight_details']['airport_from'] ?? 'N/A',
+                            'terminal_from' => $item['task_flight_details']['terminal_from'] ?? 'N/A',
+                            'arrival_time' => $item['task_flight_details']['arrival_time'] ?? null,
+                            'duration_time' => $item['task_flight_details']['duration_time'] ?? 'N/A',
+                            'arrive_to' => $item['task_flight_details']['arrive_to'] ?? 'N/A',
+                            'airport_to' => $item['task_flight_details']['airport_to'] ?? 'N/A',
+                            'terminal_to' => $item['task_flight_details']['terminal_to'] ?? 'N/A',
+                            'airline_name' => $item['task_flight_details']['airline_name'] ?? 'N/A',
+                            'flight_number' => $item['task_flight_details']['flight_number'] ?? 'N/A',
+                            'class_type' => $item['task_flight_details']['class_type'] ?? 'N/A',
+                            'baggage_allowed' => $item['task_flight_details']['baggage_allowed'] ?? 'N/A',
+                            'equipment' => $item['task_flight_details']['equipment'] ?? 'N/A',
+                            'flight_meal' => $item['task_flight_details']['flight_meal'] ?? 'N/A',
+                            'seat_no' => $item['task_flight_details']['seat_no'] ?? 'N/A',
+                            'ticket_number' => $item['task_flight_details']['ticket_number'] ?? 'N/A',
                         ],
-                        'price' => $extractedData['price'] ?? null,
-                        'exchange_currency' => $extractedData['exchange_currency'] ?? null,
-                        'original_price' => $extractedData['original_price'] ?? null,
-                        'original_currency' => $extractedData['original_currency'] ?? null,
-                        'total' => $extractedData['total'] ?? null,
-                        'surcharge' => $extractedData['surcharge'] ?? null,
-                        'tax' => $extractedData['tax'] ?? null,
-                        'taxes_record' => $extractedData['taxes_record'] ?? 'N/A',
-                        'penalty_fee' => $extractedData['penalty_fee'] ?? 0.00,
-                        'refund_charge' => $extractedData['refund_charge'] ?? null,
+                        'price' => $item['price'] ?? null,
+                        'exchange_currency' => $item['exchange_currency'] ?? null,
+                        'original_price' => $item['original_price'] ?? null,
+                        'original_currency' => $item['original_currency'] ?? null,
+                        'total' => $item['total'] ?? null,
+                        'surcharge' => $item['surcharge'] ?? null,
+                        'tax' => $item['tax'] ?? null,
+                        'taxes_record' => $item['taxes_record'] ?? 'N/A',
+                        'penalty_fee' => $item['penalty_fee'] ?? 0.00,
+                        'refund_charge' => $item['refund_charge'] ?? null,
                         'created_at' => now(),
                         'updated_at' => now(),
-                    ]
-                ];
+                    ];
+                }
 
                 return $processedData;
             } catch (\Exception $e) {
@@ -439,7 +454,7 @@ class OpenAIClient implements AIClientInterface
         
         1. `tasks` model with the following fields:
             - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `ticket_number`: Ticket number. 
+            - `ticket_number`: Ticket number. Usually like this: T-K229-2833133219, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number. For example, if the ticket number is T-K229-2833133219, you can just use '2833133219' as the ticket number. 
             - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued'
             - `refund_date`: Date of refund if applicable.
             - `price`: Price of the task in float type. You may found files with different currency, but the air file already provide the exchange price beside the original price, so just use the exchanged price as the price. usually our default currency is KWD, so if the file has KWD as the currency, you can just use the price as is. If the file has different currency, you can use the exchanged price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use the exchanged price, which is the next or first value after the semicolon, so in this case, you can just use '30.000' as the price.
@@ -452,7 +467,7 @@ class OpenAIClient implements AIClientInterface
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
             - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type. make sure to result in only one value of float type.
-            - `reference`: Reference code for the task. take the ticket number from the file, which is usually stated at the end of the line where the price is stated. The ticket number is usually 10 digits long, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number.
+            - `reference`: Reference code for the task. take the ticket number from the file, which is usually stated at the end of the line where the price is stated. The ticket number is usually like this: T-K229-2833133219, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number.
             - `created_by`: GDS office ID, this indicates who created the task. Usually on line before line A , and to know who created the task, it is the first GDS office ID in the line
             - `issued_by`: GDS office ID, this indicates who issued/pay the task. Usually on line before line A , and to know who issued the task, it is the last GDS office ID in the line/ or line after it. (still before line A), this is the example of real gds office id: $gdsOfficeIdList
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
@@ -485,7 +500,7 @@ class OpenAIClient implements AIClientInterface
             - `class_type`: Class type of the flight.
             - `baggage_allowed`: Baggage allowance.
             - `equipment`: Equipment used in the flight.
-            - `ticket_number`: flight ticket number. 
+            - `ticket_number`: flight ticket number as stated before.
             - `flight_meal`: Meal options during the flight.
             - `seat_no`: Seat number.
         
@@ -504,59 +519,145 @@ class OpenAIClient implements AIClientInterface
         
         The venue field is populated using the airport_to field from the file, which contains codes like 'DXB'. 
         These codes are matched against $airportList and the corresponding location data from the list is used to update the venue field.
+
+        sometimes the files have multiple passenger and ticket numbers, so because of that, you have to return the array of the objects, each object should have the same structure as the example below, but with different values for each passenger and ticket number. as for the price of the ticket, the air file will return one set of price if the ticket have the same price, so you can just use the same price for all passengers, but if the ticket have different price for each passenger, the air file will return different value of price.
         
+        it doesn't matter if the file has multiple passenger and ticket numbers or not, you need to return it as an array of objects.
+
         this is the content: $content
 
         only pass me the data extracted in JSON format.
 
         example answer = 
-        {
-            'additional_info': 'additional info',
-            'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
-            'status': 'completed'/ 'hold' / 'confirmed',
-            'price': 100.00,
-            'exchange_currency': 'KWD',
-            'original_price': 100.00,
-            'original_currency': 'USD',
-            'total': 115.00,
-            'surcharge': 10.00,
-            'tax': 5.00,
-            'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
-            'penalty_fee': '10.00',
-            'refund_charge': '0.250+0.900',
-            'reference': 'ticket_number',
-            'created_by': 'KWIKT2619', //example of gds office id
-            'issued_by': 'KWIKT2844', //example of gds office id
-            'type': 'flight',
-            'agent_name': 'agent name',
-            'agent_email': 'agent email',
-            'agent_amadeus_id': 'agent amadeus id',
-            'client_name': 'client name',
-            'supplier_name': 'Amadeus',
-            'supplier_country': 'Kuwait',
-            'cancellation_policy': 'cancellation policy',
-            'venue': 'venue',
-            'task_flight_details': {
-                'farebase': '20.00',
-                'departure_time': '2024-10-16 14:00:00',
-                'departure_from': 'Kuwait',
-                'airport_from': 'KWI',
-                'terminal_from': '1',
-                'arrival_time': '2024-10-16 16:00:00',
-                'duration_time': '2h 5m',
-                'arrive_to': 'Singapore',
-                'airport_to': 'SIN',
-                'terminal_to': '1',
-                'airline_name': 'Kuwait Airways',
-                'flight_number': 'KU-123',
-                'class_type': 'economy',
-                'baggage_allowed': 'baggage allowed',
-                'equipment': 'equipment',
-                'flight_meal': 'flight meal',
-                'seat_no': 'seat no',
-                'ticket_number': 'K381-3580878589', //example of ticket flight number with the airline code
+        'result' : [
+            {
+                'additional_info': 'additional info',
+                'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
+                'status': 'completed'/ 'hold' / 'confirmed',
+                'price': 100.00,
+                'exchange_currency': 'KWD',
+                'original_price': 100.00,
+                'original_currency': 'USD',
+                'total': 115.00,
+                'surcharge': 10.00,
+                'tax': 5.00,
+                'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
+                'penalty_fee': '10.00',
+                'refund_charge': '0.250+0.900',
+                'reference': 'ticket_number',
+                'created_by': 'KWIKT2619', //example of gds office id
+                'issued_by': 'KWIKT2844', //example of gds office id
+                'type': 'flight',
+                'agent_name': 'agent name',
+                'agent_email': 'agent email',
+                'agent_amadeus_id': 'agent amadeus id',
+                'client_name': 'client name',
+                'supplier_name': 'Amadeus',
+                'supplier_country': 'Kuwait',
+                'cancellation_policy': 'cancellation policy',
+                'venue': 'venue',
+                'task_flight_details': {
+                    'farebase': '20.00',
+                    'departure_time': '2024-10-16 14:00:00',
+                    'departure_from': 'Kuwait',
+                    'airport_from': 'KWI',
+                    'terminal_from': '1',
+                    'arrival_time': '2024-10-16 16:00:00',
+                    'duration_time': '2h 5m',
+                    'arrive_to': 'Singapore',
+                    'airport_to': 'SIN',
+                    'terminal_to': '1',
+                    'airline_name': 'Kuwait Airways',
+                    'flight_number': 'KU-123',
+                    'class_type': 'economy',
+                    'baggage_allowed': 'baggage allowed',
+                    'equipment': 'equipment',
+                    'flight_meal': 'flight meal',
+                    'seat_no': 'seat no',
+                    'ticket_number': '3580878589', //example of ticket flight number with the airline code, 10-digit ticket number only
+                }
             }
-        }
+        ]
+
+        example for two or more passengers:
+        [
+            {
+                'additional_info': 'additional info',
+                'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
+                'status': 'completed'/ 'hold' / 'confirmed',
+                'price': 100.00,
+                'exchange_currency': 'KWD',
+                'original_price': 100.00,
+                'original_currency': 'USD',
+                'total': 115.00,
+                'surcharge': 10.00,
+                'tax': 5.00,
+                'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
+                'penalty_fee': '10.00',
+                'refund_charge': '0.250+0.900',
+                'reference': 'ticket_number',
+                'created_by': 'KWIKT2619', //example of gds office id
+                'issued_by': 'KWIKT2844', //example of gds office id
+                'type': 'flight',
+                'agent_name': 'agent name',
+                'agent_email': 'agent email',
+                'agent_amadeus_id': 'agent amadeus id',
+                'client_name': 'client name',
+                'supplier_name': 'Amadeus',
+                'supplier_country': 'Kuwait',
+                'cancellation_policy': '',
+                'venue': '',
+                'task_flight_details': {
+                    // flight details here
+                    'farebase': '20.00',
+                    'departure_time': '2024-10-16 14:00:00',
+                    'departure_from': 'Kuwait',
+                    'airport_from': 'KWI',
+                    'terminal_from': '1',
+                    'arrival_time': '2024-10-16 16:00:00',
+                    'duration_time': '2h 5m',
+                    'arrive_to': 'Singapore',
+                    'airport_to': 'SIN',
+                    'terminal_to': '1',
+                    'airline_name': 'Kuwait Airways',
+                    'flight_number': 'KU-123',
+                    'class_type': 'economy',
+                    'baggage_allowed': 'baggage allowed',
+                    'equipment': 'equipment',
+                    'flight_meal': 'flight meal',
+                    'seat_no': 'seat no',
+                    'ticket_number': '3580878589', //example of ticket flight number with the airline code, 10-digit ticket number only
+                }
+            },
+            {
+                'additional_info': 'additional info',
+                'ticket_number': '3580878590', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
+                'status': 'completed'/ 'hold' / 'confirmed',
+                'price': 100.00,
+                'exchange_currency': 'KWD',
+                'original_price': 100.00,
+                'original_currency': 'USD',
+                'total': 115.00,
+                'surcharge': 10.00,
+                'tax': 5.00,
+                'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
+                'penalty_fee': '10.00',
+                'refund_charge': '0.250+0.900',
+                'reference': 'ticket_number',
+                'created_by': 'KWIKT2619', //example of gds office id
+                'issued_by': 'KWIKT2844', //example of gds office id
+                'type': 'flight',
+                'agent_name': 'agent name',
+                'agent_email': 'agent email',
+                'agent_amadeus_id': 'agent amadeus id',
+                'client_name': 'client name',
+                'supplier_name': 'Amadeus',
+                'supplier_country': 'Kuwait',
+                // if the cancellation policy is not available, you can set it to null
+                // if the venue is not available, you can set it to null
+                // if the flight details are not available, you can set it to null, if it is available , make sure it is same data with the first object as it is the same flight, just different passenger.
+            }
+        ]
 
         ";
 
@@ -580,32 +681,88 @@ class OpenAIClient implements AIClientInterface
         }
         $message = $response['choices'][0]['message']['content'];
         $decodedResponse = json_decode($message, true);
+        
+        foreach($decodedResponse['result'] as $task){
+            
+            if(!isset($task['reference']) || empty($task['reference'])){
+                
+                $checkResponse = $this->getReferenceNumberFromFile([
+                    'content' => $content,
+                    'passenger_name' => $task['client_name'] ?? '',
+                    'example' => $task['reference'] ?? [],
+                ]);
+                if($checkResponse['status'] === 'error'){
+                    return [
+                        'status' => 'error',
+                        'message' => $checkResponse['message'],
+                        'data' => null,
+                    ];
+                }
+                $task['reference'] = $checkResponse['data']['reference_number'];
+            }
 
-        $checkResponse = $this->checkReferenceNumber($decodedResponse['reference'] ?? '');
+            $checkResponse = $this->checkReferenceNumber($task['reference'] ?? '');
 
-        while ($checkResponse['status'] === 'error') {
-            Log::warning('Invalid reference number detected: ' . $decodedResponse['reference']);
-            $decodedResponse = $this->getReferenceNumberFromFile([
-                'content' => $content,
-                'example' => $checkResponse['data']['example'] ?? [],
-            ])['data'];
-            $checkResponse = $this->checkReferenceNumber($decodedResponse['reference'] ?? '');
-        }
+            while ($checkResponse['status'] === 'error') {
+                Log::warning('Invalid reference number detected: ' . $task['reference']);
+                
+                $getReferenceResponse = $this->getReferenceNumberFromFile([
+                    'content' => $content,
+                    'passenger_name' => $task['client_name'] ?? '',
+                    'example' => $task['reference'] ?? [],
+                ]);
 
+                if($getReferenceResponse['status'] === 'error') {
+                    return [
+                        'status' => 'error',
+                        'message' => $getReferenceResponse['message'],
+                        'data' => null,
+                    ];
+                }
+
+                $checkResponse = $this->checkReferenceNumber($getReferenceResponse['data']['reference_number'] ?? '');
+            }
+
+            $task['reference'] = $checkResponse['data']['reference_number'];
+        }            
+        
         return [
             'status' => 'success',
             'message' => 'Data extracted successfully',
-            'data' => $decodedResponse,
+            'data' => $decodedResponse['result'],
         ];
     }
 
 
     public function getReferenceNumberFromFile($data = [])
     {
+        if(!isset($data['passenger_name']) || empty($data['passenger_name'])){
+            
+            return [
+                'status' => 'error',
+                'message' => 'Passenger name is required to extract reference number',
+                'data' => null,
+            ];
+        }
+
+        if(!isset($data['content']) || empty($data['content'])){
+            return [
+                'status' => 'error',
+                'message' => 'Content is required to extract reference number',
+                'data' => null,
+            ];
+        }
+
         $prompt = " You extract the reference number which is the ticket number from the file, which is usually stated at the end of the line where the price is stated. The ticket number is usually 10 digits long, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number.";
 
+        $prompt .= " The reference number is usually like this: T-K229-2833133219, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number. For example, if the ticket number is T-K229-2833133219, you can just use '2833133219' as the ticket number.";
+
+        $prompt .= "If there is multiple reference numbers/ticket numbers, make sure you return for the correct passenger/client, i want for this passenger/client: ". $data['passenger_name'] .". ";
+
+        $prompt .= "example response : {\"reference_number\": \"2833133219\"}";
+
         if(isset($data['example'])){
-            $prompt .= " Here are some example reference numbers: " . implode(', ', $data['example']);
+            $prompt .= " Here are some example reference numbers you can refer to: " . implode(', ', $data['example']);
         }
 
         $response = $this->chatCompletionJsonResponse([

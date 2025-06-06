@@ -136,7 +136,7 @@
                                     {{ $transaction->transaction_date }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    <p>{{ $transaction->description }}
+                                    <p><strong>{{ $transaction->description }}</strong>
                                     </p>
                                     @if (!empty($transaction->task?->additional_info))
                                         <p>Additional info: {{ $transaction->task->additional_info }}</p>
@@ -169,10 +169,10 @@
                                     @if (!empty($roomDetails))
                                         <p><strong>Hotel details:</strong></p>
                                         <ul>
-                                            <li><strong>Name:</strong> {{ $roomDetails['name'] ?? 'n/a' }}</li>
-                                            <li><strong>Info:</strong> {{ $roomDetails['info'] ?? 'n/a' }}</li>
-                                            <li><strong>Type:</strong> {{ $roomDetails['type'] ?? 'n/a' }}</li>
-                                            <li><strong>Extra Services:</strong>
+                                            <li>Name: {{ $roomDetails['name'] ?? 'n/a' }}</li>
+                                            <li>Info: {{ $roomDetails['info'] ?? 'n/a' }}</li>
+                                            <li>Type: {{ $roomDetails['type'] ?? 'n/a' }}</li>
+                                            <li>Extra Services:
                                                 @if (
                                                     !empty($roomDetails['extraServices']) &&
                                                         is_array($roomDetails['extraServices']) &&
@@ -182,8 +182,8 @@
                                                     n/a
                                                 @endif
                                             </li>
-                                            <li><strong>Check-in:</strong> {{ $hotelDetails->check_in ?? 'n/a' }}</li>
-                                            <li><strong>Check-out:</strong> {{ $hotelDetails->check_out ?? 'n/a' }}
+                                            <li>Check-in: {{ $hotelDetails->check_in ?? 'n/a' }}</li>
+                                            <li>Check-out: {{ $hotelDetails->check_out ?? 'n/a' }}
                                             </li>
                                         </ul>
                                     @endif

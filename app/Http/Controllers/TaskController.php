@@ -46,6 +46,7 @@ class TaskController extends Controller
         $clients = collect();
         $agents = collect();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
+        $countries = Country::all();
 
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
             ->withoutGlobalScope('enabled')
@@ -134,7 +135,8 @@ class TaskController extends Controller
                 'types',
                 'queueTasks',
                 'processTask',
-                'companyId'
+                'companyId',
+                'countries'
             ));
         }
 
@@ -149,6 +151,7 @@ class TaskController extends Controller
             'queueTasks',
             'processTask',
             'companyId',
+            'countries'
         ));
     }
 

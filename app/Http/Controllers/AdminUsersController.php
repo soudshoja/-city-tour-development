@@ -189,21 +189,31 @@ class AdminUsersController extends Controller
             'email' => 'required|email',
             'phone' => 'required|string',
             'source_role' => 'required|in:company,branch,agent',
+            'info-new-password' => 'nullable|string|min:6', // optional password field
         ]);
 
         $roleType = $request->input('source_role');
+
+        // Prepare fields to update
         $fields = [
             'name' => $request->name,
             'email' => $request->email,
             $roleType === 'agent' ? 'phone_number' : 'phone' => $request->phone,
         ];
 
+        // Update related model (company, branch, or agent)
         if ($roleType === 'company' && $user->company) {
             $user->company->update($fields);
         } elseif ($roleType === 'branch' && $user->branch) {
             $user->branch->update($fields);
         } elseif ($roleType === 'agent' && $user->agent) {
             $user->agent->update($fields);
+        }
+
+        // Update password if provided
+        if (!empty($request->input('info-new-password'))) {
+            $user->password = Hash::make($request->input('info-new-password'));
+            $user->save();
         }
 
         return redirect()->back()->with('success', 'Information updated successfully.');

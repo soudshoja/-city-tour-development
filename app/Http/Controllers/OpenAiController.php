@@ -293,7 +293,7 @@ class OpenAiController extends Controller
             - `tax`: Total tax amount in float type.
             - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
             - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
-            - `reference`: Reference code for the task. use the ticket number only from the file.
+            - `reference`: Reference code for the task. take the ticket number from the file, which is usually stated at the end of the line where the price is stated. The ticket number is usually 10 digits long, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number.
             - `created_by`: GDS office ID, this indicates who created the task. Usually on line before line A , and to know who created the task, it is the first GDS office ID in the line
             - `issued_by`: GDS office ID, this indicates who issued/pay the task. Usually on line before line A , and to know who issued the task, it is the last GDS office ID in the line/ or line after it. (still before line A), this is the example of real gds office id: $gdsOfficeIdList
             - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 

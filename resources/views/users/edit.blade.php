@@ -43,6 +43,7 @@
             class="bg-gray-50 p-4 rounded border hidden">
             @csrf
             @method('PUT')
+
             <input type="hidden" name="user_id" value="{{ $user->id }}">
             <input type="hidden" name="source_role" id="source_role">
 
@@ -50,17 +51,31 @@
                 <label class="block font-medium">Name:</label>
                 <input type="text" name="name" id="info-name" class="form-input w-full">
             </div>
+
             <div class="mb-2">
                 <label class="block font-medium">Email:</label>
                 <input type="text" name="email" id="info-email" class="form-input w-full">
             </div>
+
             <div class="mb-2">
                 <label class="block font-medium">Phone:</label>
                 <input type="text" name="phone" id="info-phone" class="form-input w-full">
             </div>
 
+            <div class="mb-2">
+                <label class="block font-medium">New Password: <small class="text-gray-500">(leave blank to keep current
+                        password)</small></label>
+                <input type="password" name="info-new-password" id="info-new-password" class="form-input w-full">
+            </div>
+
+            <div class="mb-2">
+                <label class="block font-medium">Confirm New Password:</label>
+                <input type="password" name="info-new-password_confirmation" class="form-input w-full">
+            </div>
+
             <button type="submit" class="btn btn-secondary mt-2">Update Info</button>
         </form>
+
     </div>
 
     <!-- Inject role data -->

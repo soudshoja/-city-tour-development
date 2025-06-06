@@ -43,6 +43,7 @@ use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\RefundController;
+use Illuminate\Support\Facades\Mail;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -590,6 +591,18 @@ Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'han
 
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
+
+// routes/web.php
+
+Route::get('/test-mail', function () {
+    Mail::raw('This is a test email from Laravel 11.', function ($message) {
+        $message->to('azran.alphia@gmail.com')
+                ->subject('Test Email');
+    });
+
+    return 'Test email sent!';
+});
+
 
 require __DIR__ . '/auth.php';
 

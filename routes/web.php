@@ -52,21 +52,13 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Route::put('/profile/password/request', [ProfileController::class, 'requestPasswordUpdate'])->name('profile.password.request-update');
-
-    // Route::post('/profile/password/verify-code', [ProfileController::class, 'showConfirmCodeForm'])->name('profile.password.confirm-code');
-    // Route::get('/profile/password/confirm-password-code', [ProfileController::class, 'verifyCode'])->name('profile.password.confirm-password-code');
-
-    // Route::get('/profile/password/update', [ProfileController::class, 'showPasswordForm'])->name('profile.password.update-password-form');
-    // Route::put('/profile/password/update', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-
-
-    // Route::post('/profile/password/request', [ProfileController::class, 'requestPasswordUpdate'])->name('profile.password.request-update');
-    // Route::get('/profile/password/verify-code', [ProfileController::class, 'showConfirmCodeForm'])->name('profile.password.confirm-code');
-    // Route::post('/profile/password/verify-code', [ProfileController::class, 'verifyCode'])->name('profile.password.verify-code');
-    // Route::get('/profile/password/update', [ProfileController::class, 'showPasswordForm'])->name('profile.password.update-password-form');
-    // Route::put('/profile/password/update', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-
+    Route::prefix('profile/password')->name('profile.password.')->group(function () {
+        Route::post('/request', [ProfileController::class, 'requestPasswordUpdate'])->name('request-update');
+        Route::get('/verify-code', [ProfileController::class, 'showConfirmCodeForm'])->name('confirm-code');
+        Route::post('/verify-code', [ProfileController::class, 'verifyCode'])->name('verify-code');
+        Route::get('/update', [ProfileController::class, 'showPasswordForm'])->name('update-password-form');
+        Route::put('/update', [ProfileController::class, 'updatePassword'])->name('update');
+    });
 
 
     // ROUTE THAT DOESN'T HAVE CONTROLLER

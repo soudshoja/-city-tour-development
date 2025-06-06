@@ -24,14 +24,16 @@
                 required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input readonly id="email" name="email" type="email" class="mt-1 block w-full"
-                :value="old('email', $user->email)" required autocomplete="username" />
-            <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
-            @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
-                <div>
+        @if ($userEmail)
+            <div class="mt-4">
+                <x-input-label for="email" :value="__('Email')" />
+                <x-text-input readonly id="email" name="email" type="email"
+                    class="mt-1 block w-full bg-gray-100" :value="old('email', $userEmail)" required autocomplete="username" />
+                <x-input-error class="mt-2" :messages="$errors->get('email')" />
+
+                @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
+                    {{-- <div>
                     <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
                         {{ __('Your email address is unverified.') }}
 
@@ -46,9 +48,18 @@
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
-                </div>
-            @endif
-        </div>
+                </div> --}}
+                @endif
+            </div>
+        @endif
+        @if ($userPhone)
+            <div>
+                <x-input-label for="phone" :value="__('Name')" />
+                <x-text-input readonly id="phone" name="phone" type="text"
+                    class="mt-1 block w-full  bg-gray-100" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
+                <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+            </div>
+        @endif
 
         @php
             $selectedBank = $bankAccounts->firstWhere('id', (int) old('acc_bank_id', $user->acc_bank_id));
@@ -68,37 +79,36 @@
                 @endforeach
             </datalist>
 
-            <x-text-input id="acc_bank_id_hidden" name="acc_bank_id" type="hidden" class="mt-1 block w-full"
-                value="{{ old('acc_bank_id', auth()->user()->acc_bank_id) }}" />
+            <x-text-input id="acc_bank_id_hidden" name="acc_bank_id" type="hidden"
+                class="mt-1 block w-full bg-gray-100" value="{{ old('acc_bank_id', auth()->user()->acc_bank_id) }}" />
 
             <x-input-error class="mt-2" :messages="$errors->get('acc_bank_id')" />
-            <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">Please define the bank account via
 
-                <a href='/coa'><span
+            <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
+                Please define the bank account via
+                <a href='/coa'>
+                    <span
                         class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
                         {{ __('here.') }}
-                    </span></a>
+                    </span>
+                </a>
             </p>
-
         </div>
 
-
-        {{-- @if ($user->is_admin) --}}
         <div class="mt-4">
             <x-input-label for="role" :value="__('Role')" />
-            <x-text-input readonly id="role" name="role" type="text" class="mt-1 block w-full"
+            <x-text-input readonly id="role" name="role" type="text" class="mt-1 block w-full bg-gray-100"
                 :value="old('role', ucfirst($user->role->name) ?? 'No role assigned')" required autofocus autocomplete="role" />
             <x-input-error class="mt-2" :messages="$errors->get('role')" />
         </div>
-        {{-- @endif --}}
 
         <div class="mt-4">
             <x-input-label for="created_at" :value="__('Registered Date')" />
-            <x-text-input readonly id="created_at" name="created_at" type="text" class="mt-1 block w-full"
-                :value="$user->created_at ? $user->created_at->format('l, F j, Y g:i A') : ''" autofocus />
+            <x-text-input readonly id="created_at" name="created_at" type="text"
+                class="mt-1 block w-full bg-gray-100" :value="$user->created_at ? $user->created_at->format('l, F j, Y g:i A') : ''" autofocus />
             <x-input-error class="mt-2" :messages="$errors->get('created_at')" />
-
         </div>
+
 
         @if (session('status') === 'profile-updated')
             <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)"

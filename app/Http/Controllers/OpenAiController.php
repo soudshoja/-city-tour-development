@@ -206,241 +206,241 @@ class OpenAiController extends Controller
      * 
      * @return string
      */
-    public function flightOrHotel($content)
-    {
-        $prompt = " Check if this document is for a flight or hotel booking. 
-                    The document might contain information like booking reference, passenger name, flight details, hotel details, etc. 
-                    Suggest if it's a flight or hotel booking. 
-                    example answer : 
-                    {
-                        'type': 'flight'
-                    }
-                    ";
+    // public function flightOrHotel($content)
+    // {
+    //     $prompt = " Check if this document is for a flight or hotel booking. 
+    //                 The document might contain information like booking reference, passenger name, flight details, hotel details, etc. 
+    //                 Suggest if it's a flight or hotel booking. 
+    //                 example answer : 
+    //                 {
+    //                     'type': 'flight'
+    //                 }
+    //                 ";
 
-        $response = $this->aiService->chatCompletionJsonResponse([
-            [
-                'role' => 'user',
-                'content' => $prompt,
-            ],
-            [
-                'role' => 'user',
-                'content' => $content,
-            ],
-        ]);
+    //     $response = $this->aiService->chatCompletionJsonResponse([
+    //         [
+    //             'role' => 'user',
+    //             'content' => $prompt,
+    //         ],
+    //         [
+    //             'role' => 'user',
+    //             'content' => $content,
+    //         ],
+    //     ]);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $content = $response['choices'][0]['message']['content'];
+    //     if (isset($response['choices'][0]['message']['content'])) {
+    //         $content = $response['choices'][0]['message']['content'];
 
-            $type = json_decode($content, true)['type'];
-            if ($type !== 'flight' && $type !== 'hotel') {
-                return [
-                    'status' => 'error',
-                    'message' => 'Invalid response. Please provide a valid response: flight or hotel'
-                ];
-            }
-        }
+    //         $type = json_decode($content, true)['type'];
+    //         if ($type !== 'flight' && $type !== 'hotel') {
+    //             return [
+    //                 'status' => 'error',
+    //                 'message' => 'Invalid response. Please provide a valid response: flight or hotel'
+    //             ];
+    //         }
+    //     }
 
-        return [
-            'status' => 'success',
-            'message' => 'Document type identified successfully',
-            'data' => $type,
-        ];
-    }
+    //     return [
+    //         'status' => 'success',
+    //         'message' => 'Document type identified successfully',
+    //         'data' => $type,
+    //     ];
+    // }
 
-    public function extractFlightData($content)
-    {
-        $supplierList = json_encode(Supplier::all()->toArray());
+    // public function extractFlightData($content)
+    // {
+    //     $supplierList = json_encode(Supplier::all()->toArray());
 
-        $airportList = json_encode(Airport::all()->toArray());
+    //     $airportList = json_encode(Airport::all()->toArray());
 
-        $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
+    //     $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
 
-        $exampleGdsId = [
-            'KWIKT2619',
-            'KWIKT2843',
-            'KWIKT2844',
-        ];
+    //     $exampleGdsId = [
+    //         'KWIKT2619',
+    //         'KWIKT2843',
+    //         'KWIKT2844',
+    //     ];
 
-        $companiesGdsId = Company::whereNotNull('gds_office_id')
-            ->pluck('gds_office_id')
-            ->toArray();
+    //     $companiesGdsId = Company::whereNotNull('gds_office_id')
+    //         ->pluck('gds_office_id')
+    //         ->toArray();
 
-        $branchesGdsId = Branch::whereNotNull('gds_office_id')
-            ->pluck('gds_office_id')
-            ->toArray();
+    //     $branchesGdsId = Branch::whereNotNull('gds_office_id')
+    //         ->pluck('gds_office_id')
+    //         ->toArray();
         
-        $gdsOfficeIdList = array_merge($companiesGdsId, $branchesGdsId);
+    //     $gdsOfficeIdList = array_merge($companiesGdsId, $branchesGdsId);
 
-        $gdsOfficeIdList = array_merge($gdsOfficeIdList, $exampleGdsId);
+    //     $gdsOfficeIdList = array_merge($gdsOfficeIdList, $exampleGdsId);
 
-        $gdsOfficeIdList = json_encode($gdsOfficeIdList);
+    //     $gdsOfficeIdList = json_encode($gdsOfficeIdList);
         
-        $prompt = "
-        You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
+    //     $prompt = "
+    //     You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
         
-           1. `tasks` model with the following fields:
-            - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
-            - `ticket_number`: Ticket number. 
-            - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued', if the files has 'void' and original ticket number, set the status to 'void'.
-            - `refund_date`: Date of refund if applicable.
-            - `price`: Price of the task in float type. You may found files with different currency, but the air file already provide the exchange price beside the original price, so just use the exchanged price as the price. usually our default currency is KWD, so if the file has KWD as the currency, you can just use the price as is. If the file has different currency, you can use the exchanged price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use the exchanged price, which is the next or first value after the semicolon, so in this case, you can just use '30.000' as the price.
-            - 'exchange_currency': Currency used after exchange, if the file has different currency, you can use the exchanged currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'KWD' as the exchange currency.
-            - `original_price`: Original price of the task before exchange currency, if the file has different currency, you can use the original price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use '32.000' as the original price. if this field is not available, you can set it to null.
-            - `original_currency`: Original currency of the task before exchange currency, if the file has different currency, you can use the original currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'EGP' or 'USD' as the original currency. if this field is not available, you can set it to null.
-            - `total`: Total amount for the task in float type. This is usually more than the price, because it includes the price, tax and any other fees. You don't need to calculate the total, just use the total amount stated in the file, which is usually stated at then end of line where the price is stated. if you see the total amount is same as the price, it usually means that there is no tax or any other fees.
-            - `surcharge`: Any surcharge applied in float type.
-            - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
-            - `tax`: Total tax amount in float type.
-            - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
-            - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
-            - `reference`: Reference code for the task. take the ticket number from the file, which is usually stated at the end of the line where the price is stated. The ticket number is usually 10 digits long, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number.
-            - `created_by`: GDS office ID, this indicates who created the task. Usually on line before line A , and to know who created the task, it is the first GDS office ID in the line
-            - `issued_by`: GDS office ID, this indicates who issued/pay the task. Usually on line before line A , and to know who issued the task, it is the last GDS office ID in the line/ or line after it. (still before line A), this is the example of real gds office id: $gdsOfficeIdList
-            - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
-            - `agent_name`: name of the agent handling the task.
-            - `client_name`: name of the client associated with the task.
-            - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
-                You can refer the supplier from this list: $supplierList
-                if the supplier is not in the list, just set it to null.
-            - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
-            - `client_name`: Name of the client.
-            - `cancellation_policy`: Cancellation policy details.
-            - `venue`: Venue or location associated with the task.
+    //        1. `tasks` model with the following fields:
+    //         - `additional_info`: Include summarized, relevant details from the airfile in fewer than 10 words, ensuring all information directly corresponds to the airfile's content.
+    //         - `ticket_number`: Ticket number. 
+    //         - `status`: Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued' or 'void'. Whatever filet hat has 'confirmed' as it's status, use 'issued' status to store into database, if the files has 'FO' and original ticket number, set the status to 'reissued', if the files has 'void' and original ticket number, set the status to 'void'.
+    //         - `refund_date`: Date of refund if applicable.
+    //         - `price`: Price of the task in float type. You may found files with different currency, but the air file already provide the exchange price beside the original price, so just use the exchanged price as the price. usually our default currency is KWD, so if the file has KWD as the currency, you can just use the price as is. If the file has different currency, you can use the exchanged price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use the exchanged price, which is the next or first value after the semicolon, so in this case, you can just use '30.000' as the price.
+    //         - 'exchange_currency': Currency used after exchange, if the file has different currency, you can use the exchanged currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'KWD' as the exchange currency.
+    //         - `original_price`: Original price of the task before exchange currency, if the file has different currency, you can use the original price, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use '32.000' as the original price. if this field is not available, you can set it to null.
+    //         - `original_currency`: Original currency of the task before exchange currency, if the file has different currency, you can use the original currency, which is usually stated in the file like 'EGP5197.00    ;KWD32.000' or 'USD 100.00 ; KWD 30.000'. In this case, you can just use 'EGP' or 'USD' as the original currency. if this field is not available, you can set it to null.
+    //         - `total`: Total amount for the task in float type. This is usually more than the price, because it includes the price, tax and any other fees. You don't need to calculate the total, just use the total amount stated in the file, which is usually stated at then end of line where the price is stated. if you see the total amount is same as the price, it usually means that there is no tax or any other fees.
+    //         - `surcharge`: Any surcharge applied in float type.
+    //         - `penalty_fee`: Penalty fee if applicable especially for reissued tickets.
+    //         - `tax`: Total tax amount in float type.
+    //         - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
+    //         - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
+    //         - `reference`: Reference code for the task. take the ticket number from the file, which is usually stated at the end of the line where the price is stated. The ticket number is usually 10 digits long, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number.
+    //         - `created_by`: GDS office ID, this indicates who created the task. Usually on line before line A , and to know who created the task, it is the first GDS office ID in the line
+    //         - `issued_by`: GDS office ID, this indicates who issued/pay the task. Usually on line before line A , and to know who issued the task, it is the last GDS office ID in the line/ or line after it. (still before line A), this is the example of real gds office id: $gdsOfficeIdList
+    //         - `type`: Type of task. You can refer the type from this list: $taskTypes. You may always set the type to 'flight' if it airfile. 
+    //         - `agent_name`: name of the agent handling the task.
+    //         - `client_name`: name of the client associated with the task.
+    //         - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+    //             You can refer the supplier from this list: $supplierList
+    //             if the supplier is not in the list, just set it to null.
+    //         - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
+    //         - `client_name`: Name of the client.
+    //         - `cancellation_policy`: Cancellation policy details.
+    //         - `venue`: Venue or location associated with the task.
         
-        2. `task_flight_details` model, which applies only if the task is a flight, with the following fields:
-            - `farebase`: Fare basis of the flight in float type.
-            - `departure_time`: Departure time of the flight.
-            - `departure_from`: Location of departure, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
-            - `airport_from`: Airport code or name for departure.
-            - `terminal_from`: Departure terminal.
-            - `arrival_time`: Arrival time of the flight.
-            - `duration_time`: Duration of the flight in `XhYm` format (e.g., `2h5m`, `1h 45m`, `3h`). Do not return `HH:MM:SS` or timestamps. Only return readable duration in hours and minutes like `2h 5m`.
-            - `arrive_to`: Location of arrival, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
-            - `airport_to`: Airport code or name for arrival.
-            - `terminal_to`: Arrival terminal.
-            - `airline_name`: Airline name. 
-            - `flight_number`: Flight number.
-            - `class_type`: Class type of the flight.
-            - `baggage_allowed`: Baggage allowance.
-            - `equipment`: Equipment used in the flight.
-            - `ticket_number`: flight ticket number. 
-            - `flight_meal`: Meal options during the flight.
-            - `seat_no`: Seat number.
+    //     2. `task_flight_details` model, which applies only if the task is a flight, with the following fields:
+    //         - `farebase`: Fare basis of the flight in float type.
+    //         - `departure_time`: Departure time of the flight.
+    //         - `departure_from`: Location of departure, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
+    //         - `airport_from`: Airport code or name for departure.
+    //         - `terminal_from`: Departure terminal.
+    //         - `arrival_time`: Arrival time of the flight.
+    //         - `duration_time`: Duration of the flight in `XhYm` format (e.g., `2h5m`, `1h 45m`, `3h`). Do not return `HH:MM:SS` or timestamps. Only return readable duration in hours and minutes like `2h 5m`.
+    //         - `arrive_to`: Location of arrival, it must be a country. If the information retrieve is a city, state or any other than country, you must set it to suitable country.
+    //         - `airport_to`: Airport code or name for arrival.
+    //         - `terminal_to`: Arrival terminal.
+    //         - `airline_name`: Airline name. 
+    //         - `flight_number`: Flight number.
+    //         - `class_type`: Class type of the flight.
+    //         - `baggage_allowed`: Baggage allowance.
+    //         - `equipment`: Equipment used in the flight.
+    //         - `ticket_number`: flight ticket number. 
+    //         - `flight_meal`: Meal options during the flight.
+    //         - `seat_no`: Seat number.
         
-        CHEAT SHEET:
-        - MUC1A [GDS_PNR+Ref];[Session];[GDS_PCC];[AgentNo];[GDS_PCC];[AgentNo]... ; [CouponCount] ; ... ; [AirlineCode] [AirlinePNR]
+    //     CHEAT SHEET:
+    //     - MUC1A [GDS_PNR+Ref];[Session];[GDS_PCC];[AgentNo];[GDS_PCC];[AgentNo]... ; [CouponCount] ; ... ; [AirlineCode] [AirlinePNR]
         
-        Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
-        if some of the fields are not available, you can set them to null.
+    //     Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
+    //     if some of the fields are not available, you can set them to null.
         
-        all related time should be in the format of 'Y-m-d H:i:s'
+    //     all related time should be in the format of 'Y-m-d H:i:s'
 
-        Analyze the uploaded file to locate and extract relevant fields.
-        If the file type is (.air) but the structure doesn't match the reference example, reject the file.
-        If the uploaded file type is (.air), set it to amedeus as per supplier's list that i gave you,
-        then bind the data to the `tasks` and `task_flight_details` models in JSON format. 
+    //     Analyze the uploaded file to locate and extract relevant fields.
+    //     If the file type is (.air) but the structure doesn't match the reference example, reject the file.
+    //     If the uploaded file type is (.air), set it to amedeus as per supplier's list that i gave you,
+    //     then bind the data to the `tasks` and `task_flight_details` models in JSON format. 
         
-        The venue field is populated using the airport_to field from the file, which contains codes like 'DXB'. 
-        These codes are matched against $airportList and the corresponding location data from the list is used to update the venue field.
+    //     The venue field is populated using the airport_to field from the file, which contains codes like 'DXB'. 
+    //     These codes are matched against $airportList and the corresponding location data from the list is used to update the venue field.
         
-        this is the content: $content
+    //     this is the content: $content
 
-        only pass me the data extracted in JSON format.
+    //     only pass me the data extracted in JSON format.
 
-        example answer = 
-        {
-            'additional_info': 'additional info',
-            'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
-            'status': 'completed'/ 'hold' / 'confirmed',
-            'price': 100.00,
-            'exchange_currency': 'KWD',
-            'original_price': 120.00,
-            'original_currency': 'USD',
-            'surcharge': 10.00,
-            'tax': 5.00,
-            'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
-            'penalty_fee': '10.00',
-            'refund_charge': '0.250+0.900',
-            'reference': 'ticket number',
-            'created_by': 'KWIKT2619', //example of gds office id
-            'issued_by': 'KWIKT2844', //example of gds office id
-            'type': 'flight',
-            'agent_name': 'agent name',
-            'client_name': 'client name',
-            'supplier_name': 'Amadeus',
-            'supplier_country': 'Kuwait',
-            'cancellation_policy': 'cancellation policy',
-            'venue': 'venue',
-            'task_flight_details': {
-                'farebase': '20.00',
-                'departure_time': '2024-10-16 14:00:00',
-                'departure_from': 'Kuwait',
-                'airport_from': 'KWI',
-                'terminal_from': '1',
-                'arrival_time': '2024-10-16 16:00:00',
-                'duration_time': '2h 5m',
-                'arrive_to': 'Singapore',
-                'airport_to': 'SIN',
-                'terminal_to': '1',
-                'airline_name': 'Kuwait Airways',
-                'flight_number': 'KU-123',
-                'class_type': 'economy',
-                'baggage_allowed': 'baggage allowed',
-                'equipment': 'equipment',
-                'flight_meal': 'flight meal',
-                'seat_no': 'seat no',
-                'ticket_number': 'K381-3580878589', //example of ticket flight number with the airline code
-            }
-        }
+    //     example answer = 
+    //     {
+    //         'additional_info': 'additional info',
+    //         'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
+    //         'status': 'completed'/ 'hold' / 'confirmed',
+    //         'price': 100.00,
+    //         'exchange_currency': 'KWD',
+    //         'original_price': 120.00,
+    //         'original_currency': 'USD',
+    //         'surcharge': 10.00,
+    //         'tax': 5.00,
+    //         'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
+    //         'penalty_fee': '10.00',
+    //         'refund_charge': '0.250+0.900',
+    //         'reference': 'ticket number',
+    //         'created_by': 'KWIKT2619', //example of gds office id
+    //         'issued_by': 'KWIKT2844', //example of gds office id
+    //         'type': 'flight',
+    //         'agent_name': 'agent name',
+    //         'client_name': 'client name',
+    //         'supplier_name': 'Amadeus',
+    //         'supplier_country': 'Kuwait',
+    //         'cancellation_policy': 'cancellation policy',
+    //         'venue': 'venue',
+    //         'task_flight_details': {
+    //             'farebase': '20.00',
+    //             'departure_time': '2024-10-16 14:00:00',
+    //             'departure_from': 'Kuwait',
+    //             'airport_from': 'KWI',
+    //             'terminal_from': '1',
+    //             'arrival_time': '2024-10-16 16:00:00',
+    //             'duration_time': '2h 5m',
+    //             'arrive_to': 'Singapore',
+    //             'airport_to': 'SIN',
+    //             'terminal_to': '1',
+    //             'airline_name': 'Kuwait Airways',
+    //             'flight_number': 'KU-123',
+    //             'class_type': 'economy',
+    //             'baggage_allowed': 'baggage allowed',
+    //             'equipment': 'equipment',
+    //             'flight_meal': 'flight meal',
+    //             'seat_no': 'seat no',
+    //             'ticket_number': 'K381-3580878589', //example of ticket flight number with the airline code
+    //         }
+    //     }
 
-        ";
+    //     ";
 
-        $response = $this->aiService->chatCompletionJsonResponse([
-            [
-                'role' => 'user',
-                'content' => $prompt,
-            ],
-            [
-                'role' => 'user',
-                'content' => $content,
-            ],
-        ]);
+    //     $response = $this->aiService->chatCompletionJsonResponse([
+    //         [
+    //             'role' => 'user',
+    //             'content' => $prompt,
+    //         ],
+    //         [
+    //             'role' => 'user',
+    //             'content' => $content,
+    //         ],
+    //     ]);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $message = $response['choices'][0]['message']['content'];
-            $decodedResponse = json_decode($message, true);
+    //     if (isset($response['choices'][0]['message']['content'])) {
+    //         $message = $response['choices'][0]['message']['content'];
+    //         $decodedResponse = json_decode($message, true);
 
-            if (json_last_error() === JSON_ERROR_NONE) {
-                if (isset($decodedResponse['status']) && $decodedResponse['status'] === 'refund') {
-                    Log::info('Refund status detected from AI extraction.');
-                }
-                return [
-                    'status' => 'success',
-                    'message' => 'Data extracted successfully',
-                    'data' => $decodedResponse,
-                ];
-                // return $taskController->saveTasks($decodedResponse);
-            } else {
-                $cleanedResponse = $this->cleanJsonResponse($message);
-                $data = json_decode($cleanedResponse, true);
+    //         if (json_last_error() === JSON_ERROR_NONE) {
+    //             if (isset($decodedResponse['status']) && $decodedResponse['status'] === 'refund') {
+    //                 Log::info('Refund status detected from AI extraction.');
+    //             }
+    //             return [
+    //                 'status' => 'success',
+    //                 'message' => 'Data extracted successfully',
+    //                 'data' => $decodedResponse,
+    //             ];
+    //             // return $taskController->saveTasks($decodedResponse);
+    //         } else {
+    //             $cleanedResponse = $this->cleanJsonResponse($message);
+    //             $data = json_decode($cleanedResponse, true);
 
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    return [
-                        'status' => 'success',
-                        'message' => 'Data extracted successfully',
-                        'data' => $data,
-                    ];
+    //             if (json_last_error() === JSON_ERROR_NONE) {
+    //                 return [
+    //                     'status' => 'success',
+    //                     'message' => 'Data extracted successfully',
+    //                     'data' => $data,
+    //                 ];
 
-                    // return $taskController->saveTasks($data);
-                } else {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Failed to parse JSON or missing required fields.',
-                    ];
-                }
-            }
-        }
-    }
+    //                 // return $taskController->saveTasks($data);
+    //             } else {
+    //                 return [
+    //                     'status' => 'error',
+    //                     'message' => 'Failed to parse JSON or missing required fields.',
+    //                 ];
+    //             }
+    //         }
+    //     }
+    // }
 
     /**
      * Extract hotel data from the content
@@ -449,141 +449,141 @@ class OpenAiController extends Controller
      * 
      * @return array from saveTasks()
      */
-    public function extractHotelData($content)
-    {
-        $supplierList = json_encode(Supplier::all()->toArray());
+    // public function extractHotelData($content)
+    // {
+    //     $supplierList = json_encode(Supplier::all()->toArray());
 
-        $prompt = "
-        You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
+    //     $prompt = "
+    //     You are an assistant for processing uploaded files to extract structured data for a task management system. The system has two models:
 
-        1. `tasks` model with the following fields:
-            - `additional_info`: Additional information but make sure to only include relevant data and below 10 words, summarize it.
-            - `status`: Current status of the task.
-            - `price`: Price of the task in float type.
-            - `exchange_currency`: Currency used after exchange, if the file has different currency, you can use the exchanged currency.
-            - `original_price`: Original price of the task before exchange currency, if this information not available, you can set it to null.
-            - `original_currency`: Original currency of the task before exchange currency, if this information not available, you can set it to null.
-            - `surcharge`: Any surcharge applied in float type.
-            - `total`: Total amount for the task in float type.
-            - `tax`: Total tax amount in float type.
-            - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
-            - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
-            - `reference`: Reference code for the task.
-            - `type`: Type of task (e.g., flight).
-            - `agent_name`: name of the agent handling the task.
-            - `client_name`: name of the client associated with the task, some pdfs have the client name as holder name.
-            - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
-                You can refer the supplier from this list: $supplierList
-                if the supplier is not in the list, just set it to null.
-            - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
-            - `client_name`: Name of the client.
-            - `cancellation_policy`: Cancellation policy details.
-            - `venue`: Venue or location associated with the task.
+    //     1. `tasks` model with the following fields:
+    //         - `additional_info`: Additional information but make sure to only include relevant data and below 10 words, summarize it.
+    //         - `status`: Current status of the task.
+    //         - `price`: Price of the task in float type.
+    //         - `exchange_currency`: Currency used after exchange, if the file has different currency, you can use the exchanged currency.
+    //         - `original_price`: Original price of the task before exchange currency, if this information not available, you can set it to null.
+    //         - `original_currency`: Original currency of the task before exchange currency, if this information not available, you can set it to null.
+    //         - `surcharge`: Any surcharge applied in float type.
+    //         - `total`: Total amount for the task in float type.
+    //         - `tax`: Total tax amount in float type.
+    //         - `taxes_record`: Parsed from the long line starting with KRF. All tax codes with their respective amounts are extracted.
+    //         - `refund_charge`: Total tax amount of YQ, YR, YX and other which non-refundable in float type.
+    //         - `reference`: Reference code for the task.
+    //         - `type`: Type of task (e.g., flight).
+    //         - `agent_name`: name of the agent handling the task.
+    //         - `client_name`: name of the client associated with the task, some pdfs have the client name as holder name.
+    //         - `supplier_name`: name of the supplier for the task, depends on supplier stated on the pdf, usually at the top or bottom of the pdf. They are responsible of sending this pdf.
+    //             You can refer the supplier from this list: $supplierList
+    //             if the supplier is not in the list, just set it to null.
+    //         - `supplier_country`: Country of the supplier if stated anywhere in the pdf.
+    //         - `client_name`: Name of the client.
+    //         - `cancellation_policy`: Cancellation policy details.
+    //         - `venue`: Venue or location associated with the task.
         
-        2. `task_hotel_details` model, which applies only if the task is a hotel booking, with the following fields:
-            - `hotel_name`: Name of the hotel.
-            - `hotel_address`: Address of the hotel.
-            - `hotel_city`: City of the hotel.
-            - `hotel_state`: State of the hotel.
-            - `hotel_country`: Country of the hotel.
-            - `hotel_zip`: Zip code of the hotel.
-            - `booking_time`: Time of booking.
-            - `check_in`: Check-in date.
-            - `check_out`: Check-out date.
-            - `room_number`: Room number.
-            - `room_type`: Type of room.
-            - `room_amount`: Amount of the room in float type.
-            - `room_details`: Details of the room.
-            - `rate`: Rate of the room in float type.
+    //     2. `task_hotel_details` model, which applies only if the task is a hotel booking, with the following fields:
+    //         - `hotel_name`: Name of the hotel.
+    //         - `hotel_address`: Address of the hotel.
+    //         - `hotel_city`: City of the hotel.
+    //         - `hotel_state`: State of the hotel.
+    //         - `hotel_country`: Country of the hotel.
+    //         - `hotel_zip`: Zip code of the hotel.
+    //         - `booking_time`: Time of booking.
+    //         - `check_in`: Check-in date.
+    //         - `check_out`: Check-out date.
+    //         - `room_number`: Room number.
+    //         - `room_type`: Type of room.
+    //         - `room_amount`: Amount of the room in float type.
+    //         - `room_details`: Details of the room.
+    //         - `rate`: Rate of the room in float type.
 
-        Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
-        if some of the fields are not available, you can set them to null.
-        this is the content: $content
+    //     Extract relevant data from the uploaded content in JSON format, matching the structure of these models. Only include fields with available data, and omit any null or empty fields.
+    //     if some of the fields are not available, you can set them to null.
+    //     this is the content: $content
 
-        only pass me the data extracted in JSON format.
+    //     only pass me the data extracted in JSON format.
 
-        example answer = 
+    //     example answer = 
 
-        {
-            'additional_info': 'King Bed Deluxe High Floor - 2408 Oaks Liwa Heights, Jumeirah Lake Towers',
-            'status': 'completed',
-            'price': 100.00,
-            'surcharge': 10.00,
-            'total': 110.00,
-            'tax': 5.00,
-            'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
-            'refund_charge': '0.250+0.900',
-            'reference': 'relevant reference',
-            'type': 'hotel',
-            'agent_name': 'agent name',
-            'client_name': 'Khaled Alajmi',
-            'supplier_name': 'Magic Holidays',
-            'supplier_country': 'Kuwait',
-            'cancellation_policy': 'cancellation policy',
-            'venue': 'venue',
-            'task_hotel_details': {
-                'hotel_name': 'Oaks Liwa Heights',
-                'hotel_address': 'Jumeirah Lake Towers',
-                'hotel_city': null,
-                'hotel_state': 'Dubai',
-                'hotel_country': 'United Arab Emirates',
-                'hotel_zip': '12345',
-                'booking_time': '2024-10-16 14:00:00',
-                'check_in': '2024-10-17',
-                'check_out': '2024-10-20',
-                'room_number': '101',
-                'room_type': 'Deluxe Room',
-                'room_amount': '100.00',
-                'room_details': 'Sea View',
-                'rate': '40.00', 
-            }
-        }
-        ";
+    //     {
+    //         'additional_info': 'King Bed Deluxe High Floor - 2408 Oaks Liwa Heights, Jumeirah Lake Towers',
+    //         'status': 'completed',
+    //         'price': 100.00,
+    //         'surcharge': 10.00,
+    //         'total': 110.00,
+    //         'tax': 5.00,
+    //         'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
+    //         'refund_charge': '0.250+0.900',
+    //         'reference': 'relevant reference',
+    //         'type': 'hotel',
+    //         'agent_name': 'agent name',
+    //         'client_name': 'Khaled Alajmi',
+    //         'supplier_name': 'Magic Holidays',
+    //         'supplier_country': 'Kuwait',
+    //         'cancellation_policy': 'cancellation policy',
+    //         'venue': 'venue',
+    //         'task_hotel_details': {
+    //             'hotel_name': 'Oaks Liwa Heights',
+    //             'hotel_address': 'Jumeirah Lake Towers',
+    //             'hotel_city': null,
+    //             'hotel_state': 'Dubai',
+    //             'hotel_country': 'United Arab Emirates',
+    //             'hotel_zip': '12345',
+    //             'booking_time': '2024-10-16 14:00:00',
+    //             'check_in': '2024-10-17',
+    //             'check_out': '2024-10-20',
+    //             'room_number': '101',
+    //             'room_type': 'Deluxe Room',
+    //             'room_amount': '100.00',
+    //             'room_details': 'Sea View',
+    //             'rate': '40.00', 
+    //         }
+    //     }
+    //     ";
 
-        $response = $this->aiService->chatCompletionJsonResponse([
-            [
-                'role' => 'user',
-                'content' => $prompt,
-            ],
-            [
-                'role' => 'user',
-                'content' => $content,
-            ],
-        ]);
+    //     $response = $this->aiService->chatCompletionJsonResponse([
+    //         [
+    //             'role' => 'user',
+    //             'content' => $prompt,
+    //         ],
+    //         [
+    //             'role' => 'user',
+    //             'content' => $content,
+    //         ],
+    //     ]);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $message = $response['choices'][0]['message']['content'];
+    //     if (isset($response['choices'][0]['message']['content'])) {
+    //         $message = $response['choices'][0]['message']['content'];
 
-            $decodedResponse = json_decode($message, true);
+    //         $decodedResponse = json_decode($message, true);
 
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return [
-                    'status' => 'success',
-                    'message' => 'Data extracted successfully',
-                    'data' => $decodedResponse,
-                ];
-                // return $taskController->saveTasks($decodedResponse);
-            } else {
-                $cleanedResponse = $this->cleanJsonResponse($message);
-                $data = json_decode($cleanedResponse, true);
+    //         if (json_last_error() === JSON_ERROR_NONE) {
+    //             return [
+    //                 'status' => 'success',
+    //                 'message' => 'Data extracted successfully',
+    //                 'data' => $decodedResponse,
+    //             ];
+    //             // return $taskController->saveTasks($decodedResponse);
+    //         } else {
+    //             $cleanedResponse = $this->cleanJsonResponse($message);
+    //             $data = json_decode($cleanedResponse, true);
 
-                if (json_last_error() === JSON_ERROR_NONE) {
+    //             if (json_last_error() === JSON_ERROR_NONE) {
 
-                    return [
-                        'status' => 'success',
-                        'message' => 'Data extracted successfully',
-                        'data' => $data,
-                    ];
-                    // return $taskController->saveTasks($data);
-                } else {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Failed to parse JSON or missing required fields.',
-                    ];
-                }
-            }
-        }
-    }
+    //                 return [
+    //                     'status' => 'success',
+    //                     'message' => 'Data extracted successfully',
+    //                     'data' => $data,
+    //                 ];
+    //                 // return $taskController->saveTasks($data);
+    //             } else {
+    //                 return [
+    //                     'status' => 'error',
+    //                     'message' => 'Failed to parse JSON or missing required fields.',
+    //                 ];
+    //             }
+    //         }
+    //     }
+    // }
 
     function cleanJsonResponse($responseText)
     {

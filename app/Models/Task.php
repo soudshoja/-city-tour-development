@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class Task extends Model
 {
@@ -43,6 +44,7 @@ class Task extends Model
         'taxes_record',
         'refund_charge',
         'ticket_number',
+        'created_at'
     ];
 
 
@@ -87,6 +89,16 @@ class Task extends Model
                 $q->whereNotNull($column)->where($column, '!=', '');
             }
         });
+    }
+
+    public function getFormattedDateAttribute()
+    {
+        return $this->created_at->format('d-m-Y');
+    }
+    
+    public function getFormattedDateTimeAttribute()
+    {
+        return $this->created_at->format('d-m-Y h:i A');
     }
 
     public function flightDetails()

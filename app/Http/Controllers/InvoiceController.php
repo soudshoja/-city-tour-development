@@ -118,24 +118,19 @@ class InvoiceController extends Controller
         return view('invoice.salelist', compact('invoices', 'clients', 'tasks', 'totalInvoices'));
     }
 
-
     public function create(Request $request)
     {
         if (auth()->user()->role_id == Role::ADMIN) {
             return view('invoice.maintenance'); // Show the maintenance page
         }
-        //dd($request->all());
-        $taskIds = $request->query('task_ids', ''); // Comma-separated task IDs
+
+        $taskIds = $request->query('task_ids', '');
         $taskIdsArray = [];
 
         $disableButtons = false;
 
         if (!empty($taskIds)) {
-            if (gettype($taskIds) == 'string') {
-                $taskIdsArray = explode(',', $taskIds); // Multiple tasks
-            } else {
-                $taskIdsArray = $taskIds; // Single task
-            }
+            $taskIdsArray = is_string($taskIds) ? explode(',', $taskIds) : $taskIds;
 
             foreach ($taskIdsArray as $taskId) {
                 $task = Task::find($taskId);
@@ -151,15 +146,13 @@ class InvoiceController extends Controller
 
             $disableButtons = true;
         }
-        $taskIdsArray = array_map('intval', $taskIdsArray);
-        $taskIdsArray = Arr::flatten($taskIdsArray);
-        //dd($taskIdsArray);
+
+        $taskIdsArray = array_map('intval', Arr::flatten($taskIdsArray));
         if (count($taskIdsArray) !== count(Arr::flatten($taskIdsArray, 1))) {
             throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
         }
 
         $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
-
         $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
 
         foreach ($selectedTasks as $task) {
@@ -167,17 +160,12 @@ class InvoiceController extends Controller
                 return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
             }
 
-            //check miss data
-            if ($task->flightDetails) {
-                if (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from)) {
-                    return redirect()->back()->with('error', 'The task record is missing important flight data.');
-                }
+            if ($task->flightDetails && (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from))) {
+                return redirect()->back()->with('error', 'The task record is missing important flight data.');
             }
-            if ($task->hotelDetails) {
-                //dd($task->hotelDetails->hotel->id);
-                if (!isset($task->hotelDetails->hotel)) {
-                    return redirect()->back()->with('error', 'The task record is missing important hotel data.');
-                }
+
+            if ($task->hotelDetails && !isset($task->hotelDetails->hotel)) {
+                return redirect()->back()->with('error', 'The task record is missing important hotel data.');
             }
         }
 
@@ -188,23 +176,17 @@ class InvoiceController extends Controller
             return $task;
         });
 
-        if ($request->input('user_id') != null) {
-            $user = User::find($request->input('user_id'));
-        } else {
-            $user = Auth::user();
-        }
-
+        $user = $request->input('user_id') ? User::find($request->input('user_id')) : Auth::user();
         $selectedCompany = null;
         $agents = collect();
         $clients = collect();
 
         if ($user->role_id == Role::ADMIN) {
-            $agents = Agent::get();
-            $clients = Client::get();
-            $branches = Branch::get();
-            $companies = Company::get();
+            $agents = Agent::all();
+            $clients = Client::all();
+            $branches = Branch::all();
+            $companies = Company::all();
         } elseif ($user->role_id == Role::COMPANY) {
-
             $company = Company::with('branches.agents')->find($user->company->id);
             $agents = $company->branches->flatMap->agents;
             $clients = $agents->flatMap->clients;
@@ -220,14 +202,12 @@ class InvoiceController extends Controller
         }
 
         $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
-
         if (!$invoiceSequence) {
             $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
         }
 
         $currentSequence = $invoiceSequence->current_sequence;
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
-
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
 
@@ -237,60 +217,38 @@ class InvoiceController extends Controller
             'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
         ]);
 
-        // Fetch tasks
-        // Handle client association
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
             $agentIds =  $selectedTasks->pluck('agent_id')->unique();
             $selectedAgent = Agent::find($agentIds->first());
-
-            if ($clientIds->count() >= 1) {
-                $selectedClient = Client::find($clientIds->first());
-            } else {
-                $selectedClient = null; // Handle multi-client case
-            }
+            $selectedClient = $clientIds->count() >= 1 ? Client::find($clientIds->first()) : null;
         } else {
-            $selectedClient = null; // No tasks selected
             $selectedAgent = null;
+            $selectedClient = null;
         }
 
-        $payments = Payment::whereIn('agent_id', $agents->pluck('id'))
-            ->where('invoice_id', null)
-            ->get();
-
-        // if selected agent is null, get all agents under the company if the user is a company, if not get the agent data from the user
-        // $agentId =  $selectedAgent == null ? $user->role_id == Role::COMPANY ? $agentsId = array_map(function ($agent) {
-        //     return $agent['id'];
-        // }, $agents->toArray()) : $user->agent->id : $selectedAgent->id;
+        $payments = Payment::whereIn('agent_id', $agents->pluck('id'))->whereNull('invoice_id')->get();
 
         if ($user->role_id == Role::ADMIN) {
-            $agentId = Agent::get()->pluck('id');
-        } else if ($user->role_id == Role::COMPANY) {
+            $agentId = Agent::pluck('id');
+        } elseif ($user->role_id == Role::COMPANY) {
             $agentId = $user->company->branches->flatMap->agents->pluck('id');
-        } else if ($user->role_id == Role::BRANCH) {
+        } elseif ($user->role_id == Role::BRANCH) {
             $agentId = $user->branch->agents->pluck('id');
-        } else if ($user->role_id == Role::AGENT) {
+        } elseif ($user->role_id == Role::AGENT) {
             $agentId = (array)$user->agent->id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
-        $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
-        //$agentId = is_array($agentId) ? $agentId : [$agentId];
-        $agentId = Arr::flatten((array) $agentId);
-        Log::info('Agent ID: ', ['agentId' => $agentId]);
 
+        $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
+        $agentId = Arr::flatten((array) $agentId);
         $clientId = $selectedClient ? $selectedClient->id : null;
-        // Log::info('agentId', ['agentId' => $agentId]);
-        // dd(gettype($agentId));
+
         $tasks = $agentId
-            ? (clone $tasks)
-            ->whereIn('agent_id', $agentId)
-            ->get()
-            ->filter(function ($task) {
-                // Filter out tasks that already have an invoice detail
+            ? (clone $tasks)->whereIn('agent_id', $agentId)->get()->filter(function ($task) {
                 return !$task->invoiceDetail;
-            })
-            ->map(function ($task) {
+            })->map(function ($task) {
                 $task->agent_name = $task->agent->name ?? null;
                 $task->branch_name = $task->agent->branch->name ?? null;
                 $task->supplier_name = $task->supplier->name ?? null;
@@ -298,15 +256,24 @@ class InvoiceController extends Controller
                 return $task;
             })
             : collect();
-        // Log::info('tasks', ['tasks' => $tasks]);
 
-        //dd($task->flightDetails->countryTo);
+        // 🔽 REQUIRED FOR MODAL
+        if ($user->role_id === Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
+        } elseif ($user->role_id === Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id === Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } else {
+            $companyId = null;
+        }
 
+        $agents = Agent::all(); // Can scope this if needed
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
-
         $appUrl = config('app.url');
+
         return view('invoice.create', compact(
             'clients',
             'agents',
@@ -324,10 +291,10 @@ class InvoiceController extends Controller
             'todayDate',
             'appUrl',
             'disableButtons',
-            'payments'
+            'payments',
+            'companyId'
         ));
     }
-
 
     public function edit(string $invoiceNumber)
     {
@@ -393,7 +360,7 @@ class InvoiceController extends Controller
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
-        $paymentMethods = PaymentMethod::all();
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
@@ -476,7 +443,7 @@ class InvoiceController extends Controller
                 'currency' => $invoice->currency
             ], $gateway);
         }
-        
+
         $client = Client::find($clientId);
         $balanceCredit = Credit::getTotalCreditsByClient($client->id);
         //dd($credit, $balanceCredit);

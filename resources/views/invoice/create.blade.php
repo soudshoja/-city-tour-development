@@ -161,28 +161,28 @@
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                         <x-application-logo class="custom-logo-size" />
                         @if ($selectedCompany)
-                            <div class="pl-2">
-                                <h3>{{ $selectedCompany->name }}</h3>
-                                <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
-                                <p>{{ $selectedCompany->email }}</p>
-                                <p>{{ $selectedCompany->phone }}</p>
-                            </div>
+                        <div class="pl-2">
+                            <h3>{{ $selectedCompany->name }}</h3>
+                            <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                            <p>{{ $selectedCompany->email }}</p>
+                            <p>{{ $selectedCompany->phone }}</p>
+                        </div>
                         @else
-                            <div class="custom-select w-full border rounded-lg mt-4">
-                                <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
-                                </div>
-                                <div
-                                    class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
-                                    @foreach ($companies as $company)
-                                        <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                            data-value="{{ $company->id }}">
-                                            {{ $company->name }}
-                                        </div>
-                                    @endforeach
-                                </div>
-
-                                <input type="hidden" name="branch_id" id="selectedBranch">
+                        <div class="custom-select w-full border rounded-lg mt-4">
+                            <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                             </div>
+                            <div
+                                class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
+                                @foreach ($companies as $company)
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                    data-value="{{ $company->id }}">
+                                    {{ $company->name }}
+                                </div>
+                                @endforeach
+                            </div>
+
+                            <input type="hidden" name="branch_id" id="selectedBranch">
+                        </div>
 
                         @endif
 
@@ -191,10 +191,10 @@
                             <div
                                 class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($branches) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3">
                                 @foreach ($branches as $branch)
-                                    <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
-                                        data-value="{{ $branch->id }}">
-                                        {{ $branch->name }}
-                                    </div>
+                                <div class="select-option px-4 py-3 text-center bg-white dark:bg-gray-700 BoxShadow rounded-lg dark:hover:bg-gray-800 border border-gray-300 cursor-pointer"
+                                    data-value="{{ $branch->id }}">
+                                    {{ $branch->name }}
+                                </div>
                                 @endforeach
                             </div>
 
@@ -296,33 +296,33 @@
                         <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
-                                <button id="select-agent" type="button" onclick="openAgentModal()"
-                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button id="select-agent" type="button" onclick="openAgentModal()"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                        <path
-                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                            fill="#004c9e" />
-                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                            stroke-width="1.5" stroke-linecap="round" />
-                                    </svg><span class="pl-5">Choose Agent</span>
-                                </button>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path
+                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                        fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Agent</span>
+                            </button>
                             @else
-                                <button disabled id="select-agent" type="button"
-                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                            <button disabled id="select-agent" type="button"
+                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                                             city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="10" cy="6" r="4" fill="#004c9e" />
-                                        <path
-                                            d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
-                                            fill="#004c9e" />
-                                        <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
-                                            stroke-width="1.5" stroke-linecap="round" />
-                                    </svg><span class="pl-5">Choose Agent</span>
-                                </button>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#004c9e"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6" r="4" fill="#004c9e" />
+                                    <path
+                                        d="M18 17.5C18 19.9853 18 22 10 22C2 22 2 19.9853 2 17.5C2 15.0147 5.58172 13 10 13C14.4183 13 18 15.0147 18 17.5Z"
+                                        fill="#004c9e" />
+                                    <path d="M21 10H19M19 10H17M19 10L19 8M19 10L19 12" stroke="#004c9e"
+                                        stroke-width="1.5" stroke-linecap="round" />
+                                </svg><span class="pl-5">Choose Agent</span>
+                            </button>
                             @endcan
                         </div>
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
@@ -495,7 +495,7 @@
                                 <select id="payment_gateway" name="payment_gateway"
                                     class="border border-gray-300 p-2 rounded-lg mt-4 w-full">
                                     @foreach ($paymentGateways as $gateway)
-                                        <option value="{{ $gateway }}">{{ $gateway }}</option>
+                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -790,8 +790,8 @@
                                                     <select id="payment_gateway1" name="payment_gateway1"
                                                         class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                                                         @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway }}">{{ $gateway }}
-                                                            </option>
+                                                        <option value="{{ $gateway }}">{{ $gateway }}
+                                                        </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -871,10 +871,10 @@
                                     class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar mx-4">
                                     <!-- Dynamic list items go here -->
                                     @foreach ($agents as $agent)
-                                        <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
-                                            onclick="chooseTasksAgent('{{ $agent }}')">
-                                            {{ $agent->name }}
-                                        </li>
+                                    <li class="cursor-pointer flex items-center justify-between px-4 py-3 hover:bg-gray-100"
+                                        onclick="chooseTasksAgent('{{ $agent }}')">
+                                        {{ $agent->name }}
+                                    </li>
                                     @endforeach
                                 </ul>
                                 <p id="noAgentsFound" class="flex flex-col items-center justify-center py-6 text-center text-gray-500 text-sm gap-2 hidden">
@@ -1075,13 +1075,75 @@
                                     </button>
                                 </div>
                                 <div class="m-6">
-                                    <!-- Search Box -->
-                                    <div class="relative mb-10">
-                                        <input type="text" placeholder="Search Task..."
-                                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                            id="taskSearchInput" oninput="filterTasks()">
+                                    <div class="flex items-center justify-between mb-6 gap-4">
+                                        <!-- Search Box -->
+                                        <div class="w-full max-w-xs">
+                                            <input type="text" placeholder="Search Task..."
+                                                class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
+                                                id="taskSearchInput" oninput="filterTasks()">
+                                        </div>
+                                        <!-- ./Search Box -->
+                                        <!-- Add Task -->
+                                        <div x-data="{ addTaskModal: false }">
+                                            <!-- Trigger Button -->
+                                            <div @click="addTaskModal = true"
+                                                class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
+                                                data-tooltip-left="Add Task">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="stroke-black dark:stroke-gray-300 group-hover:stroke-white group-focus:stroke-white">
+                                                    <path d="M15 12L12 12M12 12L9 12M12 12L12 9M12 12L12 15"
+                                                        stroke-width="1.5" stroke-linecap="round" />
+                                                    <path
+                                                        d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"
+                                                        stroke-width="1.5" stroke-linecap="round" />
+                                                </svg>
+                                            </div>
+
+                                            <!-- Modal -->
+                                            <div x-cloak x-show="addTaskModal"
+                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
+                                                    <div class="p-4 flex justify-between items-center">
+                                                        Add Task For Specific Supplier
+                                                    </div>
+                                                    <hr>
+                                                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
+                                                        class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
+                                                        @csrf
+
+                                                        @unlessrole('agent')
+                                                        <select name="agent_id" id="task-agent-id"
+                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                                                            <option value="">Select Agent</option>
+                                                            @foreach ($agents as $agent)
+                                                            <option value="{{ $agent->id }}" data-client="{{ $agent }}">{{ $agent->name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        @else
+                                                        <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                                        @endunlessrole
+
+                                                        <select name="supplier_id" id="select-supplier-task"
+                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                                                            <option value="">Select Supplier</option>
+                                                            @foreach ($suppliers as $supplier)
+                                                            <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">{{ $supplier->name }}</option>
+                                                            @endforeach
+                                                        </select>
+
+                                                        <div id="form-task-container" class="mt-2" data-company-id="{{ $companyId }}"></div>
+                                                    </form>
+                                                    <hr>
+                                                    <div class="p-4 flex justify-between items-center">
+                                                        <button @click="addTaskModal = false" class="text-red-500">Cancel</button>
+                                                        <x-primary-button type="submit" form="agent-supplier-task">Submit</x-primary-button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <!-- ./Search Box -->
+
                                     <!-- List of Tasks -->
                                     <ul id="taskList"
                                         class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
@@ -3164,17 +3226,17 @@
             renderClientCredit(selectedClient);
         });
 
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('agentSearchInput');
             const agentList = document.getElementById('agentList');
             const listItems = agentList.getElementsByTagName('li');
             const noAgentsFound = document.getElementById('noAgentsFound');
 
-            searchInput.addEventListener('input', function () {
+            searchInput.addEventListener('input', function() {
                 const searchValue = this.value.toLowerCase();
                 let anyVisible = false;
 
-                Array.from(listItems).forEach(function (item) {
+                Array.from(listItems).forEach(function(item) {
                     const text = item.textContent.toLowerCase();
                     const match = text.includes(searchValue);
                     item.style.display = match ? '' : 'none';
@@ -3185,5 +3247,49 @@
             });
         });
     </script>
+    <script>
+        document.getElementById('select-supplier-task')?.addEventListener('change', function() {
+            let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
+            let supplier = JSON.parse(selectedSupplier);
+            let formTaskContainer = document.getElementById('form-task-container');
+            let companyIdData = formTaskContainer.getAttribute('data-company-id');
+            let tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
 
+            formTaskContainer.innerHTML = '';
+
+            if (supplier.name === 'Magic Holiday') {
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'supplier_ref';
+                input.placeholder = 'Reference';
+                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
+                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
+                    'dark:text-gray-300', 'p-3');
+                formTaskContainer.appendChild(input);
+            } else if (supplier.name === 'TBO Holiday') {
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'supplier_ref';
+                input.placeholder = 'Coming Soon...';
+                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
+                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
+                    'dark:text-gray-300', 'p-3', 'disabled:opacity-75', 'disabled:cursor-not-allowed');
+                input.disabled = true;
+                formTaskContainer.appendChild(input);
+            } else if (supplier.name === 'Amadeus') {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.name = 'task_file';
+                fileInput.id = 'amadeus-upload-task';
+                fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
+                    'w-full', 'mt-2');
+                formTaskContainer.appendChild(fileInput);
+            } else {
+                let div = document.createElement('div');
+                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
+                div.innerHTML = 'API not available for this supplier';
+                formTaskContainer.appendChild(div);
+            }
+        });
+    </script>
 </x-app-layout>

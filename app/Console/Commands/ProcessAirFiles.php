@@ -81,140 +81,110 @@ class ProcessAirFiles extends Command
                     Log::info("AIR File Processing: Starting file {$fileName}");
 
                     try {
-
                         $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
 
-                        if($extractedData['status'] === 'error') {
+                        if ($extractedData['status'] === 'error') {
                             Log::error("AIR File Processing: AI tool processing error for {$fileName}: " . $extractedData['message']);
                             $this->error("AI tool processing error for {$fileName}: " . $extractedData['message']);
 
                             $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-
-                            $this->moveFileWithLogging(
-                                $fileRealPath,
-                                $errorPath,
-                                $fileName,
-                                'AI tool processing error'
-                            );
-
+                            $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'AI tool processing error');
                             continue;
                         }
 
                         $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
 
-                        $agentName = $extractedData['data']['agent_name'] ?? null;
-                        $agentEmail = $extractedData['data']['agent_email'] ?? null;
-                        $agentAmadeusId = $extractedData['data']['agent_amadeus_id'] ?? null;
-
-                        if (!$agentName || !$agentEmail || !$agentAmadeusId) {
-                            Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
-                            $this->warn("Missing agent information in {$fileName}. File will remain in place.");
-
-                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-
-                            $this->moveFileWithLogging(
-                                $fileRealPath,
-                                $errorPath,
-                                $fileName,
-                                'Missing agent information'
-                            );
-
-                            continue;
-                        }
-
-                        // By default, 'like' is case-insensitive in MySQL (the default Laravel DB), but case-sensitive in PostgreSQL unless using ILIKE.
-                        $agent = Agent::where('name', 'like', $agentName)
-                            ->orWhere('email', 'like', $agentEmail)
-                            ->orWhere('amadeus_id', 'like', $agentAmadeusId)
-                            ->first();
-
-                        if (!$agent) {
-                            Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
-                            $this->warn("Agent not found for {$fileName}.");
-
-                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-                            $this->moveFileWithLogging(
-                                $fileRealPath,
-                                $errorPath,
-                                $fileName,
-                                'Agent not found'
-                            );
-
-                            continue;
-                        }
-
-                        $branchId = $agent->branch_id;
-
-                        $branch = Branch::find($branchId);
-
-                        if (!$branch) {
-                            Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
-                            $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
-
-                            $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-
-                            $this->moveFileWithLogging(
-                                $fileRealPath,
-                                $errorPath,
-                                $fileName,
-                                'Branch not found'
-                            );
-
-                            continue;
-                        }
-
-                        $extractedData['data']['agent_id'] = $agent->id;
-                        $companyId = $branch->company_id;
-
-                        $response = $this->saveTask($companyId, $extractedData['data']);
-
-                        if ($response['status'] === 'error') {
-                            if (isset($response['code']) && $response['code'] === 409) {
-                                Log::info("Task already exists for {$fileName}. Skipping save.");
-                                $this->info("Task already exists for {$fileName}. Skipping save.");
-
-                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-                                $this->moveFileWithLogging(
-                                    $fileRealPath,
-                                    $errorPath,
-                                    $fileName,
-                                    'Task already exists'
-                                );
-
-                                continue;
+                        $dataItems = [];
+                        if (isset($extractedData['data']) && is_array($extractedData['data'])) {
+                            // If it's an array of objects
+                            if (array_keys($extractedData['data']) === range(0, count($extractedData['data']) - 1)) {
+                                $dataItems = $extractedData['data'];
                             } else {
-                                Log::error("Failed to save task for {$fileName}: " . $response['message']);
-                                $this->error("Failed to save task for {$fileName}: " . $response['message']);
+                                // Single object as associative array
+                                $dataItems[] = $extractedData['data'];
+                            }
+                        } else {
+                            $dataItems[] = $extractedData['data'] ?? [];
+                        }
+
+                        $allSuccess = true;
+                        foreach ($dataItems as $taskData) {
+                            $agentName = $taskData['agent_name'] ?? null;
+                            $agentEmail = $taskData['agent_email'] ?? null;
+                            $agentAmadeusId = $taskData['agent_amadeus_id'] ?? null;
+
+                            if (!$agentName || !$agentEmail || !$agentAmadeusId) {
+                                Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
+                                $this->warn("Missing agent information in {$fileName}.");
 
                                 $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Missing agent information');
+                                $allSuccess = false;
+                                break; // Stop processing further tasks in this file
+                            }
 
-                                $this->moveFileWithLogging(
-                                    $fileRealPath,
-                                    $errorPath,
-                                    $fileName,
-                                    'Failed to save task'
-                                );
+                            $agent = Agent::where('name', 'like', $agentName)
+                                ->orWhere('email', 'like', $agentEmail)
+                                ->orWhere('amadeus_id', 'like', $agentAmadeusId)
+                                ->first();
 
-                                Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
-                                $this->info("File {$fileName} moved to error directory due to save failure.");
-                                continue;
+                            if (!$agent) {
+                                Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
+                                $this->warn("Agent not found for {$fileName}.");
+
+                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Agent not found');
+                                $allSuccess = false;
+                                break;
+                            }
+
+                            $branchId = $agent->branch_id;
+                            $branch = Branch::find($branchId);
+
+                            if (!$branch) {
+                                Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
+                                $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
+
+                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Branch not found');
+                                $allSuccess = false;
+                                break;
+                            }
+
+                            $taskData['agent_id'] = $agent->id;
+                            $companyId = $branch->company_id;
+
+                            $response = $this->saveTask($companyId, $taskData);
+
+                            if ($response['status'] === 'error') {
+                                if (isset($response['code']) && $response['code'] === 409) {
+                                    Log::info("Task already exists for {$fileName}. Skipping save.");
+                                    $this->info("Task already exists for {$fileName}. Skipping save.");
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Task already exists');
+                                    $allSuccess = false;
+                                    break;
+                                } else {
+                                    Log::error("Failed to save task for {$fileName}: " . $response['message']);
+                                    $this->error("Failed to save task for {$fileName}: " . $response['message']);
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Failed to save task');
+                                    Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                                    $this->info("File {$fileName} moved to error directory due to save failure.");
+                                    $allSuccess = false;
+                                    break;
+                                }
                             }
                         }
 
-                        // Log::info("AIR File Processing: File {$fileName} processed by AI tool. Output summary (if any): " . (is_array($extractedData) ? json_encode($extractedData) : $extractedData));
-                        $this->info("File {$fileName} processed successfully by AI tool.");
-
-                        // Move the file to the processed directory
-                        $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-
-                        $this->moveFileWithLogging(
-                            $fileRealPath,
-                            $successPath,
-                            $fileName,
-                            'Successfully processed and saved task'
-                        );
-
-                        Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
+                        if ($allSuccess) {
+                            $this->info("File {$fileName} processed successfully by AI tool.");
+                            $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+                            $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, 'Successfully processed and saved task');
+                            Log::info("AIR File Processing: Successfully moved {$fileName} to {$successPath}.");
+                        }
                     } catch (Exception $e) {
                         $this->error("Error processing file {$fileName}: " . $e->getMessage());
                         Log::error("AIR File Processing: Error processing file {$fileName}. Error: " . $e->getMessage(), [
@@ -223,17 +193,9 @@ class ProcessAirFiles extends Command
                         ]);
 
                         $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-
-                        $this->moveFileWithLogging(
-                            $fileRealPath,
-                            $errorPath,
-                            $fileName,
-                            'Error during processing'
-                        );
-
+                        $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Error during processing');
                         Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
                     }
-
                     $this->info('AIR file processing for supplier ' . $supplierName . ' in company ' . $companyName . ' finished.');
                     Log::info('AIR File Processing: Finished processing for supplier ' . $supplierName . ' in company ' . $companyName . '.');
                 }

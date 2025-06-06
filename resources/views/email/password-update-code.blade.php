@@ -36,6 +36,15 @@
             color: #1d4ed8;
         }
 
+        h5 {
+            font-size: 16px;
+            text-align: center;
+            background-color: #646464;
+            padding: 15px;
+            border-radius: 6px;
+            color: #1d4ed8;
+        }
+
         p {
             font-size: 14px;
             line-height: 1.6;
@@ -52,7 +61,7 @@
 
 <body>
     <div class="email-container">
-        <img src="{{ asset('images/City0logo.svg') }}" alt="City Tour Logo" class="logo">
+        <h5>City Tour</h5>
 
         <p>Hello,</p>
 
@@ -67,7 +76,7 @@
         <p>Regards,<br>City Tour App</p>
 
         <div class="footer">
-            &copy; {{ date('Y') }} City Tour App. All rights reserved.
+            &copy; {{ date('Y') }} City Tour. All rights reserved.
         </div>
     </div>
 </body>

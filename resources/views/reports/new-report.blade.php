@@ -158,12 +158,36 @@
                                         </p>
                                     @endif
 
-                                    @if (!empty($transaction->task?->hotelDetails->room_details))
-                                        <p>Hotel details: {{ $transaction->task->hotelDetails->room_details }} -
-                                            ({{ $transaction->task->hotelDetails->check_in }} -
-                                            {{ $transaction->task->hotelDetails->check_out }})
-                                        </p>
+                                    @php
+                                        $hotelDetails = $transaction->task?->hotelDetails;
+                                        $roomDetails =
+                                            $hotelDetails && $hotelDetails->room_details
+                                                ? json_decode($hotelDetails->room_details, true)
+                                                : null;
+                                    @endphp
+
+                                    @if (!empty($roomDetails))
+                                        <p><strong>Hotel details:</strong></p>
+                                        <ul>
+                                            <li><strong>Name:</strong> {{ $roomDetails['name'] ?? 'n/a' }}</li>
+                                            <li><strong>Info:</strong> {{ $roomDetails['info'] ?? 'n/a' }}</li>
+                                            <li><strong>Type:</strong> {{ $roomDetails['type'] ?? 'n/a' }}</li>
+                                            <li><strong>Extra Services:</strong>
+                                                @if (
+                                                    !empty($roomDetails['extraServices']) &&
+                                                        is_array($roomDetails['extraServices']) &&
+                                                        count($roomDetails['extraServices']) > 0)
+                                                    {{ implode(', ', $roomDetails['extraServices']) }}
+                                                @else
+                                                    n/a
+                                                @endif
+                                            </li>
+                                            <li><strong>Check-in:</strong> {{ $hotelDetails->check_in ?? 'n/a' }}</li>
+                                            <li><strong>Check-out:</strong> {{ $hotelDetails->check_out ?? 'n/a' }}
+                                            </li>
+                                        </ul>
                                     @endif
+
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ number_format($transaction->debit, 2) }}

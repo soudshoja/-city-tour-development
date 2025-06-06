@@ -1,6 +1,26 @@
 <x-guest-layout>
 
     <div class="bg-slate-400 h-screen flex items-center justify-center">
+        @if (session('status'))
+            <div id="sessionMessage"
+                class="fixed top-0 left-0 w-full bg-green-600 text-white text-center py-3 px-4 shadow-md z-50"
+                role="alert">
+                {{ session('status') }}
+            </div>
+
+            <script>
+                setTimeout(() => {
+                    const msg = document.getElementById('sessionMessage');
+                    if (msg) {
+                        msg.style.transition = 'opacity 0.5s ease';
+                        msg.style.opacity = '0';
+                        setTimeout(() => msg.remove(), 500);
+                    }
+                }, 5000); // 5000 ms = 5 seconds
+            </script>
+        @endif
+
+
         <div class="rounded-lg flex items-stretch w-[80%] justify-center">
             <!-- Left Side - Login Form -->
             <div
@@ -11,8 +31,6 @@
 
                 <form method="POST" action="{{ route('login') }}" class="w-full flex flex-col items-center">
                     @csrf
-
-
 
                     <!-- Email -->
                     <div class="relative text-white-dark mb-2 w-3/4 max-w-sm">
@@ -30,15 +48,14 @@
                             </svg>
                         </span>
                     </div>
-                    <!-- Error Message -->
+                    <!-- Email Error -->
                     @if ($errors->has('email'))
-                    <div class="flex rounded py-1 text-[#f27474] mt-2">
-                        <span class="my-2">
-                            <strong>Error:</strong> {{ $errors->first('email') }}
-                        </span>
-                    </div>
+                        <div class="flex rounded py-1 text-[#f27474] mt-2">
+                            <span class="my-2">
+                                <strong>Error:</strong> {{ $errors->first('email') }}
+                            </span>
+                        </div>
                     @endif
-
 
                     <!-- Password -->
                     <div class="relative text-white-dark mt-5 w-3/4 max-w-sm">
@@ -66,23 +83,32 @@
                         </span>
                         <span class="absolute end-4 top-1/2 -translate-y-1/2 cursor-pointer"
                             onclick="togglePasswordVisibility()">
-                            <!-- Eye SVG -->
-                            <svg id="eyeIcon" class="w-5 h-5 text-black dark:text-white" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg id="eyeIcon" class="w-5 h-5 text-black dark:text-white" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
                                 <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
                         </span>
                     </div>
-                    <!-- Error Message -->
+                    <!-- Password Error -->
                     @if ($errors->has('password'))
-                    <div class="flex rounded py-1 text-[#f27474] mt-2">
-                        <span class="my-2">
-                            <strong>Error:</strong> {{ $errors->first('password') }}
-                        </span>
-                    </div>
+                        <div class="flex rounded py-1 text-[#f27474] mt-2">
+                            <span class="my-2">
+                                <strong>Error:</strong> {{ $errors->first('password') }}
+                            </span>
+                        </div>
                     @endif
 
+                    <!-- Forgot Password -->
+                    @if (Route::has('password.request'))
+                        <div class="w-3/4 max-w-sm text-right mt-2 mb-2">
+                            <a class="text-sm text-white underline hover:text-gray-200"
+                                href="{{ route('password.request') }}">
+                                {{ __('Forgot your password?') }}
+                            </a>
+                        </div>
+                    @endif
 
                     <!-- Remember Me -->
                     <div class="flex items-center my-4 w-3/4 max-w-sm">
@@ -98,13 +124,10 @@
                     <div class="mb-4 w-3/4 max-w-sm flex">
                         <button type="submit"
                             class="justify-center text-center text-gray-700 bg-[#F7BE38] hover:bg-[#F7BE38]/90 focus:ring-4 focus:outline-none focus:ring-[#F7BE38]/50 font-medium rounded-lg px-5 py-2.5 text-center inline-flex items-center dark:focus:ring-[#F7BE38]/50 City-me-2 mb-2 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]">
-
                             {{ __('Login') }}
                         </button>
                     </div>
-
                 </form>
-
             </div>
 
             <!-- Right Side - Image/Illustration -->

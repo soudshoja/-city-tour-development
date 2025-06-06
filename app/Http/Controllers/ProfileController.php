@@ -7,9 +7,17 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use App\Models\Account;
 use App\Models\Company;
+use App\Models\Branch;
+use App\Models\Agent;
+use App\Models\Role;
+use App\Models\PasswordUpdateToken;
+use App\Mail\PasswordUpdateCode;
 
 class ProfileController extends Controller
 {
@@ -40,10 +48,34 @@ class ProfileController extends Controller
 
         //dd($bankAccounts->name);  
 
-        // Return Blade view with the bank accounts and user data
+        $phone = null;
+        $email = $user->email;
+
+        switch ($user->role->id) {
+            case Role::COMPANY:
+                $profile = Company::where('user_id', $user->id)->first();
+                $phone = $profile?->phone;
+                break;
+
+            case Role::BRANCH:
+                $profile = Branch::where('user_id', $user->id)->first();
+                $phone = $profile?->phone;
+                break;
+
+            case Role::AGENT:
+                $profile = Agent::where('user_id', $user->id)->first();
+                $phone = $profile?->phone_number; // different column name
+                break;
+
+            default:
+                break;
+        }
+
         return view('profile.edit', [
             'user' => $user,
             'bankAccounts' => $bankAccounts,
+            'userPhone' => $phone,
+            'userEmail' => $email,
         ]);
     }
 
@@ -107,4 +139,124 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    public function requestPasswordUpdate(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        // Generate a 6-digit random verification code
+        $code = random_int(100000, 999999);
+
+        // Create or update the verification code and expiry
+        PasswordUpdateToken::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'code' => $code,
+                'expires_at' => now()->addMinutes(10),
+            ]
+        );
+
+        // Send the verification code to the user's email
+        Mail::to($user->email)->send(new PasswordUpdateCode($code));
+
+        return redirect()
+            ->route('profile.password.confirm-code')
+            ->with('status', 'code-sent');
+    }
+
+    /**
+     * Verify the submitted code.
+     */
+    public function verifyCode(Request $request)
+    {
+        $request->validate([
+            'code' => ['required', 'digits:6'],
+        ]);
+
+        $user = $request->user();
+
+        // Check for valid, unexpired token matching the code
+        $token = PasswordUpdateToken::where('user_id', $user->id)
+            ->where('code', $request->code)
+            ->where('expires_at', '>=', now())
+            ->first();
+
+        if (! $token) {
+            return back()->withErrors(['code' => 'Invalid or expired code.']);
+        }
+
+        // Mark session as verified to allow password update
+        session(['password_update_verified' => true]);
+
+        // Redirect to profile edit page with success status
+        return redirect()->route('profile.edit', ['tab' => 'Security'])
+            ->with('status', 'code-verified');
+    }
+
+    /**
+     * Show the form to confirm the verification code.
+     */
+    public function showConfirmCodeForm()
+    {
+        // Ensure a valid code request exists, otherwise redirect back with error
+        $tokenExists = PasswordUpdateToken::where('user_id', auth()->id())
+            ->where('expires_at', '>=', now())
+            ->exists();
+
+        if (! $tokenExists) {
+            return redirect()->route('profile.edit', ['tab' => 'Security'])
+                ->withErrors(['code' => 'Please request a verification code first.']);
+        }
+
+        return view('profile.password.confirm-password-code');
+    }
+
+    /**
+     * Show the form to update the password.
+     */
+    public function showPasswordForm()
+    {
+        if (! session('password_update_verified')) {
+            return redirect()->route('profile.password.confirm-code');
+        }
+
+        return view('profile.password.update-password-form');
+    }
+
+    /**
+     * Update the password in the database.
+     */
+    public function updatePassword(Request $request)
+    {
+        if (! session('password_update_verified')) {
+            return redirect()->route('profile.password.confirm-code');
+        }
+
+        $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        Log::info("Updating password for user ID: {$user->id}");
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        Log::info("Password updated for user ID: {$user->id}");
+
+        // Clean up: remove token and clear session flag
+        PasswordUpdateToken::where('user_id', $user->id)->delete();
+        session()->forget('password_update_verified');
+
+        return redirect()->route('profile.edit', ['tab' => 'Security'])
+            ->with('status', 'password-updated');
+    }
+
+
+
 }

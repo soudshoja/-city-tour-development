@@ -360,7 +360,7 @@ class InvoiceController extends Controller
 
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
-        $paymentMethods = PaymentMethod::all();
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;

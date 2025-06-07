@@ -22,6 +22,7 @@ use App\Models\Invoice;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use App\Models\Charge;
 use App\Models\Currency;
@@ -170,7 +171,8 @@ class PaymentController extends Controller
             'currency' => 'KWD',
             'payment_date' => Carbon::now(),
             'amount' => $data['total_amount'],
-            'payment_method' => $data['payment_gateway'],
+            'payment_gateway' => $data['payment_gateway'],
+            'payment_method' => $data['payment_method'],
             'status' => 'pending',
             'payment_reference' => $invoice->id,
             'invoice_id' => $invoice->id,
@@ -296,7 +298,6 @@ class PaymentController extends Controller
 
             if ($invoiceUrl && $mfInvoiceId) {
                 $payment->payment_reference = $mfInvoiceId;
-                $payment->payment_method = 'MyFatoorah';
                 $payment->status = 'initiate';
                 $payment->save();
 
@@ -903,7 +904,8 @@ class PaymentController extends Controller
         $payments = Payment::all();
         $currencies = Currency::all();
         $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
-            ->get();
+            ->where('is_active', true)->get();
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
         return view('payment.link.create', compact(
             'payments',
@@ -911,7 +913,8 @@ class PaymentController extends Controller
             'agents',
             'invoices',
             'currencies',
-            'paymentGateways'
+            'paymentGateways',
+            'paymentMethods'
         ));
     }
 
@@ -919,6 +922,7 @@ class PaymentController extends Controller
     {
         $request->validate([
             'payment_gateway' => 'required',
+            'payment_method' => 'nullable|string',
             'amount' => 'required|numeric',
             'notes' => 'nullable|string|max:255',
             'client_id' => 'required',
@@ -977,7 +981,8 @@ class PaymentController extends Controller
                 'currency' => 'KWD',
                 'payment_date' => Carbon::now(),
                 'amount' => $request->amount,
-                'payment_method' => $request->payment_gateway,
+                'payment_gateway' => $request->payment_gateway,
+                'payment_method' => $request->payment_method,
                 'status' => 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
@@ -1033,10 +1038,20 @@ class PaymentController extends Controller
             return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
+        $payment = Payment::with('agent', 'client')->where('id', $paymentId)->first();
+        $companyId = optional($payment->agent->branch)->company_id;
 
-        $chargeResult = $payment->payment_method === 'myfatoorah'
-            ? ChargeService::FatoorahCharge($payment->amount, 'myfatoorah')
-            : ChargeService::TapCharge($payment, $payment->payment_method ?? 'Tap');
+        $chargeData = [
+            'amount'     => $payment->amount,
+            'currency'   => $payment->currency,
+            'client_id'  => $payment->client_id,
+            'agent_id'   => $payment->agent_id,
+            'currency'   => $payment->currency,
+        ];
+
+        $chargeResult = $payment->payment_gateway === 'MyFatoorah'
+            ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method, $companyId)
+            : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
 
         $gatewayFee = $chargeResult['fee'];
         $finalAmount = $chargeResult['finalAmount'];
@@ -1061,11 +1076,17 @@ class PaymentController extends Controller
         if ($payment->invoice) {
             $process = 'invoice';
         }
+        $paymentGateway = $payment->payment_gateway;
         $paymentMethod = $payment->payment_method;
-        //dd($paymentMethod);
-        if (strtolower($paymentMethod) === 'tap') {
 
-            $chargeResult = ChargeService::TapCharge($payment, 'Tap');
+        if (strtolower($paymentGateway) === 'tap') {
+
+            $chargeResult = ChargeService::TapCharge([
+                'amount' => $payment->amount,
+                'currency' => $payment->currency,
+                'client_id' => $payment->client_id,
+                'agent_id' => $payment->agent_id
+            ], 'Tap');
             $finalAmount = $chargeResult['finalAmount'];
             $gatewayFee = $chargeResult['fee'];
             $paidBy = $chargeResult['paid_by'];
@@ -1085,7 +1106,7 @@ class PaymentController extends Controller
                 'metadata' => [
                     'voucher_number' => $payment->voucher_number,
                     'payment_id' => $payment->id,
-                    'payment_gateway' => $paymentMethod,
+                    'payment_gateway' => $paymentGateway,
                     'process' => $process,
                 ],
                 'redirect' => [
@@ -1109,42 +1130,67 @@ class PaymentController extends Controller
             return redirect($response['transaction']['url']);
         }
 
-        if ($paymentMethod === 'myfatoorah') {
+        if (strtolower($paymentGateway) === 'myfatoorah') {
+            $apiKey = config('services.myfatoorah.api_key');
+            $baseUrl = config('services.myfatoorah.base_url');
 
-            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $paymentMethod);
+            $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
+            $companyId = optional($payment->agent->branch)->company_id;
 
-            $mfData = [
-                'CustomerName'       => optional($payment->client)->name ?? 'Customer',
-                'InvoiceValue'       => $payment->amount,
-                'DisplayCurrencyIso' => $payment->currency ?? 'KWD',
-                'CustomerEmail'      => optional($payment->client)->email ?? 'example@email.com',
-                'CallBackUrl'        => route('payments.callback'),
-                'ErrorUrl'           => route('payments.error'),
-                'MobileCountryCode'  => '+965',
-                'CustomerMobile'     => optional($payment->client)->phone ?? '50000000',
-                'Language'           => 'en',
-                'UserDefinedField'   => json_encode([
+            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method, $companyId);
+
+            $finalAmount = $chargeResult['finalAmount'];
+
+            $executePayload = [
+                "PaymentMethodId"     => $paymentMethod,
+                "InvoiceValue"        => $finalAmount,
+                "CustomerName"       => optional($payment->client)->name ?? 'Customer',
+                "CustomerEmail"       => $payment->client->email ?? 'email@example.com',
+                "MobileCountryCode"   => "+965",
+                "CustomerMobile"      => optional($payment->client)->phone ?? '50000000',
+                "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
+                "CallBackUrl"         => route('payments.callback'),
+                "ErrorUrl"            => route('payments.error'),
+                "Language"            => "en",
+                "UserDefinedField"   => json_encode([
                     'voucher_number' => $payment->voucher_number,
                     'payment_id' => $payment->id,
-                    'payment_gateway' => $paymentMethod,
+                    'payment_gateway' => $paymentGateway,
+                    'payment_method' => $paymentMethod,
                     'process' => $process,
                 ]),
+                "InvoiceItems" => [
+                    [
+                        "ItemName"   => "Voucher " . $payment->voucher_number,
+                        "Quantity"   => 1,
+                        "UnitPrice"  => $finalAmount,
+                    ]
+                ],
             ];
 
-            $mf = new \App\Http\Controllers\MyFatoorahController();
-            $response = $mf->getInvoiceURL($mfData);
+            $executeResponse = Http::withHeaders([
+                'Authorization' => "Bearer $apiKey",
+                'Content-Type' => 'application/json',
+            ])->post("$baseUrl/v2/ExecutePayment", $executePayload);
 
-            $payment->payment_reference = $response['paymentId'];
-            $payment->save;
-            logger('Note save payment reference: ', [
-                'response' => $response['paymentId'],
-            ]);
-
-            if (isset($response['IsSuccess']) && $response['IsSuccess'] === true) {
-                return redirect($response['InvoiceURL']);
+            if (!$executeResponse->successful()) {
+                Log::error('MyFatoorah: ExecutePayment failed', ['response' => $executeResponse->body()]);
+                return redirect()->back()->with('error', 'ExecutePayment failed.');
             }
 
-            return redirect()->back()->with('error', 'Failed to create MyFatoorah invoice.');
+            $resData = $executeResponse->json();
+            $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
+            $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
+
+            if ($invoiceUrl && $mfInvoiceId) {
+                $payment->payment_reference = $mfInvoiceId;
+                $payment->status = 'initiate';
+                $payment->save();
+
+                return redirect($invoiceUrl);
+            }
+
+            return redirect()->back()->with('error', 'MyFatoorah response missing PaymentURL or InvoiceId.');
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
@@ -1351,6 +1397,7 @@ class PaymentController extends Controller
             Log::info('MyFatoorah payment status', $statusData);
 
             $invoiceId = $statusData['Data']['InvoiceId'] ?? null;
+            $voucherNumber = $statusData['Data']['UserDefinedField'] ?? null;
             $invoiceStatus = strtolower($statusData['Data']['InvoiceStatus'] ?? '');
             $userDefinedField = $statusData['Data']['UserDefinedField'] ?? null;
 
@@ -1359,7 +1406,14 @@ class PaymentController extends Controller
             }
 
             //Find the Payment by MyFatoorah InvoiceId
-            $payment = Payment::where('payment_reference', $invoiceId)->first();
+            if ($invoiceId) {
+                $payment = Payment::where('payment_reference', $invoiceId)->first();
+            } elseif ($voucherNumber) {
+                $payment = Payment::where('voucher_number', $voucherNumber)->first();
+            } else {
+                Log::error('Neither invoiceId nor voucherNumber found for payment matching');
+                return redirect()->to('/invoices')->with('error', 'Payment reference not found.');
+            }
 
             if (!$payment) {
                 Log::error('Payment not found', ['invoiceId' => $invoiceId]);
@@ -1530,9 +1584,21 @@ class PaymentController extends Controller
                     Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
                     return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
                 }
-            }
-
-            return redirect()->route('invoice.show', $payment->invoice->invoice_number)->with('success', 'Payment completed successfully!');
+                return redirect()->route('invoice.show', $payment->invoice->invoice_number)->with('success', 'Payment completed successfully!');
+            } else {
+                $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
+            
+                MyFatoorahPayment::create([
+                    'payment_int_id'   => $payment->id,
+                    'payment_id'       => $transaction['PaymentId'] ?? null,
+                    'invoice_id'       => $statusData['Data']['InvoiceId'],
+                    'invoice_status'   => $statusData['Data']['InvoiceStatus'],
+                    'customer_reference' => $payment->voucher_number,
+                    'payload'          => $statusData,
+                ]);
+                
+                return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');     
+            }   
         } catch (\Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
             return redirect()->to('/invoices')->with('error', 'Something went wrong. Please contact support.');

@@ -32,22 +32,9 @@ class ProfileController extends Controller
         $company = Company::where('user_id', $user->id)->first();
 
         // If the user doesn't have a company, handle this scenario
-        if (!$company) {
-            return redirect()->route('home')->withErrors(['message' => 'No company associated with this user.']);
-        }
-        
-        // Step 1: Find the ID(s) of the account(s) where the name is LIKE '%Bank Accounts%' based on company_id
-        $parentAccounts = Account::where('company_id', $company->id)
-            ->where('name', 'LIKE', '%Bank Accounts%')
-            ->get(); 
-
-        // Step 2: Use the retrieved parent IDs to get the child accounts
-        $bankAccounts = Account::whereIn('parent_id', $parentAccounts->pluck('id'))
-            ->where('company_id', $company->id)
-            ->get(['id', 'name']); 
-
-        //dd($bankAccounts->name);  
-
+        // if (!$company) {
+        //     return redirect()->route('home')->withErrors(['message' => 'No company associated with this user.']);
+        // }
         $phone = null;
         $email = $user->email;
 
@@ -73,7 +60,6 @@ class ProfileController extends Controller
 
         return view('profile.edit', [
             'user' => $user,
-            'bankAccounts' => $bankAccounts,
             'userPhone' => $phone,
             'userEmail' => $email,
         ]);

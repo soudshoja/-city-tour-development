@@ -201,74 +201,75 @@
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
-                    <div class="dataTable-container h-max">
-                        <div x-data="{ createClientModal: false, modalTaskId: null, showFileInput: false, modalClientName: '', modalAgentName:'', modalBranchName:'' }">
+                    <div x-data="{ shown: 10 }">
+                        <div class="dataTable-container h-max">
+                            <div x-data="{ createClientModal: false, modalTaskId: null, showFileInput: false, modalClientName: '', modalAgentName:'', modalBranchName:'' }">
                             <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
-                                <thead>
-                                    <tr>
-                                        @can('create', 'App\Models\Invoice')
-                                        <th>
-                                            <label class="custom-checkbox">
-                                                <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
-                                                <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20"
-                                                    height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                    <rect width="18" height="18" x="3" y="3" fill="none"
-                                                        stroke="currentColor" stroke-linecap="round"
-                                                        stroke-linejoin="round" stroke-width="1" rx="4" />
-                                                </svg>
-                                            </label>
-                                        </th>
-                                        @endcan
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Actions</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Enable/Disable</th> <!-- New column header -->
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Reference</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
-                                            Name</th>
-                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Branch Name</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Agent Name</th>
-                                        @endif
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
-                                        </th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Billing</th>
-                                        @can('viewPrice', 'App\Models\Task')
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
-                                        </th>
-                                        @endcan
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status
-                                        </th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                            Supplier</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-
-                                    @if ($tasks->isEmpty())
-                                    <tr>
-                                        <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No
-                                            tasks found</td>
-                                    </tr>
-                                    @else
-                                    @foreach ($tasks as $key => $task)
-                                    <tr data-price="{{ $task->price }}"
-                                        data-supplier-id="{{ $task->supplier->id }}"
-                                        data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
-                                        data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}"
-                                        data-type="{{ $task->type }}"
-                                        data-client-id="{{ $task->client ? $task->client->id : null }}"
-                                        data-task-id="{{ $task->id }}" class="taskRow">
-                                        @can('create', 'App\Models\Invoice')
-                                        <td>
-                                            <label class="custom-checkbox"
-                                                data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
+                                    <thead>
+                                        <tr>
+                                            @can('create', 'App\Models\Invoice')
+                                            <th>
+                                                <label class="custom-checkbox">
+                                                    <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
+                                                    <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20"
+                                                        height="20" viewBox="0 0 24 24" class="checkbox-svg">
+                                                        <rect width="18" height="18" x="3" y="3" fill="none"
+                                                            stroke="currentColor" stroke-linecap="round"
+                                                            stroke-linejoin="round" stroke-width="1" rx="4" />
+                                                    </svg>
+                                                </label>
+                                            </th>
+                                            @endcan
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Actions</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Enable/Disable</th> <!-- New column header -->
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Reference</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
+                                                Name</th>
+                                            @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Branch Name</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Agent Name</th>
+                                            @endif
+                                        <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Date</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
+                                            </th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Billing</th>
+                                            @can('viewPrice', 'App\Models\Task')
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
+                                            </th>
+                                            @endcan
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status
+                                            </th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Supplier</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if ($tasks->isEmpty())
+                                        <tr>
+                                            <td colspan="10" class="text-center p-5 text-gray-500 dark:text-gray-300">No
+                                                tasks found</td>
+                                        </tr>
+                                        @else
+                                        @foreach ($tasks as $key => $task)
+                                        <tr x-show="{{ $key }} < shown" x-cloak data-price="{{ $task->price }}"
+                                            data-supplier-id="{{ $task->supplier->id }}"
+                                            data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
+                                            data-agent-id="{{ $task->agent_id }}" data-status="{{ $task->status }}"
+                                            data-type="{{ $task->type }}"
+                                            data-client-id="{{ $task->client ? $task->client->id : null }}"
+                                            data-task-id="{{ $task->id }}" class="taskRow">
+                                            @can('create', 'App\Models\Invoice')
+                                            <td>
+                                                <label class="custom-checkbox"
+                                                    data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
 
                                                 @if ($task->status !== 'refund')
                                                 <input type="checkbox"

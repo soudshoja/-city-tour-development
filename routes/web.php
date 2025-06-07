@@ -43,6 +43,7 @@ use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\RefundController;
+use Illuminate\Support\Facades\Mail;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -273,6 +274,7 @@ Route::middleware(['auth'])->group(function () {
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
     Route::post('/whatsapp/send1', [WhatsappController::class, 'sendMessage1'])->name('whatsapp.send1');
+    Route::post('/whatsapp/share-invoice', [WhatsappController::class, 'shareInvoice'])->name('whatsapp.share-invoice');
     Route::post('/whatsapp/sendpdf', [WhatsappController::class, 'sendMessagepdf'])->name('whatsapp.sendpdf');
 
     Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);
@@ -590,6 +592,15 @@ Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'han
 
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
+
+// routes/web.php
+Route::get('/whatsapp/send', function() {
+    $clients = \App\Models\Client::all();
+    return view('whatsapp.send', compact('clients'));
+})->name('whatsapp.send');
+
+Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
+Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
 
 require __DIR__ . '/auth.php';
 

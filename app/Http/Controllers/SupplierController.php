@@ -169,7 +169,7 @@ class SupplierController extends Controller
     {
         $clientId = config('services.magic-holiday.client-id');
         $clientSecret = config('services.magic-holiday.client-secret');
-        $tokenUrl = config('services.magic-holiday.token_url');
+        $tokenUrl = config('services.magic-holiday.token-url');
         $redirectUri = route('suppliers.magic-callback');
 
         $code = $request->input('code');
@@ -294,7 +294,7 @@ class SupplierController extends Controller
 
     public function getClientCredential(array $scopes)
     {
-        $tokenUrl = config('services.magic-holiday.token_url');
+        $tokenUrl = config('services.magic-holiday.token-url');
 
         $data = [
             'client_id' => config('services.magic-holiday.client-id'),
@@ -304,7 +304,7 @@ class SupplierController extends Controller
         ];
 
         Log::channel('magic_holidays')->info('Credential Request', [
-            'token_url' => $tokenUrl,
+            'token-url' => $tokenUrl,
             'data' => $data
         ]);
 

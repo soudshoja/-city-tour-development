@@ -235,7 +235,7 @@ class getMagicHolidayReservationList extends Command
         string $clientSecret,
         array $scopes
     ) {
-        $tokenUrl = config('services.magic-holiday.token_url');
+        $tokenUrl = config('services.magic-holiday.token-url');
 
         $data = [
             'client_id' => $clientId,
@@ -245,7 +245,7 @@ class getMagicHolidayReservationList extends Command
         ];
 
         Log::channel('magic_holidays')->info('Credential Request', [
-            'token_url' => $tokenUrl,
+            'token-url' => $tokenUrl,
             'data' => $data
         ]);
 

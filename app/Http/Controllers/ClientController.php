@@ -93,32 +93,52 @@ class ClientController extends Controller
         ]);
 
         try {
+            DB::beginTransaction();
+
             $client = Client::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'status' => $request->status,
+                'status' => 'active',
                 'phone' => $request->dial_code . $request->phone,
                 'date_of_birth' => $request->date_of_birth,
                 'address' => $request->address,
                 'civil_no' => $request->civil_no,
-                'status' => 'active',
                 'passport_no' => $request->passport_no,
                 'agent_id' => $request->agent_id,
             ]);
-        } catch (Exception $e) {
-            logger('Error creating client: ' . $e->getMessage());
+
+            if ($request->filled('task_id')) {
+                $task = Task::findOrFail($request->task_id);
+
+                // Link client
+                $task->client_id = $client->id;
+                $task->client_name = $client->name;
+
+                // Attempt to auto-enable
+                if (!$task->enabled && $task->is_complete) {
+                    $task->enabled = true;
+                }
+
+                $task->save();
+            }
+
+            DB::commit();
+
+            return [
+                'status' => 'success',
+                'message' => 'Client created and task updated.',
+                'data' => $client,
+                'task_id' => $request->task_id,
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            logger('Error in storeProcess(): ' . $e->getMessage());
 
             return [
                 'status' => 'error',
-                'message' => 'Failed to create client',
+                'message' => 'Failed to create client and update task.',
             ];
         }
-
-        return [
-            'status' => 'success',
-            'message' => 'Client created successfully',
-            'data' => $client,
-        ];
     }
 
     public function store(Request $request)

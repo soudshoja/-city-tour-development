@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('agents', function (Blueprint $table) {
-            $table->string('amadeus_id')->unique()->change();
+            $table->string('amadeus_id')->unique()->nullable()->change();
         });
     }
 
     public function down(): void
     {
         Schema::table('agents', function (Blueprint $table) {
-            $table->string('amadeus_id')->unique(false)->change();
+            $table->string('amadeus_id')->unique(false)->nullable()->change();
         });
     }
 };

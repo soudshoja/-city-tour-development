@@ -1,93 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Schema;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class TaskFlightDetail extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'task_id',
-        'farebase',
-        'departure_time',
-        'country_id_from',
-        'airport_from',
-        'terminal_from',
-        'arrival_time',
-        'duration_time',
-        'country_id_to',
-        'airport_to',
-        'terminal_to',
-        'airline_id',
-        'flight_number',
-        'ticket_number',    
-        'class_type',
-        'baggage_allowed',
-        'equipment',
-        'flight_meal',
-        'seat_no',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'departure_time' => 'datetime: H:i',
-            'arrival_time' => 'datetime: H:i',
-            'created_at' => 'datetime: Y-m-d',
-            'updated_at' => 'datetime: Y-m-d',
-        ];
-    }
-
-    public function getDurationByCalculateAttribute()
-    {
-        $durationInMinutes = $this->departure_time->diffInMinutes($this->arrival_time);
-        $hours = floor($durationInMinutes / 60);
-        $minutes = $durationInMinutes % 60;
-        return sprintf('%02d:%02d', $hours, $minutes);
-    }
-
-    public function getDeparturePlaceTimeAttribute()
-    {
-        return $this->countryFrom->name . ' (' . $this->airport_from . ') - ' . $this->departure_time->format('Y-m-d g:i A');
-    }
-
-    public function getArrivalPlaceTimeAttribute()
-    {
-        return $this->countryTo->name . ' (' . $this->airport_to . ') - ' . $this->arrival_time->format('Y-m-d g:i A');
-    }
-
-    public function getReadableDepartureTimeAttribute()
-    {
-        return $this->departure_time->format('F j, Y g:i A');
-    }
-
-    public function getReadableTimeRangeAttribute()
-    {
-        return $this->departure_time->format('g:i A') . ' - ' . $this->arrival_time->format('g:i A');
-    }
-
-    public function countryFrom()
-    {
-        return $this->belongsTo(Country::class, 'country_id_from');
-    }
-
-    public function countryTo()
-    {
-        return $this->belongsTo(Country::class, 'country_id_to');
-    }
-
-    public function task()
-    {
-        return $this->belongsTo(Agent::class, 'task_id');
-    }
-
-
-}
-
-class TaskFlightDetailSchema
+class TaskFlightSchema
 {
     public static function getSchema()
     {
@@ -96,91 +11,109 @@ class TaskFlightDetailSchema
                 'type' => 'float',
                 'description' => 'Fare basis of the flight.',
                 'example' => '20.00',
+                'default' => 0.0,
             ],
             'departure_time' => [
                 'type' => 'datetime',
                 'description' => 'Departure time of the flight.',
                 'example' => '2024-10-16 14:00:00',
+                'default' => null,
             ],
             'country_id_from' => [
                 'type' => 'integer',
                 'description' => 'Location of departure, must be a country ID.',
                 'example' => 'Kuwait',
+                'default' => null,
             ],
             'airport_from' => [
                 'type' => 'string',
                 'description' => 'Airport code or name for departure.',
                 'example' => 'KWI',
+                'default' => '',
             ],
             'terminal_from' => [
                 'type' => 'string',
                 'description' => 'Departure terminal.',
                 'example' => '1',
+                'default' => '',
             ],
             'arrival_time' => [
                 'type' => 'datetime',
                 'description' => 'Arrival time of the flight.',
                 'example' => '2024-10-16 16:00:00',
+                'default' => null,
             ],
             'duration_time' => [
                 'type' => 'string',
                 'description' => 'Duration of the flight in Xh Ym format (e.g., 2h 5m, 1h 45m, 3h).',
                 'example' => '2h 5m',
+                'default' => '',
             ],
             'country_id_to' => [
                 'type' => 'integer',
                 'description' => 'Location of arrival, must be a country ID.',
                 'example' => 'Singapore',
+                'default' => null,
             ],
             'airport_to' => [
                 'type' => 'string',
                 'description' => 'Airport code or name for arrival.',
                 'example' => 'SIN',
+                'default' => '',
             ],
             'terminal_to' => [
                 'type' => 'string',
                 'description' => 'Arrival terminal.',
                 'example' => '1',
+                'default' => '',
             ],
             'airline_id' => [
                 'type' => 'integer',
                 'description' => 'Airline ID.',
                 'example' => 'Kuwait Airways',
+                'default' => null,
             ],
             'flight_number' => [
                 'type' => 'string',
                 'description' => 'Flight number.',
                 'example' => 'KU-123',
+                'default' => '',
             ],
             'class_type' => [
                 'type' => 'string',
                 'description' => 'Class type of the flight.',
                 'example' => 'economy',
+                'default' => '',
             ],
             'baggage_allowed' => [
                 'type' => 'string',
                 'description' => 'Baggage allowance.',
                 'example' => 'baggage allowed',
+                'default' => '',
             ],
             'equipment' => [
                 'type' => 'string',
                 'description' => 'Equipment used in the flight.',
                 'example' => 'equipment',
+                'default' => '',
             ],
             'ticket_number' => [
                 'type' => 'string',
                 'description' => 'Flight ticket number.',
                 'example' => '3580878589',
+                'default' => '',
             ],
             'flight_meal' => [
                 'type' => 'string',
                 'description' => 'Meal options during the flight.',
                 'example' => 'flight meal',
+                'default' => '',
             ],
             'seat_no' => [
                 'type' => 'string',
                 'description' => 'Seat number.',
                 'example' => 'seat no',
+                'default' => '',
             ],
         ];
     }
@@ -195,4 +128,18 @@ class TaskFlightDetailSchema
 
         return $example;
     }
+
+    public static function normalize(array $input)
+    {
+        $schema = static::getSchema();
+        $normalized = [];
+        foreach ($schema as $field => $meta) {
+            $normalized[$field] = array_key_exists($field, $input)
+                ? $input[$field]
+                : ($meta['default'] ?? $meta['example'] ?? null);
+        }
+        return $normalized;
+    }
+
 }
+

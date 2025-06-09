@@ -195,10 +195,6 @@ class TaskController extends Controller
             ->where('company_id', $validatedData['company_id'])
             ->where('status', $validatedData['status']);
 
-        if (isset($validatedData['status']) && $validatedData['status'] !== 'refund') {
-            $queryChkExistTask->where('status', $validatedData['status']);
-        }
-
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
@@ -219,7 +215,7 @@ class TaskController extends Controller
 
         $penaltyFee = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
 
-        if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void') {
+        if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void' || $validatedData['status'] == 'emd') {
             $originalTask = Task::where('reference', $validatedData['reference'])
                 ->where('supplier_id', $validatedData['supplier_id'])
                 ->where('company_id', $validatedData['company_id'])
@@ -230,7 +226,7 @@ class TaskController extends Controller
                 Log::warning('Original task not found for reference: ' , $validatedData);
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Original task not found',
+                    'message' => 'Original task not found. Task status: ' . $validatedData['status'],
                 ], 404);
             }
 
@@ -899,7 +895,7 @@ class TaskController extends Controller
 
             $newRequest->merge([
                 'enabled' => false,
-                'agent_id' => $request->agent_id,
+                'agent_id' => (int)$request->agent_id,
                 'supplier_id' => $supplier->id,
                 'company_id' => $companyId,
                 'refund_date' => $taskData['refund_date'] ?? null,
@@ -933,7 +929,7 @@ class TaskController extends Controller
 
                 $responses = [
                     'status' => 'error',
-                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . '. All previously saved tasks have been rolled back.',
+                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . ': ' . $response['message'] ?? 'Unknown error',
                     'error_detail' => $response['message'] ?? 'Unknown error',
                     'success_tasks' => array_map(function ($t) {
                         return $t->reference;
@@ -949,14 +945,14 @@ class TaskController extends Controller
                 }
 
             }
+            $responses = [
+                'status' => 'success',
+                'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
+                    return $t->reference;
+                }, $createdTasks)),
+                'created_tasks' => $createdTasks,
+            ];
         }
-        $responses = [
-            'status' => 'success',
-            'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
-                return $t->reference;
-            }, $createdTasks)),
-            'created_tasks' => $createdTasks,
-        ];
 
         return $responses;
     }

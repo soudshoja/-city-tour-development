@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <div id="payment_gateway_section"
+    <div id="payment_gateway_section_chat"
         class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
@@ -379,11 +379,12 @@
                         <label for="dial_code" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                             Country Code
                         </label>
-                        <select name="dial_code" id="dial_code" class="w-full px-3 border rounded-md pb-2 appearance-none ">
+                        <select name="dial_code" id="dial_code"
+                            class="w-full px-3 border rounded-md pb-2 appearance-none ">
                             @foreach ($countries as $country)
-                            <option value="{{ $country->dialing_code }}">
-                                {{ $country->dialing_code }} ({{ $country->name }})
-                            </option>
+                                <option value="{{ $country->dialing_code }}">
+                                    {{ $country->dialing_code }} ({{ $country->name }})
+                                </option>
                             @endforeach
                             <!-- Add more country codes as needed -->
                         </select>
@@ -436,7 +437,7 @@
                         <select id="agent_idChat" name="agent_id" required class="w-full p-2 border rounded-md"
                             placeholder="Select Agent">
                             @foreach ($agents as $agent)
-                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -944,7 +945,7 @@
 
         console.log(paymentType);
         if (paymentType === 'full') {
-            document.getElementById('payment_gateway_section').classList.remove('hidden');
+            document.getElementById('payment_gateway_section_chat').classList.remove('hidden');
         } else if (paymentType === 'partial') {
             document.getElementById('paymentModal1Chat').classList.remove('hidden');
         } else if (paymentType === 'split') {
@@ -1464,9 +1465,9 @@
                                     <p>Status: ${client.status}</p>
                                 `;
 
-                            clientDOB = client.date_of_birth ? 
+                            clientDOB = client.date_of_birth ?
                                 client.date_of_birth.replace(/\//g, '-') : '';
-                            
+
                             // Populate other form fields
                             document.getElementById('chatClientForm').value = "update";
                             document.getElementById('clientId').value = client.id || '';

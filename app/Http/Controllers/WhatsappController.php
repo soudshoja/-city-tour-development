@@ -307,7 +307,7 @@ class WhatsappController extends Controller
 
     private function downloadMedia($mediaId)
     {
-        $downloadScriptUrl = "http://citytravelers.co/city-tour/whatsapp_webhook/download_media.php?media_id=" . urlencode($mediaId);
+        $downloadScriptUrl = "https://tour.citycommerce.group/whatsapp_webhook/download_media.php?media_id=" . urlencode($mediaId);
         
         $response = Http::timeout(20)->get($downloadScriptUrl);
 
@@ -333,11 +333,10 @@ class WhatsappController extends Controller
             'message' => $request->message,
         ];
 
-        // Send using Laravel Http client
         $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'Token' => '649b57775b72424de53d3d21baf8106a69a8c791bfebfb50959f5aa222aeab38d81e3023739f4dfd',
-        ])->post('https://api.resayil.io/v1/messages', $payload);
+            'Content-Type'  => 'application/json',
+            'Token' => config('services.whatsapp.token'),
+        ])->post(config('services.whatsapp.url') . '/messages', $payload);
 
         // Log the response
         logger('Resayil API Response: ' . $response->body());
@@ -358,7 +357,7 @@ class WhatsappController extends Controller
             'clientid' => 'required|exists:clients,id',
             'invoiceNumber' => 'required|string',
         ]);
-
+        Log::debug('Share Invoice:', $request->all());
         $client = Client::findOrFail($request->clientid);
         $invoiceNumber = $request->invoiceNumber;
 
@@ -366,14 +365,19 @@ class WhatsappController extends Controller
 
         $message = "Hello {$client->name}, here is your invoice link: $invoiceLink";
 
-        // Your Resayil API call logic here, e.g.,
         $response = $this->sendToResayil($client->phone, $message);
 
         if ($response['success'] ?? false) {
-            return back()->with('success', 'Invoice link shared via WhatsApp successfully!');
+            return back()->with('success', 'Invoice link shared in WhatsApp message via Resayil successfully!');
         } else {
+            
+            Log::error('Failed to send WhatsApp message via Resayil', [
+                'response' => $response
+            ]);
+
             return back()->withErrors(['error' => 'Failed to send message.']);
         }
+
     }
 
     public function handleResayilWebhook(Request $request)
@@ -381,7 +385,6 @@ class WhatsappController extends Controller
         // Log incoming webhook data for debugging
         Log::debug('Resayil Webhook Received:', $request->all());
 
-        // Example: Extract relevant data
         $messageId = $request->input('id');
         $phone = $request->input('phone');
         $status = $request->input('status');
@@ -396,8 +399,9 @@ class WhatsappController extends Controller
         $curl = curl_init();
 
         curl_setopt_array($curl, [
-            CURLOPT_URL => "https://api.resayil.io/v1/messages",
+            CURLOPT_URL => config('services.whatsapp.url'),
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_CUSTOMREQUEST => "POST",
             CURLOPT_POSTFIELDS => json_encode([
                 'phone' => $phone,
@@ -405,7 +409,7 @@ class WhatsappController extends Controller
             ]),
             CURLOPT_HTTPHEADER => [
                 "Content-Type: application/json",
-                "Token: " . config('services.resayil.api_key'), 
+                "Token: " . config('services.whatsapp.token'), 
             ],
         ]);
 
@@ -414,18 +418,27 @@ class WhatsappController extends Controller
         curl_close($curl);
 
         if ($err) {
-            return ['success' => false, 'error' => $err];
+            return [
+                'success' => false,
+                'error' => $err
+            ];
         } else {
             $data = json_decode($response, true);
-            // Check Resayil response success status here accordingly
-            if (!empty($data['status']) && $data['status'] === 'success') {
+
+            // Log the full API response for debugging
+            Log::debug('Resayil API Response:', $data ?? []);
+
+            // Success condition — normally Resayil returns "status": "queued"
+            if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
                 return ['success' => true];
             }
-            return ['success' => false, 'response' => $data];
+
+            return [
+                'success' => false,
+                'response' => $data
+            ];
         }
     }
-
-
 
     
 }

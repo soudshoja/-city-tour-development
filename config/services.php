@@ -42,8 +42,8 @@ return [
     ],
 
     'myfatoorah' => [
-        'api_key' => env('MYFATOORAH_API_KEY'),
-        'base_url' => env('APP_ENV') == 'production' ? env('MYFATOORAH_LIVE_URL') : env('MYFATOORAH_BASE_URL'),
+        'api_key'             => env('APP_ENV') == 'production' ? env('MYFATOORAH_LIVE_KEY') : env('MYFATOORAH_SANDBOX_KEY'),
+        'base_url'            => env('APP_ENV') == 'production' ? env('MYFATOORAH_LIVE_URL') : env('MYFATOORAH_SANDBOX_URL'),
         'test_mode'           => env('MYFATOORAH_TEST_MODE', true),
         'country_iso'         => env('MYFATOORAH_COUNTRY_ISO', 'KWT'),
         'save_card'           => env('MYFATOORAH_SAVE_CARD', false),

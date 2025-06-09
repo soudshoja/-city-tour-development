@@ -31,7 +31,7 @@
             </div>
         </form>
 
-        @if (session('status') === 'code-sent')
+        {{-- @if (session('status') === 'code-sent')
             <div id="verificationModal"
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                 <div class="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-lg w-full max-w-md">
@@ -71,7 +71,7 @@
                     document.getElementById('verificationModal').classList.add('hidden');
                 }
             </script>
-        @endif
+        @endif --}}
 
         {{-- Step 2: After code verified, show password fields --}}
     @else

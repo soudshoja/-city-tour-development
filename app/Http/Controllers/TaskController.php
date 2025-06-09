@@ -46,6 +46,7 @@ class TaskController extends Controller
         $clients = collect();
         $agents = collect();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
+        $countries = Country::all();
 
         $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
             ->withoutGlobalScope('enabled')
@@ -134,7 +135,8 @@ class TaskController extends Controller
                 'types',
                 'queueTasks',
                 'processTask',
-                'companyId'
+                'companyId',
+                'countries'
             ));
         }
 
@@ -149,6 +151,7 @@ class TaskController extends Controller
             'queueTasks',
             'processTask',
             'companyId',
+            'countries'
         ));
     }
 
@@ -192,10 +195,6 @@ class TaskController extends Controller
             ->where('company_id', $validatedData['company_id'])
             ->where('status', $validatedData['status']);
 
-        if (isset($validatedData['status']) && $validatedData['status'] !== 'refund') {
-            $queryChkExistTask->where('status', $validatedData['status']);
-        }
-
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
@@ -216,7 +215,7 @@ class TaskController extends Controller
 
         $penaltyFee = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
 
-        if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void') {
+        if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void' || $validatedData['status'] == 'emd') {
             $originalTask = Task::where('reference', $validatedData['reference'])
                 ->where('supplier_id', $validatedData['supplier_id'])
                 ->where('company_id', $validatedData['company_id'])
@@ -227,7 +226,7 @@ class TaskController extends Controller
                 Log::warning('Original task not found for reference: ' , $validatedData);
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Original task not found',
+                    'message' => 'Original task not found. Task status: ' . $validatedData['status'],
                 ], 404);
             }
 
@@ -896,7 +895,7 @@ class TaskController extends Controller
 
             $newRequest->merge([
                 'enabled' => false,
-                'agent_id' => $request->agent_id,
+                'agent_id' => (int)$request->agent_id,
                 'supplier_id' => $supplier->id,
                 'company_id' => $companyId,
                 'refund_date' => $taskData['refund_date'] ?? null,
@@ -930,7 +929,7 @@ class TaskController extends Controller
 
                 $responses = [
                     'status' => 'error',
-                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . '. All previously saved tasks have been rolled back.',
+                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . ': ' . $response['message'] ?? 'Unknown error',
                     'error_detail' => $response['message'] ?? 'Unknown error',
                     'success_tasks' => array_map(function ($t) {
                         return $t->reference;
@@ -946,14 +945,14 @@ class TaskController extends Controller
                 }
 
             }
+            $responses = [
+                'status' => 'success',
+                'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
+                    return $t->reference;
+                }, $createdTasks)),
+                'created_tasks' => $createdTasks,
+            ];
         }
-        $responses = [
-            'status' => 'success',
-            'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
-                return $t->reference;
-            }, $createdTasks)),
-            'created_tasks' => $createdTasks,
-        ];
 
         return $responses;
     }
@@ -1832,5 +1831,159 @@ class TaskController extends Controller
             'message' => 'Unpaid void task reversal journal completed.',
             'data' => $originalTask,
         ], 201);
+    }
+
+    public function clientPassport(Request $request)
+    {
+        // Ensure the request contains a file
+        if ($request->hasFile('file')) {
+            try {
+
+                $file = $request->file('file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('uploads', $fileName, 'public');
+
+                // Get the file path
+                $imagePath = $file->getRealPath();  // Path to the temporary uploaded file
+                $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+                // Process the image using OCR
+
+                Log::info('extension:', ['extension' => $extension]);
+                Log::info('extension:', ['extension' => $imagePath]);
+
+                if ($extension === 'pdf') {
+
+                    $text = $this->extractTextFromPdf($filePath);
+                    if ($text === null) {
+                        // Extract images from the PDF and process them via OCR
+                        $images = $this->extractImagesFromPdf($filePath);
+                        Log::info('images:', ['images' => $images]);
+                        if (empty($images)) {
+                            Log::info('No images found, converting PDF to images...');
+                            $images = $this->pdfToImage($filePath);
+                        }
+
+
+                        if (empty($images)) {
+                            return response()->json(['error' => 'No images found or generated for OCR.'], 400);
+                        }
+
+                        $ocrResponse = [];
+                        foreach ($images as $image) {
+                            $ocrText = $this->processImage($image);
+                            if ($ocrText) {
+                                $ocrResponse[] = ['ParsedText' => $ocrText];
+                            }
+                        }
+
+                        if (empty($ocrResponse)) {
+                            logger('No text extracted from images.', $ocrResponse);
+                            throw new Exception('Failed to extract text from the images in the PDF.');
+                        }
+
+                    } else {
+                        // PDF contains text, use the extracted text
+                        $ocrResponse = ['ParsedResults' => [['ParsedText' => $text]]];
+                    }
+
+                } else if (in_array($extension, ['png', 'jpg', 'jpeg'])) {
+                    $ocrResponse = $this->processImage($imagePath);
+                } else {
+                    throw new Exception('Unsupported file type. Please upload a PDF or image file.');
+                }
+
+                // Check if the OCR response is a JsonResponse object
+                if ($ocrResponse instanceof \Illuminate\Http\JsonResponse) {
+                    $ocrResponse = $ocrResponse->getData(true);  // Convert JsonResponse to associative array
+                }
+
+                Log::info('ocrResponse:', ['ocrResponse' => $ocrResponse]);
+                // Check if OCR response contains parsed text
+                if (!isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                    throw new Exception('Failed to extract text from the image.');
+                }
+
+
+                // Check if the OCR response contains the required data
+                if (isset($ocrResponse['ParsedResults'][0]['ParsedText'])) {
+                    $parsedText = $ocrResponse['ParsedResults'][0]['ParsedText'];
+
+                    // Pass the parsed text to OpenAI for passport data extraction
+                    $prompt = "
+                            You are an assistant for a travel agency. You need to extract passport details from the uploaded content. The passport details should include the following fields:
+                        
+                            - `passport_no`: Passport number or Passport No.
+                            - `civil_no`: Civil number or Civil No.
+                            - `name`: Full name as per the passport.
+                            - `nationality`: Nationality
+                            - `date_of_birth`: Date of birth
+                            - `date_of_issue`: Date of issue
+                            - `date_of_expiry`: Date of expiry, format (yyyy-MM-dd)
+                            - `place_of_birth`: Place of birth
+                            - `place_of_issue`: Place of issue
+                        
+                            only pass me the data extracted in JSON format.
+                            ";
+
+                    $messages = [
+                        [
+                            'role' => 'system',
+                            'content' => $prompt,
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $parsedText,
+                        ]
+                    ];
+
+
+                    $response = $this->aiManager->chat($messages);
+                    Log::info('response:', ['response' => $response]);
+
+                    // Check if $response is a JsonResponse object
+                    if ($response instanceof \Illuminate\Http\JsonResponse) {
+                        $response = $response->getData(true); // Convert to an associative array
+                    }
+
+                    // Check if the OpenAI response contains the required data
+                    if (isset($response['choices'][0]['message']['content'])) {
+                        $content = $response['choices'][0]['message']['content'];
+                        // Update the client's passport details
+                        $passportData = json_decode($content, true);
+
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Client retrieved successfully!',
+                            'data' => $passportData,
+                        ], 201);
+
+                    } else {
+                        Log::error('Failed to create client: ');
+                        throw new Exception('Failed to get data from OpenAI.');
+                    }
+
+                } else {
+                    Log::error('Failed to create client: ');
+                    throw new Exception('Failed to extract passport data from the image.');
+                }
+
+            } catch (Exception $e) {
+                // Handle exceptions and errors
+                Log::error('Failed to create client: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error registering client: ',
+                    'errors' => $e->getMessage(),
+                ], 400);
+            }
+        } else {
+            // Handle case where no file is uploaded
+            Log::error('Failed to create client');
+            return response()->json([
+                'success' => false,
+                'message' => 'Error registering client',
+                'errors' => 'No file uploaded.',
+            ], 400);
+        }
     }
 }

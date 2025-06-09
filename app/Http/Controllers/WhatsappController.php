@@ -368,7 +368,7 @@ class WhatsappController extends Controller
         $response = $this->sendToResayil($client->phone, $message);
 
         if ($response['success'] ?? false) {
-            return back()->with('success', 'Invoice link shared in WhatsApp message via Resayil successfully!');
+            return back()->with('success', 'Invoice link successfully shared via WhatsApp message through Resayil!');
         } else {
             
             Log::error('Failed to send WhatsApp message via Resayil', [

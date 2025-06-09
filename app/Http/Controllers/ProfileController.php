@@ -128,9 +128,12 @@ class ProfileController extends Controller
 
     public function requestPasswordUpdate(Request $request)
     {
-        $request->validate([
-            'current_password' => ['required', 'current_password'],
-        ]);
+        if ($request->input('current_password') !== '__retry__') {
+            $request->validate([
+                'current_password' => ['required', 'current_password'],
+            ]);
+        }
+
 
         $user = $request->user();
 

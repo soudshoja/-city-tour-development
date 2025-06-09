@@ -27,7 +27,6 @@ class DatabaseSeeder extends Seeder
             EntitySeeder::class,
             AgentPermissionSeeder::class,
             CurrencySeeder::class,
-            PaymentMethodSeeder::class,
         ]);
     }
 }

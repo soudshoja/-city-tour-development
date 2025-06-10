@@ -1054,10 +1054,12 @@ class PaymentController extends Controller
             : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
 
         $gatewayFee = $chargeResult['fee'];
+        $selfCharge = $chargeResult['self_charge'];
         $finalAmount = $chargeResult['finalAmount'];
         $paidBy = $chargeResult['paid_by'];
+        $chargeType = $chargeResult['charge_type'];
 
-        return view('payment.link.show', compact('payment', 'gatewayFee', 'finalAmount', 'paidBy'));
+        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'chargeType', 'selfCharge'));
     }
 
     public function paymentLinkInitiate(Request $request)

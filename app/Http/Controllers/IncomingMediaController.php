@@ -91,24 +91,25 @@ class IncomingMediaController extends Controller
 
                 Log::info("Saved incoming media from {$phone}, media_id: {$mediaId}");
 
-                $clientChatController = new ChatController();
-                $response = $clientChatController->handleFileUpload($request);
+                // $clientChatController = new ChatController();
+                // $response = $clientChatController->handleFileUpload($request);
 
-                if($response['status'] == 'error') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => $response['message'],
-                    ], 400);
-                }
-
+                // if($response['status'] == 'error') {
+                //     return response()->json([
+                //         'success' => false,
+                //         'message' => $response['message'],
+                //     ], 400);
+                // }
 
                 // // Optional: Auto-reply after saving image
-                // try {
-                //     app(\App\Services\ResayilService::class)->sendToResayil($phone, "We have received your image, thank you.");
-                //     Log::info("Sent auto-reply to {$phone}");
-                // } catch (\Exception $e) {
-                //     Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
-                // }
+                try {
+                    $clientWAController = new WhatsappController();
+                    $clientWAController->sendToResayil($phone, "We have received your image, thank you.");
+                    Log::info("Sent auto-reply to {$phone}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
+                }
+                
             } else {
                 Log::info("No media in message from {$phone}.");
             }

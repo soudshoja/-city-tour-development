@@ -59,5 +59,8 @@ class Charge extends Model
         return $this->belongsTo(Account::class, 'acc_fee_bank_id');
     }
 
-
+    public function methods()
+    {
+        return $this->hasMany(PaymentMethod::class, 'type');
+    }
 }

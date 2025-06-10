@@ -12,59 +12,54 @@ class IncomingMediaController extends Controller
     {
         Log::debug('Incoming Resayil Webhook:', $request->all());
 
-        // Extract customer phone number
-        $phone = $request->input('data.fromNumber')
-            ?? $request->input('phone')
-            ?? $request->input('messages.0.from');
+        try {
+            // Extract customer phone number
+            $phone = $request->input('data.fromNumber')
+                ?? $request->input('phone')
+                ?? $request->input('messages.0.from');
 
-        // Extract agent phone and email (Resayil device format)
-        $agentPhone = $request->input('device.phone') ?? null;
-        $agentEmail = $request->input('device.alias') ?? null;
+            // Extract agent phone and email (Resayil device format)
+            $agentPhone = $request->input('device.phone') ?? null;
+            $agentEmail = $request->input('device.alias') ?? null;
 
-        Log::info("Agent Phone: {$agentPhone}, Agent Email (alias): {$agentEmail}");
+            Log::info("Agent Phone: {$agentPhone}, Agent Email (alias): {$agentEmail}");
 
-        $mediaData = $request->input('media');
+            // Extract media data — support both formats (root or data.media)
+            $mediaData = $request->input('media') ?? $request->input('data.media');
 
-        if ($mediaData) {
-
-            Log::info("Media section found in webhook.");
-
-            $mediaId = $mediaData['id'] ?? null;
-            $mimeType = $mediaData['mime'] ?? null;
-            $caption = $mediaData['caption'] ?? null;
-            $receivedAt = $request->input('data.date') ?? now();
-            $filename = $mediaData['filename'] ?? null;
-
-            // Build media URL
             $downloadLink = $mediaData['links']['download'] ?? null;
 
-            // BASE URL 
-            $baseUrl = 'https://api.resayil.com'; 
-
-            $mediaUrl = null;
             if ($downloadLink) {
+
+                Log::info("Media section with download link found in webhook.");
+
+                $mediaId = $mediaData['id'] ?? null;
+                $mimeType = $mediaData['mime'] ?? null;
+                $caption = $mediaData['caption'] ?? null;
+                $receivedAt = $request->input('data.date') ?? now();
+                $filename = $mediaData['filename'] ?? null;
+
+                // BASE URL 
+                $baseUrl = 'https://api.resayil.com'; 
+
                 $mediaUrl = rtrim($baseUrl, '/') . $downloadLink;
                 Log::info("Resolved media download URL: {$mediaUrl}");
-            } else {
-                Log::warning("No download link found in media data.");
-            }
 
-            // Allowed mime types
-            $allowedMimeTypes = [
-                'image/jpeg',
-                'image/jpg',
-                'image/png',
-            ];
+                // Allowed mime types
+                $allowedMimeTypes = [
+                    'image/jpeg',
+                    'image/jpg',
+                    'image/png',
+                ];
 
-            if (!in_array($mimeType, $allowedMimeTypes)) {
-                Log::warning("Unsupported media type received from {$phone}: {$mimeType}. Skipping.");
-                return response()->json(['message' => 'Unsupported media type.'], 200);
-            }
+                if (!in_array($mimeType, $allowedMimeTypes)) {
+                    Log::warning("Unsupported media type received from {$phone}: {$mimeType}. Skipping.");
+                    return response()->json(['message' => 'Unsupported media type.'], 200);
+                }
 
-            // Download and store the file
-            $localPath = null;
+                // Download and store the file
+                $localPath = null;
 
-            if ($mediaUrl) {
                 try {
                     // Generate unique filename
                     $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
@@ -91,47 +86,56 @@ class IncomingMediaController extends Controller
                 } catch (\Exception $e) {
                     Log::error("Error downloading media: " . $e->getMessage());
                 }
-            }
 
-            // Save to database
-            try {
-                IncomingMedia::create([
-                    'phone'       => $phone,
-                    'media_id'    => $mediaId,
-                    'mime_type'   => $mimeType,
-                    'caption'     => $caption,
-                    'received_at' => \Carbon\Carbon::parse($receivedAt),
-                    'file_path'   => $localPath,
-                    'agent_phone' => $agentPhone,
-                    'agent_email' => $agentEmail,
-                ]);
+                // Save to database
+                try {
+                    IncomingMedia::create([
+                        'phone'       => $phone,
+                        'media_id'    => $mediaId,
+                        'mime_type'   => $mimeType,
+                        'caption'     => $caption,
+                        'received_at' => \Carbon\Carbon::parse($receivedAt),
+                        'file_path'   => $localPath,
+                        'agent_phone' => $agentPhone,
+                        'agent_email' => $agentEmail,
+                    ]);
 
-                Log::info("Saved incoming media from {$phone}, media_id: {$mediaId}");
-            } catch (\Exception $e) {
-                Log::error("Error saving IncomingMedia: " . $e->getMessage());
-            }
-
-            // Auto-reply
-            try {
-                $to = $request->input('data.from') ?? $request->input('from') ?? null;
-
-                if ($to) {
-                    $clientWAController = new WhatsappController();
-                    $clientWAController->sendToResayil($to, "We have received your image, thank you.");
-                    Log::info("Sent auto-reply to {$to}");
-                } else {
-                    Log::warning("Cannot send auto-reply: 'from' not found in webhook.");
+                    Log::info("Saved incoming media from {$phone}, media_id: {$mediaId}");
+                } catch (\Exception $e) {
+                    Log::error("Error saving IncomingMedia: " . $e->getMessage());
                 }
 
-            } catch (\Exception $e) {
-                Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
+                // Auto-reply
+                try {
+                    $to = $request->input('data.from') ?? $request->input('from') ?? null;
+
+                    if ($to) {
+                        $clientWAController = new WhatsappController();
+                        $clientWAController->sendToResayil($to, "We have received your image, thank you.");
+                        Log::info("Sent auto-reply to {$to}");
+                    } else {
+                        Log::warning("Cannot send auto-reply: 'from' not found in webhook.");
+                    }
+
+                } catch (\Exception $e) {
+                    Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
+                }
+
+            } else {
+                // No media with download link
+                if ($mediaData) {
+                    Log::info("Media data found, but no download link present.");
+                } else {
+                    Log::info("No media found in this webhook.");
+                }
             }
 
-        } else {
-            Log::info("No media found in this webhook.");
+        } catch (\Exception $e) {
+            Log::error("Unexpected error in handleResayilWebhook: " . $e->getMessage());
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
+
 
 }

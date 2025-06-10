@@ -55,7 +55,7 @@ class ChargeService
             $finalAmount = $amount + $fee;
             $netReceived = $amount;
         } else{
-            $finalAmount = $amount + $fee;
+            $finalAmount = $amount;
             $netReceived = $amount - $fee;
         }
 
@@ -106,14 +106,17 @@ class ChargeService
 
         if($paidBy === 'Client') {
             $finalAmount = $amount + $fee;
-            $netReceived = $amount;        
+            $netReceived = $amount + $selfServiceCharge;        
         } else {
-            $finalAmount = $amount + $fee;
+            $finalAmount = $amount;
             $netReceived = $amount - $fee;
         }
 
         Log::info('MyFatoorah Gateway charge calculated from PaymentMethod table', [
-            'fee' => $fee,
+            'amount' => $amount,
+            'api_service_charge' => $apiServiceCharge,
+            'self_charge' => $selfCharge,
+            'total_fee' => $fee,
             'finalAmount' => $finalAmount,
             'netReceived' => $netReceived,
             'paid_by' => $paidBy,
@@ -122,6 +125,7 @@ class ChargeService
         return [
             'finalAmount'  => $finalAmount,
             'fee'          => $fee,
+            'self_charge'  => $selfCharge,
             'paid_by'      => $paidBy,
             'netReceived'  => $netReceived,
             'charge_type'  => $selfChargeType,

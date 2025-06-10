@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <div id="payment_gateway_section_chat"
+    <div id="payment_gateway_section"
         class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
@@ -336,7 +336,7 @@
     </div>
 
     <div id="passport">
-        <input type="file" id="passport-upload-input" accept="image/*,application/pdf"
+        <input type="file" id="passport-upload-input-chat" accept="image/*,application/pdf"
             class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             hidden>
         <div id="file-preview-container" class="mt-4"></div> <!-- For image preview -->
@@ -945,7 +945,7 @@
 
         console.log(paymentType);
         if (paymentType === 'full') {
-            document.getElementById('payment_gateway_section_chat').classList.remove('hidden');
+            document.getElementById('payment_gateway_section').classList.remove('hidden');
         } else if (paymentType === 'partial') {
             document.getElementById('paymentModal1Chat').classList.remove('hidden');
         } else if (paymentType === 'split') {
@@ -1402,7 +1402,7 @@
         // Handle button clicks
         $('#upload-passport-btn').on('click', function() {
             // Open file upload dialog
-            $('#passport-upload-input').click(); // Assuming a hidden file input exists
+            $('#passport-upload-input-chat').click(); // Assuming a hidden file input exists
         });
 
         $('#fill-form-btn').on('click', function() {
@@ -1416,7 +1416,7 @@
         // createClient.show();
     }
 
-    $('#passport-upload-input').on('change', function(event) {
+    $('#passport-upload-input-chat').on('change', function(event) {
         const file = event.target.files[0];
 
         // Check if a file is selected

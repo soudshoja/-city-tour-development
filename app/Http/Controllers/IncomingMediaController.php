@@ -23,10 +23,11 @@ class IncomingMediaController extends Controller
 
         Log::info("Agent Phone: {$agentPhone}, Agent Email (alias): {$agentEmail}");
 
-        // Check if media exists
-        if ($request->has('media')) {
+        $mediaData = $request->input('media');
 
-            $mediaData = $request->input('media');
+        if ($mediaData) {
+
+            Log::info("Media section found in webhook.");
 
             $mediaId = $mediaData['id'] ?? null;
             $mimeType = $mediaData['mime'] ?? null;
@@ -73,7 +74,7 @@ class IncomingMediaController extends Controller
 
                     $context = stream_context_create([
                         'http' => [
-                            'header' => 'Authorization: Bearer ' . config('services.resayil.api_token', ''),
+                            'header' => 'Authorization: Bearer ' . config('services.whatsapp.token', ''),
                         ],
                     ]);
 

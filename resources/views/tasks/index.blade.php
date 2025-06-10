@@ -71,38 +71,8 @@
             border-radius: 50%;
         }
     </style>
-    <!-- @if ($queueTasks->isNotEmpty())
-<div class="flex flex-col gap-5 w-full">
-        <h2 class="text-3xl font-bold">Queue</h2>
-        <div class="flex flex-col gap-2">
-            @foreach ($queueTasks->take(3) as $task)
-<div class="p-2 bg-white dark:bg-gray-700 rounded-md shadow-md mb-2">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ $task->reference }}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-300">{{ $task->agent->name ?? 'No Agent Set' }}</p>
-                    </div> -->
-    <!-- <div>
-                        <a href="javascript:void(0);" class="text-blue-500 dark:text-blue-400" @click="editTaskModal = true">View</a>
-                    </div> -->
-    <!-- </div>
-            </div>
-@endforeach
-            @if ($queueTasks->count() > 3)
-<div class="p-2 rounded-md mb-2 bg-gradient-to-b from-white min-h-10">
-                <div class="flex justify-between items-center">
-                </div>
-            </div>
-@endif
-        </div>
-        <a class="font-semibold hover:text-blue-600" href="{{ route('tasks.queue') }}">View All</a>
-    </div>
-@endif -->
 
     <div class="flex justify-between items-center gap-5 my-3 ">
-
-
-
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Tasks List</h2>
             <div data-tooltip="number of tasks"
@@ -224,7 +194,12 @@
                                             this.chooseMethodModal = false;
                                             this.showUploadForm = true;
                                         },
-                                        openManualForm() {
+                                        openManualForm(taskId, clientName, agentName, agentId, branchName) {
+                                            this.modalTaskId = taskId;
+                                            this.modalClientName = clientName;
+                                            this.modalAgentName = agentName;
+                                            this.modalAgentId = agentId;
+                                            this.modalBranchName = branchName;
                                             this.chooseMethodModal = false;
                                             this.showManualForm = true;
                                         },
@@ -613,8 +588,7 @@
                                                 class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
                                                 <p class="{{ $task->client ?? 'no-client' }}">
                                                     <button
-                                                        @click="openChoose({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
-                                                        class="text-red-600">
+                                                        @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')" >
                                                         {{ $task->client_name ?? 'Not Set' }}
                                                     </button>
 
@@ -829,7 +803,33 @@
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
                                                 </div>
-
+                                                <div
+                                                    id="upload-passport-container"
+                                                    class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
+                                                    ondrop="dropHandler(event);"
+                                                    ondragover="dragOverHandler(event);">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                                        <path d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5" stroke="#1C274C" stroke-width="1.5" />
+                                                        <path d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z" stroke="#1C274C" stroke-width="1.5" />
+                                                    </svg>
+                                                    <input type="file" name="file" id="file-task-passport" class="hidden" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
+                                                    <p id="task-passport-file-name">
+                                                        You can drag and drop a file here
+                                                    </p>
+                                                    <label for="file-task-passport" class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500"
+                                                    >
+                                                        Upload File
+                                                    </label>
+                                                </div>
+                                                <div class="my-2">
+                                                    <button
+                                                        id="task-passport-process-btn"
+                                                        class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
+                                                        disabled>
+                                                        Process File
+                                                    </button>
+                                                </div>
                                                 <!-- Address -->
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
@@ -1217,9 +1217,6 @@
             }));
         });
     });
-</script>
-<script>
-    console.log("Script loaded");
 
     function loadClient() {
         console.log("loadClient() triggered");
@@ -1359,42 +1356,123 @@
     });
 
     const clientForm = document.getElementById("client-formTask");
-    if (clientForm) {
-        clientForm.addEventListener("submit", async function(event) {
-            event.preventDefault();
-            console.log("Client form submission triggered");
 
-            const form = new FormData(this);
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+    const file = document.getElementById('file-task-passport');
+    const fileName = document.getElementById('task-passport-file-name');
+    const taskPassportProcessBtn = document.getElementById('task-passport-process-btn');
 
-            try {
-                const response = await fetch("{{ route('chat.client') }}", {
-                    method: "POST",
-                    headers: {
-                        "Accept": "application/json",
-                        "X-CSRF-TOKEN": csrfToken,
-                    },
-                    body: form,
-                });
+    if (file && fileName && taskPassportProcessBtn) {
+        file.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
 
-                const data = await response.json();
-                console.log("Client creation response:", data);
 
-                if (data.success) {
-                    const client = data.client;
-                    console.log("Client created:", client);
-                    appendMessage("cityTour", `New client created: <span style="color: #ff9800; font-weight: bold;">${client.name}</span>`);
-                    $("#create-client").hide();
-                } else {
-                    console.error("Client creation failed:", data.message);
-                    alert("Error: " + data.message);
-                }
-            } catch (error) {
-                console.error("Client creation fetch error:", error);
-                alert("Fetch error: " + error.message);
-            }
+        taskPassportProcessBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            processFileWithAI();
         });
     } else {
-        console.warn("#client-formTask not found, form submission not initialized");
+        console.warn("Required elements not found: file, fileName, or taskPassportProcessBtn");
+    }
+
+    file.addEventListener('change', (e) => {
+        fileName.textContent = e.target.files[0].name;
+        file.innerHTML = '';
+        let img = document.createElement('img');
+        img.src = URL.createObjectURL(e.target.files[0]);
+        console.log(img.src);
+        img.width = 100;
+        img.height = 100;
+        file.appendChild(img);
+
+        enableButton(taskPassportProcessBtn);
+    });
+
+    dropHandler = (e) => {
+        e.preventDefault();
+        file.files = e.dataTransfer.files;
+        fileName.textContent = e.dataTransfer.files[0].name;
+    }
+
+    dragOverHandler = (e) => {
+        console.log('File in drop area');
+        e.preventDefault();
+    }
+
+    function processFileWithAI() {
+        const fileInput = document.getElementById('file-task-passport');
+        const processBtn = document.getElementById('task-passport-process-btn');
+        if (fileInput.files.length === 0) {
+            alert('Please upload a file first.');
+            return;
+        }
+
+        // Show loading indication and disable button
+        processBtn.disabled = true;
+        processBtn.textContent = 'Processing...';
+        processBtn.classList.add('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch("{{ route('tasks.upload.passport') }}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const client = data.data;
+                    console.log("Extracted client data:", client);
+
+                    const passportInput = document.getElementById('passport_noTask');
+                    if (passportInput) passportInput.value = client.passport_no || '';
+
+                    const civilInput = document.getElementById('civil_noTask');
+                    if (civilInput) civilInput.value = client.civil_no || '';
+
+                    const addressInput = document.getElementById('addressTask');
+                    if (addressInput) addressInput.value = client.address || '';
+
+                    const dobInput = document.querySelector('input[name="date_of_birthTask"]');
+                    if (dobInput && client.date_of_birth) {
+                        dobInput.value = client.date_of_birth.replace(/\//g, '-');
+                    }
+                    // Handle the response data as needed
+                } else {
+                    alert('Error processing file: ' + data.message);
+                    console.error('Error:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing the file.');
+            })
+            .finally(() => {
+                // Restore button state
+                processBtn.disabled = false;
+                processBtn.textContent = 'Process File';
+                processBtn.classList.remove('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
+            });
+    }
+
+    function disableButton(button) {
+        console.log('Disabling button:', button);
+        if (!button.classList.contains('cursor-not-allowed') && !button.classList.contains('opacity-50')) {
+            button.classList.add('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
+        }
+        button.disabled = true;
+    }
+
+    function enableButton(button) {
+        console.log('Enabling button:', button);
+        if (button.classList.contains('cursor-not-allowed') || button.classList.contains('opacity-50')) {
+            button.classList.remove('cursor-not-allowed', 'opacity-50', 'bg-gray-300', 'text-gray-500');
+        }
+        button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full', 'text-sm', 'transition', 'duration-150');
+        button.disabled = false;
     }
 </script>

@@ -14,6 +14,9 @@ class IncomingMedia extends Model
         'mime_type',
         'caption',
         'received_at',
+        'file_path',
+        'agent_phone',
+        'agent_email',
     ];
 
     protected $dates = [

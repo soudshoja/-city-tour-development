@@ -17,7 +17,12 @@ class PaymentMethod extends Model
         'code',
         'type',
         'is_active',
+        'currency',
         'service_charge',
+        'self_charge',
+        'paid_by',
+        'charge_type',
+        'description',
         'image',
     ];
 

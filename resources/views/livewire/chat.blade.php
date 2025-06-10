@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <div id="payment_gateway_section_chat"
+    <div id="payment_gateway_section"
         class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
             <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
@@ -945,7 +945,7 @@
 
         console.log(paymentType);
         if (paymentType === 'full') {
-            document.getElementById('payment_gateway_section_chat').classList.remove('hidden');
+            document.getElementById('payment_gateway_section').classList.remove('hidden');
         } else if (paymentType === 'partial') {
             document.getElementById('paymentModal1Chat').classList.remove('hidden');
         } else if (paymentType === 'split') {

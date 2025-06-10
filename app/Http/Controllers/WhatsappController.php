@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Agent;
+use App\Models\IncomingMedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\Client;
@@ -349,7 +350,6 @@ class WhatsappController extends Controller
         }
     }
 
-
     public function shareInvoice(Request $request)
     {
         //dd($request);
@@ -380,36 +380,110 @@ class WhatsappController extends Controller
 
     }
 
+    // public function handleResayilWebhook(Request $request)
+    // {
+    //     // Log incoming webhook data
+    //     Log::debug('Resayil Webhook Received:', $request->all());
+
+    //     $phone = $request->input('phone') ?? $request->input('messages.0.from');
+
+    //     // Handle button reply if present
+    //     $buttonReplyId = $request->input('interactive.button_reply.id')
+    //         ?? $request->input('messages.0.interactive.button_reply.id');
+
+    //     if ($buttonReplyId) {
+    //         Log::info("User {$phone} replied with button: {$buttonReplyId}");
+
+    //         // Example: auto-reply based on button
+    //         switch ($buttonReplyId) {
+    //             case 'confirm_received':
+    //                 $this->sendToResayil($phone, "✅ Thanks for confirming receipt of your invoice.");
+    //                 break;
+
+    //             case 'need_support':
+    //                 $this->sendToResayil($phone, "🛠️ We are here to help. Please tell us what you need support with.");
+    //                 break;
+
+    //             default:
+    //                 $this->sendToResayil($phone, "Thanks for your response.");
+    //                 break;
+    //         }
+    //     }
+
+    //     return response()->json(['message' => 'Webhook received successfully']);
+    // }
+
+
     public function handleResayilWebhook(Request $request)
     {
-        // Log incoming webhook data for debugging
         Log::debug('Resayil Webhook Received:', $request->all());
 
-        $messageId = $request->input('id');
-        $phone = $request->input('phone');
-        $status = $request->input('status');
-        $deliveryStatus = $request->input('deliveryStatus');
-        $webhookStatus = $request->input('webhookStatus');
+        $phone = $request->input('phone') ?? $request->input('messages.0.from');
+
+        // Check if this is a media (image) message
+        $message = $request->input('messages.0');
+        
+        if ($message && $message['type'] === 'image') {
+            $mediaId = $message['image']['id'] ?? null;
+            $mimeType = $message['image']['mimeType'] ?? null;
+            $caption = $message['image']['caption'] ?? null;
+
+            if ($mediaId) {
+                // Save to DB
+                IncomingMedia::create([
+                    'phone' => $phone,
+                    'media_id' => $mediaId,
+                    'mime_type' => $mimeType,
+                    'caption' => $caption,
+                    'received_at' => now(),
+                ]);
+
+                Log::info("Saved incoming image from {$phone} with media ID {$mediaId}");
+            }
+        }
+
+        // Your existing message + button reply handling here ...
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
 
-    protected function sendToResayil($phone, $message)
+    protected function sendToResayil($phone, $message, $header = null, $footer = null, $buttons = null)
     {
+        $url = config('services.whatsapp.url');
+        $token = config('services.whatsapp.token');
+
+        // Build the payload according to Resayil spec
+        $payload = [
+            'phone' => $phone,
+            'message' => $message,
+        ];
+
+        if ($header) {
+            $payload['header'] = $header;
+        }
+
+        if ($footer) {
+            $payload['footer'] = $footer;
+        }
+
+        if ($buttons && is_array($buttons)) {
+            $payload['buttons'] = $buttons;
+        }
+
+        // Log payload for debugging
+        Log::debug('Sending to Resayil:', $payload);
+
         $curl = curl_init();
 
         curl_setopt_array($curl, [
-            CURLOPT_URL => config('services.whatsapp.url'),
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 30,
             CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => json_encode([
-                'phone' => $phone,
-                'message' => $message,
-            ]),
+            CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => [
                 "Content-Type: application/json",
-                "Token: " . config('services.whatsapp.token'), 
+                "Token: {$token}",
             ],
         ]);
 
@@ -418,17 +492,15 @@ class WhatsappController extends Controller
         curl_close($curl);
 
         if ($err) {
+            Log::error("CURL Error when sending to Resayil: {$err}");
             return [
                 'success' => false,
                 'error' => $err
             ];
         } else {
             $data = json_decode($response, true);
-
-            // Log the full API response for debugging
             Log::debug('Resayil API Response:', $data ?? []);
 
-            // Success condition — normally Resayil returns "status": "queued"
             if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
                 return ['success' => true];
             }
@@ -439,6 +511,7 @@ class WhatsappController extends Controller
             ];
         }
     }
+
 
     
 }

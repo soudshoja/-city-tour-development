@@ -59,6 +59,7 @@ return [
         'url' => env('WHATSAPP_URL'), 
         'phone-number-id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'token' => env('WHATSAPP_TOKEN'),
+        'graph_api_url' => env('WHATSAPP_GRAPH_API_URL', 'https://graph.facebook.com/v22.0'), 
     ],
 
     'open-ai' => [
@@ -77,7 +78,7 @@ return [
         'url' => env('CURRENCY_API_URL'),
         'key' => env('CURRENCY_API_KEY'),
     ],
-    
+
     'magic-holiday' => [
         'url' => env('MAGIC_HOLIDAY_URL'),
         'client-id' => env('MAGIC_HOLIDAY_CLIENT_ID'),

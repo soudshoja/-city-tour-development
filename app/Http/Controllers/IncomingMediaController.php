@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
-use App\Models\Client;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class IncomingMediaController extends Controller
@@ -27,28 +27,26 @@ class IncomingMediaController extends Controller
             $deviceId = $request->input('device.id');
             $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
 
-            $client = new Client();
-
             $url = "https://api.resayil.io/v1/chat/{$deviceId}/chats/{$chatWid}/owner";
 
-            $response = $client->request('GET', $url, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . config('services.whatsapp.token', ''),
-                    'Accept' => 'application/json',
-                ],
-                'timeout' => 5,
-            ]);
+            $response = Http::withToken(config('services.whatsapp.token', ''))
+                ->acceptJson()
+                ->timeout(5)
+                ->get($url);
 
-            if ($response->getStatusCode() == 200) {
-                $ownerData = json_decode($response->getBody(), true);
+            if ($response->successful()) {
+                $ownerData = $response->json();
 
-                $agentName = $ownerData['agent'] ?? null;
                 $agentEmail = $ownerData['email'] ?? null;
-                $agentDepartment = $ownerData['department'] ?? null;
+                $agentName = $ownerData['agent'] ?? null;
 
-                Log::info("Fetched owner info: Agent={$agentName}, Email={$agentEmail}, Department={$agentDepartment}");
+                Log::info("Fetched owner info: Agent Name: {$agentName}, Agent Email: {$agentEmail}");
+            } else {
+                Log::warning("Failed to fetch owner info. HTTP Status: {$response->status()}, Body: {$response->body()}");
+                
+                $agentEmail = null;
+                $agentName = null;
             }
-
 
             // Extract media data — support both formats (root or data.media)
             $mediaData = $request->input('media') ?? $request->input('data.media');

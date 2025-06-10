@@ -23,15 +23,84 @@
                         opacity=".5" />
                 </svg>
             </div>
-            <div id="createCharge" data-tooltip="Add new charge"
-                class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm"
-                onclick="window.location.href='{{ route('charges.create') }}';">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                    <path fill="#fff"
-                        d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7">
-                    </path>
-                </svg>
+            <!-- Add New Charge Button -->
+            <div x-data="{ createModal: false }" class="relative">
+                <div id="createCharge" data-tooltip="Add new charge"
+                    class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm cursor-pointer"
+                    @click="createModal = true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff"
+                            d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7">
+                        </path>
+                    </svg>
+                </div>
+
+                <!-- Create Charge Modal -->
+                <div x-show="createModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                    <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="createModal = false">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold">Create New Charges</h2>
+                            <button @click="createModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                        </div>
+
+                        <form method="POST" action="{{ route('charges.store') }}">
+                            @csrf
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium">Gateway Name</label>
+                                <input type="text" name="name" class="w-full border px-3 py-2 rounded-full" placeholder="Enter charge name" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium">Charges For</label>
+                                <input type="text" name="type" value="Payment Gateway" class="w-full border px-3 py-2 rounded-full bg-gray-100 text-gray-700 cursor-not-allowed" readonly>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium">Amount</label>
+                                <input type="number" name="amount" step="0.01" class="w-full border px-3 py-2 rounded-full" placeholder="Enter charge amount" required>
+                            </div>
+
+                            <div class="mb-4 flex gap-4">
+                                <div class="w-1/2">
+                                    <label class="block text-sm font-medium">Paid By</label>
+                                    <select name="paid_by" class="w-full border px-3 py-2 rounded-full" required>
+                                        <option value="" disabled selected hidden></option>
+                                        <option value="Company">Company</option>
+                                        <option value="Client">Client</option>
+                                    </select>
+                                </div>
+                                <div class="w-1/2">
+                                    <label class="block text-sm font-medium">Charge Type</label>
+                                    <select name="charge_type" class="w-full border px-3 py-2 rounded-full" required>
+                                        <option value="" disabled selected hidden></option>
+                                        <option value="Flat Rate">Flat Rate</option>
+                                        <option value="Percent">Percent</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium">COA (Assets) for Debited Bank Account</label>
+                                <select name="coa" class="w-full border px-3 py-2 rounded-full" required>
+                                    <option value="" disabled selected hidden></option>
+                                    <option value="Kuwait International Bank" class="text-black">Kuwait International Bank</option>
+                                    <option value="Ahli United Bank Kuwait" class="text-black">Ahli United Bank Kuwait</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium">Description</label>
+                                <input type="text" name="description" class="w-full border px-3 py-2 rounded-full">
+                            </div>
+
+                            <div class="flex justify-between items-center mt-6">
+                                <button type="button" @click="createModal = false" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-full">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
+
         </div>
 
 
@@ -76,7 +145,9 @@
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Name</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Paid By</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Currency</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Service Charge</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Self Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
@@ -85,7 +156,7 @@
                                 <tbody>
                                     @forelse ($charges as $charge)
                                     <tr class="cursor-pointer bg-gray-100 hover:bg-gray-200" @click="open[{{ $charge->id }}] = !open[{{ $charge->id }}]">
-                                        <td class="p-3 font-bold text-gray-800" colspan="7">
+                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="9">
                                             {{ $charge->name }}
                                         </td>
                                     </tr>
@@ -96,12 +167,14 @@
                                         <td class="p-3 pl-6 text-sm text-gray-600">{{ $method->english_name }}</td>
                                         <td class="p-3 text-sm text-gray-600">Child Method</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->paid_by }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $method->currency}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->service_charge }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $method->self_charge}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->charge_type }}</td>
                                         <td class="p-3 text-sm text-gray-600">
-                                            {{ trim($method->description ?? '') !== '' ? $method->description : 'Not Set' }}
+                                            {{ $method->description ? $method->description : 'Not Set' }}
                                         </td>
-                                        <td class="p-3 text-sm flex items-center gap-3">
+                                        <td class="p-3 text-sm text-gray-600">
                                             <div class="relative group inline-block">
                                                 <button @click="openModal({{ $method->id }}, 'methods')" class="text-blue-600 hover:text-blue-800">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -115,22 +188,12 @@
                                                     Edit
                                                 </div>
                                             </div>
-                                            <form method="POST" action="{{ route('paymentMethod.destroy', $method->id) }}" onsubmit="return confirm('Are you sure?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-800">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
-                                                    </svg>
-                                                </button>
-                                            </form>
                                         </td>
                                     </tr>
                                     @endforeach
                                     @else
                                     <tr x-show="open[{{ $charge->id }}]" x-transition>
-                                        <td colspan="7" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
+                                        <td colspan="9" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
                                             No child method for this payment gateway
                                         </td>
                                     </tr>
@@ -138,19 +201,23 @@
                                         <td class="p-3 pl-6 text-sm text-gray-600">{{ $charge->name }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->type }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->paid_by }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->currency}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->amount }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->self_charge}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
                                         <td class="p-3 text-sm flex items-center gap-3">
                                             <!-- Edit Button -->
                                             <div class="relative group inline-block">
-                                                <a href="{{ route('charges.edit', $charge->id) }}" class="text-blue-600 hover:text-blue-800">
+                                                <button
+                                                    @click="openModal({{ $charge->id }}, 'charges'); editParentModal = true"
+                                                    class="text-blue-600 hover:text-blue-800">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <title>Edit</title>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                             d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
                                                     </svg>
-                                                </a>
+                                                </button>
                                                 <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
                                                     Edit
                                                 </div>
@@ -178,16 +245,19 @@
                                     @endif
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="text-center p-3 text-sm text-gray-500">No charges found.</td>
+                                        <td colspan="9" class="p-6 text-center text-sm text-blue-500 align-middle">
+                                            No charges found.
+                                        </td>
                                     </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
-                        <div x-show="editModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
-                            <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editModal = false">
+                        <!-- Child Method Edit Modal -->
+                        <div x-show="editChildModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                            <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editChildModal = false">
                                 <div class="flex items-center justify-between mb-4">
-                                    <h2 class="text-lg font-bold mb-4">Edit Method Gateway</h2>
+                                    <h2 class="text-lg font-bold mb-4">Edit Child Method Charges</h2>
                                     <button @click="closeAll()" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
                                         &times;
                                     </button>
@@ -211,10 +281,19 @@
                                             <input type="text" name="english_name" x-model="editData.english_name" class="w-full border px-3 py-2 rounded-full" readonly />
                                         </div>
                                     </div>
+                                    <div class="mb-4 flex gap-4">
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">API Currency</label>
+                                            <input type="text" name="currency" x-model="editData.currency" class="w-full border px-3 py-2 rounded-full">
+                                        </div>
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">API Service Charge</label>
+                                            <input type="text" name="service_charge" x-model="editData.service_charge" class="w-full border px-3 py-2 rounded-full">
+                                        </div>
+                                    </div>
                                     <div class="mb-4">
-                                        <label class="block text-sm font-medium">Service Charge</label>
-                                        <input type="text" name="service_charge" x-model="editData.service_charge" class="w-full border px-3 py-2 rounded-full">
-
+                                        <label class="block text-sm font-medium">Self Charge</label>
+                                        <input type="text" name="self_charge" x-model="editData.self_charge" class="w-full border px-3 py-2 rounded-full">
                                     </div>
                                     <div class="mb-4 flex gap-4">
                                         <div class="w-1/2">
@@ -245,6 +324,61 @@
                                 </form>
                             </div>
                         </div>
+
+                        <!-- Parent Method Edit Modal -->
+                        <div x-show="editParentModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                            <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editParentModal = false">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h2 class="text-lg font-bold mb-4">Edit Gateway Charges</h2>
+                                    <button @click="editParentModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                                </div>
+
+                                <form :action="`/charges/${editData.id}`" method="POST">
+                                    @csrf
+                                    <template x-if="editData.type">
+                                        <input type="hidden" name="_method" value="PUT">
+                                    </template>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Name</label>
+                                        <input type="text" name="name" x-model="editData.name" class="w-full border px-3 py-2 rounded-full" x-show="editData.type" />
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Service Charge</label>
+                                        <input type="text" name="amount" x-model="editData.amount" class="w-full border px-3 py-2 rounded-full">
+                                    </div>
+
+                                    <div class="mb-4 flex gap-4">
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">Paid By</label>
+                                            <select name="paid_by" x-model="editData.paid_by" class="w-full border px-3 py-2 rounded-full">
+                                                <option value="Company">Company</option>
+                                                <option value="Client">Client</option>
+                                            </select>
+                                        </div>
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">Charge Type</label>
+                                            <select name="charge_type" x-model="editData.charge_type" class="w-full border px-3 py-2 rounded-full">
+                                                <option value="Flat Rate">Flat Rate</option>
+                                                <option value="Percent">Percent</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Description</label>
+                                        <input type="text" name="description" x-model="editData.description" class="w-full border px-3 py-2 rounded-full" />
+                                    </div>
+
+                                    <div class="flex justify-between items-center mt-6">
+                                        <button type="button" @click="editParentModal = false" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
+                                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-full">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
                     </div>
                     <!-- ./table -->
 
@@ -337,27 +471,38 @@
         function chargeEditor() {
             return {
                 editModal: false,
+                editParentModal: false,
+                editChildModal: false,
                 editData: {},
                 init() {},
                 openModal(id, source = 'charges') {
-                    const url = source === 'methods' ?
-                        `/paymentMethod/${id}` // ✅ match your Laravel route
-                        :
-                        `/charges/${id}`;
+                    const url = source === 'methods' ? `/paymentMethod/${id}` : `/charges/${id}`;
 
                     fetch(url)
                         .then(res => res.json())
                         .then(data => {
                             this.editData = data;
-                            this.editModal = true;
+
+                            // Determine which modal to show
+                            if (source === 'methods') {
+                                this.editChildModal = true;
+                            } else {
+                                this.editParentModal = true;
+                            }
                         })
                         .catch(err => {
                             alert('Error loading data');
                             console.error(err);
                         });
                 },
+                closeAll() {
+                    this.editModal = false;
+                    this.editParentModal = false;
+                    this.editChildModal = false;
+                }
             }
         }
     </script>
+
 
 </x-app-layout>

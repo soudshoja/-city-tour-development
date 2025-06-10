@@ -29,6 +29,7 @@ class MFMethodSyncService
             }
 
             $methods = data_get($result, 'Data.PaymentMethods', []);
+            PaymentMethod::where('type', 'myfatoorah')->delete();
             foreach ($methods as $method) {
                 PaymentMethod::updateOrCreate(
                     [
@@ -40,6 +41,7 @@ class MFMethodSyncService
                         'arabic_name' => $method['PaymentMethodAr'],
                         'english_name' => $method['PaymentMethodEn'],
                         'is_active' => 1,
+                        'currency' => $method['CurrencyIso'],
                         'service_charge' => $method['ServiceCharge'] ?? 0,
                         'image' => $method['ImageUrl'] ?? null,
                     ]

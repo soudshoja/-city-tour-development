@@ -284,11 +284,11 @@
                                     <div class="mb-4 flex gap-4">
                                         <div class="w-1/2">
                                             <label class="block text-sm font-medium">API Currency</label>
-                                            <input type="text" name="currency" x-model="editData.currency" class="w-full border px-3 py-2 rounded-full">
+                                            <input type="text" name="currency" x-model="editData.currency" class="w-full border px-3 py-2 rounded-full" readonly>
                                         </div>
                                         <div class="w-1/2">
                                             <label class="block text-sm font-medium">API Service Charge</label>
-                                            <input type="text" name="service_charge" x-model="editData.service_charge" class="w-full border px-3 py-2 rounded-full">
+                                            <input type="text" name="service_charge" x-model="editData.service_charge" class="w-full border px-3 py-2 rounded-full" readonly>
                                         </div>
                                     </div>
                                     <div class="mb-4">

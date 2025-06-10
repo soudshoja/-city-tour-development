@@ -561,9 +561,15 @@ class ClientController extends Controller
                 'message' => 'Client not found',
             ];
         }
-        $chargeData = $payment->payment_method === 'myfatoorah'
-            ? ChargeService::FatoorahCharge($payment->amount, $payment->method_id)
-            : ChargeService::TapCharge($payment, $payment->payment_method ?? 'Tap');
+      $chargeData = $payment->payment_method === 'myfatoorah'
+    ? ChargeService::FatoorahCharge($payment->amount, $payment->method_id)
+    : ChargeService::TapCharge([
+        'amount' => $payment->amount,
+        'currency' => $payment->currency,
+        'client_id' => $payment->client_id,
+        'agent_id' => $payment->agent_id,
+    ], $payment->payment_method ?? 'Tap');
+
         $finalAmount = $chargeData['finalAmount'];
         $fee = $chargeData['fee'];
         $paidBy = $chargeData['paid_by'];

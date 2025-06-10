@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -34,6 +35,11 @@ class MagicHolidayService
                 return $response->json()['access_token'];
             }
 
+            Log::error('Failed to retrieve access token from Magic Holiday API', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             throw new \Exception('Unable to retrieve access token.');
         });
     }
@@ -54,12 +60,24 @@ class MagicHolidayService
 
     protected function mapping(string $mapping, array $params = [])
     {
-        return $this->request(['read:mapping'],'get', '/mapping/v1' . $mapping, $params);
+        if(!isset($params['perPage'])) {
+            $params['perPage'] = 100; // Default perPage value
+        }
+
+        $response = $this->request(['read:mapping'],'get', '/mapping/v1' . $mapping, $params);
+
+        Log::channel('mapping')->info('Mapping API response', [
+            'endpoint' => $mapping,
+            'params' => $params,
+            'response' => $response
+        ]);
+
+        return $response;
     }
 
-    public function getCountries()
+    public function getCountries(array $params = [])
     {
-        return $this->mapping('/countries');
+        return $this->mapping('/countries', $params);
     }
 
     public function getCountryDetails(string $countryId)
@@ -67,9 +85,9 @@ class MagicHolidayService
         return $this->mapping('/countries/' .$countryId);
     }
 
-    public function getNationalities()
+    public function getNationalities(array $params = [])
     {
-        return $this->mapping('/nationalities');
+        $response =  $this->mapping('/nationalities' , $params);
     }
 
     public function getNationalitiesDetails(string $nationalityId)
@@ -77,9 +95,9 @@ class MagicHolidayService
         return $this->mapping('/nationalities/' . $nationalityId);
     }
 
-    public function getCities()
+    public function getCities(array $params = [])
     {
-        return $this->mapping('/cities');
+        return $this->mapping('/cities', $params);
     }
 
     public function getCityDetails(string $cityId)
@@ -92,9 +110,9 @@ class MagicHolidayService
         return $this->mapping('/hotels', ['cityId' => $cityId, 'perPage' => $perPage, 'page' => $page]);
     }
 
-    public function getHotelImages(string $hotelId)
+    public function getHotelImages(int $hotelId)
     {
-        return $this->mapping('/hotels/' . $hotelId . '/images');
+        return $this->mapping('/hotels/' . $hotelId . '/mainImage');
     }
 
     public function getHotelDescriptions(string $hotelId, string $language = 'en')

@@ -37,14 +37,27 @@ class SyncCountriesJob implements ShouldQueue
             $totalSynced = 0;
             
             while ($hasMorePages) {
-                $response = $magicHoliday->getCountries($page, $perPage);
+                $query = [
+                    'page' => $page,
+                    'per_page' => $perPage,
+                ];
+                $response = $magicHoliday->getCountries($query);
                 
                 if (!isset($response['_embedded']['countries'])) {
                     Log::error('Invalid API response format', ['response' => $response]);
                     break;
                 }
-                
+                Log::channel('mapping')->info('Fetched countries', [
+                    'page' => $response['_page'],
+                    'count' => count($response['_embedded']['countries']),
+                ]);
                 foreach ($response['_embedded']['countries'] as $countryData) {
+                    Log::channel('mapping')->info('Processing country', [
+                        'id' => $countryData['id'],
+                        'name' => $countryData['name'],
+                        'iso' => $countryData['iso'] ?? null,
+                        'services' => $countryData['services'] ?? []
+                    ]);
                     MapCountry::updateOrCreate(
                         ['id' => $countryData['id']],
                         [

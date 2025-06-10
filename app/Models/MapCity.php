@@ -14,8 +14,8 @@ class MapCity extends Model
         'id',
         'name',
         'country_id',
-        'latitude',
-        'longitude',
+        'services',
+        'code',
     ];
 
     public function country()

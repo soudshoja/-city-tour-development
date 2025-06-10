@@ -31,7 +31,7 @@ class SyncHotelDetailsJob implements ShouldQueue
         $this->onQueue('api_sync');
     }
 
-    public function handle(MagicHolidayService $mappingApi)
+    public function handle(MagicHolidayService $magicHoliday)
     {
         try {
             Log::info('Starting hotel details sync job', [
@@ -46,13 +46,13 @@ class SyncHotelDetailsJob implements ShouldQueue
             }
             
             // Sync hotel images
-            $this->syncHotelImages($mappingApi, $hotel);
+            $this->syncHotelImages($magicHoliday, $hotel);
             
             // Sync hotel descriptions
-            $this->syncHotelDescriptions($mappingApi, $hotel);
+            $this->syncHotelDescriptions($magicHoliday, $hotel);
             
             // Sync hotel facilities/categories
-            // $this->syncHotelCategories($mappingApi, $hotel);
+            // $this->syncHotelCategories($magicHoliday, $hotel);
             
             Log::info('Hotel details sync completed', [
                 'hotel_id' => $this->hotelId
@@ -68,51 +68,59 @@ class SyncHotelDetailsJob implements ShouldQueue
         }
     }
     
-    protected function syncHotelImages(MagicHolidayService $mappingApi, MapHotel $hotel)
+    protected function syncHotelImages(MagicHolidayService $magicHoliday, MapHotel $hotel)
     {
-        $response = $mappingApi->getHotelImages($hotel->id);
+        $response = $magicHoliday->getHotelImages($hotel->id);
+
+        Log::channel('mapping')->info('Fetched hotel images', [
+            'hotel_id' => $hotel->id,
+            'response' => $response
+        ]);
         
-        if (!isset($response['_embedded']['image'])) {
-            Log::warning('No images found for hotel', ['hotel_id' => $hotel->id]);
+        if (isset($response['status']) && $response['status'] !== 200) {
+            Log::channel('mapping')->error('Failed to fetch hotel images', [
+                'hotel_id' => $hotel->id,
+                'status' => $response['status'],
+                'message' => $response['title'] ?? 'Unknown error'
+            ]);
             return;
         }
+
+        $imageData = $response;
         
         DB::beginTransaction();
         try {
-            // Delete existing images if they're not in the new set
-            $newImageIds = collect($response['_embedded']['gallery'])->pluck('id')->toArray();
-            MapHotelImage::where('hotel_id', $hotel->id)
-                ->whereNotIn('id', $newImageIds)
-                ->delete();
-            
-            foreach ($response['_embedded']['gallery'] as $imageData) {
-                MapHotelImage::updateOrCreate(
-                    [
-                        'id' => $imageData['id'],
-                        'hotel_id' => $hotel->id
-                    ],
-                    [
-                        'url' => $imageData['url'],
-                        'source' => $imageData['source'] ?? null,
-                        'is_main' => $imageData['isMain'] ?? false,
-                        'order' => $imageData['order'] ?? 0,
-                    ]
-                );
-            }
+            MapHotelImage::updateOrCreate(
+                [
+                    'id' => $imageData['id'],
+                    'hotel_id' => $hotel->id
+                ],
+                [
+                    'url' => $imageData['url'],
+                    'source' => $imageData['source'] ?? null,
+                ]
+            );
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
+
+            Log::channel('mapping')->error('Failed to sync hotel images', [
+                'hotel_id' => $hotel->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             throw $e;
         }
     }
     
-    protected function syncHotelDescriptions(MagicHolidayService $mappingApi, MapHotel $hotel)
+    protected function syncHotelDescriptions(MagicHolidayService $magicHoliday, MapHotel $hotel)
     {
         // Get descriptions in multiple languages
         $languages = ['en', 'fr', 'es', 'de']; // Add more as needed
         
         foreach ($languages as $language) {
-            $response = $mappingApi->getHotelDescriptions($hotel->id, $language);
+            $response = $magicHoliday->getHotelDescriptions($hotel->id, $language);
             
             if (!isset($response['_embedded']['description'])) {
                 Log::warning('No descriptions found for hotel in language', [
@@ -144,9 +152,9 @@ class SyncHotelDetailsJob implements ShouldQueue
         }
     }
     
-    // protected function syncHotelCategories(MagicHolidayService $mappingApi, MapHotel $hotel)
+    // protected function syncHotelCategories(MagicHolidayService $magicHoliday, MapHotel $hotel)
     // {
-    //     $response = $mappingApi->getHotelCategories($hotel->id);
+    //     $response = $magicHoliday->getHotelCategories($hotel->id);
         
     //     if (!isset($response['_embedded']['category'])) {
     //         Log::warning('No categories found for hotel', ['hotel_id' => $hotel->id]);

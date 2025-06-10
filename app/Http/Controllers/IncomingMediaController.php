@@ -15,6 +15,17 @@ class IncomingMediaController extends Controller
         $phone = $request->input('phone') ?? $request->input('messages.0.from');
         $messages = $request->input('messages', []);
 
+        // Extract agent phone and email (fallback to metadata if needed)
+        $agentPhone = $request->input('agent.phone')
+            ?? $request->input('metadata.agentPhone')
+            ?? null;
+
+        $agentEmail = $request->input('agent.email')
+            ?? $request->input('metadata.agentEmail')
+            ?? null;
+
+        Log::info("Agent Phone: {$agentPhone}, Agent Email: {$agentEmail}");
+
         foreach ($messages as $message) {
             // Check if media exists
             if (isset($message['media'])) {
@@ -74,9 +85,30 @@ class IncomingMediaController extends Controller
                     'caption'     => $caption,
                     'received_at' => \Carbon\Carbon::parse($receivedAt),
                     'file_path'   => $localPath,
+                    'agent_phone' => $agentPhone,
+                    'agent_email' => $agentEmail,
                 ]);
 
                 Log::info("Saved incoming media from {$phone}, media_id: {$mediaId}");
+
+                $clientChatController = new ChatController();
+                $response = $clientChatController->handleFileUpload($request);
+
+                if($response['status'] == 'error') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $response['message'],
+                    ], 400);
+                }
+
+
+                // // Optional: Auto-reply after saving image
+                // try {
+                //     app(\App\Services\ResayilService::class)->sendToResayil($phone, "We have received your image, thank you.");
+                //     Log::info("Sent auto-reply to {$phone}");
+                // } catch (\Exception $e) {
+                //     Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
+                // }
             } else {
                 Log::info("No media in message from {$phone}.");
             }

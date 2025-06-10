@@ -44,7 +44,7 @@ class SyncHotelsJob implements ShouldQueue
     public function handle(MagicHolidayService $magicHoliday)
     {
         try {
-            Log::info('Starting hotel sync job', [
+            Log::channel('mapping')->info('Starting hotel sync job', [
                 'full_sync' => $this->fullSync,
                 'city_id' => $this->cityId,
                 'incremental_from_date' => $this->incrementalFromDate
@@ -62,7 +62,7 @@ class SyncHotelsJob implements ShouldQueue
                             ->delay(now()->addSeconds(rand(10, 60))); // Add random delay to avoid API rate limits
                     }
                     
-                    Log::info('Dispatched hotel sync jobs for all cities', [
+                    Log::channel('mapping')->info('Dispatched hotel sync jobs for all cities', [
                         'city_count' => $cities->count()
                     ]);
                 } else {
@@ -80,26 +80,35 @@ class SyncHotelsJob implements ShouldQueue
             $totalSynced = 0;
             
             while ($hasMorePages) {
+
                 $response = $magicHoliday->getHotels($this->cityId, $page, $perPage);
                 
-                if (!isset($response['_embedded']['hotel'])) {
-                    Log::error('Invalid API response format', ['response' => $response]);
+                if (!isset($response['_embedded']['hotels'])) {
+                    Log::channel('mapping')->error('Invalid API response format', ['response' => $response]);
                     break;
                 }
+
+                $hotels = $response['_embedded']['hotels'] ?? [];
                 
                 DB::beginTransaction();
                 try {
-                    foreach ($response['_embedded']['hotels'] as $hotelData) {
+                    foreach ($hotels as $hotelData) {
                         $hotel = MapHotel::updateOrCreate(
                             ['id' => $hotelData['id']],
                             [
                                 'name' => $hotelData['name'],
-                                'city_id' => $this->cityId,
-                                'address' => $hotelData['address'] ?? null,
-                                'stars' => $hotelData['stars'] ?? null,
                                 'type' => $hotelData['type'] ?? null,
-                                'latitude' => $hotelData['geolocation']['latitude'] ?? null,
-                                'longitude' => $hotelData['geolocation']['longitude'] ?? null,
+                                'address' => $hotelData['address'] ?? null,
+                                'telephone' => $hotelData['telephone'] ?? null,
+                                'fax' => $hotelData['fax'] ?? null,
+                                'email' => $hotelData['email'] ?? null,
+                                'zipCode' => $hotelData['zipCode'] ?? null,
+                                'stars' => $hotelData['stars'] ?? null,
+                                'recommended' => $hotelData['recommended'] ?? false,
+                                'specialDeal' => $hotelData['specialDeal'] ?? false,
+                                'city_id' => $hotelData['city']['id'],
+                                // 'latitude' => $hotelData['geolocation']['latitude'] ?? null,
+                                // 'longitude' => $hotelData['geolocation']['longitude'] ?? null,
                             ]
                         );
                         
@@ -108,6 +117,12 @@ class SyncHotelsJob implements ShouldQueue
                             ->delay(now()->addSeconds(rand(5, 30)));
                             
                         $totalSynced++;
+
+                        Log::channel('mapping')->info('Synced hotel', [
+                            'hotel_id' => $hotel->id,
+                            'city_id' => $hotel->city_id,
+                            'name' => $hotel->name
+                        ]);
                     }
                     DB::commit();
                 } catch (\Exception $e) {
@@ -120,12 +135,12 @@ class SyncHotelsJob implements ShouldQueue
                 $hasMorePages = $page <= $response['_page_count'];
             }
             
-            Log::info('Hotel sync completed for city', [
+            Log::channel('mapping')->info('Hotel sync completed for city', [
                 'city_id' => $this->cityId,
                 'total_synced' => $totalSynced
             ]);
         } catch (\Exception $e) {
-            Log::error('Hotel sync failed', [
+            Log::channel('mapping')->error('Hotel sync failed', [
                 'city_id' => $this->cityId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -138,14 +153,14 @@ class SyncHotelsJob implements ShouldQueue
     // protected function syncHotelsFromArchive(MagicHolidayService $magicHoliday)
     // {
     //     try {
-    //         Log::info('Starting hotel sync from archive', [
+    //         Log::channel('mapping')->info('Starting hotel sync from archive', [
     //             'incremental_from_date' => $this->incrementalFromDate
     //         ]);
             
     //         $response = $magicHoliday->getArchiveExport($this->incrementalFromDate);
             
     //         if (!isset($response['downloadUrl'])) {
-    //             Log::error('Invalid archive export response', ['response' => $response]);
+    //             Log::channel('mapping')->error('Invalid archive export response', ['response' => $response]);
     //             return;
     //         }
             
@@ -159,7 +174,7 @@ class SyncHotelsJob implements ShouldQueue
     //         unlink($tempFile); // Clean up temp file
             
     //         if (!isset($archiveData['hotels'])) {
-    //             Log::error('Invalid archive data format', ['archive' => $archiveData]);
+    //             Log::channel('mapping')->error('Invalid archive data format', ['archive' => $archiveData]);
     //             return;
     //         }
             
@@ -202,11 +217,11 @@ class SyncHotelsJob implements ShouldQueue
     //             }
     //         }
             
-    //         Log::info('Hotel sync from archive completed', [
+    //         Log::channel('mapping')->info('Hotel sync from archive completed', [
     //             'total_synced' => $totalSynced
     //         ]);
     //     } catch (\Exception $e) {
-    //         Log::error('Hotel sync from archive failed', [
+    //         Log::channel('mapping')->error('Hotel sync from archive failed', [
     //             'error' => $e->getMessage(),
     //             'trace' => $e->getTraceAsString()
     //         ]);
@@ -217,7 +232,7 @@ class SyncHotelsJob implements ShouldQueue
 
     public function failed(\Throwable $exception)
     {
-        Log::error('Hotel sync job failed', [
+        Log::channel('mapping')->error('Hotel sync job failed', [
             'city_id' => $this->cityId,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()

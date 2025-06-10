@@ -33,29 +33,20 @@ class SyncCitiesJob implements ShouldQueue
 
     public function handle(MagicHolidayService $magicHoliday)
     {
+        if ($this->countryId !== null && !is_int($this->countryId)) {
+            Log::channel('mapping')->error('Invalid country_id: must be integer', [
+                'country_id' => $this->countryId
+            ]);
+            return;
+        }
         try {
-            Log::info('Starting city sync job', [
+            Log::channel('mapping')->info('Starting city sync job', [
                 'full_sync' => $this->fullSync,
                 'country_id' => $this->countryId
             ]);
             
             // If no specific country ID is provided, process all countries
-            if (!$this->countryId) {
-                $countries = MapCountry::all();
-                
-                foreach ($countries as $country) {
-                    // Dispatch a new job for each country to avoid timeouts
-                    SyncCitiesJob::dispatch($this->fullSync, $country->id)
-                        ->delay(now()->addSeconds(rand(5, 30))); // Add random delay to avoid API rate limits
-                }
-                
-                Log::info('Dispatched city sync jobs for all countries', [
-                    'country_count' => $countries->count()
-                ]);
-                
-                return;
-            }
-            
+           
             // Process cities for a specific country
             $page = 1;
             $perPage = 100;
@@ -63,30 +54,63 @@ class SyncCitiesJob implements ShouldQueue
             $totalSynced = 0;
             
             while ($hasMorePages) {
-                $response = $magicHoliday->getCities($this->countryId, $page, $perPage);
+                $query = [
+                    'page' => $page,
+                    'perPage' => $perPage,
+                ];
+                if ($this->countryId) {
+                    $query['countryId'] = $this->countryId;
+                }
+                $response = $magicHoliday->getCities($query);
+
+                Log::channel('mapping')->info('Fetched cities', [
+                    'country_id' => $this->countryId,
+                    'page' => $response['_page'],
+                    'count' => count($response['_embedded']['cities'] ?? [])
+                ]);
                 
-                if (!isset($response['_embedded']['city'])) {
-                    Log::error('Invalid API response format', ['response' => $response]);
+                if (!isset($response['_embedded']['cities'])) {
+                    Log::channel('mapping')->error('Invalid API response format', [
+                        'country_id' => $this->countryId,
+                        'response' => $response
+                    ]);
                     break;
                 }
-                
+
+                Log::channel('mapping')->info('Cities got from country', [
+                    'country_id' => $this->countryId,
+                    'count' => count($response['_embedded']['cities'])
+                ]);
+
+                $cities = $response['_embedded']['cities'] ?? [];
+
                 DB::beginTransaction();
                 try {
-                    foreach ($response['_embedded']['city'] as $cityData) {
+                    foreach ($cities as $cityData) {
                         MapCity::updateOrCreate(
                             ['id' => $cityData['id']],
                             [
                                 'name' => $cityData['name'],
-                                'country_id' => $this->countryId,
-                                'latitude' => $cityData['latitude'] ?? null,
-                                'longitude' => $cityData['longitude'] ?? null,
+                                'country_id' => $cityData['countryId'],
+                                'services' => json_encode($cityData['services'] ?? []),
                                 'code' => $cityData['code'] ?? null,
                             ]
                         );
                         $totalSynced++;
+                        DB::commit();
+
+                        Log::channel('mapping')->info('Synced city', [
+                            'id' => $cityData['id'],
+                            'name' => $cityData['name'],
+                            'country_id' => $cityData['countryId']
+                        ]);
                     }
-                    DB::commit();
                 } catch (\Exception $e) {
+                    Log::channel('mapping')->error('Failed to sync cities', [
+                        'country_id' => $this->countryId,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
                     DB::rollBack();
                     throw $e;
                 }

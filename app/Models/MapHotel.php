@@ -22,6 +22,7 @@ class MapHotel extends Model
         'stars',
         'recommended',
         'specialDeal',
+        'city_id',
     ];
 
     public function city()

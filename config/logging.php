@@ -147,6 +147,13 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
+
+        'mapping' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/magic_holidays/mapping.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

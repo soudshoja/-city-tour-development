@@ -31,6 +31,8 @@ class PaymentMethodController extends Controller
             'english_name' => $paymentMethod->english_name,
             'type' => $paymentMethod->type,
             'service_charge' => $paymentMethod->service_charge,
+            'currency' => $paymentMethod->currency,
+            'self_charge' => $paymentMethod->self_charge,
             'charge_type' => $paymentMethod->charge_type,
             'paid_by' => $paymentMethod->paid_by,
             'description' => $paymentMethod->description,
@@ -41,6 +43,7 @@ class PaymentMethodController extends Controller
     {
         $request->validate([
             'service_charge' => 'required',
+            'self_charge' => 'required',
             'charge_type' => 'required',
             'paid_by' => 'required',
             'description' => 'nullable',
@@ -53,6 +56,7 @@ class PaymentMethodController extends Controller
 
             $paymentMethod->update([
                 'service_charge' => $request->get('service_charge'),
+                'self_charge' => $request->get('self_charge'),
                 'charge_type' => $request->get('charge_type'),
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),

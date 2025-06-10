@@ -336,7 +336,7 @@
     </div>
 
     <div id="passport">
-        <input type="file" id="passport-upload-input" accept="image/*,application/pdf"
+        <input type="file" id="passport-upload-input-chat" accept="image/*,application/pdf"
             class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             hidden>
         <div id="file-preview-container" class="mt-4"></div> <!-- For image preview -->
@@ -1402,7 +1402,7 @@
         // Handle button clicks
         $('#upload-passport-btn').on('click', function() {
             // Open file upload dialog
-            $('#passport-upload-input').click(); // Assuming a hidden file input exists
+            $('#passport-upload-input-chat').click(); // Assuming a hidden file input exists
         });
 
         $('#fill-form-btn').on('click', function() {
@@ -1416,7 +1416,7 @@
         // createClient.show();
     }
 
-    $('#passport-upload-input').on('change', function(event) {
+    $('#passport-upload-input-chat').on('change', function(event) {
         const file = event.target.files[0];
 
         // Check if a file is selected

@@ -12,72 +12,88 @@ class IncomingMediaController extends Controller
     {
         Log::debug('Incoming Resayil Webhook:', $request->all());
 
-        $phone = $request->input('phone') ?? $request->input('messages.0.from');
-        $messages = $request->input('messages', []);
+        // Extract customer phone number
+        $phone = $request->input('data.fromNumber')
+            ?? $request->input('phone')
+            ?? $request->input('messages.0.from');
 
-        // Extract agent phone and email (fallback to metadata if needed)
-        $agentPhone = $request->input('agent.phone')
-            ?? $request->input('metadata.agentPhone')
-            ?? null;
+        // Extract agent phone and email (Resayil device format)
+        $agentPhone = $request->input('device.phone') ?? null;
+        $agentEmail = $request->input('device.alias') ?? null;
 
-        $agentEmail = $request->input('agent.email')
-            ?? $request->input('metadata.agentEmail')
-            ?? null;
+        Log::info("Agent Phone: {$agentPhone}, Agent Email (alias): {$agentEmail}");
 
-        Log::info("Agent Phone: {$agentPhone}, Agent Email: {$agentEmail}");
+        // Check if media exists
+        if ($request->has('media')) {
 
-        foreach ($messages as $message) {
-            // Check if media exists
-            if (isset($message['media'])) {
-                $mediaId = $message['media']['id'] ?? null;
-                $mimeType = $message['media']['mimeType'] ?? null;
-                $caption = $message['media']['caption'] ?? null;
-                $receivedAt = $message['timestamp'] ?? now();
-                $mediaUrl = $message['media']['url'] ?? null;
-                $filename = $message['media']['filename'] ?? null;
+            $mediaData = $request->input('media');
 
-                $allowedMimeTypes = [
-                    'image/jpeg',
-                    'image/jpg',
-                    'image/png',
-                ];
+            $mediaId = $mediaData['id'] ?? null;
+            $mimeType = $mediaData['mime'] ?? null;
+            $caption = $mediaData['caption'] ?? null;
+            $receivedAt = $request->input('data.date') ?? now();
+            $filename = $mediaData['filename'] ?? null;
 
-                // Only allow specific image types
-                if (!in_array($mimeType, $allowedMimeTypes)) {
-                    Log::warning("Unsupported media type received from {$phone}: {$mimeType}. Skipping.");
-                    continue; // Skip this message
-                }
+            // Build media URL
+            $downloadLink = $mediaData['links']['download'] ?? null;
 
-                $localPath = null;
+            // BASE URL 
+            $baseUrl = 'https://api.resayil.com'; 
 
-                // If media URL is provided, download it
-                if ($mediaUrl) {
-                    try {
-                        // Generate a unique filename
-                        $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
-                        $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
+            $mediaUrl = null;
+            if ($downloadLink) {
+                $mediaUrl = rtrim($baseUrl, '/') . $downloadLink;
+                Log::info("Resolved media download URL: {$mediaUrl}");
+            } else {
+                Log::warning("No download link found in media data.");
+            }
 
-                        // Define full path
-                        $storagePath = storage_path('app/public/uploads/' . $newFilename);
+            // Allowed mime types
+            $allowedMimeTypes = [
+                'image/jpeg',
+                'image/jpg',
+                'image/png',
+            ];
 
-                        // Download the file
-                        $fileContents = file_get_contents($mediaUrl);
+            if (!in_array($mimeType, $allowedMimeTypes)) {
+                Log::warning("Unsupported media type received from {$phone}: {$mimeType}. Skipping.");
+                return response()->json(['message' => 'Unsupported media type.'], 200);
+            }
 
-                        if ($fileContents !== false) {
-                            // Save file to storage
-                            file_put_contents($storagePath, $fileContents);
-                            $localPath = 'uploads/' . $newFilename;
+            // Download and store the file
+            $localPath = null;
 
-                            Log::info("Media file saved to {$localPath}");
-                        } else {
-                            Log::error("Failed to download media from {$mediaUrl}");
-                        }
-                    } catch (\Exception $e) {
-                        Log::error("Error downloading media: " . $e->getMessage());
+            if ($mediaUrl) {
+                try {
+                    // Generate unique filename
+                    $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
+                    $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
+
+                    $storagePath = storage_path('app/public/uploads/' . $newFilename);
+
+                    $context = stream_context_create([
+                        'http' => [
+                            'header' => 'Authorization: Bearer ' . config('services.resayil.api_token', ''),
+                        ],
+                    ]);
+
+                    $fileContents = file_get_contents($mediaUrl, false, $context);
+
+                    if ($fileContents !== false) {
+                        file_put_contents($storagePath, $fileContents);
+                        $localPath = 'uploads/' . $newFilename;
+                        Log::info("Media file saved to {$localPath}");
+                    } else {
+                        Log::error("Failed to download media from {$mediaUrl}");
                     }
-                }
 
-                // Save to DB
+                } catch (\Exception $e) {
+                    Log::error("Error downloading media: " . $e->getMessage());
+                }
+            }
+
+            // Save to database
+            try {
                 IncomingMedia::create([
                     'phone'       => $phone,
                     'media_id'    => $mediaId,
@@ -90,33 +106,31 @@ class IncomingMediaController extends Controller
                 ]);
 
                 Log::info("Saved incoming media from {$phone}, media_id: {$mediaId}");
-
-                // $clientChatController = new ChatController();
-                // $response = $clientChatController->handleFileUpload($request);
-
-                // if($response['status'] == 'error') {
-                //     return response()->json([
-                //         'success' => false,
-                //         'message' => $response['message'],
-                //     ], 400);
-                // }
-
-                // // Optional: Auto-reply after saving image
-                try {
-                    $clientWAController = new WhatsappController();
-                    $clientWAController->sendToResayil($phone, "We have received your image, thank you.");
-                    Log::info("Sent auto-reply to {$phone}");
-                } catch (\Exception $e) {
-                    Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
-                }
-                
-            } else {
-                Log::info("No media in message from {$phone}.");
+            } catch (\Exception $e) {
+                Log::error("Error saving IncomingMedia: " . $e->getMessage());
             }
+
+            // Auto-reply
+            try {
+                $to = $request->input('data.from') ?? $request->input('from') ?? null;
+
+                if ($to) {
+                    $clientWAController = new WhatsappController();
+                    $clientWAController->sendToResayil($to, "We have received your image, thank you.");
+                    Log::info("Sent auto-reply to {$to}");
+                } else {
+                    Log::warning("Cannot send auto-reply: 'from' not found in webhook.");
+                }
+
+            } catch (\Exception $e) {
+                Log::error("Failed to send auto-reply to {$phone}: " . $e->getMessage());
+            }
+
+        } else {
+            Log::info("No media found in this webhook.");
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
-
 
 }

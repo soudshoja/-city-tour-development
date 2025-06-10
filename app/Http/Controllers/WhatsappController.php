@@ -447,7 +447,7 @@ class WhatsappController extends Controller
         return response()->json(['message' => 'Webhook received successfully']);
     }
 
-    protected function sendToResayil($phone, $message, $header = null, $footer = null, $buttons = null)
+    public function sendToResayil($phone, $message, $header = null, $footer = null, $buttons = null)
     {
         $url = config('services.whatsapp.url');
         $token = config('services.whatsapp.token');

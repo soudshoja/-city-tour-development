@@ -110,7 +110,7 @@
                             Pay Now
                         </button>
                         <span id="" class="text-lg font-semibold text-gray-800">
-                            {{ number_format($finalAmount, 2) }} {{ $payment->currency }}
+                            {{ $finalAmount }} {{ $payment->currency }}
                         </span>
                     </div>
                 </form>

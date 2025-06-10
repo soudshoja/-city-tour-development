@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
+use App\Models\Client;
 use Illuminate\Support\Facades\Log;
 
 class IncomingMediaController extends Controller
@@ -20,14 +21,41 @@ class IncomingMediaController extends Controller
 
             // Extract agent phone and email (Resayil device format)
             $agentPhone = $request->input('device.phone') ?? null;
-            $agentEmail = $request->input('device.alias') ?? null;
 
-            Log::info("Agent Phone: {$agentPhone}, Agent Email (alias): {$agentEmail}");
+            Log::info("Agent Phone: {$agentPhone}");
+
+            $deviceId = $request->input('device.id');
+            $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
+
+            $client = new Client();
+
+            $url = "https://api.resayil.io/v1/chat/{$deviceId}/chats/{$chatWid}/owner";
+
+            $response = $client->request('GET', $url, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . config('services.whatsapp.token', ''),
+                    'Accept' => 'application/json',
+                ],
+                'timeout' => 5,
+            ]);
+
+            if ($response->getStatusCode() == 200) {
+                $ownerData = json_decode($response->getBody(), true);
+
+                $agentName = $ownerData['agent'] ?? null;
+                $agentEmail = $ownerData['email'] ?? null;
+                $agentDepartment = $ownerData['department'] ?? null;
+
+                Log::info("Fetched owner info: Agent={$agentName}, Email={$agentEmail}, Department={$agentDepartment}");
+            }
+
 
             // Extract media data — support both formats (root or data.media)
             $mediaData = $request->input('media') ?? $request->input('data.media');
 
             $downloadLink = $mediaData['links']['download'] ?? null;
+            $baseUrl = 'https://wa.resayil.io'; 
+            $mediaUrl = null;
 
             if ($downloadLink) {
 
@@ -39,10 +67,15 @@ class IncomingMediaController extends Controller
                 $receivedAt = $request->input('data.date') ?? now();
                 $filename = $mediaData['filename'] ?? null;
 
-                // BASE URL 
-                $baseUrl = 'https://api.resayil.com'; 
-
                 $mediaUrl = rtrim($baseUrl, '/') . $downloadLink;
+
+                if (str_starts_with($downloadLink, 'http')) {
+                    $mediaUrl = $downloadLink; // Use as-is if it's a full URL
+                } else {
+                    $baseUrl = 'https://wa.resayil.io'; // fallback
+                    $mediaUrl = rtrim($baseUrl, '/') . $downloadLink;
+                }
+
                 Log::info("Resolved media download URL: {$mediaUrl}");
 
                 // Allowed mime types

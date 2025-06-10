@@ -1940,8 +1940,8 @@ class TaskController extends Controller
                         ]
                     ];
 
-
-                    $response = $this->aiManager->chat($messages);
+                    $aiManager = new AIManager();
+                    $response = $aiManager->chat($messages);
                     Log::info('response:', ['response' => $response]);
 
                     // Check if $response is a JsonResponse object

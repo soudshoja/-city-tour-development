@@ -171,7 +171,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf/hotel/{taskId}/download',[TaskController::class, 'hotelPdfDownload'])->name('pdf.hotel.download');
         Route::get('/pdf/receipt/{taskId}',[TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download',[TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
-        Route::post('/upload', [TaskController::class, 'clientPassport'])->name('passport');
+        Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
     });
 
     // SUPPLIERS

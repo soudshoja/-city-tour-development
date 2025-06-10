@@ -84,6 +84,30 @@
 
             </div>
 
+            <table class="w-full text-sm text-left text-gray-700 border border-gray-200 mb-10">
+                <thead class="bg-gray-100 text-gray-800">
+                    <tr>
+                        <th colspan="2" class="py-3 px-4 text-lg font-semibold ">Invoice Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-3 px-4">Total Amount</td>
+                        <td class="py-3 px-4 text-right">{{ $payment->amount }} {{ $payment->currency }}</td>
+                    </tr>
+                    @if($chargeResult['paid_by'] !== 'Company')
+                    <tr class="border-b border-gray-100">
+                        <td class="py-3 px-4">Service Charge</td>
+                        <td class="py-3 px-4 text-right">{{ $chargeResult['fee'] }} {{ $payment->currency }}</td>
+                    </tr>
+                    @endif
+                    <tr class="font-bold">
+                        <td class="py-3 px-4">Final Total</td>
+                        <td class="py-3 px-4 text-right">{{ $chargeResult['finalAmount'] }} {{ $payment->currency}}</td>
+                    </tr>
+                </tbody>
+            </table>
+
             <!-- Payment Details -->
             <div class="mb-8 inline-flex gap-2">
                 @if(auth()->user())
@@ -109,7 +133,7 @@
                             class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                             Pay Now
                         </button>
-                        <span id="" class="text-lg font-semibold text-gray-800">
+                        <span id="" class="text-lg font-semibold text-gray-800 pl-[30vh]">
                             {{ $finalAmount }} {{ $payment->currency }}
                         </span>
                     </div>

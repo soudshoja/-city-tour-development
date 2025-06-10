@@ -241,7 +241,8 @@ class ChargeController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
-            'type' => 'required|string|max:255',
+            'paid_by' => 'required',
+            'charge_type' => 'required',
             'amount' => 'required|numeric|min:0.01',
         ]);
 
@@ -255,8 +256,10 @@ class ChargeController extends Controller
             $charge->update([
                 'name' => $request->get('name'),
                 'amount' => $request->get('amount'),
-                'type' => $request->get('type'),
+                'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
+                'charge_type' => $request->get('charge_type'),
+
                 //'acc_bank_id' => $request->get('acc_bank_id'),
                 // 'acc_fee_id' => $request->get('acc_fee_id'),
                 // 'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
@@ -331,6 +334,7 @@ class ChargeController extends Controller
         }
     }
 
+
     public function destroy($id)
     {
         try {
@@ -347,7 +351,7 @@ class ChargeController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     public function editMethodForm($id)
     {
         $method = PaymentMethod::findOrFail($id);

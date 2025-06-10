@@ -20,4 +20,9 @@ class PaymentMethod extends Model
         'service_charge',
         'image',
     ];
+
+    public function gateways()
+    {
+        return $this->belongsTo(Charge::class, 'name');
+    }
 }

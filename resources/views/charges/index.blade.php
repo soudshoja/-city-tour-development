@@ -68,64 +68,183 @@
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
                     <!-- table -->
-                    <div class="dataTable-container h-max">
-                        <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
-                            <thead>
-                                <tr>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Charge Name</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Paid By</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if ($charges->isEmpty())
+                    <div x-data="chargeEditor()" x-init="init()">
+                        <div class="dataTable-container h-max">
+                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full" x-data="{ open: {} }">
+                                <thead>
                                     <tr>
-                                        <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
-                                            No data for now.... Create new!</td>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Charge Name</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Paid By</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                     </tr>
-                                @else
-                                    @foreach ($charges as $charge)
-                                        <tr>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->name }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->type }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->paid_by }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->amount }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $charge->charge_type }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $charge->description }}</td>
-                                            <td class="p-3 text-sm">
-                                                <div class="flex items-center space-x-2">
+                                </thead>
+                                <tbody>
+                                    @forelse ($charges as $charge)
+                                    <tr class="cursor-pointer bg-gray-100 hover:bg-gray-200" @click="open[{{ $charge->id }}] = !open[{{ $charge->id }}]">
+                                        <td class="p-3 font-bold text-gray-800" colspan="7">
+                                            {{ $charge->name }}
+                                        </td>
+                                    </tr>
 
-                                                    <a data-tooltip="Edit"
-                                                        href="{{ route('charges.edit', $charge->id) }}"
-                                                        class="text-sm font-medium text-blue-600 hover:underline">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20"
-                                                            height="20" viewBox="0 0 24 24">
-                                                            <path fill="none" stroke="#00ab55" stroke-linecap="round"
-                                                                stroke-linejoin="round" stroke-width="1.5"
-                                                                d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
-                                                                opacity=".5" />
-                                                        </svg>
-                                                    </a>
+                                    @if ($charge->methods->isNotEmpty())
+                                    @foreach ($charge->methods as $method)
+                                    <tr x-show="open[{{ $charge->id }}]" x-transition>
+                                        <td class="p-3 pl-6 text-sm text-gray-600">{{ $method->english_name }}</td>
+                                        <td class="p-3 text-sm text-gray-600">Child Method</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $method->paid_by }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $method->service_charge }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $method->charge_type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            {{ trim($method->description ?? '') !== '' ? $method->description : 'Not Set' }}
+                                        </td>
+                                        <td class="p-3 text-sm flex items-center gap-3">
+                                            <div class="relative group inline-block">
+                                                <button @click="openModal({{ $method->id }}, 'methods')" class="text-blue-600 hover:text-blue-800">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <title>Edit</title>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
+                                                    </svg>
+                                                </button>
+                                                <div
+                                                    class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                    Edit
                                                 </div>
-
-                                            </td>
-
-                                        </tr>
+                                            </div>
+                                            <form method="POST" action="{{ route('paymentMethod.destroy', $method->id) }}" onsubmit="return confirm('Are you sure?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
                                     @endforeach
-                                @endif
-                            </tbody>
-                        </table>
+                                    @else
+                                    <tr x-show="open[{{ $charge->id }}]" x-transition>
+                                        <td colspan="7" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
+                                            No child method for this payment gateway
+                                        </td>
+                                    </tr>
+                                    <tr x-show="open[{{ $charge->id }}]" x-transition>
+                                        <td class="p-3 pl-6 text-sm text-gray-600">{{ $charge->name }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->paid_by }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->amount }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
+                                        <td class="p-3 text-sm flex items-center gap-3">
+                                            <!-- Edit Button -->
+                                            <div class="relative group inline-block">
+                                                <a href="{{ route('charges.edit', $charge->id) }}" class="text-blue-600 hover:text-blue-800">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <title>Edit</title>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
+                                                    </svg>
+                                                </a>
+                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                    Edit
+                                                </div>
+                                            </div>
 
+                                            <!-- Delete Button -->
+                                            <div class="relative group inline-block">
+                                                <form method="POST" action="{{ route('charges.destroy', $charge->id)}}" onsubmit="return confirm('Are you sure?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-800">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <title>Delete</title>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                    Delete
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center p-3 text-sm text-gray-500">No charges found.</td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        <div x-show="editModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                            <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editModal = false">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h2 class="text-lg font-bold mb-4">Edit Method Gateway</h2>
+                                    <button @click="closeAll()" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
+                                        &times;
+                                    </button>
+                                </div>
+                                <form :action="`/paymentMethod/${editData.id}`" method="POST">
+
+                                    @csrf
+                                    @method('PUT')
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Payment Gateway</label>
+                                        <input type="text" name="gateway" x-model="editData.gateway" class="w-full border px-3 py-2 rounded-full capitalize" readonly>
+                                    </div>
+                                    <div class="mb-4 flex gap-4">
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">Arabic Name</label>
+                                            <input type="text" name="arabic_name" x-model="editData.arabic_name" class="w-full border px-3 py-2 rounded-full" readonly />
+                                        </div>
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">English Name</label>
+                                            <input type="text" name="english_name" x-model="editData.english_name" class="w-full border px-3 py-2 rounded-full" readonly />
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Service Charge</label>
+                                        <input type="text" name="service_charge" x-model="editData.service_charge" class="w-full border px-3 py-2 rounded-full">
+
+                                    </div>
+                                    <div class="mb-4 flex gap-4">
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">Paid By</label>
+                                            <select name="paid_by" x-model="editData.paid_by" class="w-full border px-3 py-2 rounded-full">
+                                                <option value="Company">Company</option>
+                                                <option value="Client">Client</option>
+
+                                            </select>
+                                        </div>
+                                        <div class="w-1/2">
+                                            <label class="block text-sm font-medium">Charge Type</label>
+                                            <select name="charge_type" x-model="editData.charge_type" class="w-full border px-3 py-2 rounded-full">
+                                                <option value="Flat Rate">Flat Rate</option>
+                                                <option value="Percent">Percent</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Description</label>
+                                        <input type="text" name="description" x-model="editData.description" class="w-full border px-3 py-2 rounded-full" />
+                                    </div>
+
+                                    <div class="flex justify-between items-center mt-6">
+                                        <button type="button" @click="editModal = false" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
+                                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-full">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                     <!-- ./table -->
 
@@ -214,5 +333,31 @@
         <!-- ./right -->
     </div>
     <!--./page content-->
+    <script>
+        function chargeEditor() {
+            return {
+                editModal: false,
+                editData: {},
+                init() {},
+                openModal(id, source = 'charges') {
+                    const url = source === 'methods' ?
+                        `/paymentMethod/${id}` // ✅ match your Laravel route
+                        :
+                        `/charges/${id}`;
+
+                    fetch(url)
+                        .then(res => res.json())
+                        .then(data => {
+                            this.editData = data;
+                            this.editModal = true;
+                        })
+                        .catch(err => {
+                            alert('Error loading data');
+                            console.error(err);
+                        });
+                },
+            }
+        }
+    </script>
 
 </x-app-layout>

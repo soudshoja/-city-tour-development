@@ -146,8 +146,11 @@ class IncomingMediaController extends Controller
                     try {
                         $fullPath = storage_path("app/public/{$localPath}");
 
-                        // Start the session and get the CSRF token
-                        Session::start();
+                        // Ensure session is started before generating CSRF token
+                        if (!Session::isStarted()) {
+                            Session::start();
+                        }
+
                         $csrfToken = csrf_token();
 
                         $response = Http::asMultipart()
@@ -156,7 +159,7 @@ class IncomingMediaController extends Controller
                                 'X-CSRF-TOKEN' => $csrfToken,
                                 'Cookie' => 'XSRF-TOKEN=' . urlencode($csrfToken),
                             ])
-                            ->post(route('chat.handleFileUpload'), [
+                            ->post(url('/chat/handleFileUpload'), [
                                 '_token' => $csrfToken,
                             ]);
 
@@ -169,6 +172,7 @@ class IncomingMediaController extends Controller
                         Log::error("Error posting file to handleFileUpload: " . $e->getMessage());
                     }
                 }
+
 
                 // Auto-reply
                 try {

@@ -29,23 +29,7 @@ class IncomingMediaController extends Controller
             $deviceId = $request->input('device.id');
             $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
 
-            // Fetch agent (owner) info
-            // $url = "https://api.resayil.io/v1/device/{$deviceId}/team";
-            // $response = Http::withToken(config('services.whatsapp.token', ''))
-            //     ->acceptJson()
-            //     ->get($url);
-
-            // $agentEmail = $agentName = null;
-            // if ($response->successful()) {
-            //     $ownerData = $response->json();
-            //     $agentEmail = $ownerData['email'] ?? null;
-            //     $agentName  = $ownerData['name'] ?? null;
-            //     Log::info("Fetched owner info: Agent Name: {$agentName}, Agent Email: {$agentEmail}");
-            // } else {
-            //     Log::warning("Failed to fetch owner info. HTTP Status: {$response->status()}");
-            // }
-
-            $fetchUrl = "https://api.resayil.io/v1/team";
+            $fetchUrl = "https://api.resayil.io/v1/devices/{$deviceId}/departments";
 
             try {
                 $responseFetch = Http::withHeaders([

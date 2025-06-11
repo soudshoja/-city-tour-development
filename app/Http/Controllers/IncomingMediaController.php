@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
+use App\Models\Agent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,7 @@ class IncomingMediaController extends Controller
                 ?? $request->input('messages.0.from');
 
             $agentPhone = $request->input('device.phone') ?? null;
+            $agentDefaultPhone = $agentPhone;
             Log::info("Agent Phone: {$agentPhone}");
 
             $deviceId = $request->input('device.id');
@@ -42,7 +44,7 @@ class IncomingMediaController extends Controller
             //     Log::warning("Failed to fetch owner info. HTTP Status: {$response->status()}");
             // }
 
-            $fetchUrl = "https://api.resayil.io/v1/devices/{$deviceId}/departments";
+            $fetchUrl = "https://api.resayil.io/v1/team";
 
             try {
                 $responseFetch = Http::withHeaders([
@@ -68,6 +70,14 @@ class IncomingMediaController extends Controller
                         $agentName = $selectedAgent['displayName'] ?? null;
                         $agentEmail = $selectedAgent['email'] ?? null;
                         Log::info("Randomly selected agent: {$agentName} ({$agentEmail})");
+
+                        $agents = Agent::where('email', $agentEmail)->get();
+                        if ($agents->isEmpty()) {
+                            $agentPhone = $agentDefaultPhone;
+                        } else {
+                            $agentPhone = $agents->first()->phone_number ?? $agentDefaultPhone;
+                        }
+
                     } else {
                         Log::warning("No agent with role 'agent' found.");
                     }
@@ -77,8 +87,6 @@ class IncomingMediaController extends Controller
             } catch (\Exception $e) {
                 Log::error("Exception while fetching agent: " . $e->getMessage());
             }
-
-
 
             // Extract media data (support both formats)
             $mediaData = $request->input('media') ?? $request->input('data.media');
@@ -106,7 +114,6 @@ class IncomingMediaController extends Controller
                     ? $downloadLink
                     : "https://api.resayil.io/v1/chat/{$deviceId}/files/{$mediaId}/download";
 
-                // Download using Resayil's secure token header
                 try {
                     $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
                     $response = Http::withHeaders([

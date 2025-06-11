@@ -859,6 +859,19 @@
                                     </div>
 
                                 </table>
+                                <div id="loadMoreWrapper" class="text-center my-4" x-show="shown < {{ count($tasks) }}" x-cloak>
+                                    <button @click="shown += 10"
+                                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                        Load More
+                                    </button>
+                                </div>
+                                <p id="noTasksFound" class="flex flex-col items-center justify-center py-6 text-center text-gray-500 text-sm gap-2 hidden">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9.75 9.75a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zm3 0a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zM12 21a9 9 0 100-18 9 9 0 000 18z" />
+                                    </svg>
+                                    <span>No tasks found matching your search</span>
+                                </p>
                             </div>
                         </div>
 

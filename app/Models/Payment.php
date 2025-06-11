@@ -18,13 +18,14 @@ class Payment extends Model
         'invoice_id',
         'from',
         'pay_to',
+        'created_by',
         'account_id',
         'currency',
         'payment_date',
         'notes',
         'amount',
         'payment_gateway',
-        'payment_method',
+        'payment_method_id',
         'status',
         'account_number',
         'bank_name',
@@ -69,6 +70,16 @@ class Payment extends Model
     public function myFatoorahPayment()
     {
         return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
 }

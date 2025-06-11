@@ -25,6 +25,7 @@
                     <th class="px-4 py-2 text-left">Notes</th>
                     <th class="px-4 py-2 text-left">Amount</th>
                     <th class="px-4 py-2 text-left">Created At</th>
+                    <th class="px-4 py-2 text-left">Created By</th>
                     <th class="px-4 py-2 text-left">Status</th>
                     <th class="px-4 py-2 text-left">Link</th>
                     <th class="px-4 py-2 text-left">Actions</th>
@@ -40,7 +41,14 @@
                     <td class="px-4 py-2"> {{ $payment->agent ? $payment->agent->name : 'N/A' }} </td>
                     <td class="px-4 py-2">{{ $payment->notes ?? 'No Notes' }}</td>
                     <td class="px-4 py-2">{{ $payment->amount }}</td>
+                    @if(auth()->user()->role->name === 'admin' || auth()->user()->role->name === 'company')
                     <td class="px-4 py-2">{{ $payment->created_at->format('Y-m-d H:i:s') }}</td>
+                    @else
+                    <td class="px-4 py-2">{{ $payment->created_at->format('D d M Y') }}</td>
+                    @endif
+                    <td class="px-4 py-2">
+                        {{ $payment->createdBy ? $payment->createdBy->name : 'N/A' }}
+                    </td>
                     <td class="px-4 py-2">
                         {{ $payment->status }}
                     </td>

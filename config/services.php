@@ -84,6 +84,6 @@ return [
         'client-id' => env('MAGIC_HOLIDAY_CLIENT_ID'),
         'client-secret' => env('MAGIC_HOLIDAY_CLIENT_SECRET'),
         'authorization_url' => env('MAGIC_HOLIDAY_AUTHORIZATION_URL'),
-        'token_url' => env('MAGIC_HOLIDAY_TOKEN_URL'),
+        'token-url' => env('MAGIC_HOLIDAY_TOKEN_URL'),
     ]
 ];

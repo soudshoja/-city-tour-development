@@ -1986,4 +1986,16 @@ class TaskController extends Controller
             ], 400);
         }
     }
+
+    public function search(Request $request) 
+    {
+        $query = $request->get('q');
+
+     $clients = Client::where('name', 'like', '%' . $query . '%')
+                ->limit(10)
+                ->get();
+
+
+        return response()->json($clients);
+    }
 }

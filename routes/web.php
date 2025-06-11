@@ -172,6 +172,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
+        Route::get('/search-dynamic', [TaskController::class, 'search'])->name('search');
     });
 
     // SUPPLIERS
@@ -437,7 +438,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
         Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
         Route::post('/refund/{id}', [ClientController::class, 'refund'])->name('refund');
-
+        
         // Routes for Client Group Management
         Route::post('/group/add', [ClientController::class, 'addToGroup'])->name('group.add');
         Route::post('/group/remove', [ClientController::class, 'removeFromGroup'])->name('group.remove');

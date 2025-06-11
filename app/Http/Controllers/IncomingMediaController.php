@@ -159,7 +159,7 @@ class IncomingMediaController extends Controller
                                 'X-CSRF-TOKEN' => $csrfToken,
                                 'Cookie' => 'XSRF-TOKEN=' . urlencode($csrfToken),
                             ])
-                            ->post(url('/chat/handleFileUpload'), [
+                            ->post(url('/chat/upload'), [
                                 '_token' => $csrfToken,
                             ]);
 

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 
 class WhatsappController extends Controller
@@ -512,6 +513,25 @@ class WhatsappController extends Controller
         }
     }
 
+    public function getCityIdFromHotelName(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string',
+        ]);
 
-    
+        $hotel = DB::table('hotel_profiles')->where('name', $request->name)->first();
+
+        if ($hotel) {
+            return response()->json([
+                'success' => true,
+                'city_id' => $hotel->city_id,
+                'hotel_name' => $hotel->name,
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel not found.',
+            ], 404);
+        }
+    }
 }

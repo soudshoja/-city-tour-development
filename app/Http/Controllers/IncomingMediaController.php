@@ -21,9 +21,10 @@ class IncomingMediaController extends Controller
                 ?? $request->input('phone')
                 ?? $request->input('messages.0.from');
 
-            $agentEmail = "admin@citytravelers.co" ?? null;
+            $agentEmail = null;
             $agentPhone = $request->input('device.phone') ?? null;
             $agentDefaultPhone = $agentPhone;
+            $agentDefaultEmail = "admin@citytravelers.co";
             Log::info("Agent Phone: {$agentPhone}");
 
             $deviceId = $request->input('device.id');
@@ -60,10 +61,12 @@ class IncomingMediaController extends Controller
                         $agents = Agent::where('email', $agentEmail)->get();
                         if ($agents->isEmpty()) {
                             $agentPhone = $agentDefaultPhone;
+                            $agentEmail = $agentDefaultEmail;
                             Log::info("Agent not found in DB, using default phone: {$agentPhone}");
                         } else {
                             $agentPhone = $agents->first()->phone_number ?? $agentDefaultPhone;
-                            Log::info("Agent found in DB, phone: {$agentPhone}");
+                            $agentEmail = $agents->first()->email ?? $agentDefaultEmail;
+                            Log::info("Agent found in DB | phone: {$agentPhone} | email: {$agentEmail}");
                         }
 
                     } else {

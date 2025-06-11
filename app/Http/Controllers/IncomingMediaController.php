@@ -146,33 +146,19 @@ class IncomingMediaController extends Controller
                     try {
                         $fullPath = storage_path("app/public/{$localPath}");
 
-                        // Ensure session is started before generating CSRF token
-                        if (!Session::isStarted()) {
-                            Session::start();
-                        }
-
-                        $csrfToken = csrf_token();
-
                         $response = Http::asMultipart()
                             ->attach('file', file_get_contents($fullPath), basename($fullPath))
-                            ->withHeaders([
-                                'X-CSRF-TOKEN' => $csrfToken,
-                                'Cookie' => 'XSRF-TOKEN=' . urlencode($csrfToken),
-                            ])
-                            ->post(url('/chat/upload'), [
-                                '_token' => $csrfToken,
-                            ]);
+                            ->post(config('app.url') . '/api/chat/upload'); 
 
                         if ($response->successful()) {
-                            Log::info("Posted file to handleFileUpload: " . $response->body());
+                            Log::info("Posted file to handleFileUpload (API): " . $response->body());
                         } else {
-                            Log::error("Failed to post to handleFileUpload: {$response->status()} - {$response->body()}");
+                            Log::error("Failed to post to handleFileUpload (API): {$response->status()} - {$response->body()}");
                         }
                     } catch (\Exception $e) {
-                        Log::error("Error posting file to handleFileUpload: " . $e->getMessage());
+                        Log::error("Error posting file to handleFileUpload (API): " . $e->getMessage());
                     }
                 }
-
 
                 // Auto-reply
                 try {

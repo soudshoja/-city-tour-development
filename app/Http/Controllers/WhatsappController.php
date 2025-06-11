@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use App\Models\MapHotel;
 
 
 class WhatsappController extends Controller
@@ -519,7 +520,7 @@ class WhatsappController extends Controller
             'name' => 'required|string',
         ]);
 
-        $hotel = DB::table('hotel_profiles')->where('name', $request->name)->first();
+        $hotel = MapHotel::where('name', $request->name)->first();
 
         if ($hotel) {
             return response()->json([

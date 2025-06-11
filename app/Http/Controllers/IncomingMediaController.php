@@ -66,7 +66,7 @@ class IncomingMediaController extends Controller
                 // Prepare media download URL
                 $mediaUrl = str_starts_with($downloadLink, 'http')
                     ? $downloadLink
-                    : "https://api.resayil.io/v1/chat/{$chatWid}/files/{$mediaId}/download";
+                    : "https://api.resayil.io/v1/chat/{$deviceId}/files/{$mediaId}/download";
 
                 // Download using Resayil's secure token header
                 try {

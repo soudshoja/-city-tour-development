@@ -149,6 +149,7 @@ class ClientController extends Controller
             'dial_code' => 'nullable|string|max:30',
             'phone' => 'nullable|string|max:15',
             'agent_id' => 'required|exists:agents,id',
+            'civil_no' => 'required|unique:clients,civil_no',
         ]);
 
         $response = $this->storeProcess($request);

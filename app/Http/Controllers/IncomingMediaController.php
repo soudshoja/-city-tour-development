@@ -8,7 +8,7 @@ use App\Models\Agent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-
+use Illuminate\Support\Facades\Session;
 class IncomingMediaController extends Controller
 {
     public function handleResayilWebhook(Request $request)
@@ -146,9 +146,19 @@ class IncomingMediaController extends Controller
                     try {
                         $fullPath = storage_path("app/public/{$localPath}");
 
-                        $response = Http::attach(
-                            'file', file_get_contents($fullPath), basename($fullPath)
-                        )->post(route('chat.handleFileUpload'));
+                        // Start the session and get the CSRF token
+                        Session::start();
+                        $csrfToken = csrf_token();
+
+                        $response = Http::asMultipart()
+                            ->attach('file', file_get_contents($fullPath), basename($fullPath))
+                            ->withHeaders([
+                                'X-CSRF-TOKEN' => $csrfToken,
+                                'Cookie' => 'XSRF-TOKEN=' . urlencode($csrfToken),
+                            ])
+                            ->post(route('chat.handleFileUpload'), [
+                                '_token' => $csrfToken,
+                            ]);
 
                         if ($response->successful()) {
                             Log::info("Posted file to handleFileUpload: " . $response->body());

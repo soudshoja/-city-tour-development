@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
 use App\Models\Agent;
+use App\Models\Client;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 class IncomingMediaController extends Controller
 {
     public function handleResayilWebhook(Request $request)
@@ -146,17 +147,42 @@ class IncomingMediaController extends Controller
                     try {
                         $fullPath = storage_path("app/public/{$localPath}");
 
-                        $response = Http::asMultipart()
+                        $uploadResponse = Http::asMultipart()
                             ->attach('file', file_get_contents($fullPath), basename($fullPath))
-                            ->post(config('app.url') . '/api/chat/upload'); 
+                            ->post(config('app.url') . '/api/chat/upload');
 
-                        if ($response->successful()) {
-                            Log::info("Posted file to handleFileUpload (API): " . $response->body());
+                        if ($uploadResponse->successful()) {
+                            Log::info("Posted file to handleFileUpload (API): " . $uploadResponse->body());
+
+                            $data = $uploadResponse->json('data');
+
+                            if ($data && isset($data['name'])) {
+                                DB::beginTransaction();
+
+                                $client = Client::create([
+                                    'name' => $data['name'],
+                                    'email' => null, // Optional or set default
+                                    'status' => 'active',
+                                    'phone' => $agents->first()->phone_number ?? 1,
+                                    'date_of_birth' => $data['date_of_birth'] ?? null,
+                                    'address' => $data['place_of_birth'] ?? null,
+                                    'civil_no' => $data['civil_no'] ?? null,
+                                    'passport_no' => $data['passport_no'] ?? null,
+                                    'agent_id' => $agents->first()->id ?? 1
+                                ]);
+
+                                DB::commit();
+
+                                Log::info("Client created successfully: ID {$client->id}");
+                            } else {
+                                Log::error("No valid data returned from handleFileUpload response.");
+                            }
                         } else {
-                            Log::error("Failed to post to handleFileUpload (API): {$response->status()} - {$response->body()}");
+                            Log::error("Failed to post to handleFileUpload (API): {$uploadResponse->status()} - {$uploadResponse->body()}");
                         }
                     } catch (\Exception $e) {
-                        Log::error("Error posting file to handleFileUpload (API): " . $e->getMessage());
+                        DB::rollBack();
+                        Log::error("Exception during upload and client creation: " . $e->getMessage());
                     }
                 }
 

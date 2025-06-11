@@ -113,8 +113,8 @@ class SyncHotelsJob implements ShouldQueue
                         );
                         
                         // Queue a job to fetch hotel details, images, and descriptions
-                        SyncHotelDetailsJob::dispatch($hotel->id)
-                            ->delay(now()->addSeconds(rand(5, 30)));
+                        // SyncHotelDetailsJob::dispatch($hotel->id)
+                        //     ->delay(now()->addSeconds(rand(5, 30)));
                             
                         $totalSynced++;
 

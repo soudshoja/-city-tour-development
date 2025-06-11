@@ -479,23 +479,37 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
-                                                                    <div class="flex items-center gap-4">
-                                                                        <label for="client_id"
-                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
-                                                                        <select name="client_id"
-                                                                            id="tasks_client_id_{{ $task->id }}"
-                                                                            data-task-id="{{ $task->id }}"
-                                                                            class="client-select border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                            <option value="">Choose Client
-                                                                            </option>
-                                                                            @foreach ($clients as $client)
-                                                                            <option value="{{ $client->id }}"
-                                                                                {{ $task->client && $task->client->id === $client->id ? 'selected' : '' }}>
-                                                                                {{ $client->name }}
-                                                                            </option>
-                                                                            @endforeach
-                                                                        </select>
-                                                                    </div>
+                                                                <div x-data="searchableDropdown()" class="flex items-center gap-4">
+    <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
+
+    <div class="relative w-2/4 sm:w-2/3">
+        <button type="button"
+                @click="open = !open"
+                @keydown.window="if(open && $event.key.length === 1) { search += $event.key; filterOptions(); }"
+                @keydown.backspace.window="search = search.slice(0, -1); filterOptions()"
+                class="client-select w-full border border-gray-300 dark:border-gray-600 p-2 rounded-md text-base text-left">
+            <span x-text="selectedName || 'Choose Client'"></span>
+        </button>
+
+        <input type="hidden" name="client_id" :value="selectedId">
+
+        <div x-show="open" @click.away="open = false"
+             class="absolute bg-white z-10 border w-full max-h-48 overflow-y-auto mt-1 rounded shadow">
+
+            <!-- Hidden search field to store search state -->
+            <input type="text" x-model="search" class="hidden" />
+
+            <template x-for="option in filtered" :key="option.id">
+                <div @click="select(option)"
+                     class="p-2 hover:bg-gray-100 cursor-pointer"
+                     x-text="option.name">
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+
 
                                                                     <!-- Agent Selection (Role-based) -->
                                                                     @unlessrole('agent')
@@ -1485,4 +1499,29 @@
         button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full', 'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
+</script>
+<script>
+function searchableDropdown() {
+    return {
+        open: false,
+        search: '',
+        selectedId: '{{ $task->client_id }}',
+        selectedName: @json(optional($task->client)->name),
+        all: @json($clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])),
+        filtered: [],
+        init() {
+            this.filtered = [...this.all];
+        },
+        filterOptions() {
+            const term = this.search.toLowerCase();
+            this.filtered = this.all.filter(c => c.name.toLowerCase().includes(term));
+        },
+        select(option) {
+            this.selectedId = option.id;
+            this.selectedName = option.name;
+            this.search = '';
+            this.open = false;
+        }
+    }
+}
 </script>

@@ -21,6 +21,7 @@ class IncomingMediaController extends Controller
                 ?? $request->input('phone')
                 ?? $request->input('messages.0.from');
 
+            $agentEmail = "admin@citytravelers.co" ?? null;
             $agentPhone = $request->input('device.phone') ?? null;
             $agentDefaultPhone = $agentPhone;
             Log::info("Agent Phone: {$agentPhone}");
@@ -55,27 +56,30 @@ class IncomingMediaController extends Controller
                     $departments = $responseFetch->json();
                     $allAgents = [];
 
-                    // Collect all agents with role "agent"
+                    // Collect all agents with role 'agent'
                     foreach ($departments as $dept) {
                         foreach ($dept['agents'] ?? [] as $agent) {
-                            if (($agent['role'] ?? '') === 'agent') {
+                            if (isset($agent['role']) && $agent['role'] === 'agent') {
                                 $allAgents[] = $agent;
                             }
                         }
                     }
 
-                    // Randomly pick one agent
                     if (!empty($allAgents)) {
+                        // Pick a random agent
                         $selectedAgent = $allAgents[array_rand($allAgents)];
                         $agentName = $selectedAgent['displayName'] ?? null;
                         $agentEmail = $selectedAgent['email'] ?? null;
                         Log::info("Randomly selected agent: {$agentName} ({$agentEmail})");
 
+                        // Check if agent exists in DB
                         $agents = Agent::where('email', $agentEmail)->get();
                         if ($agents->isEmpty()) {
                             $agentPhone = $agentDefaultPhone;
+                            Log::info("Agent not found in DB, using default phone: {$agentPhone}");
                         } else {
                             $agentPhone = $agents->first()->phone_number ?? $agentDefaultPhone;
+                            Log::info("Agent found in DB, phone: {$agentPhone}");
                         }
 
                     } else {
@@ -87,6 +91,7 @@ class IncomingMediaController extends Controller
             } catch (\Exception $e) {
                 Log::error("Exception while fetching agent: " . $e->getMessage());
             }
+
 
             // Extract media data (support both formats)
             $mediaData = $request->input('media') ?? $request->input('data.media');

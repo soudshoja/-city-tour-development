@@ -378,6 +378,8 @@
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
@@ -1514,7 +1516,7 @@
                 // If no items, display the "No Item Available" row
                 const noItemsRow = document.createElement('tr');
                 noItemsRow.innerHTML =
-                    '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                    '<td colspan="15" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
                 itemsBody.appendChild(noItemsRow);
             } else {
                 // Iterate over items and create rows
@@ -1529,7 +1531,9 @@
                     <p>${++count}</p>
                     </td>
                     <td class="flex-grow">
-                    <p><b>${item.description}</b><br>Info: ${item.additional_info}<br>Type: ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}<br>Venue: ${item.venue}</p>
+                    <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
+                        <br>Destination: ${item.flight_details.airport_from} - ${item.flight_details.airport_to}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
+                    </p>
                     </td>
                     <td>
                     <p>${item.total} KWD</p>
@@ -1552,7 +1556,12 @@
                     <td>
                     <p>${item.agent.branch.name}</p>
                     </td>
-
+                    <td>
+                        <p>${item.supplier_name}</p>
+                    </td>
+                    <td>
+                        <p>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
+                    </td>
                     <td>
                     <div
                         class="inline-flex items-center justify-evenly">

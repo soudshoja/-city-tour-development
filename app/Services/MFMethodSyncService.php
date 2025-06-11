@@ -28,8 +28,10 @@ class MFMethodSyncService
                 return false;
             }
 
+              // Mark all existing MyFatoorah methods as inactive
+            PaymentMethod::where('type', 'myfatoorah')->update(['is_active' => false]);
+
             $methods = data_get($result, 'Data.PaymentMethods', []);
-            PaymentMethod::where('type', 'myfatoorah')->delete();
             foreach ($methods as $method) {
                 PaymentMethod::updateOrCreate(
                     [

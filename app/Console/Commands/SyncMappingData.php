@@ -99,21 +99,39 @@ class SyncMappingData extends Command
             case 'language':
                 $this->error('Language sync is not implemented yet. Please use countries, cities, or hotels.');
                 return;
-                
+      
             default:
                 // Sync all with appropriate delays to prevent API rate limiting
                 $this->info('Dispatching all sync jobs...');
-                
+
+                // Sync Countries
                 dispatch(new SyncCountriesJob($isFull));
                 $this->info('Countries sync job dispatched');
-                
-                dispatch(new SyncCitiesJob($isFull))
-                    ->delay(now()->addMinutes(5));
-                $this->info('Cities sync job dispatched (delayed by 5 minutes)');
-                
-                dispatch(new SyncHotelsJob($isFull, null, $date))
-                    ->delay(now()->addMinutes(10));
-                $this->info('Hotels sync job dispatched (delayed by 10 minutes)');
+
+                // Sync Cities for each country
+                $countryIds = MapCountry::pluck('id')->toArray();
+                if (!empty($countryIds)) {
+                    foreach ($countryIds as $countryId) {
+                        dispatch(new SyncCitiesJob($isFull, $countryId))
+                            ->delay(now()->addSeconds(rand(5, 30)));
+                        $this->info("Dispatched SyncCitiesJob for country ID: $countryId");
+                    }
+                } else {
+                    $this->error('No country IDs found for cities sync.');
+                }
+
+                // Sync Hotels for each country
+                if (!empty($countryIds)) {
+                    foreach ($countryIds as $countryId) {
+                        dispatch(new SyncHotelsJob($isFull, $countryId, $date))
+                            ->delay(now()->addSeconds(rand(10, 60)));
+                        $this->info("Dispatched SyncHotelsJob for country ID: $countryId");
+                    }
+                } else {
+                    $this->error('No country IDs found for hotels sync.');
+                }
+                break;
+
         }
         
         $this->info('Sync jobs have been dispatched. Run queue worker to process them.');

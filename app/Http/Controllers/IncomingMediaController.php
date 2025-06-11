@@ -27,20 +27,58 @@ class IncomingMediaController extends Controller
             $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
 
             // Fetch agent (owner) info
-            $url = "https://api.resayil.io/v1/device/{$deviceId}/team";
-            $response = Http::withToken(config('services.whatsapp.token', ''))
-                ->acceptJson()
-                ->get($url);
+            // $url = "https://api.resayil.io/v1/device/{$deviceId}/team";
+            // $response = Http::withToken(config('services.whatsapp.token', ''))
+            //     ->acceptJson()
+            //     ->get($url);
 
-            $agentEmail = $agentName = null;
-            if ($response->successful()) {
-                $ownerData = $response->json();
-                $agentEmail = $ownerData['email'] ?? null;
-                $agentName  = $ownerData['name'] ?? null;
-                Log::info("Fetched owner info: Agent Name: {$agentName}, Agent Email: {$agentEmail}");
-            } else {
-                Log::warning("Failed to fetch owner info. HTTP Status: {$response->status()}");
+            // $agentEmail = $agentName = null;
+            // if ($response->successful()) {
+            //     $ownerData = $response->json();
+            //     $agentEmail = $ownerData['email'] ?? null;
+            //     $agentName  = $ownerData['name'] ?? null;
+            //     Log::info("Fetched owner info: Agent Name: {$agentName}, Agent Email: {$agentEmail}");
+            // } else {
+            //     Log::warning("Failed to fetch owner info. HTTP Status: {$response->status()}");
+            // }
+
+            $fetchUrl = "https://api.resayil.io/v1/devices/{$deviceId}/departments";
+
+            try {
+                $responseFetch = Http::withHeaders([
+                    'Token' => config('services.whatsapp.token', ''),
+                ])->get($fetchUrl);
+
+                if ($responseFetch->ok()) {
+                    $departments = $responseFetch->json();
+                    $allAgents = [];
+
+                    // Collect all agents with role "agent"
+                    foreach ($departments as $dept) {
+                        foreach ($dept['agents'] ?? [] as $agent) {
+                            if (($agent['role'] ?? '') === 'agent') {
+                                $allAgents[] = $agent;
+                            }
+                        }
+                    }
+
+                    // Randomly pick one agent
+                    if (!empty($allAgents)) {
+                        $selectedAgent = $allAgents[array_rand($allAgents)];
+                        $agentName = $selectedAgent['displayName'] ?? null;
+                        $agentEmail = $selectedAgent['email'] ?? null;
+                        Log::info("Randomly selected agent: {$agentName} ({$agentEmail})");
+                    } else {
+                        Log::warning("No agent with role 'agent' found.");
+                    }
+                } else {
+                    Log::error("Failed to fetch departments. Status: {$responseFetch->status()} Body: {$responseFetch->body()}");
+                }
+            } catch (\Exception $e) {
+                Log::error("Exception while fetching agent: " . $e->getMessage());
             }
+
+
 
             // Extract media data (support both formats)
             $mediaData = $request->input('media') ?? $request->input('data.media');

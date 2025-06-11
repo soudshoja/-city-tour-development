@@ -993,6 +993,8 @@ class PaymentController extends Controller
                 $data['invoice_id'] = $request->invoice_id;
             }
 
+            $data['created_by'] = Auth::id();
+            
             $payment = Payment::create($data);
         } catch (Exception $e) {
             logger('Failed to create payment', [
@@ -1048,7 +1050,7 @@ class PaymentController extends Controller
             'agent_id'   => $payment->agent_id,
             'currency'   => $payment->currency,
         ];
-
+     
         $chargeResult = $payment->payment_gateway === 'MyFatoorah'
             ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method, $companyId)
             : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');

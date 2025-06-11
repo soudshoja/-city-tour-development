@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\TwoFAController;
 use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\IncomingMediaController;
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\ChatController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -77,6 +78,7 @@ use App\Http\Controllers\WhatsappController;
 
         Route::post('/webhook/resayil/media', [IncomingMediaController::class, 'handleResayilWebhook'])
         ->name('webhook.resayil.media');
+        Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
 
         Route::post('/whatssap/hotel-city', [WhatsappController::class, 'getCityIdFromHotelName']);
 

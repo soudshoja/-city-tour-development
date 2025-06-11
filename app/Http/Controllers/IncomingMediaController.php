@@ -161,9 +161,9 @@ class IncomingMediaController extends Controller
 
                                 $client = Client::create([
                                     'name' => $data['name'],
-                                    'email' => null, // Optional or set default
+                                    'email' => $agents->first()->email ?? 'admin@citytravelers.co', 
                                     'status' => 'active',
-                                    'phone' => $agents->first()->phone_number ?? 1,
+                                    'phone' => $agents->first()->phone_number ?? '+96522210017',
                                     'date_of_birth' => $data['date_of_birth'] ?? null,
                                     'address' => $data['place_of_birth'] ?? null,
                                     'civil_no' => $data['civil_no'] ?? null,

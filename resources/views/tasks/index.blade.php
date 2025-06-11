@@ -583,15 +583,13 @@
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->issued_by ?? 'Not Set' }}
                                             </td>
-                                            <!-- SINI WEH SINI -->
                                             <td
                                                 class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
                                                 <p class="{{ $task->client ?? 'no-client' }}">
                                                     <button
-                                                        @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')" >
+                                                        @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')">
                                                         {{ $task->client_name ?? 'Not Set' }}
                                                     </button>
-
                                                 </p>
                                                 @if ($task->client)
                                                 <div data-tooltip="Client Linked">
@@ -777,7 +775,7 @@
                                                         <div class="relative w-40">
                                                             <select name="dial_code" id="dial_codeTask"
                                                                 class="w-full h-full text-sm px-3 py-2 pr-8 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md appearance-none">
-                                                                @foreach ($countries as $country)
+                                                                @foreach (\App\Models\Country::all() as $country)
                                                                 <option value="{{ $country->dialing_code }}">
                                                                     {{ $country->dialing_code }} ({{ $country->name }})
                                                                 </option>
@@ -817,8 +815,7 @@
                                                     <p id="task-passport-file-name">
                                                         You can drag and drop a file here
                                                     </p>
-                                                    <label for="file-task-passport" class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500"
-                                                    >
+                                                    <label for="file-task-passport" class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
                                                         Upload File
                                                     </label>
                                                 </div>

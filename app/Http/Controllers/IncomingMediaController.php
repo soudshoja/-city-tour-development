@@ -142,6 +142,24 @@ class IncomingMediaController extends Controller
                     Log::error("Error saving IncomingMedia: " . $e->getMessage());
                 }
 
+                if ($localPath && Storage::exists("public/{$localPath}")) {
+                    try {
+                        $fullPath = storage_path("app/public/{$localPath}");
+
+                        $response = Http::attach(
+                            'file', file_get_contents($fullPath), basename($fullPath)
+                        )->post(route('chat.handleFileUpload'));
+
+                        if ($response->successful()) {
+                            Log::info("Posted file to handleFileUpload: " . $response->body());
+                        } else {
+                            Log::error("Failed to post to handleFileUpload: {$response->status()} - {$response->body()}");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Error posting file to handleFileUpload: " . $e->getMessage());
+                    }
+                }
+
                 // Auto-reply
                 try {
                     $to = $request->input('data.from') ?? $request->input('from');

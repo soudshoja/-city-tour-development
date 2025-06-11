@@ -2133,7 +2133,7 @@
             taskData.forEach(task => {
                 const li = document.createElement('li');
                 li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
+                li.innerText = `${task.reference} - ${task.type}   (${task.client_name} - ${task.agent.name})    ${task.ticket_number}`;
                 li.onclick = () => selectTask(task);
                 taskList.appendChild(li);
             });

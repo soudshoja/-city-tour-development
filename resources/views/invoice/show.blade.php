@@ -342,10 +342,10 @@
                 </div>
 
 
-                @if($gatewayFee)
+                @if($gatewayFee['paid_by'] !== 'Company')
                 <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge {{ $gatewayFee['charge_type'] === 'Percent' ? '(%)' : '' }}:</span>
-                    <span>{{ number_format($gatewayFee['fee'], 2) }}</span>
+                    <span>Service Charge @if($gatewayFee) {{ $gatewayFee['charge_type'] === 'Percent' ? '(%)' : '' }}:</span>
+                    <span>{{ number_format($gatewayFee['fee'], 2) }} @endif</span>
                 </div>
                 @endif
 

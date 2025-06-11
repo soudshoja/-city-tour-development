@@ -711,7 +711,7 @@
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
                                                         <option value="{{ $country->dialing_code }}">
-                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                            {{ $country->name }} ({{ $country->dialing_code }})
                                                         </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->
@@ -729,11 +729,20 @@
                                                     <span class="tooltip-icon">!</span>
                                                     <span class="tooltip">Enter a valid phone number.</span>
                                                 </span>
+
+
                                             </div>
                                         </div>
 
                                         <!-- Agent Selection -->
 
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="civil_no" class="custom-input" placeholder="Civil ID *">
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                <span class="tooltip-icon">!</span>
+                                                <span class="tooltip">Enter the client's Civil ID.</span>
+                                            </span>
+                                        </div>
 
                                         <!-- Options Container -->
                                         {{-- <div

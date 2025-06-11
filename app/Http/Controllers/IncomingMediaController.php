@@ -27,7 +27,7 @@ class IncomingMediaController extends Controller
             $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
 
             // Fetch agent (owner) info
-            $url = "https://api.resayil.io/v1/device/{$deviceId}/profile";
+            $url = "https://api.resayil.io/v1/device/{$deviceId}/team";
             $response = Http::withToken(config('services.whatsapp.token', ''))
                 ->acceptJson()
                 ->get($url);
@@ -35,7 +35,7 @@ class IncomingMediaController extends Controller
             $agentEmail = $agentName = null;
             if ($response->successful()) {
                 $ownerData = $response->json();
-                $agentEmail = $ownerData['businessProfile']['email'] ?? null;
+                $agentEmail = $ownerData['email'] ?? null;
                 $agentName  = $ownerData['name'] ?? null;
                 Log::info("Fetched owner info: Agent Name: {$agentName}, Agent Email: {$agentEmail}");
             } else {
@@ -66,7 +66,7 @@ class IncomingMediaController extends Controller
                 // Prepare media download URL
                 $mediaUrl = str_starts_with($downloadLink, 'http')
                     ? $downloadLink
-                    : "https://api.resayil.io/v1/files/{$mediaId}/download";
+                    : "https://api.resayil.io/v1/chat/{$chatWid}/files/{$mediaId}/download";
 
                 // Download using Resayil's secure token header
                 try {

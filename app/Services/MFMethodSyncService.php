@@ -18,6 +18,11 @@ class MFMethodSyncService
                     'CurrencyIso' => 'KWD',
                 ]);
 
+            Log::info('MyFatoorah payment methods sync request sent.', [
+                'url' => config('services.myfatoorah.base_url') . 'InitiatePayment',
+                'response' => $response->body(),
+            ]);
+
             $result = $response->json();
 
             if (!data_get($result, 'IsSuccess')) {

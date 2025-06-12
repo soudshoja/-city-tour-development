@@ -1990,12 +1990,34 @@ class TaskController extends Controller
     public function search(Request $request) 
     {
         $query = $request->get('q');
+        $type = $request->get('type');
 
-     $clients = Client::where('name', 'like', '%' . $query . '%')
+        if(!$type || !$query) {
+            return response()->json([]);
+        }
+
+        switch ($type) {
+            case 'client':
+                $model = Client::class;
+                break;
+            case 'agent':
+                $model = Agent::class;
+                break;
+            case 'supplier':
+                $model = Supplier::class;
+            default:
+            return response()->json([]);
+        }
+
+        $results = $model::where('name', 'like', "%{$query}%")
+                    ->limit(10)
+                    ->get();
+
+/*      $clients = Client::where('name', 'like', '%' . $query . '%')
                 ->limit(10)
                 ->get();
+ */
 
-
-        return response()->json($clients);
+        return response()->json($results);
     }
 }

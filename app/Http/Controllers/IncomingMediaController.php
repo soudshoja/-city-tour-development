@@ -32,51 +32,37 @@ class IncomingMediaController extends Controller
             $deviceId = $request->input('device.id');
             $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
 
-            $fetchUrl = config('services.resayil.base_url') . "devices/{$deviceId}/departments";
-
             try {
-                $responseFetch = Http::withHeaders([
-                    'Token' => config('services.resayil.api_token', ''),
-                ])->get($fetchUrl);
+                $agent = Agent::where('phone_number', $phone)->first();
 
-                if ($responseFetch->ok()) {
-                    $departments = $responseFetch->json();
-                    $allAgents = [];
-
-                    foreach ($departments as $dept) {
-                        foreach ($dept['agents'] ?? [] as $agent) {
-                            if (isset($agent['role']) && $agent['role'] === 'agent') {
-                                $allAgents[] = $agent;
-                            }
-                        }
-                    }
-
-                    if (!empty($allAgents)) {
-                        $selectedAgent = $allAgents[array_rand($allAgents)];
-                        $agentName = $selectedAgent['displayName'] ?? null;
-                        $agentEmail = $selectedAgent['email'] ?? null;
-                        Log::info("Randomly selected agent: {$agentName} ({$agentEmail})");
-
-                        $agents = Agent::where('email', $agentEmail)->get();
-                        if ($agents->isEmpty()) {
-                            $agentId = $agentDefaultId;
-                            $agentPhone = $agentDefaultPhone;
-                            $agentEmail = $agentDefaultEmail;
-                            Log::info("Agent not found in DB, using default phone: {$agentPhone}");
-                        } else {
-                            $agentId = $agents->first()->id ?? $agentDefaultId;
-                            $agentPhone = $agents->first()->phone_number ?? $agentDefaultPhone;
-                            $agentEmail = $agents->first()->email ?? $agentDefaultEmail;
-                            Log::info("Agent found in DB | phone: {$agentPhone} | email: {$agentEmail}");
-                        }
-                    } else {
-                        Log::warning("No agent with role 'agent' found.");
-                    }
+                if ($agent) {
+                    // Agent with this phone exists
+                    $agentId = $agent->id;
+                    $agentPhone = $agent->phone_number;
+                    $agentEmail = $agent->email;
+                    Log::info("Agent matched by phone: {$agent->name} ({$agentEmail})");
                 } else {
-                    Log::error("Failed to fetch departments. Status: {$responseFetch->status()} Body: {$responseFetch->body()}");
+                    // Agent not found by phone, select random agent
+                    $agent = Agent::inRandomOrder()->first();
+
+                    if ($agent) {
+                        $agentId = $agent->id;
+                        $agentPhone = $agent->phone_number;
+                        $agentEmail = $agent->email;
+                        Log::info("Randomly selected agent from DB: {$agent->id} - {$agent->name} ({$agent->email})");
+                    } else {
+                        // No agents at all in DB, fallback values
+                        $agentId = 1;
+                        $agentPhone = '+96522210017';
+                        $agentEmail = 'admin@citytravelers.co';
+                        Log::warning("No agents found in DB. Using fallback values.");
+                    }
                 }
             } catch (\Exception $e) {
-                Log::error("Exception while fetching agent: " . $e->getMessage());
+                Log::error("Error selecting agent from DB: " . $e->getMessage());
+                $agentId = 1;
+                $agentPhone = '+96522210017';
+                $agentEmail = 'admin@citytravelers.co';
             }
 
             $mediaData = $request->input('media') ?? $request->input('data.media');
@@ -159,15 +145,15 @@ class IncomingMediaController extends Controller
                                     DB::beginTransaction();
                                     $client = Client::create([
                                         'name'           => $data['name'],
-                                        'email'          => $agents->first()->email ?? 'admin@citytravelers.co',
+                                        'email'          => $agentEmail,
                                         'status'         => 'active',
-                                        'phone'          => $phone ?? $agents->first()->phone_number,
+                                        'phone'          => $phone ?? $agentPhone,
                                         'date_of_birth'  => $data['date_of_birth'] ?? null,
                                         'address'        => $data['place_of_birth'] ?? null,
                                         'civil_no'       => $data['civil_no'] ?? null,
                                         'passport_no'    => $data['passport_no'] ?? null,
                                         'old_passport_no'=> $data['passport_no'] ?? null,
-                                        'agent_id'       => $agents->first()->id ?? 1
+                                        'agent_id'       => $agentId ?? 1
                                     ]);
                                     DB::commit();
 
@@ -181,7 +167,7 @@ class IncomingMediaController extends Controller
                                     $autoReplyText = "Thank you, your profile has been created.";
                                 } else {
                                     if (!empty($data['passport_no']) && $checkClient->passport_no !== $data['passport_no']) {
-                                        $checkClient->phone = $phone ?? $agents->first()->phone_number;
+                                        $checkClient->phone = $phone ?? $agentPhone;
                                         $checkClient->date_of_birth = $data['date_of_birth'] ?? null;
                                         $checkClient->address = $data['place_of_birth'] ?? null;
                                         $checkClient->passport_no = $data['passport_no'];

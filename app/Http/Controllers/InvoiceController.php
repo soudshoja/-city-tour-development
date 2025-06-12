@@ -991,6 +991,7 @@ class InvoiceController extends Controller
                 'phone' => $request->get('phone'),
                 'address' => $request->get('address'),
                 'passport_no' => $request->get('passport_no'),
+                'old_passport_no' => $request->get('passport_no'),
                 'agent_id' => $agent->id,
             ]);
 

@@ -62,6 +62,11 @@ return [
         'graph_api_url' => env('WHATSAPP_GRAPH_API_URL', 'https://graph.facebook.com/v22.0'), 
     ],
 
+    'resayil' => [
+        'base_url'  => env('RESAYIL_BASE_URL'),
+        'api_token' => env('RESAYIL_API_TOKEN'),
+    ],
+
     'open-ai' => [
         'model' => env('OPENAI_MODEL'),
         'url' => env('OPENAI_URL').'/'.env("OPENAI_VERSION"),

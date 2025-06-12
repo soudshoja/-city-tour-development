@@ -98,43 +98,117 @@
                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
                 <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
                     <div class="p-4 flex justify-between items-center">
-                        Add Task For Specific Supplier
+                        <span class="text-lg font-semibold">Add Task For Specific Supplier</span>
+
+                        <button type="button"
+                            @click="addTaskModal = false"
+                            class="text-gray-500 hover:text-red-600 p-1 rounded focus:outline-none">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="2"
+                                stroke="currentColor"
+                                class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
+
                     <hr>
                     <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
-                        @unlessrole('agent')
-                        <select name="agent_id" id="task-agent-id"
-                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
-                            <option value="" class="">Select Agent</option>
-                            @foreach ($agents as $agent)
-                            <option value="{{ $agent->id }}" data-client="{{ $agent }}">
-                                {{ $agent->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @else
-                        <input type="hidden" name="agent_id" id="agent_id_task_modal"
-                            value="{{ Auth()->user()->agent->id }}">
-                        @endunlessrole
-                        <select name="supplier_id" id="select-supplier-task"
-                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
-                            <option value="">Select Supplier</option>
-                            @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">
-                                {{ $supplier->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <div id="form-task-container" class="mt-2" data-company-id="{{ $companyId }}">
+                       @unlessrole('agent')
+                        <div x-data="searchableDropdownAgent()" x-init="init()" class="w-full">
+                            <div class="relative">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium">Select an Agent:</label>
+                                    <button type="button"
+                                        @click="open = !open"
+                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black min-h-[42px]">
+                                        <span x-text="selectedAgent === '' ? 'Select Agent' : selectedAgent"></span>
+                                    </button>
+                                </div>
 
+                                <input type="hidden" name="agent_id" :value="selectedId">
+
+                                <div x-show="open" @click.away="open = false"
+                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
+                                    <div class="px-2 py-2">
+                                        <input type="text"
+                                            x-model="search"
+                                            @input="filterOptions"
+                                            placeholder="Search Agent Name"
+                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
+                                    </div>
+
+                                    <template x-for="option in filtered.slice(0, 3)" :key="option.id">
+                                        <div @click="select(option)"
+                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                            x-html="highlightMatch(option.name)">
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        @else
+                        <input type="hidden" name="agent_id" id="agent_id_task_modal" value="{{ Auth()->user()->agent->id }}">
+                        @endunlessrole
+
+                        <div x-data="searchableDropdownSupplier()" x-init="init()" class="w-full">
+                            <div class="relative">
+                                <div class="mb-4">
+                                    <label class="block mb-1 text-sm font-medium">Select a Supplier:</label>
+                                    <button type="button"
+                                        @click="open = !open"
+                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black">
+                                        <span x-text="selectedSupplier === '' ? 'Select Supplier' : selectedSupplier"></span>
+                                    </button>
+                                </div>
+
+                                <input type="hidden" name="supplier_id" :value="selectedId">
+
+                                <div x-show="open" @click.away="open = false"
+                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
+
+                                    <!-- Search Bar visible inside dropdown -->
+                                    <div class="px-2 py-2">
+                                        <input type="text"
+                                        x-model="search"
+                                        @input="filterOptions"
+                                        placeholder="Search Supplier Name"
+                                        class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
+                                    </div>
+
+                                    <!-- Options limited to first 2 matches -->
+                                    <template x-for="option in filtered.slice(0, 1)" :key="option.id">
+                                        <div @click="select(option)"
+                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                            x-html="highlightMatch(option.name)">
+                                        </div>
+                                    </template>
+
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div id="form-task-container" class="mt-2" data-company-id="{{ $companyId }}">
                         </div>
                     </form>
                     <hr>
                     <div class="p-4 flex justify-between items-center">
-                        <button @click="addTaskModal = false" class="text-red-500">Cancel</button>
-                        <x-primary-button type="submit" form="agent-supplier-task">Submit</x-primary-button>
+                       <button @click="addTaskModal = false"
+    class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
+    Cancel
+</button>
+
+<x-primary-button type="submit" form="agent-supplier-task"
+    class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
+    Submit
+</x-primary-button>
+
                     </div>
                 </div>
             </div>
@@ -479,37 +553,40 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
-                                                                <div x-data="searchableDropdown()" class="flex items-center gap-4">
-    <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
+                                                                    <div x-data="searchableDropdown()" class="flex items-center gap-4">
+                                                                        <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
 
-    <div class="relative w-2/4 sm:w-2/3">
-        <button type="button"
-                @click="open = !open"
-                @keydown.window="if(open && $event.key.length === 1) { search += $event.key; filterOptions(); }"
-                @keydown.backspace.window="search = search.slice(0, -1); filterOptions()"
-                class="client-select w-full border border-gray-300 dark:border-gray-600 p-2 rounded-md text-base text-left">
-            <span x-text="selectedName || 'Choose Client'"></span>
-        </button>
+                                                                        <div class="relative w-2/4 sm:w-2/3">
+                                                                            <button type="button"
+                                                                                @click="open = !open"
+                                                                                class="client-select w-full border border-gray-300 dark:border-gray-600 p-2 rounded-md text-base text-left bg-white text-black min-h-[42px]">
+                                                                                <span x-text="selectedName || 'Choose Client'"></span>
+                                                                            </button>
 
-        <input type="hidden" name="client_id" :value="selectedId">
+                                                                            <input type="hidden" name="client_id" :value="selectedId">
 
-        <div x-show="open" @click.away="open = false"
-             class="absolute bg-white z-10 border w-full max-h-48 overflow-y-auto mt-1 rounded shadow">
+                                                                            <div x-show="open" @click.away="open = false"
+                                                                                class="absolute bg-white z-10 border w-full max-h-48 rounded shadow mt-1">
 
-            <!-- Hidden search field to store search state -->
-            <input type="text" x-model="search" class="hidden" />
+                                                                                <!-- Search bar inside dropdown -->
+                                                                                <div class="px-2 py-2">
+                                                                                    <input type="text"
+                                                                                        x-model="search"
+                                                                                        @input="filterOptions"
+                                                                                        placeholder="Search Client Name"
+                                                                                        class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black" />
+                                                                                </div>
 
-            <template x-for="option in filtered" :key="option.id">
-                <div @click="select(option)"
-                     class="p-2 hover:bg-gray-100 cursor-pointer"
-                     x-text="option.name">
-                </div>
-            </template>
-        </div>
-    </div>
-</div>
-
-
+                                                                                <!-- Dropdown results with highlighting -->
+                                                                                <template x-for="option in filtered.slice(0, 3)" :key="option.id">
+                                                                                    <div @click="select(option)"
+                                                                                        class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                                                                        x-html="highlightMatch(option.name)">
+                                                                                    </div>
+                                                                                </template>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
 
                                                                     <!-- Agent Selection (Role-based) -->
                                                                     @unlessrole('agent')
@@ -1500,28 +1577,94 @@
         button.disabled = false;
     }
 </script>
+<!-- Searchable Dropdown -->
 <script>
-function searchableDropdown() {
-    return {
-        open: false,
-        search: '',
-        selectedId: '{{ $task->client_id }}',
-        selectedName: @json(optional($task->client)->name),
-        all: @json($clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])),
-        filtered: [],
-        init() {
-            this.filtered = [...this.all];
-        },
-        filterOptions() {
-            const term = this.search.toLowerCase();
-            this.filtered = this.all.filter(c => c.name.toLowerCase().includes(term));
-        },
-        select(option) {
-            this.selectedId = option.id;
-            this.selectedName = option.name;
-            this.search = '';
-            this.open = false;
+    function searchableDropdown() {
+        return {
+            open: false,
+            search: '',
+            selectedId: '{{ $task->client_id }}',
+            selectedName: @json(optional($task->client)->name),
+            all: @json($clients->map(fn($c)=>['id'=>$c->id, 'name'=>$c->name])),
+            filtered: [],
+            init() {
+                this.filtered = [...this.all];
+            },
+            filterOptions() {
+                const term = this.search.toLowerCase();
+                this.filtered = this.all.filter(c => c.name.toLowerCase().includes(term));
+            },
+            select(option) {
+                this.selectedId = option.id;
+                this.selectedName = option.name;
+                this.search = '';
+                this.open = false;
+            },
+            highlightMatch(name) {
+                if (!this.search) return name;
+                const regex = new RegExp(`(${this.search})`, 'gi');
+                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>')
+            }
         }
     }
-}
+
+    function searchableDropdownAgent() {
+        return {
+            open: false,
+            search: '',
+            selectedId: '',
+            selectedAgent: '',
+            all: @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])),
+            filtered: [],
+            init() {
+                this.filtered = [...this.all];
+                this.selectedId = '';
+                this.selectedAgent = '';
+            },
+            filterOptions() {
+                const term = this.search.toLowerCase();
+                this.filtered = this.all.filter(a => a.name.toLowerCase().includes(term));
+            },
+            select(option) {
+                this.selectedId = option.id;
+                this.selectedAgent = option.name;
+                this.search = '';
+                this.open = false;
+            },
+            highlightMatch(name) {
+                if (!this.search) return name;
+                const regex = new RegExp(`(${this.search})`, 'gi');
+                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+            }
+        };
+    }
+
+    function searchableDropdownSupplier() {
+        return {
+            open: false,
+            search: '',
+            selectedId: '',
+            selectedSupplier: '',
+            all: @json($suppliers->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])),
+            filtered: [],
+            init() {
+                this.filtered = [...this.all];
+            },
+            filterOptions() {
+                const term = this.search.toLowerCase();
+                this.filtered = this.all.filter(s => s.name.toLowerCase().includes(term));
+            },
+            select(option) {
+                this.selectedId = option.id;
+                this.selectedSupplier = option.name;
+                this.search = '';
+                this.open = false;
+            },
+            highlightMatch(name) {
+            if (!this.search) return name;
+            const regex = new RegExp(`(${this.search})`, 'gi');
+            return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+        }
+        }
+    }
 </script>

@@ -36,7 +36,7 @@ class SyncMappingData extends Command
                 $this->info('Dispatching cities sync job...');
 
                 if($cities){
-                    $this->error('The --cities option is not applicable for countries sync. Please specify countries or leave it empty.');
+                    $this->error('The --cities option is not applicable for cities sync. Please specify countries or leave it empty.');
                     return;
                 }
 
@@ -120,15 +120,16 @@ class SyncMappingData extends Command
                     $this->error('No country IDs found for cities sync.');
                 }
 
-                // Sync Hotels for each country
-                if (!empty($countryIds)) {
-                    foreach ($countryIds as $countryId) {
-                        dispatch(new SyncHotelsJob($isFull, $countryId, $date))
+                // Sync Hotels for each city
+                $cityIds = MapCity::pluck('id')->toArray();
+                if (!empty($cityIds)) {
+                    foreach ($cityIds as $cityId) {
+                        dispatch(new SyncHotelsJob($isFull, $cityId, $date))
                             ->delay(now()->addSeconds(rand(10, 60)));
-                        $this->info("Dispatched SyncHotelsJob for country ID: $countryId");
+                        $this->info("Dispatched SyncHotelsJob for city ID: $cityId");
                     }
                 } else {
-                    $this->error('No country IDs found for hotels sync.');
+                    $this->error('No city IDs found for hotels sync.');
                 }
                 break;
 

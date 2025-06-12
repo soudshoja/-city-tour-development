@@ -104,6 +104,7 @@ class ClientController extends Controller
                 'address' => $request->address,
                 'civil_no' => $request->civil_no,
                 'passport_no' => $request->passport_no,
+                'old_passport_no' => $request->passport_no,
                 'agent_id' => $request->agent_id,
             ]);
 

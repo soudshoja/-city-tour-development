@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Spatie\PdfToImage\Pdf;
 class IncomingMediaController extends Controller
 {
     public function handleResayilWebhook(Request $request)
@@ -24,13 +26,9 @@ class IncomingMediaController extends Controller
 
             $agentEmail = null;
             $agentPhone = $request->input('device.phone') ?? null;
-            $agentDefaultId = "1";
-            $agentDefaultPhone = $agentPhone;
-            $agentDefaultEmail = "admin@citytravelers.co";
-            Log::info("Agent Phone: {$agentPhone}");
-
             $deviceId = $request->input('device.id');
             $chatWid = $request->input('data.chat.id') ?? $request->input('data.from') ?? null;
+            Log::info("Agent Phone: {$agentPhone}");
 
             try {
                 $agent = Agent::where('phone_number', $phone)->first();
@@ -78,7 +76,7 @@ class IncomingMediaController extends Controller
                 $filename   = $mediaData['filename'] ?? 'file.jpg';
                 $extension  = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
 
-                $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+                $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
                 if (!in_array($mimeType, $allowedMimeTypes)) {
                     Log::warning("Unsupported media type from {$phone}: {$mimeType}. Skipping.");
                     return response()->json(['message' => 'Unsupported media type.'], 200);
@@ -87,6 +85,9 @@ class IncomingMediaController extends Controller
                 $mediaUrl = str_starts_with($downloadLink, 'http')
                     ? $downloadLink
                     : config('services.resayil.base_url') . "chat/{$deviceId}/files/{$mediaId}/download";
+
+                $localPath = null;
+                $convertedFromPdf = false;
 
                 try {
                     $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
@@ -98,13 +99,32 @@ class IncomingMediaController extends Controller
                         Storage::put("public/uploads/{$newFilename}", $response->body());
                         $localPath = "uploads/{$newFilename}";
                         Log::info("Media file saved to {$localPath}");
+
+                        // Convert PDF to image
+                        if ($extension === 'pdf') {
+                            try {
+                                $pdfPath = storage_path("app/public/{$localPath}");
+                                $pdf = new \Spatie\PdfToImage\Pdf($pdfPath);
+                                $imageFilename = str_replace('.pdf', '.jpg', $newFilename);
+                                $imagePath = "uploads/{$imageFilename}";
+
+                                $pdf->setPage(1)->saveImage(storage_path("app/public/{$imagePath}"));
+                                $convertedFromPdf = true;
+
+                                // Delete original PDF
+                                //Storage::delete("public/{$localPath}");
+                                Log::info("PDF converted to image: {$imagePath}");
+
+                                $localPath = $imagePath;
+                            } catch (\Exception $e) {
+                                Log::error("Failed to convert PDF to image: " . $e->getMessage());
+                            }
+                        }
                     } else {
                         Log::error("Failed to download media. Status: {$response->status()} Body: {$response->body()}");
-                        $localPath = null;
                     }
                 } catch (\Exception $e) {
                     Log::error("Error downloading media: " . $e->getMessage());
-                    $localPath = null;
                 }
 
                 try {
@@ -125,6 +145,8 @@ class IncomingMediaController extends Controller
                     Log::error("Error saving IncomingMedia: " . $e->getMessage());
                 }
 
+                $autoReplyText = "Thank you for your submission.";
+
                 if ($localPath && Storage::exists("public/{$localPath}")) {
                     try {
                         $fullPath = storage_path("app/public/{$localPath}");
@@ -138,41 +160,45 @@ class IncomingMediaController extends Controller
 
                             $data = $uploadResponse->json('data');
 
-                            if ($data && isset($data['name']) && isset($data['civil_no'])) {
+                            if ($data && isset($data['name'], $data['civil_no'])) {
                                 $checkClient = Client::where('civil_no', $data['civil_no'])->first();
 
                                 if (!$checkClient) {
-                                    DB::beginTransaction();
-                                    $client = Client::create([
-                                        'name'           => $data['name'],
-                                        'email'          => $agentEmail,
-                                        'status'         => 'active',
-                                        'phone'          => $phone ?? $agentPhone,
-                                        'date_of_birth'  => $data['date_of_birth'] ?? null,
-                                        'address'        => $data['place_of_birth'] ?? null,
-                                        'civil_no'       => $data['civil_no'] ?? null,
-                                        'passport_no'    => $data['passport_no'] ?? null,
-                                        'old_passport_no'=> $data['passport_no'] ?? null,
-                                        'agent_id'       => $agentId ?? 1
-                                    ]);
-                                    DB::commit();
+                                    try {
+                                        DB::beginTransaction();
 
-                                    $incomingMedia = IncomingMedia::where('file_path', $localPath)->first();
-                                    if ($incomingMedia) {
-                                        $incomingMedia->client_id = $client->id;
-                                        $incomingMedia->save();
+                                        $client = Client::create([
+                                            'name'            => $data['name'],
+                                            'email'           => $agentEmail,
+                                            'status'          => 'active',
+                                            'phone'           => $phone ?? $agentPhone,
+                                            'date_of_birth'   => $data['date_of_birth'] ?? null,
+                                            'address'         => $data['place_of_birth'] ?? null,
+                                            'civil_no'        => $data['civil_no'] ?? null,
+                                            'passport_no'     => $data['passport_no'] ?? null,
+                                            'old_passport_no' => $data['passport_no'] ?? null,
+                                            'agent_id'        => $agentId ?? 1,
+                                        ]);
+
+                                        DB::commit();
+
+                                        IncomingMedia::where('file_path', $localPath)->update(['client_id' => $client->id]);
+
+                                        Log::info("Client created successfully: ID {$client->id}");
+                                        $autoReplyText = "Thank you, your profile has been created.";
+                                    } catch (\Exception $e) {
+                                        if (DB::transactionLevel() > 0) DB::rollBack();
+                                        Log::error("Error during client creation: " . $e->getMessage());
                                     }
-
-                                    Log::info("Client created successfully: ID {$client->id}");
-                                    $autoReplyText = "Thank you, your profile has been created.";
                                 } else {
                                     if (!empty($data['passport_no']) && $checkClient->passport_no !== $data['passport_no']) {
-                                        $checkClient->phone = $phone ?? $agentPhone;
-                                        $checkClient->date_of_birth = $data['date_of_birth'] ?? null;
-                                        $checkClient->address = $data['place_of_birth'] ?? null;
-                                        $checkClient->passport_no = $data['passport_no'];
-                                        $checkClient->updated_at = Carbon::parse($receivedAt);
-                                        $checkClient->save();
+                                        $checkClient->update([
+                                            'phone'         => $phone ?? $agentPhone,
+                                            'date_of_birth' => $data['date_of_birth'] ?? null,
+                                            'address'       => $data['place_of_birth'] ?? null,
+                                            'passport_no'   => $data['passport_no'],
+                                            'updated_at'    => Carbon::parse($receivedAt),
+                                        ]);
 
                                         Log::info("Updated passport number for client ID {$checkClient->id}");
                                         $autoReplyText = "Thank you for updating your passport details.";
@@ -181,11 +207,7 @@ class IncomingMediaController extends Controller
                                         $autoReplyText = "Thank you. We already have your passport information.";
                                     }
 
-                                    $incomingMedia = IncomingMedia::where('file_path', $localPath)->first();
-                                    if ($incomingMedia) {
-                                        $incomingMedia->client_id = $checkClient->id;
-                                        $incomingMedia->save();
-                                    }
+                                    IncomingMedia::where('file_path', $localPath)->update(['client_id' => $checkClient->id]);
                                 }
                             } else {
                                 Log::error("No valid data returned from handleFileUpload response.");
@@ -194,7 +216,6 @@ class IncomingMediaController extends Controller
                             Log::error("Failed to post to handleFileUpload (API): {$uploadResponse->status()} - {$uploadResponse->body()}");
                         }
                     } catch (\Exception $e) {
-                        DB::rollBack();
                         Log::error("Exception during upload and client creation: " . $e->getMessage());
                     }
                 }
@@ -214,10 +235,12 @@ class IncomingMediaController extends Controller
             } else {
                 Log::info("No media download link found in webhook.");
             }
+
         } catch (\Exception $e) {
             Log::error("Unexpected error in handleResayilWebhook: " . $e->getMessage());
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
+
 }

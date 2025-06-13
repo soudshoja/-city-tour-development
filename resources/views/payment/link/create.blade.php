@@ -62,17 +62,19 @@
                             @endforeach
                         </select>
                     </div>
-                    @if(auth()->user()->role_id == App\Models\Role::COMPANY)
                     <div>
                         <label for="agent" class="block text-sm font-medium text-gray-700">Agent</label>
                         <select name="agent_id" id="payment_agent_id" class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            @if($agents->count() == 1)
+                                <option value="{{ $agents->first()->id }}">{{ $agents->first()->name }}</option>
+                            @else
                             <option value="">Select Agent</option>
                             @foreach ($agents as $agent)
                                 <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                             @endforeach
+                            @endif
                         </select>
                     </div>
-                    @endif
                 </div>
                 <div class="flex justify-end">
                     <button type="submit" class="px-6 py-2 bg-blue-500 text-white rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">

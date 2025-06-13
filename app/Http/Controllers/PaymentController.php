@@ -1056,7 +1056,7 @@ class PaymentController extends Controller
             : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
 
         $gatewayFee = $chargeResult['fee'];
-        $selfCharge = $chargeResult['self_charge'];
+        $selfCharge = isset($chargeResult['self_charge']) ? $chargeResult['self_charge'] : $chargeResult['fee'];
         $finalAmount = $chargeResult['finalAmount'];
         $paidBy = $chargeResult['paid_by'];
         $chargeType = $chargeResult['charge_type'];
@@ -1649,5 +1649,7 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
     }
 
-    public function shareLink($paymentId) {}
+    public function shareLink($paymentId) {
+
+    }
 }

@@ -658,12 +658,18 @@
 
                                 <select id="payment_gateway_option" name="payment_gateway_option"
                                     class="border border-gray-300 p-2 rounded w-full">
-                                    <option value="Tap" {{ $selectedGateway === 'Tap' ? 'selected' : '' }}>Tap
+                                    @foreach ($paymentGateways as $gateway)
+                                    <option value="{{ $gateway }}"
+                                        {{ $selectedGateway === $gateway ? 'selected' : '' }}>
+                                        {{ $gateway }}
+                                    </option>
+                                    @endforeach
+                                    <!-- <option value="Tap" {{ $selectedGateway === 'Tap' ? 'selected' : '' }}>Tap
                                     </option>
                                     <option value="MyFatoorah"
-                                        {{ $selectedGateway === 'MyFatoorah' ? 'selected' : '' }}>MyFatoorah</option>
-                                    <option value="Hesabe" {{ $selectedGateway === 'Hesabe' ? 'selected' : '' }}>
-                                        Hesabe</option>
+                                        {{ $selectedGateway === 'MyFatoorah' ? 'selected' : '' }}>MyFatoorah</option> -->
+                                    <!-- <option value="Hesabe" {{ $selectedGateway === 'Hesabe' ? 'selected' : '' }}>
+                                        Hesabe</option> -->
                                 </select>
                             </div>
                             <div class="mt-4" x-data="{ selectedGateway: '' }" x-init="$watch('selectedGateway', () => {});
@@ -1346,6 +1352,8 @@
         const invoiceIdInput = document.getElementById('invoiceId');
         invoiceIdInput.value = invoice.id;
 
+        const invoiceExpireDefault = @json($invoiceExpireDefault);
+
         function checkInvoiceId() {
             const tabs = document.querySelectorAll('input[name="payment_type"]');
             const paymentType = invoice.payment_type;
@@ -1464,7 +1472,7 @@
         }
 
 
-        function updateRows() {
+        function updateRows() { //split payment
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
@@ -1482,7 +1490,7 @@
                        </select>
                     </td>
                     <td class="border-b px-4 py-2">
-                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                        <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
                         <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
@@ -1510,7 +1518,7 @@
             }
         }
 
-        function updateRows1() {
+        function updateRows1() { //partial payment
             const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
             const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
@@ -1523,7 +1531,7 @@
                 row.innerHTML = `
                     <td class="border-b px-4 py-2">${i}</td>
                     <td class="border-b px-4 py-2">
-                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
+                        <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
                         <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
@@ -2619,6 +2627,7 @@
                             headers: {
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
                             },
                             body: JSON.stringify({
                                 invoiceId,

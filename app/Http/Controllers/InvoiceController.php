@@ -8,6 +8,7 @@ use App\Models\Agent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use App\Models\Branch;
+use App\Models\Charge;
 use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Payment;
@@ -153,7 +154,7 @@ class InvoiceController extends Controller
             throw new InvalidArgumentException('Nested arrays may not be passed to whereIn method.');
         }
 
-        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel');
+        $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')->where('enabled', true);
         $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
 
         foreach ($selectedTasks as $task) {
@@ -161,13 +162,13 @@ class InvoiceController extends Controller
                 return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
             }
 
-            if ($task->flightDetails && (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from))) {
-                return redirect()->back()->with('error', 'The task record is missing important flight data.');
-            }
+            // if ($task->flightDetails && (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from))) {
+            //     return redirect()->back()->with('error', 'The task record is missing important flight data.');
+            // }
 
-            if ($task->hotelDetails && !isset($task->hotelDetails->hotel)) {
-                return redirect()->back()->with('error', 'The task record is missing important hotel data.');
-            }
+            // if ($task->hotelDetails && !isset($task->hotelDetails->hotel)) {
+            //     return redirect()->back()->with('error', 'The task record is missing important hotel data.');
+            // }
         }
 
         $selectedTasks = $selectedTasks->map(function ($task) {
@@ -364,7 +365,10 @@ class InvoiceController extends Controller
         //dd('testing',$clients);
 
         $suppliers = Supplier::all();
-        $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
+        $paymentGateways = Charge::where('company_id', $invoice->agent->branch->company_id)
+            ->where('is_active', true)
+            ->pluck('name')
+            ->toArray();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
@@ -376,6 +380,10 @@ class InvoiceController extends Controller
         $creditUsed = Credit::where('client_id', $invoice->client_id)
             ->where('invoice_id', $invoice->id)
             ->first();
+
+        $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
+
+        $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
         return view('invoice.edit', compact(
             'clients',
@@ -397,7 +405,8 @@ class InvoiceController extends Controller
             'invprice',
             'dueDate',
             'appUrl',
-            'creditUsed'
+            'creditUsed',
+            'invoiceExpireDefault'
         ));
     }
 
@@ -431,7 +440,7 @@ class InvoiceController extends Controller
 
         if (strtolower($gateway) === 'myfatoorah' && $method) {
             try {
-                $gatewayFee = ChargeService::FatoorahCharge($invoice->amount, $method, $companyId);
+                $gatewayFee = ChargeService::FatoorahCharge($amount, $method, $companyId);
             } catch (\Exception $e) {
                 Log::error('FatoorahCharge exception during partial save', [
                     'message' => $e->getMessage(),
@@ -442,7 +451,7 @@ class InvoiceController extends Controller
             }
         } else {
             $gatewayFee = ChargeService::TapCharge([
-                'amount' => $invoice->amount,
+                'amount' => $amount,
                 'client_id' => $invoice->client_id,
                 'agent_id' => $invoice->agent_id,
                 'currency' => $invoice->currency
@@ -1020,6 +1029,7 @@ class InvoiceController extends Controller
     public function link()
     {
         $user = Auth::user();
+         $companyId = null;
 
         // Gate::authorize('viewAny', Invoice::class);
 
@@ -1039,6 +1049,20 @@ class InvoiceController extends Controller
         //   ->whereHas('invoiceDetails.task.supplier') // Ensures only invoices with suppliers are retrieved
         //   ->paginate(500);
 
+        if ($user->role_id == Role::ADMIN) {
+            // For admin, fetch all agents under the user's company
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            }])->get();
+    
+            $agentIds = $agents->pluck('id');
+            $companyId = $user->company_id; // For admin, we directly get the company_id
+        } else if ($user->role_id == Role::AGENT) {
+            // For agent, get the specific agent's company ID
+            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
+            $companyId = $user->agent->branch->company_id;
+        }
+
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
@@ -1047,8 +1071,8 @@ class InvoiceController extends Controller
         ])
             ->whereIn('agent_id', $agentIds)
             ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
-            ->whereHas('agent.branch', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
+            ->whereHas('agent.branch', function ($query) use ($companyId) {
+                $query->where('company_id', $companyId);
             })
             ->paginate(500);
 
@@ -1058,7 +1082,7 @@ class InvoiceController extends Controller
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
         $suppliers = Supplier::all();
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company->id)->get();
+        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companyId)->get();
         $types = Task::distinct()->pluck('type');
         $totalInvoices = $invoices->total();
 
@@ -1123,13 +1147,24 @@ class InvoiceController extends Controller
                 $gatewayFee = null;
             }
         } else {
+            $amount = 0;
+            $fee = 0;
             Log::info('ChargeService: Using TapCharge instead', ['gateway' => $paymentGateway]);
+            foreach($invoice->invoicePartials as $partial) {
+                Log::info('Partial', ['partial' => $partial]);
+                $amount = bcadd($amount, $partial->amount, 2);
+            }
+
+            $fee = bcsub($amount, $invoice->sub_amount, 2); // Calculate total fee based on all partials
             $gatewayFee = ChargeService::TapCharge([
                 'amount' => $invoice->amount,
                 'client_id' => $invoice->client_id,
                 'agent_id' => $invoice->agent_id,
                 'currency' => $invoice->currency
             ], $paymentGateway);
+
+            $gatewayFee['finalAmount'] = $amount; // Adjust final amount to total of all partials
+            $gatewayFee['fee'] = $fee; // Adjust fee to total of all partials
         }
 
         return view('invoice.show', compact(

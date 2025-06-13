@@ -325,22 +325,22 @@ class PaymentController extends Controller
 
         if (isset($response['errors'])) {
 
-            $this->storeNotification([
-                'user_id' => Auth::id(),
-                'title' => 'Payment Failed',
-                'message' => 'Payment failed: ' . $response['errors'][0]['description'],
-            ]);
+            // $this->storeNotification([
+            //     'user_id' => Auth::id(),
+            //     'title' => 'Payment Failed',
+            //     'message' => 'Payment failed: ' . $response['errors'][0]['description'],
+            // ]);
 
             return Redirect::route('dashboard')->with('error', $response['errors'][0]['description']);
         }
 
         if ($response['status'] != 'CAPTURED') {
 
-            $this->storeNotification([
-                'user_id' => Auth::id(),
-                'title' => 'Payment Failed',
-                'message' => 'Payment failed: ' . $response['status'],
-            ]);
+            // $this->storeNotification([
+            //     'user_id' => Auth::id(),
+            //     'title' => 'Payment Failed',
+            //     'message' => 'Payment failed: ' . $response['status'],
+            // ]);
 
             return Redirect::route('dashboard')->with('error', 'Payment error');
         }
@@ -359,11 +359,11 @@ class PaymentController extends Controller
 
         //dd($paymentGateway);
 
-        $this->storeNotification([
-            'user_id' => Auth::id(),
-            'title' => 'Payment Successful',
-            'message' => 'Payment successful for invoice: ' . $invoiceNumber,
-        ]);
+        // $this->storeNotification([
+        //     'user_id' => Auth::id(),
+        //     'title' => 'Payment Successful',
+        //     'message' => 'Payment successful for invoice: ' . $invoiceNumber,
+        // ]);
 
         $totalPaidAmount = $response['amount'];
 

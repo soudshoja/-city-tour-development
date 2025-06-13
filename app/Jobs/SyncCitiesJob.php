@@ -52,6 +52,9 @@ class SyncCitiesJob implements ShouldQueue
             $perPage = 100;
             $hasMorePages = true;
             $totalSynced = 0;
+            $xRateLimit = 0;
+            $xRateLimitRemaining = 0;
+            $xRateLimitReset = 0;
             
             while ($hasMorePages) {
                 $query = [
@@ -63,13 +66,7 @@ class SyncCitiesJob implements ShouldQueue
                 }
                 $response = $magicHoliday->getCities($query);
 
-                Log::channel('mapping')->info('Fetched cities', [
-                    'country_id' => $this->countryId,
-                    'page' => $response['_page'],
-                    'count' => count($response['_embedded']['cities'] ?? [])
-                ]);
-                
-                if (!isset($response['_embedded']['cities'])) {
+                if ($response['status'] !== 200) {
                     Log::channel('mapping')->error('Invalid API response format', [
                         'country_id' => $this->countryId,
                         'response' => $response
@@ -77,13 +74,22 @@ class SyncCitiesJob implements ShouldQueue
                     break;
                 }
 
-                Log::channel('mapping')->info('Cities got from country', [
+                $headers = $response['headers'];
+                $data = $response['data'];
+
+                // Update rate limit headers
+                $xRateLimit = (int)$headers['X-RateLimit-Limit'][0] ?? 0;
+                $xRateLimitRemaining = (int)$headers['X-RateLimit-Remaining'][0] ?? 0;
+                $xRateLimitReset = $headers['X-RateLimit-Reset'][0] ?? 0;
+
+                Log::channel('mapping')->info('Fetched cities', [
                     'country_id' => $this->countryId,
-                    'count' => count($response['_embedded']['cities'])
+                    'page' => $data['_page'],
+                    'count' => count($data['_embedded']['cities'] ?? [])
                 ]);
 
-                $cities = $response['_embedded']['cities'] ?? [];
-
+                $cities = $data['_embedded']['cities'] ?? [];
+                
                 DB::beginTransaction();
                 try {
                     foreach ($cities as $cityData) {
@@ -117,7 +123,25 @@ class SyncCitiesJob implements ShouldQueue
                 
                 // Check if there are more pages
                 $page++;
-                $hasMorePages = $page <= $response['_page_count'];
+                $hasMorePages = $page <= $data['_page_count'];
+
+                Log::channel('mapping')->warning('Rate limit exceeded, waiting for reset', [
+                    'xRateLimit' => $xRateLimit,
+                    'xRateLimitRemaining' => $xRateLimitRemaining,
+                    'xRateLimitReset' => $xRateLimitReset
+                ]);
+                if($xRateLimitRemaining <= 0) {
+                    Log::channel('mapping')->warning('Rate limit exceeded, waiting for reset', [
+                        'xRateLimit' => $xRateLimit,
+                        'xRateLimitRemaining' => $xRateLimitRemaining,
+                        'xRateLimitReset' => $xRateLimitReset
+                    ]);
+                    $waitTime = max(0, $xRateLimitReset - time());
+                    if ($waitTime > 0) {
+                        Log::channel('magic_holidays')->warning('Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
+                        sleep($waitTime);
+                    }
+                }
             }
             
             Log::info('City sync completed for country', [

@@ -61,6 +61,8 @@
             /* Remove extra spacing between cells */
             border-collapse: collapse;
             /* Merge borders */
+            table-layout: fixed;
+
         }
 
         dialog::backdrop {
@@ -1147,10 +1149,30 @@
                                     </div>
 
                                     <!-- List of Tasks -->
-                                    <ul id="taskList"
-                                        class="border rounded-lg mb-10 max-h-60 overflow-y-auto custom-scrollbar">
-                                        <!-- Dynamic list items go here -->
-                                    </ul>
+                                    <table id="taskList" class="min-w-full table-auto border-collapse border rounded-lg">
+                                        <thead class="">
+                                            <tr class="bg-gray-100">
+                                                <th class="px-4 py-2 text-left">Reference</th>
+                                                <th class="px-4 py-2 text-left">Type</th>
+                                                <th class="px-4 py-2 text-left">Client</th>
+                                                <th class="px-4 py-2 text-left">Agent</th>
+                                                <th class="px-4 py-2 text-left">Branch</th>
+                                                <th class="px-4 py-2 text-left">Supplier</th>
+
+                                            </tr>
+                                        </thead>
+                                    </table>
+
+                                    <!-- Scrollable Body Wrapper -->
+                                    <div class="overflow-y-auto max-h-60">
+                                        <table id="taskListBody" class="min-w-full table-auto border-collapse border rounded-lg">
+                                            <tbody>
+                                                <!-- Dynamic task rows will be added here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+
                                 </div>
                             </div>
                         </div>
@@ -1532,7 +1554,7 @@
                     </td>
                     <td class="flex-grow">
                     <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
-                        <br>Destination: ${item.flight_details.airport_from} - ${item.flight_details.airport_to}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
+                        <br>Destination: ${item.flight_details.country_from.name} - ${item.flight_details.country_to.name}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
                     </p>
                     </td>
                     <td>
@@ -2109,7 +2131,7 @@
         }
 
         function renderTaskList(taskData) {
-            const taskList = document.getElementById('taskList');
+            const taskList = document.getElementById('taskListBody').getElementsByTagName('tbody')[0];
             console.log('taskData', taskData);
 
             if (!Array.isArray(taskData)) {
@@ -2121,21 +2143,66 @@
                 !items.some(selectedTask => selectedTask.id === task.id)
             );
 
-            taskList.innerHTML = '';
-            if (taskData.length == 0) {
-                const p = document.createElement('p');
-                p.className = 'text-center text-gray-500';
-                p.innerText = 'No Task Available';
-                taskList.appendChild(p);
+            taskList.innerHTML = ''; // Clear existing table rows
 
+            if (taskData.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 6; // Adjust to 7 columns (with the Route column)
+                cell.className = 'text-center text-gray-500 py-4';
+                cell.innerText = 'No Task Available';
+                row.appendChild(cell);
+                taskList.appendChild(row);
                 return;
             }
+
             taskData.forEach(task => {
-                const li = document.createElement('li');
-                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                li.innerText = `${task.reference} - ${task.type}   (${task.client_name} - ${task.agent.name})    ${task.ticket_number}`;
-                li.onclick = () => selectTask(task);
-                taskList.appendChild(li);
+                const row = document.createElement('tr');
+                row.className = 'cursor-pointer hover:bg-gray-100';
+
+                // Make the entire row clickable
+                row.onclick = () => selectTask(task);
+
+                // Create table data cells
+                const referenceCell = document.createElement('td');
+                referenceCell.className = 'px-4 py-2';
+                referenceCell.innerText = task.reference;
+
+                const typeCell = document.createElement('td');
+                typeCell.className = 'px-4 py-2';
+                typeCell.innerText = task.type.charAt(0).toUpperCase() + task.type.slice(1);
+
+                const clientCell = document.createElement('td');
+                clientCell.className = 'px-4 py-2';
+                clientCell.innerText = task.client_name;
+
+                const agentCell = document.createElement('td');
+                agentCell.className = 'px-4 py-2';
+                agentCell.innerText = task.agent.name;
+
+                const branchCell = document.createElement('td');
+                branchCell.className = 'px-4 py-2';
+                branchCell.innerText = task.branch_name;
+
+                const routeCell = document.createElement('td');
+                routeCell.className = 'px-4 py-2';
+
+                // Check if country_from and country_to exist before accessing 'name'
+
+                const supplierCell = document.createElement('td');
+                supplierCell.className = 'px-4 py-2';
+                supplierCell.innerText = task.supplier_name;
+
+                // Append cells to the row
+                row.appendChild(referenceCell);
+                row.appendChild(typeCell);
+                row.appendChild(clientCell);
+                row.appendChild(agentCell);
+                row.appendChild(branchCell);
+                row.appendChild(supplierCell);
+
+                // Append the row to the table body
+                taskList.appendChild(row);
             });
         }
 

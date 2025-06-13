@@ -24,6 +24,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Credit;
+use App\Models\Setting;
 use App\Services\ChargeService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -273,6 +274,9 @@ class InvoiceController extends Controller
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
         $appUrl = config('app.url');
+        $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
+
+        $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
         return view('invoice.create', compact(
             'clients',
@@ -292,7 +296,8 @@ class InvoiceController extends Controller
             'appUrl',
             'disableButtons',
             'payments',
-            'companyId'
+            'companyId',
+            'invoiceExpireDefault'
         ));
     }
 

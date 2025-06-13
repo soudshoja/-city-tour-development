@@ -181,10 +181,7 @@
                     <td class="px-4 py-2 border">
                         <input type="checkbox" class="partial-checkbox" name="selected_partials[]"
                             value="{{ $partial->id }}" data-amount="{{ $partial->amount }}"
-                            @if ($partial->status === 'paid') disabled
-                        checked
-                        class="disabled-checkbox" @endif
-                        @if ($partial->status !== 'paid') checked @endif>
+                            @if ($partial->status == 'paid') checked @endif>
                     </td>
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}

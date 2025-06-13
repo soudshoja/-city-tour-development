@@ -1613,8 +1613,8 @@
             open: false,
             search: '',
             selectedId: '',
-            selectedAgent: @json(optional($agent ?? null)->name ?? ''), // Fallback if no agent exists
-            all: @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])),
+            selectedAgent: @json(optional($agent ?? null)->name ?? ''),
+            all: @json(optional($agents ?? collect())->map(fn($a) => ['id' => $a->id, 'name' => $a->name])),
             filtered: [],
             init() {
                 this.filtered = [...this.all];
@@ -1645,7 +1645,7 @@
             search: '',
             selectedId: '',
             selectedSupplier: @json(optional($supplier ?? null)->name ?? ''), // Fallback if no supplier exists
-            all: @json($suppliers->map(fn($a) => ['id' => $a.id, 'name' => $a.name])),
+            all: @json($suppliers->map(function ($a) { return ['id' => $a->id, 'name' => $a->name]; })),
             filtered: [],
             init() {
                 this.filtered = [...this.all];

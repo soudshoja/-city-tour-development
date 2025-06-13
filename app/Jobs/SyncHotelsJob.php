@@ -144,7 +144,7 @@ class SyncHotelsJob implements ShouldQueue
                 $hasMorePages = $page <= $data['_page_count'];
 
                 if($xRateLimitRemaining <= 0) {
-                    Log::channel('mapping')->warning('Rate limit exceeded', [
+                    Log::channel('mapping')->warning('SyncHotelsJob: Rate limit exceeded', [
                         'city_id' => $this->cityId,
                         'xRateLimit' => $xRateLimit,
                         'xRateLimitRemaining' => $xRateLimitRemaining,
@@ -152,8 +152,13 @@ class SyncHotelsJob implements ShouldQueue
                     ]);
 
                     $waitTime = max(0, $xRateLimitReset - time());
+                    Log::channel('mapping')->info('SyncHotelsJob: Rate limit reset time', [
+                        'wait_seconds' => $waitTime,
+                        'current_time' => time(),
+                        'xRateLimitReset' => $xRateLimitReset
+                    ]);
                     if ($waitTime > 0) {
-                        Log::channel('mapping')->warning('Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
+                        Log::channel('mapping')->warning('SyncHotelsJob: Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
                         sleep($waitTime);
                     }
                     break; // Stop processing if rate limit is exceeded

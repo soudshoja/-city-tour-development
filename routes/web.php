@@ -278,6 +278,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
     Route::post('/whatsapp/send1', [WhatsappController::class, 'sendMessage1'])->name('whatsapp.send1');
     Route::post('/whatsapp/share-invoice', [WhatsappController::class, 'shareInvoice'])->name('whatsapp.share-invoice');
+    Route::post('/whatsapp/share-payment-link', [WhatsappController::class, 'sharePaymentLink'])->name('whatsapp.share-payment-link');
     Route::post('/whatsapp/sendpdf', [WhatsappController::class, 'sendMessagepdf'])->name('whatsapp.sendpdf');
 
     Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);

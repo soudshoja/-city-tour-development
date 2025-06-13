@@ -21,11 +21,13 @@ class ChargeController extends Controller
             $totalCharges = Charge::where('company_id', Auth::user()->company->id)->count();
             $charges = Charge::where('company_id', Auth::user()->company->id)->get();
         } elseif (Auth::user()->role->id == Role::BRANCH) {
+            return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
             $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->count();
             $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
         } else {
-            $totalCharges = 0;
-            $charges = collect();
+            return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
+            // $totalCharges = 0;
+            // $charges = collect();
         }
 
         $gateways = Charge::with('methods')->get();

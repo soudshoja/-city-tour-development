@@ -27,6 +27,18 @@ class TaskSchema
                 'example' => '2833133219',
                 'default' => '',
             ],
+            'gds_reference' => [
+                'type' => 'string',
+                'desc' => "GDS reference that provided by Amadeus, Sabre, Travelport or any other GDS. It always 6 characters, combination of digits and letters, like '8DROXL , 7648J5'. It usually located on line before line A, and it is usually after 'MUC1A' space and then the GDS reference. But the characters after 'MUC1A' is 9 characters long, so you can just take the first 6 characters after 'MUC1A'. For example, if the line is 'MUC1A 8DROXL0101', you can just take '8DROXL' as the GDS reference. Multiple passengers/client may have the same GDS reference, it means they are in the same booking, so you can just use the same GDS reference for all of them. But they will have different ticket number.",
+                'example' => '80DROXL',
+                'default' => '',
+            ],
+            'airline_reference' => [
+                'type' => 'string',
+                'desc' => "Airline reference that provided by the airline. It is on the same line as the GDS reference, but it is on the end of the line. It is usually 6 characters long, combination of digits and letters, like '8DROXL', '7648J5'. Sometimes the reference is same as the GDS reference, but most of the time it is different. You can just take the last 6 characters of the line where the GDS reference is located. For example, if the line is 'MUC1A 8DROXL0101', and at the end of the line is '8DROXL' or 'NK2B7Y', you can just take '8DROXL' or 'NK2B7Y' as the airline reference. Multiple passengers/client may have the same airline reference, it means they are in the same booking, so you can just use the same airline reference for all of them. But they will have different ticket number.",
+                'example' => 'NK2B7Y',
+                'default' => '',
+            ],
             'status' => [
                 'type' => 'string',
                 'desc' => "Current status of the task. It can be: 'refund' (if the file contains refund indicator such as `RF`). Make sure to set the status to 'refund' if you detect `RF` keyword. Other status are 'issued', 'reissued','void' or 'emd'. If the files has 'FO' and original ticket number, set the status to 'reissued'. If the file is an 'EMD' ticket which usually means penalty fee, set the status to 'emd'. EMD means 'Electronic Miscellaneous Document', which is a document issued by airlines for various purposes, such as penalty fees, service charges, or other non-flight-related transactions.",
@@ -198,6 +210,23 @@ class TaskSchema
                     'flight_meal' => 'Vegetarian',
                     'seat_no' => '12A',
                     'ticket_number' => '2833133219',
+                ],
+
+            ],
+            'task_hotel_details' => [
+                'type' => 'object',
+                'desc' => "Hotel details associated with the task.",
+                'example' => [
+                    'hotel_name' => 'Grand Hotel',
+                    'check_in_date' => '2024-10-16',
+                    'check_out_date' => '2024-10-20',
+                    'room_type' => 'Deluxe Suite',
+                    'nights' => 4,
+                    'guests' => 2,
+                    'price_per_night' => 150.00,
+                    'total_price' => 600.00,
+                    'currency' => 'KWD',
+                    'booking_reference' => 'GH123456',
                 ],
             ],
         ];

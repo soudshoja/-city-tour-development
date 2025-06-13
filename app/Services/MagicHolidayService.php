@@ -52,7 +52,11 @@ class MagicHolidayService
             ->{$method}($this->baseUrl . $endpoint, $method === 'get' ? $params : $payload);
 
         if ($response->successful()) {
-            return $response->json();
+            return [
+                'status' => $response->status(),
+                'data' => $response->json(),
+                'headers' => $response->headers(),
+            ];
         }
 
         throw new \Exception("API request failed: " . $response->body());

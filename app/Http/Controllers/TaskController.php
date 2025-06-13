@@ -162,6 +162,8 @@ class TaskController extends Controller
             'company_id' => 'required|exists:companies,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'reference' => 'required|string',
+            'gds_reference' => 'nullable|string',
+            'airline_reference' => 'nullable|string',
             'created_by' => 'nullable|string',
             'issued_by' => 'nullable|string',
             'status' => 'required|string',
@@ -213,7 +215,7 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $penaltyFee = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
+        $validated['penalty_fee'] = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
 
         if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void' || $validatedData['status'] == 'emd') {
             $originalTask = Task::where('reference', $validatedData['reference'])

@@ -119,7 +119,7 @@
                     <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
-                       @unlessrole('agent')
+                        @unlessrole('agent')
                         <div x-data="searchableDropdownAgent()" x-init="init()" class="w-full">
                             <div class="relative">
                                 <div class="mb-4">
@@ -175,10 +175,10 @@
                                     <!-- Search Bar visible inside dropdown -->
                                     <div class="px-2 py-2">
                                         <input type="text"
-                                        x-model="search"
-                                        @input="filterOptions"
-                                        placeholder="Search Supplier Name"
-                                        class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
+                                            x-model="search"
+                                            @input="filterOptions"
+                                            placeholder="Search Supplier Name"
+                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
                                     </div>
 
                                     <!-- Options limited to first 2 matches -->
@@ -199,15 +199,15 @@
                     </form>
                     <hr>
                     <div class="p-4 flex justify-between items-center">
-                       <button @click="addTaskModal = false"
-    class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
-    Cancel
-</button>
+                        <button @click="addTaskModal = false"
+                            class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
+                            Cancel
+                        </button>
 
-<x-primary-button type="submit" form="agent-supplier-task"
-    class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
-    Submit
-</x-primary-button>
+                        <x-primary-button type="submit" form="agent-supplier-task"
+                            class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
+                            Submit
+                        </x-primary-button>
 
                     </div>
                 </div>
@@ -1583,9 +1583,9 @@
         return {
             open: false,
             search: '',
-            selectedId: '{{ $task->client_id }}',
-            selectedName: @json(optional($task->client)->name),
-            all: @json($clients->map(fn($c)=>['id'=>$c->id, 'name'=>$c->name])),
+            selectedId: '',
+            selectedName: @json(optional($task ?? null)->client->name ?? ''), // Fallback to an empty string if no task is found
+            all: @json($clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])),
             filtered: [],
             init() {
                 this.filtered = [...this.all];
@@ -1613,13 +1613,13 @@
             open: false,
             search: '',
             selectedId: '',
-            selectedAgent: '',
-            all: @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])),
+            selectedAgent: @json(optional($agent ?? null)->name ?? ''),
+            all: @json(optional($agents ?? collect())->map(fn($a) => ['id' => $a->id, 'name' => $a->name])),
             filtered: [],
             init() {
                 this.filtered = [...this.all];
                 this.selectedId = '';
-                this.selectedAgent = '';
+                this.selectedAgent = ''; // Ensure it's reset when there's no agent
             },
             filterOptions() {
                 const term = this.search.toLowerCase();
@@ -1644,8 +1644,8 @@
             open: false,
             search: '',
             selectedId: '',
-            selectedSupplier: '',
-            all: @json($suppliers->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])),
+            selectedSupplier: @json(optional($supplier ?? null)->name ?? ''), // Fallback if no supplier exists
+            all: @json($suppliers->map(function ($a) { return ['id' => $a->id, 'name' => $a->name]; })),
             filtered: [],
             init() {
                 this.filtered = [...this.all];
@@ -1661,10 +1661,10 @@
                 this.open = false;
             },
             highlightMatch(name) {
-            if (!this.search) return name;
-            const regex = new RegExp(`(${this.search})`, 'gi');
-            return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
-        }
-        }
+                if (!this.search) return name;
+                const regex = new RegExp(`(${this.search})`, 'gi');
+                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+            }
+        };
     }
 </script>

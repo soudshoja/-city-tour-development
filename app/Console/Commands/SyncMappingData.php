@@ -43,9 +43,14 @@ class SyncMappingData extends Command
                 if ($countries) {
                     $countryNames = explode(',', $countries);
                     $countryNames = array_map('trim', $countryNames);
-                    $countryIds = MapCountry::whereIn('name', $countryNames)
-                        ->pluck('id')
-                        ->toArray();
+
+                    if (empty($countryNames)) {
+                        $countryIds = MapCountry::orderBy('id')->pluck('id')->toArray();
+                    } else {
+                        $countryIds = MapCountry::whereIn('name', $countryNames)
+                            ->pluck('id')
+                            ->toArray();
+                    }
 
                     if (empty($countryIds)) {
                         $this->error('No valid country IDs found for the provided names.');
@@ -76,16 +81,21 @@ class SyncMappingData extends Command
                     $cityName = explode(',', $cities);
                     $cityName = array_map('trim', $cityName);
 
-                    $cityIds = MapCity::whereIn('name', $cityName)
-                        ->pluck('id')
-                        ->toArray();
+                    if (empty($cityName)) {
+                        $cityIds = MapCity::orderBy('id')->pluck('id')->toArray();
+                    } else {
+                        $cityIds = MapCity::whereIn('name', $cityName)
+                            ->pluck('id')
+                            ->toArray();
+                    }
+
                     if (empty($cityIds)) {
                         $this->error('No valid city IDs found for the provided names.');
                         return;
                     }
 
                     foreach ($cityIds as $cityId) {
-                        dispatch(new SyncHotelsJob($isFull, $cityId, $date));
+                        dispatch(new SyncHotelsJob($cityId));
                         $this->info("Dispatched SyncHotelsJob for city ID: $cityId");
                     }
 

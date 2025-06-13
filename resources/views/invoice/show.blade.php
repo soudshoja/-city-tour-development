@@ -605,10 +605,12 @@
         // Calculate the total paid amount from invoicePartials
         let totalPaidAmount = invoicePartials.filter(partial => partial.status === 'paid')
             .reduce((sum, partial) => sum + parseFloat(partial.amount), 0);
-
+        
+        let totalPaidServiceCharge = invoicePartials.filter(partial => partial.status === 'paid')
+            .reduce((sum, partial) => sum + parseFloat(partial.service_charge), 0);
 
         // Calculate balance
-        let balance = invoice.amount - totalPaidAmount;
+        let balance = invoice.amount - totalPaidAmount + totalPaidServiceCharge;
 
         let balanceElement = document.getElementById('balance');
         if (balanceElement) {

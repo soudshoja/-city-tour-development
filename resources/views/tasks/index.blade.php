@@ -120,81 +120,30 @@
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
                         @unlessrole('agent')
-                        <div x-data="searchableDropdownAgent()" x-init="init()" class="w-full">
-                            <div class="relative">
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium">Select an Agent:</label>
-                                    <button type="button"
-                                        @click="open = !open"
-                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black min-h-[42px]">
-                                        <span x-text="selectedAgent === '' ? 'Select Agent' : selectedAgent"></span>
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="agent_id" :value="selectedId">
-
-                                <div x-show="open" @click.away="open = false"
-                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
-                                    <div class="px-2 py-2">
-                                        <input type="text"
-                                            x-model="search"
-                                            @input="filterOptions"
-                                            placeholder="Search Agent Name"
-                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
-                                    </div>
-
-                                    <template x-for="option in filtered.slice(0, 3)" :key="option.id">
-                                        <div @click="select(option)"
-                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            x-html="highlightMatch(option.name)">
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
+                        <select name="agent_id" id="task-agent-id"
+                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                            <option value="" class="">Select Agent</option>
+                            @foreach ($agents as $agent)
+                            <option value="{{ $agent->id }}" data-client="{{ $agent }}">
+                                {{ $agent->name }}
+                            </option>
+                            @endforeach
+                        </select>
                         @else
-                        <input type="hidden" name="agent_id" id="agent_id_task_modal" value="{{ Auth()->user()->agent->id }}">
+                        <input type="hidden" name="agent_id" id="agent_id_task_modal"
+                            value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
-
-                        <div x-data="searchableDropdownSupplier()" x-init="init()" class="w-full">
-                            <div class="relative">
-                                <div class="mb-4">
-                                    <label class="block mb-1 text-sm font-medium">Select a Supplier:</label>
-                                    <button type="button"
-                                        @click="open = !open"
-                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black">
-                                        <span x-text="selectedSupplier === '' ? 'Select Supplier' : selectedSupplier"></span>
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="supplier_id" :value="selectedId">
-
-                                <div x-show="open" @click.away="open = false"
-                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
-
-                                    <!-- Search Bar visible inside dropdown -->
-                                    <div class="px-2 py-2">
-                                        <input type="text"
-                                            x-model="search"
-                                            @input="filterOptions"
-                                            placeholder="Search Supplier Name"
-                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
-                                    </div>
-
-                                    <!-- Options limited to first 2 matches -->
-                                    <template x-for="option in filtered.slice(0, 1)" :key="option.id">
-                                        <div @click="select(option)"
-                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            x-html="highlightMatch(option.name)">
-                                        </div>
-                                    </template>
-
-                                </div>
-                            </div>
-                        </div>
-
-
+                        <select name="supplier_id" id="select-supplier-task"
+                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
+                            <option value="">Select Supplier</option>
+                            @foreach ($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">
+                                {{ $supplier->name }}
+                            </option>
+                            @endforeach
+                        </select>
                         <div id="form-task-container" class="mt-2" data-company-id="{{ $companyId }}">
+
                         </div>
                     </form>
                     <hr>

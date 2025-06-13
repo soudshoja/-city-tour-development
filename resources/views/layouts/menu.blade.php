@@ -64,12 +64,12 @@
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payable</a>
                 </menuitem>
             @endcan
-            @can('viewAny', 'App\Models\Charge')
+            @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant') || auth()->user()->hasRole('company'))
                 <menuitem><a href="{{ route('charges.index') }}"
                     class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage
                     Charges</a>
                 </menuitem>
-            @endcan
+            @endif
             {{-- @can('viewAny', 'App\Models\CoaCategory')
                 <menuitem><a href="{{ route('coa.payment') }}"
             class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment

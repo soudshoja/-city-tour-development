@@ -1554,7 +1554,7 @@
                     </td>
                     <td class="flex-grow">
                     <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
-                        <br>Destination: ${item.flight_details.country_from.name} - ${item.flight_details.country_to.name}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
+                        <br>Destination: ${item.flight_details.country_from ? item.flight_details.country_from : 'null'} - ${item.flight_details.country_to ? item.flight_details.country_to : 'null'}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
                     </p>
                     </td>
                     <td>
@@ -1761,12 +1761,12 @@
                                     </summary>
                                     <div class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         <div><strong>Departure Time:</strong> ${item.flight_details.departure_time}</div>
-                                        <div><strong>Country From:</strong> ${item.flight_details.country_from.name}</div>
-                                        <div><strong>Airport From:</strong> ${item.flight_details.airport_from}</div>
+                                        <div><strong>Country From:</strong> ${item.flight_details.country_from ? item.flight_details.country_from : 'null'}</div>
+                                        <div><strong>Airport From:</strong> ${item.flight_details.airport_from ? item.flight_details.airport_from : 'null'} </div>
                                         <div><strong>Terminal From:</strong> ${item.flight_details.terminal_from}</div>
                                         <div><strong>Arrival Time:</strong> ${item.flight_details.arrival_time}</div>
-                                        <div><strong>Country To:</strong> ${item.flight_details.country_to.name}</div>
-                                        <div><strong>Airport To:</strong> ${item.flight_details.airport_to}</div>
+                                        <div><strong>Country To:</strong> ${item.flight_details.country_to ? item.flight_details.country_to : 'null' }</div>
+                                        <div><strong>Airport To:</strong> ${item.flight_details.airport_to ? item.flight_details.airport_to : 'null'}</div>
                                         <div><strong>Terminal To:</strong> ${item.flight_details.terminal_to}</div>
                                         <div><strong>Seat No:</strong> ${item.flight_details.seat_no}</div>
                                         <div><strong>Flight Meal:</strong> ${item.flight_details.flight_meal}</div>

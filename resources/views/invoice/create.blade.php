@@ -1152,7 +1152,8 @@
                                     <table id="taskList" class="min-w-full table-auto border-collapse border rounded-lg">
                                         <thead class="">
                                             <tr class="bg-gray-100">
-                                                <th class="px-4 py-2 text-left">Reference</th>
+                                                <th class="px-4 py-2 text-left">GDS Reference</th>
+                                                <th class="px-4 py-2 text-left">Airline Reference</th>
                                                 <th class="px-4 py-2 text-left">Type</th>
                                                 <th class="px-4 py-2 text-left">Client</th>
                                                 <th class="px-4 py-2 text-left">Agent</th>
@@ -1161,11 +1162,12 @@
 
                                             </tr>
                                         </thead>
+                                        <tbody id="taskListBody"></tbody>
                                     </table>
 
                                     <!-- Scrollable Body Wrapper -->
                                     <div class="overflow-y-auto max-h-60">
-                                        <table id="taskListBody" class="min-w-full table-auto border-collapse border rounded-lg">
+                                        <table class="min-w-full table-auto border-collapse border rounded-lg">
                                             <tbody>
                                                 <!-- Dynamic task rows will be added here -->
                                             </tbody>
@@ -2130,7 +2132,7 @@
         }
 
         function renderTaskList(taskData) {
-            const taskList = document.getElementById('taskListBody').getElementsByTagName('tbody')[0];
+            const taskList = document.getElementById('taskListBody');
             console.log('taskData', taskData);
 
             if (!Array.isArray(taskData)) {
@@ -2165,7 +2167,11 @@
                 // Create table data cells
                 const referenceCell = document.createElement('td');
                 referenceCell.className = 'px-4 py-2';
-                referenceCell.innerText = task.reference;
+                referenceCell.innerText = task.gds_reference ?? task.reference;
+
+                const airlineReferenceCell = document.createElement('td');
+                airlineReferenceCell.className = 'px-4 py-2';
+                airlineReferenceCell.innerText = task.airline_reference ?? task.reference;
 
                 const typeCell = document.createElement('td');
                 typeCell.className = 'px-4 py-2';
@@ -2194,6 +2200,7 @@
 
                 // Append cells to the row
                 row.appendChild(referenceCell);
+                row.appendChild(airlineReferenceCell);
                 row.appendChild(typeCell);
                 row.appendChild(clientCell);
                 row.appendChild(agentCell);
@@ -2908,7 +2915,7 @@
                     // document.getElementById("coa-activities-container").style.display = "block";
                 }, 100);
 
-                window.location.href = "{{ route('invoice.edit', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
+                location.href = "{{ route('invoice.edit', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
                     ":invoiceNumber",
                     invoiceNumber
                 );

@@ -397,7 +397,6 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'payment.',
     ], function () {
         Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose');
-        Route::get('/process', [PaymentController::class, 'process'])->name('process');
         Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
@@ -601,6 +600,7 @@ Route::get('/payment/test', function () {
 Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, 'handleMyFatoorahCallback'])->name('payments.callback');
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
+Route::get('payment/process', [PaymentController::class, 'process'])->name('payment.process');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
 

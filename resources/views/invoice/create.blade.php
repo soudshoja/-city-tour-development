@@ -1554,7 +1554,6 @@
                     </td>
                     <td class="flex-grow">
                     <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
-                        <br>Destination: ${item.flight_details.country_from ? item.flight_details.country_from : 'null'} - ${item.flight_details.country_to ? item.flight_details.country_to : 'null'}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
                     </p>
                     </td>
                     <td>

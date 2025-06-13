@@ -80,7 +80,7 @@ class OpenAIClient implements AIClientInterface
             ]
         ];
 
-        $response = Http::withHeaders([
+        $response = Http::timeout(120)->withHeaders([
             'Authorization' => 'Bearer ' . $this->apiKey,
             'Content-Type' => 'application/json',
         ])->post($url, $data);
@@ -356,6 +356,8 @@ class OpenAIClient implements AIClientInterface
                 'penalty_fee': '10.00',
                 'refund_charge': '0.250+0.900',
                 'reference': 'ticket_number',
+                'gds_reference' => '8D46RD',
+                'amadeus_reference' => 'KUIXNO',
                 'created_by': 'KWIKT2619', //example of gds office id
                 'issued_by': 'KWIKT2844', //example of gds office id
                 'type': 'flight',
@@ -407,6 +409,8 @@ class OpenAIClient implements AIClientInterface
                 'penalty_fee': '10.00',
                 'refund_charge': '0.250+0.900',
                 'reference': 'ticket_number',
+                'gds_reference' => 'KFD5TW',
+                'amadeus_reference' => 'KFD5TW',
                 'created_by': 'KWIKT2619', //example of gds office id
                 'issued_by': 'KWIKT2844', //example of gds office id
                 'type': 'flight',
@@ -455,6 +459,8 @@ class OpenAIClient implements AIClientInterface
                 'penalty_fee': '10.00',
                 'refund_charge': '0.250+0.900',
                 'reference': 'ticket_number',
+                'gds_reference' => 'KFD5TW',
+                'amadeus_reference' => 'KFD5TW',
                 'created_by': 'KWIKT2619', //example of gds office id
                 'issued_by': 'KWIKT2844', //example of gds office id
                 'type': 'flight',

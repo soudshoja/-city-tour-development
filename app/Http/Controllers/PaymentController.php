@@ -172,7 +172,7 @@ class PaymentController extends Controller
             'payment_date' => Carbon::now(),
             'amount' => $data['total_amount'],
             'payment_gateway' => $data['payment_gateway'],
-            'payment_method' => $data['payment_method'],
+            'payment_method_id' => $data['payment_method'],
             'status' => 'pending',
             'payment_reference' => $invoice->id,
             'invoice_id' => $invoice->id,
@@ -197,7 +197,7 @@ class PaymentController extends Controller
                 'metadata' => [
                     'invoice_number' => $invoice->invoice_number,
                     'payment_id' => $payment->id,
-                    'payment_gateway' => $payment->payment_method,
+                    'payment_gateway' => $payment->payment_method_id,
                     'invoice_partial_id' => json_encode($data['invoice_partial_id']),
                 ],
                 'redirect' => [
@@ -283,7 +283,7 @@ class PaymentController extends Controller
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
-            ])->post("$baseUrl/v2/ExecutePayment", $executePayload);
+            ])->post("$baseUrl/ExecutePayment", $executePayload);
 
             if (!$executeResponse->successful()) {
                 Log::error('MyFatoorah: ExecutePayment failed', ['response' => $executeResponse->body()]);
@@ -982,7 +982,7 @@ class PaymentController extends Controller
                 'payment_date' => Carbon::now(),
                 'amount' => $request->amount,
                 'payment_gateway' => $request->payment_gateway,
-                'payment_method' => $request->payment_method,
+                'payment_method_id' => $request->payment_method,
                 'status' => 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
@@ -1052,7 +1052,7 @@ class PaymentController extends Controller
         ];
      
         $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-            ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method, $companyId)
+            ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
             : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
 
         $gatewayFee = $chargeResult['fee'];
@@ -1081,7 +1081,7 @@ class PaymentController extends Controller
             $process = 'invoice';
         }
         $paymentGateway = $payment->payment_gateway;
-        $paymentMethod = $payment->payment_method;
+        $paymentMethod = $payment->payment_method_id;
 
         if (strtolower($paymentGateway) === 'tap') {
 
@@ -1141,7 +1141,7 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = optional($payment->agent->branch)->company_id;
 
-            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method, $companyId);
+            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
 
             $finalAmount = $chargeResult['finalAmount'];
 
@@ -1151,7 +1151,7 @@ class PaymentController extends Controller
                 "CustomerName"       => optional($payment->client)->name ?? 'Customer',
                 "CustomerEmail"       => $payment->client->email ?? 'email@example.com',
                 "MobileCountryCode"   => "+965",
-                "CustomerMobile"      => optional($payment->client)->phone ?? '50000000',
+                "CustomerMobile"      => substr(optional($payment->client)->phone, 1)  ?? '50000000',
                 "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
                 "CallBackUrl"         => route('payments.callback'),
                 "ErrorUrl"            => route('payments.error'),
@@ -1175,7 +1175,7 @@ class PaymentController extends Controller
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
-            ])->post("$baseUrl/v2/ExecutePayment", $executePayload);
+            ])->post("$baseUrl/ExecutePayment", $executePayload);
 
             if (!$executeResponse->successful()) {
                 Log::error('MyFatoorah: ExecutePayment failed', ['response' => $executeResponse->body()]);
@@ -1387,7 +1387,7 @@ class PaymentController extends Controller
             $statusResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
-            ])->post("$baseUrl/v2/getPaymentStatus", [
+            ])->post("$baseUrl/getPaymentStatus", [
                 "Key" => $paymentId,
                 "KeyType" => "PaymentId"
             ]);

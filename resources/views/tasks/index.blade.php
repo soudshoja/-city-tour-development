@@ -255,6 +255,8 @@
                                                 Enable/Disable</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Reference</th>
+                                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</th>
+                                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
@@ -616,6 +618,12 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->reference }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->gds_reference }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->airline_reference }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->created_by ?? 'Not Set' }}

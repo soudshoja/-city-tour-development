@@ -22,6 +22,8 @@ class Task extends Model
         'original_task_id',
         'client_name',
         'reference',
+        'gds_reference',
+        'airline_reference',
         'created_by',
         'issued_by',
         'duration',

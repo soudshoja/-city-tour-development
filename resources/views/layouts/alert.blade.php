@@ -23,3 +23,18 @@
     <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
 </div>
 @endif
+
+<!-- for ajax alert -->
+<div 
+    id="custom-success-alert"
+    class="alert flex items-center justify-between rounded bg-green-500 p-3.5 text-white hidden" role="alert">
+    <p></p>
+    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+</div>
+
+<div 
+    id="custom-error-alert"
+    class="alert flex items-center justify-between rounded bg-red-500 p-3.5 text-white hidden" role="alert">
+    <p></p>
+    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+</div>

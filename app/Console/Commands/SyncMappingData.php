@@ -85,8 +85,7 @@ class SyncMappingData extends Command
                     }
 
                     foreach ($cityIds as $cityId) {
-                        dispatch(new SyncHotelsJob($isFull, $cityId, $date))
-                            ->delay(now()->addSeconds(rand(10, 60))); // Random delay to avoid API rate limits
+                        dispatch(new SyncHotelsJob($isFull, $cityId, $date));
                         $this->info("Dispatched SyncHotelsJob for city ID: $cityId");
                     }
 
@@ -109,11 +108,11 @@ class SyncMappingData extends Command
                 $this->info('Countries sync job dispatched');
 
                 // Sync Cities for each country
-                $countryIds = MapCountry::pluck('id')->toArray();
+                $countryIds = MapCountry::orderBy('id')->pluck('id')->toArray();
+                
                 if (!empty($countryIds)) {
                     foreach ($countryIds as $countryId) {
-                        dispatch(new SyncCitiesJob($isFull, $countryId))
-                            ->delay(now()->addSeconds(rand(5, 30)));
+                        dispatch(new SyncCitiesJob($isFull, $countryId));
                         $this->info("Dispatched SyncCitiesJob for country ID: $countryId");
                     }
                 } else {

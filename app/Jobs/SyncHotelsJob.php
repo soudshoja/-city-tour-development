@@ -78,17 +78,26 @@ class SyncHotelsJob implements ShouldQueue
             $perPage = 100;
             $hasMorePages = true;
             $totalSynced = 0;
-            
+            $xRateLimit = 0;
+            $xRateLimitRemaining = 0;
+            $xRateLimitReset = 0;
+
             while ($hasMorePages) {
 
                 $response = $magicHoliday->getHotels($this->cityId, $page, $perPage);
                 
-                if (!isset($response['_embedded']['hotels'])) {
+                if ($response['status'] !== 200) {
                     Log::channel('mapping')->error('Invalid API response format', ['response' => $response]);
                     break;
                 }
+                $headers = $response['headers'];
+                $data = $response['data'];
 
-                $hotels = $response['_embedded']['hotels'] ?? [];
+                $xRateLimit = $headers['X-RateLimit-Limit'][0] ?? 0;
+                $xRateLimitRemaining = $headers['X-RateLimit-Remaining'][0] ?? 0;
+                $xRateLimitReset = $headers['X-RateLimit-Reset'][0] ?? 0;
+
+                $hotels = $data['_embedded']['hotels'] ?? [];
                 
                 DB::beginTransaction();
                 try {
@@ -132,7 +141,24 @@ class SyncHotelsJob implements ShouldQueue
                 
                 // Check if there are more pages
                 $page++;
-                $hasMorePages = $page <= $response['_page_count'];
+                $hasMorePages = $page <= $data['_page_count'];
+
+                if($xRateLimitRemaining <= 0) {
+                    Log::channel('mapping')->warning('Rate limit exceeded', [
+                        'city_id' => $this->cityId,
+                        'xRateLimit' => $xRateLimit,
+                        'xRateLimitRemaining' => $xRateLimitRemaining,
+                        'xRateLimitReset' => $xRateLimitReset
+                    ]);
+
+                    $waitTime = max(0, $xRateLimitReset - time());
+                    if ($waitTime > 0) {
+                        Log::channel('mapping')->warning('Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
+                        sleep($waitTime);
+                    }
+                    break; // Stop processing if rate limit is exceeded
+                }
+
             }
             
             Log::channel('mapping')->info('Hotel sync completed for city', [

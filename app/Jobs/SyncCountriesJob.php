@@ -35,6 +35,9 @@ class SyncCountriesJob implements ShouldQueue
             $perPage = 100;
             $hasMorePages = true;
             $totalSynced = 0;
+            $xRateLimit = 0;
+            $xRateLimitRemaining = 0;
+            $xRateLimitReset = 0;
             
             while ($hasMorePages) {
                 $query = [
@@ -43,15 +46,24 @@ class SyncCountriesJob implements ShouldQueue
                 ];
                 $response = $magicHoliday->getCountries($query);
                 
-                if (!isset($response['_embedded']['countries'])) {
-                    Log::error('Invalid API response format', ['response' => $response]);
+                if ($response['status'] !== 200) {
+                    Log::channel('mapping')->error('Invalid API response format', ['response' => $response]);
                     break;
                 }
+
+                $headers = $response['headers'];
+                $data = $response['data'];
+
+                // Update rate limit headers
+                $xRateLimit = $headers['X-RateLimit-Limit'][0] ?? 0;
+                $xRateLimitRemaining = $headers['X-RateLimit-Remaining'][0] ?? 0;
+                $xRateLimitReset = $headers['X-RateLimit-Reset'][0] ?? 0;
+
                 Log::channel('mapping')->info('Fetched countries', [
-                    'page' => $response['_page'],
-                    'count' => count($response['_embedded']['countries']),
+                    'page' => $data['_page'],
+                    'count' => count($data['_embedded']['countries']),
                 ]);
-                foreach ($response['_embedded']['countries'] as $countryData) {
+                foreach ($data['_embedded']['countries'] as $countryData) {
                     Log::channel('mapping')->info('Processing country', [
                         'id' => $countryData['id'],
                         'name' => $countryData['name'],
@@ -71,7 +83,20 @@ class SyncCountriesJob implements ShouldQueue
                 
                 // Check if there are more pages
                 $page++;
-                $hasMorePages = $page <= $response['_page_count'];
+                $hasMorePages = $page <= $data['_page_count'];
+
+                if ($xRateLimitRemaining <= 0) {
+                    Log::warning('Rate limit exceeded, waiting for reset', [
+                        'xRateLimit' => $xRateLimit,
+                        'xRateLimitRemaining' => $xRateLimitRemaining,
+                        'xRateLimitReset' => $xRateLimitReset
+                    ]);
+                    $waitTime = max(0, $xRateLimitReset - time());
+                    if ($waitTime > 0) {
+                        Log::channel('mapping')->warning('Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
+                        sleep($waitTime);
+                    }
+                }
             }
             
             Log::info('Country sync completed', ['total_synced' => $totalSynced]);

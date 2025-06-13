@@ -125,11 +125,6 @@ class SyncCitiesJob implements ShouldQueue
                 $page++;
                 $hasMorePages = $page <= $data['_page_count'];
 
-                Log::channel('mapping')->warning('Rate limit exceeded, waiting for reset', [
-                    'xRateLimit' => $xRateLimit,
-                    'xRateLimitRemaining' => $xRateLimitRemaining,
-                    'xRateLimitReset' => $xRateLimitReset
-                ]);
                 if($xRateLimitRemaining <= 0) {
                     Log::channel('mapping')->warning('Rate limit exceeded, waiting for reset', [
                         'xRateLimit' => $xRateLimit,

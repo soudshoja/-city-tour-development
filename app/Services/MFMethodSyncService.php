@@ -13,7 +13,7 @@ class MFMethodSyncService
     {
         try {
             $response = Http::withToken(config('services.myfatoorah.api_key'))
-                ->post(config('services.myfatoorah.base_url') . 'InitiatePayment', [
+                ->post(config('services.myfatoorah.base_url') . '/InitiatePayment', [
                     'InvoiceAmount' => 100,
                     'CurrencyIso' => 'KWD',
                 ]);

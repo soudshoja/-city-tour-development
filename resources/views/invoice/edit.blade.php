@@ -1657,14 +1657,14 @@
                     const row = document.createElement('tr');
                     row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
                     row.classList.add('TrX');
-
+                    console.log('items data: ', items);
                     row.innerHTML = `
                     <td class="flex-grow">
                     <p>${++count}</p>
                     </td>
                     <td class="flex-grow">
                     <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
-                        <br>Destination: ${item.flight_details.airport_from} - ${item.flight_details.airport_to}<br>Ticket Number: ${item.ticket_number}<br>Depature: ${item.flight_details.departure_time}<br>Arrival Time: ${item.flight_details.arrival_time}</br>
+
                     </p>
                     </td>
                     <td>
@@ -1793,11 +1793,11 @@
                                         </div>
                                         <div class="flex justify-center items-center">
                                             <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_from.name}" disabled>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_from}" disabled>
                                         </div>
                                         <div class="flex justify-center items-center">
                                             <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_from}" disabled>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_from ? item.flight_details.airport_from : 'null'}" disabled>
                                         </div>
                                         <div class="flex justify-center items-center">
                                             <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal From</div>
@@ -1809,7 +1809,7 @@
                                         </div>
                                         <div class="flex justify-center items-center">
                                             <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_to.name}" disabled>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_to}" disabled>
                                         </div>
                                         <div class="flex justify-center items-center">
                                             <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport To</div>
@@ -2475,7 +2475,7 @@
         }
 
         async function save(type, data) {
-            // console.log(data)
+             console.log(data)
             // const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
 
             const invoiceUrl = "{{ route('invoice.partial') }}";

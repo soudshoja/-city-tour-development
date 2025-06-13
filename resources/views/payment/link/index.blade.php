@@ -50,7 +50,19 @@
                         {{ $payment->createdBy ? $payment->createdBy->name : 'N/A' }}
                     </td>
                     <td class="px-4 py-2">
-                        {{ $payment->status }}
+                        @php
+                            $statusColors = [
+                                'pending' => 'bg-yellow-100 text-yellow-800',
+                                'completed' => 'bg-green-100 text-green-800',
+                                'failed' => 'bg-red-100 text-red-800',
+                                'cancelled' => 'bg-gray-100 text-gray-600',
+                            ];
+                            $status = strtolower($payment->status);
+                            $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-800';
+                        @endphp
+                        <span class="inline-block px-3 py-1 rounded font-semibold {{ $colorClass }}">
+                            {{ ucfirst($payment->status) }}
+                        </span>
                     </td>
                     <td class="px-4 py-2">
                         @if($payment->status !== 'completed')
@@ -93,85 +105,89 @@
                             </span>
                         @endif
                     </td>
-                    <td class="px-4 py-2 relative">
-                        <div x-data="{ editPaymentLink: false }">
-                            <button @click="editPaymentLink = true" class="text-blue-500 hover:underline">Edit</button>
-                            <div
-                                x-cloak
-                                x-show="editPaymentLink"
-                                class="fixed inset-0 z-10 bg-gray-500 bg-opacity-50 flex items-center justify-center">
-                                <div class="bg-white p-6 rounded shadow-lg w-full max-w-md">
-                                    <form
-                                        action="{{ route('payment.link.update', $payment->id) }}"
-                                        method="POST">
-                                        @csrf
-                                        @method('PUT')
-                                        @unlessrole('agent')
-                                        <div class="mb-4">
-                                            <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
-                                            <select
-                                                name="agent_id"
-                                                id="agent_id"
-                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                @foreach ($agents as $agent)
-                                                <option
-                                                    value="{{ $agent->id }}"
-                                                    {{ $payment->agent_id == $agent->id ? 'selected' : '' }}>
-                                                    {{ $agent->name }}
-                                                </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        @else
-                                        <input type="hidden" name="agent_id" value="{{ auth()->user()->id }}">
-                                        @endunlessrole
-                                        <div class="mb-4">
-                                            <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
-                                            <select
-                                                name="client_id"
-                                                id="client_id"
-                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                @foreach ($clients as $client)
-                                                <option
-                                                    value="{{ $client->id }}"
-                                                    {{ $payment->client_id == $client->id ? 'selected' : '' }}>
-                                                    {{ $client->name }}
-                                                </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="mb-4">
-                                            <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
-                                            <input
-                                                type="text"
-                                                name="amount"
-                                                id="amount"
-                                                value="{{ $payment->amount }}"
-                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                        <div class="flex justify-end space-x-4">
-                                            <button
-                                                @click="editPaymentLink = false"
-                                                class="text-red-500 hover:underline"
-                                                type="button">
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                class="btn btn-primary">
-                                                Update
-                                            </button>
-                                        </div>
-                                    </form>
+                    @if($payment->status === 'pending')
+                        <td class="px-4 py-2 relative">
+                            <div x-data="{ editPaymentLink: false }">
+                                <button @click="editPaymentLink = true" class="text-blue-500 hover:underline">Edit</button>
+                                <div
+                                    x-cloak
+                                    x-show="editPaymentLink"
+                                    class="fixed inset-0 z-10 bg-gray-500 bg-opacity-50 flex items-center justify-center">
+                                    <div class="bg-white p-6 rounded shadow-lg w-full max-w-md">
+                                        <form
+                                            action="{{ route('payment.link.update', $payment->id) }}"
+                                            method="POST">
+                                            @csrf
+                                            @method('PUT')
+                                            @unlessrole('agent')
+                                            <div class="mb-4">
+                                                <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
+                                                <select
+                                                    name="agent_id"
+                                                    id="agent_id"
+                                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                    @foreach ($agents as $agent)
+                                                    <option
+                                                        value="{{ $agent->id }}"
+                                                        {{ $payment->agent_id == $agent->id ? 'selected' : '' }}>
+                                                        {{ $agent->name }}
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            @else
+                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->id }}">
+                                            @endunlessrole
+                                            <div class="mb-4">
+                                                <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
+                                                <select
+                                                    name="client_id"
+                                                    id="client_id"
+                                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                    @foreach ($clients as $client)
+                                                    <option
+                                                        value="{{ $client->id }}"
+                                                        {{ $payment->client_id == $client->id ? 'selected' : '' }}>
+                                                        {{ $client->name }}
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="mb-4">
+                                                <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
+                                                <input
+                                                    type="text"
+                                                    name="amount"
+                                                    id="amount"
+                                                    value="{{ $payment->amount }}"
+                                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            <div class="flex justify-end space-x-4">
+                                                <button
+                                                    @click="editPaymentLink = false"
+                                                    class="text-red-500 hover:underline"
+                                                    type="button">
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-primary">
+                                                    Update
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <form action="" method="POST" class="inline-block">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-500 hover:underline">Delete</button>
-                        </form>
-                    </td>
+                            <form action="" method="POST" class="inline-block">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-500 hover:underline">Delete</button>
+                            </form>
+                        </td>
+                    @else
+                        <td class="px-4 py-2 text-gray-400">N/A</td>
+                    @endif
                 </tr>
                 @endforeach
             </tbody>

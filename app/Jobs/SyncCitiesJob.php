@@ -126,25 +126,34 @@ class SyncCitiesJob implements ShouldQueue
                 $hasMorePages = $page <= $data['_page_count'];
 
                 if($xRateLimitRemaining <= 0) {
-                    Log::channel('mapping')->warning('Rate limit exceeded, waiting for reset', [
+                    Log::channel('mapping')->warning('SyncCitiesJob: Rate limit exceeded, waiting for reset', [
                         'xRateLimit' => $xRateLimit,
                         'xRateLimitRemaining' => $xRateLimitRemaining,
                         'xRateLimitReset' => $xRateLimitReset
                     ]);
+
+
                     $waitTime = max(0, $xRateLimitReset - time());
+
+                    Log::channel('mapping')->info('SyncCitiesJob: Rate limit reset time', [
+                        'wait_seconds' => $waitTime,
+                        'current_time' => time(),
+                        'xRateLimitReset' => $xRateLimitReset
+                    ]);
+
                     if ($waitTime > 0) {
-                        Log::channel('magic_holidays')->warning('Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
+                        Log::channel('magic_holidays')->warning('SyncCitiesJob: Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
                         sleep($waitTime);
                     }
                 }
             }
             
-            Log::info('City sync completed for country', [
+            Log::channel('mapping')->info('City sync completed for country', [
                 'country_id' => $this->countryId,
                 'total_synced' => $totalSynced
             ]);
         } catch (\Exception $e) {
-            Log::error('City sync failed', [
+            Log::channel('mapping')->error('City sync failed', [
                 'country_id' => $this->countryId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -156,7 +165,7 @@ class SyncCitiesJob implements ShouldQueue
 
     public function failed(\Throwable $exception)
     {
-        Log::error('City sync job failed', [
+        Log::channel('mapping')->error('City sync job failed', [
             'country_id' => $this->countryId,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()

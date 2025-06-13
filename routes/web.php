@@ -44,6 +44,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Mail;
 
 Route::middleware(['auth'])->group(function () {
@@ -509,7 +510,22 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/use-credit-now/{invoice}/{invoicePartial}/{balanceCredit}', [CreditController::class, 'useCreditNow'])->name('useCreditNow');
         Route::post('/topup', [CreditController::class, 'creditTopup'])->name('topup');
     });
-});
+
+    Route::group([
+        'prefix' => 'settings',
+        'as' => 'settings.',
+    ], function () {
+        Route::get('/', [SettingController::class, 'index'])->name('index');
+
+        Route::group([
+            'prefix' => 'invoice',
+            'as' => 'invoice.',
+        ], function () {
+            Route::post('/update-expiry', [SettingController::class, 'updateInvoiceExpiry'])->name('update-expiry');
+        });
+    });
+
+}); // auth middleware end
 
 Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
 //VERSION

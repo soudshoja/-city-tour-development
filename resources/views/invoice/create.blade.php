@@ -221,7 +221,7 @@
 
                         <div class="mt-4 flex items-center">
                             <label for="dueDate" class="w-full text-sm font-semibold">Due Date</label>
-                            <input id="dueDate" type="date" name="dueDate" class="w-full form-input" />
+                            <input id="dueDate" type="date" name="dueDate" class="w-full form-input" value="{{$invoiceExpireDefault}}"/>
                         </div>
                         <!-- Refresh Button -->
                         <div class="mt-6 flex justify-end">

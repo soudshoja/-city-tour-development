@@ -270,8 +270,6 @@
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Date</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
                                             </th>
-                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                                Billing</th>
                                             @can('viewPrice', 'App\Models\Task')
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
                                             </th>

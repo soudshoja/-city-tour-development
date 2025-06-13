@@ -86,22 +86,29 @@ class SyncCountriesJob implements ShouldQueue
                 $hasMorePages = $page <= $data['_page_count'];
 
                 if ($xRateLimitRemaining <= 0) {
-                    Log::warning('Rate limit exceeded, waiting for reset', [
+                    Log::channel('mapping')->warning('SyncCountriesJob: Rate limit exceeded, waiting for reset', [
                         'xRateLimit' => $xRateLimit,
                         'xRateLimitRemaining' => $xRateLimitRemaining,
                         'xRateLimitReset' => $xRateLimitReset
                     ]);
                     $waitTime = max(0, $xRateLimitReset - time());
+
+                    Log::channel('mapping')->info('SyncCountriesJob: Rate limit reset time', [
+                        'wait_seconds' => $waitTime,
+                        'current_time' => time(),
+                        'xRateLimitReset' => $xRateLimitReset
+                    ]);
+
                     if ($waitTime > 0) {
-                        Log::channel('mapping')->warning('Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
+                        Log::channel('mapping')->warning('SyncCountriesJob: Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
                         sleep($waitTime);
                     }
                 }
             }
             
-            Log::info('Country sync completed', ['total_synced' => $totalSynced]);
+            Log::channel('mapping')->info('Country sync completed', ['total_synced' => $totalSynced]);
         } catch (\Exception $e) {
-            Log::error('Country sync failed', [
+            Log::channel('mapping')->error('Country sync failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -112,7 +119,7 @@ class SyncCountriesJob implements ShouldQueue
 
     public function failed(\Throwable $exception)
     {
-        Log::error('Country sync job failed', [
+        Log::channel('mapping')->error('Country sync job failed', [
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()
         ]);

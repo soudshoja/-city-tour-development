@@ -20,23 +20,20 @@ class SyncHotelsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $fullSync;
+    // protected $fullSync;
     protected $cityId;
-    protected $incrementalFromDate;
-    public $timeout = 1200; // 20 minutes
-    public $tries = 3;
+    // protected $incrementalFromDate;
     
-    public function __construct($fullSync = false, $cityId = null, $incrementalFromDate = null)
+    public function __construct($cityId)
     {
-        $this->fullSync = $fullSync;
         $this->cityId = $cityId;
         
         // If incremental sync and no date provided, use 7 days ago
-        if (!$fullSync && !$incrementalFromDate) {
-            $this->incrementalFromDate = Carbon::now()->subDays(7)->format('Y-m-d');
-        } else {
-            $this->incrementalFromDate = $incrementalFromDate;
-        }
+        // if (!$fullSync && !$incrementalFromDate) {
+        //     $this->incrementalFromDate = Carbon::now()->subDays(7)->format('Y-m-d');
+        // } else {
+        //     $this->incrementalFromDate = $incrementalFromDate;
+        // }
         
         $this->onQueue('api_sync');
     }
@@ -45,33 +42,8 @@ class SyncHotelsJob implements ShouldQueue
     {
         try {
             Log::channel('mapping')->info('Starting hotel sync job', [
-                'full_sync' => $this->fullSync,
                 'city_id' => $this->cityId,
-                'incremental_from_date' => $this->incrementalFromDate
             ]);
-            
-            // If no specific city ID is provided, process all cities or use archive export
-            if (!$this->cityId) {
-                if ($this->fullSync) {
-                    // For full sync, process city by city
-                    $cities = MapCity::all();
-                    
-                    foreach ($cities as $city) {
-                        // Dispatch a new job for each city to avoid timeouts
-                        SyncHotelsJob::dispatch($this->fullSync, $city->id)
-                            ->delay(now()->addSeconds(rand(10, 60))); // Add random delay to avoid API rate limits
-                    }
-                    
-                    Log::channel('mapping')->info('Dispatched hotel sync jobs for all cities', [
-                        'city_count' => $cities->count()
-                    ]);
-                } else {
-                    // For incremental sync, use archive export API
-                    // $this->syncHotelsFromArchive($magicHoliday);
-                }
-                
-                return;
-            }
             
             // Process hotels for a specific city
             $page = 1;

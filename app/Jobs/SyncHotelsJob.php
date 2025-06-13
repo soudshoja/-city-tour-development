@@ -161,7 +161,6 @@ class SyncHotelsJob implements ShouldQueue
                         Log::channel('mapping')->warning('SyncHotelsJob: Sleeping for rate limit reset', ['wait_seconds' => $waitTime]);
                         sleep($waitTime);
                     }
-                    break; // Stop processing if rate limit is exceeded
                 }
 
             }

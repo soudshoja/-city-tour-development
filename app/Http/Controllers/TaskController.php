@@ -215,7 +215,8 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $validated['penalty_fee'] = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
+        $validatedData['penalty_fee'] = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
+        $validatedData['passenger_name'] = isset($validatedData['client_name']) ? $validatedData['client_name'] : null;
 
         if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void' || $validatedData['status'] == 'emd') {
             $originalTask = Task::where('reference', $validatedData['reference'])

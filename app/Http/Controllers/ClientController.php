@@ -250,7 +250,7 @@ class ClientController extends Controller
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
-
+        
         // Validate the incoming request data
         $validated = $request->validate([
             'name' => 'string|max:255',

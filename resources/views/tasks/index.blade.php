@@ -70,6 +70,203 @@
         .slider.round::before {
             border-radius: 50%;
         }
+
+        .filter-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .filter-modal.active {
+            display: flex;
+        }
+
+        .filter-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+
+        .filter-row select,
+        .filter-row input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .filter-row select {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-row input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .remove-filter-btn {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background-color 0.2s;
+        }
+
+        .remove-filter-btn:hover {
+            background-color: #dc2626;
+        }
+
+        .add-filter-btn {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .add-filter-btn:hover {
+            background-color: #059669;
+        }
+
+        .active-filters {
+            margin-top: 16px;
+            padding: 16px;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .active-filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #3b82f6;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 4px 8px 4px 0;
+        }
+
+        .active-filter-tag .remove-tag {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            margin-left: 4px;
+        }
+
+        .active-filter-tag .remove-tag:hover {
+            color: #fecaca;
+        }
+
+        .filter-modal-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .filter-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 4px;
+        }
+
+        .close-modal-btn:hover {
+            color: #374151;
+        }
+
+        .filter-modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .apply-filters-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .apply-filters-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .clear-all-filters-btn {
+            background-color: #6b7280;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .clear-all-filters-btn:hover {
+            background-color: #4b5563;
+        }
     </style>
 
     <div class="flex justify-between items-center gap-5 my-3 ">
@@ -116,83 +313,47 @@
                     </div>
 
                     <hr>
-                      <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
+                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
+
                         @unlessrole('agent')
-                        <div x-data="searchableDropdownAgent()" x-init="init()" class="w-full">
-                            <div class="relative">
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium">Select an Agent:</label>
-                                    <button type="button"
-                                        @click="open = !open"
-                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black min-h-[42px]">
-                                        <span x-text="selectedAgent === '' ? 'Select Agent' : selectedAgent"></span>
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="agent_id" :value="selectedId">
-
-                                <div x-show="open" @click.away="open = false"
-                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
-                                    <div class="px-2 py-2">
-                                        <input type="text"
-                                            x-model="search"
-                                            @input="filterOptions"
-                                            placeholder="Search Agent Name"
-                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
-                                    </div>
-
-                                    <template x-for="option in filtered.slice(0, 5)" :key="option.id">
-                                        <div @click="select(option)"
-                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            x-html="highlightMatch(option.name)">
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
+                        <div class="mb-4">
+                            <x-searchable-dropdown
+                                name="agent_id"
+                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                placeholder="Select Agent"
+                                :selectedId="old('agent_id')"
+                                :selectedName="null"
+                                label="Select an Agent" />
                         </div>
                         @else
-                        <input type="hidden" name="agent_id" id="agent_id_task_modal" value="{{ Auth()->user()->agent->id }}">
+                        <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
 
-                        <div x-data="searchableDropdownSupplier()" x-init="init()" class="w-full">
-                            <div class="relative">
-                                <div class="mb-4">
-                                    <label class="block mb-1 text-sm font-medium">Select a Supplier:</label>
-                                    <button type="button"
-                                        @click="open = !open"
-                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black">
-                                        <span x-text="selectedSupplier === '' ? 'Select Supplier' : selectedSupplier"></span>
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="supplier_id" :value="selectedId">
-
-                                <div x-show="open" @click.away="open = false"
-                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
-
-                                    <div class="px-2 py-2">
-                                        <input type="text"
-                                            x-model="search"
-                                            @input="filterOptions"
-                                            placeholder="Search Supplier Name"
-                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
-                                    </div>
-
-                                    <template x-for="option in filtered.slice(0, 5)" :key="option.id">
-                                        <div @click="select(option)"
-                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            x-html="highlightMatch(option.name)">
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
+                        <div class="mb-4">
+                            <x-searchable-dropdown
+                                name="supplier_id"
+                                :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])"
+                                placeholder="Select Supplier"
+                                :selectedId="old('supplier_id')"
+                                :selectedName="null"
+                                label="Select a Supplier" />
                         </div>
 
-                        <div id="form-task-container" class="mb-2" data-company-id="{{ $companyId }}">
-                        </div>
+                        <!-- Hidden native select (logic only) -->
+                        <select id="select-supplier-task" class="hidden">
+                            @foreach ($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" data-supplier='@json(["name" => $supplier->name])'>
+                                {{ $supplier->name }}
+                            </option>
+                            @endforeach
+                        </select>
+
+
+                        <div id="form-task-container" class="mb-2" data-company-id="{{ $companyId }}"></div>
                     </form>
+
                     <hr>
                     <div class="p-4 flex justify-between items-center">
                         <button @click="addTaskModal = false"
@@ -214,7 +375,7 @@
 
     <div class="tableCon">
         <div class="content-70">
-            <div class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow-md">
+            <div class="panel oxShadow rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
                     <div class="relative w-full">
                         <input type="text" placeholder="Find fast and search here..."
@@ -233,8 +394,56 @@
                             </svg>
                         </button>
                     </div>
-
                     <div class="flex customCenter gap-5 w-full justify-end">
+                        <button id="toggleFilters"
+                            class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                <path fill="#333333"
+                                    d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
+                            </svg>
+                            <span class="text-xs md:text-sm dark:text-black">Filters</span>
+                        </button>
+                    </div>
+                    <div id="filterModal" class="filter-modal">
+                        <div class="filter-modal-content">
+                            <div class="filter-modal-header">
+                                <div class="relative w-full">
+                                    <h3>Advanced Filters</h3>
+                                </div>
+                                <div class="flex customCenter justify-end">
+                                    <button id="closeFilterModal" class="close-modal-btn">&times;</button>
+                                </div>
+                            </div>
+                            <div id="filterContainer">
+                                <!-- Filter rows will be dynamically added here -->
+                            </div>
+                            <div class="filter-modal-footer">
+                                <div class="flex gap-3">
+                                    <button id="addFilterRow" class="add-filter-btn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add Filter
+                                    </button>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button id="clearAllFilters" class="clear-all-filters-btn">Clear All</button>
+                                    <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="activeFiltersContainer" class="active-filters" style="display: none;">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-sm font-semibold text-gray-700">Active Filters:</h4>
+                        <button id="clearAllActiveFilters" class="text-xs text-red-600 hover:text-red-800 underline">
+                            Clear All
+                        </button>
+                    </div>
+                    <div id="activeFiltersList" class="flex flex-wrap">
+                        <!-- Active filter tags will be inserted here -->
                     </div>
                 </div>
 
@@ -302,8 +511,8 @@
                                                 Enable/Disable</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Reference</th>
-                                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</th>
-                                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
@@ -315,8 +524,8 @@
                                                 Agent Name</th>
                                             @endif
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Date</th>
-                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
-                                            </th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</th>
                                             @can('viewPrice', 'App\Models\Task')
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
                                             </th>
@@ -549,38 +758,15 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
-                                                                    <div x-data="searchableDropdownClient()" class="flex items-center gap-4">
+                                                                    <div class="flex items-center gap-4">
                                                                         <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
-
-                                                                        <div class="relative w-2/4 sm:w-2/3">
-                                                                            <button type="button"
-                                                                                @click="open = !open"
-                                                                                class="client-select w-full border border-gray-300 dark:border-gray-600 p-2 rounded-md text-base text-left bg-white text-black min-h-[42px]">
-                                                                                <span x-text="selectedName || 'Choose Client'"></span>
-                                                                            </button>
-
-                                                                            <input type="hidden" name="client_id" :value="selectedId">
-
-                                                                            <div x-show="open" @click.away="open = false"
-                                                                                class="absolute bg-white z-10 border w-full max-h-48 rounded shadow mt-1">
-
-                                                                                <!-- Search bar inside dropdown -->
-                                                                                <div class="px-2 py-2">
-                                                                                    <input type="text"
-                                                                                        x-model="search"
-                                                                                        @input="filterOptions"
-                                                                                        placeholder="Search Client Name"
-                                                                                        class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black" />
-                                                                                </div>
-
-                                                                                <!-- Dropdown results with highlighting -->
-                                                                                <template x-for="option in filtered.slice(0, 5)" :key="option.id">
-                                                                                    <div @click="select(option)"
-                                                                                        class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                                                                        x-html="highlightMatch(option.name)">
-                                                                                    </div>
-                                                                                </template>
-                                                                            </div>
+                                                                        <div class="w-2/4 sm:w-2/3">
+                                                                            <x-searchable-dropdown
+                                                                                name="client_id"
+                                                                                :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                                                                placeholder="Select a Client"
+                                                                                :selectedId="old('client_id', $task->client_id ?? '')"
+                                                                                :selectedName="optional($task->client)->name" />
                                                                         </div>
                                                                     </div>
 
@@ -696,6 +882,15 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $task->agent->name ?? 'Not Set' }}
+                                            </td>
+                                            @endif
+                                            @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->getFormattedDateAttribute() }}
+                                            </td>
+                                            @else
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->getFormattedDateTimeAttribute() }}
                                             </td>
                                             @endif
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
@@ -1571,141 +1766,4 @@
         button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full', 'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
-</script>
-<!-- Searchable Dropdown -->
-<script>
-    function searchableDropdownClient() {
-        return {
-            open: false,
-            search: '',
-            selectedId: '',
-            selectedName: @json(optional($task ?? null)->client->name ?? ''), // Fallback to an empty string if no task is found
-            all: @json($clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])),
-            filtered: [],
-            init() {
-                this.filtered = [...this.all];
-            },
-            filterOptions() {
-                const term = this.search.toLowerCase();
-                this.filtered = this.all.filter(c => c.name.toLowerCase().includes(term));
-            },
-            select(option) {
-                this.selectedId = option.id;
-                this.selectedName = option.name;
-                this.search = '';
-                this.open = false;
-            },
-            highlightMatch(name) {
-                if (!this.search) return name;
-                const regex = new RegExp(`(${this.search})`, 'gi');
-                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>')
-            }
-        }
-    }
-
-    function searchableDropdownAgent() {
-        return {
-            open: false,
-            search: '',
-            selectedId: '',
-            selectedAgent: @json(optional($agent ?? null)->name ?? ''),
-            all: @json(optional($agents ?? collect())->map(fn($a) => ['id' => $a->id, 'name' => $a->name])),
-            filtered: [],
-            init() {
-                this.filtered = [...this.all];
-                this.selectedId = '';
-                this.selectedAgent = ''; // Ensure it's reset when there's no agent
-            },
-            filterOptions() {
-                const term = this.search.toLowerCase();
-                this.filtered = this.all.filter(a => a.name.toLowerCase().includes(term));
-            },
-            select(option) {
-                this.selectedId = option.id;
-                this.selectedAgent = option.name;
-                this.search = '';
-                this.open = false;
-            },
-            highlightMatch(name) {
-                if (!this.search) return name;
-                const regex = new RegExp(`(${this.search})`, 'gi');
-                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
-            }
-        };
-    }
-
-    function searchableDropdownSupplier() {
-    return {
-        open: false,
-        search: '',
-        selectedId: '',
-        selectedSupplier: '',
-        all: @json($suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])),
-        filtered: [],
-        init() {
-            this.filtered = [...this.all];
-            this.$watch('selectedSupplier', (newValue) => {
-                this.triggerSupplierChange(newValue);
-            });
-        },
-        filterOptions() {
-            const term = this.search.toLowerCase();
-            this.filtered = this.all.filter(s => s.name.toLowerCase().includes(term));
-        },
-        select(option) {
-            this.selectedId = option.id;
-            this.selectedSupplier = option.name;
-            this.search = '';
-            this.open = false;
-        },
-        highlightMatch(name) {
-            if (!this.search) return name;
-            const regex = new RegExp(`(${this.search})`, 'gi');
-            return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
-        },
-        triggerSupplierChange(supplierName) {
-            const formTaskContainer = document.getElementById('form-task-container');
-            if (!formTaskContainer) return;
-
-            const companyIdData = formTaskContainer.getAttribute('data-company-id');
-            const tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
-
-            formTaskContainer.innerHTML = '';
-
-            if (supplierName === 'Magic Holiday') {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'supplier_ref';
-                input.placeholder = 'Reference';
-                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
-                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3');
-                formTaskContainer.appendChild(input);
-            } else if (supplierName === 'TBO Holiday') {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'supplier_ref';
-                input.placeholder = 'Coming Soon...';
-                input.disabled = true;
-                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
-                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3', 'disabled:opacity-75', 'disabled:cursor-not-allowed');
-                formTaskContainer.appendChild(input);
-            } else if (supplierName === 'Amadeus') {
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.name = 'task_file';
-                fileInput.id = 'amadeus-upload-task';
-                fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md', 'w-full', 'mt-2');
-                formTaskContainer.appendChild(fileInput);
-            } else if (supplierName !== '') {
-                const div = document.createElement('div');
-                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
-                div.innerHTML = 'API not available for this supplier';
-                formTaskContainer.appendChild(div);
-            }
-        }
-    }
-}
-
 </script>

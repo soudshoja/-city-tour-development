@@ -21,6 +21,7 @@ class Task extends Model
         'supplier_status',
         'original_task_id',
         'client_name',
+        'passenger_name',
         'reference',
         'gds_reference',
         'airline_reference',

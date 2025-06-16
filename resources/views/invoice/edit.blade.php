@@ -714,11 +714,11 @@
 
                                 <!-- Share Buttons -->
                                 <div class="flex items-center gap-2 w-full">
-                                    <form id="whatsappForm" action="{{ route('whatsapp.share-invoice') }}"
+                                    <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}"
                                         method="POST" onsubmit="showSpinner()">
                                         @csrf
                                         <!-- Assuming you have a $client object or list -->
-                                        <input type="hidden" name="clientid" id="clientid"
+                                        <input type="hidden" name="client_id" id="clientid"
                                             value="{{ $client->id ?? '' }}">
                                         <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
 

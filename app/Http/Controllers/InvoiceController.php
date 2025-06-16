@@ -1029,39 +1029,24 @@ class InvoiceController extends Controller
     public function link()
     {
         $user = Auth::user();
-         $companyId = null;
 
         // Gate::authorize('viewAny', Invoice::class);
-
-        // Get all agents under the company
-        $agents = Agent::with(['branch' => function ($query) use ($user) {
-            $query->where('company_id', $user->company_id);
-        }])->get();
+        if ($user->role_id == Role::ADMIN) {
+            $agents = Agent::with('branch')->get();
+    
+        } else if($user->role_id == Role::COMPANY) {
+            $agents = Agent::with(['branch' => function ($query) use ($user) {
+                $query->where('company_id', $user->company->id);
+            }])->get();
+        } else if ($user->role_id == Role::BRANCH) {
+            $agents = Agent::with('branch')->where('branch_id', $user->branch->id)->get();
+        } else if ($user->role_id == Role::AGENT) {
+            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
+        }
 
         $agentIds = $agents->pluck('id');
-        // Get invoices related to those agents
-        // $invoices = Invoice::with([
-        //     'agent.branch', 
-        //     'invoiceDetails.task.supplier', 
-        //     'invoicePartials', 
-        //     'client'
-        // ])->whereIn('agent_id', $agentIds)
-        //   ->whereHas('invoiceDetails.task.supplier') // Ensures only invoices with suppliers are retrieved
-        //   ->paginate(500);
-
-        if ($user->role_id == Role::ADMIN) {
-            // For admin, fetch all agents under the user's company
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company_id);
-            }])->get();
-    
-            $agentIds = $agents->pluck('id');
-            $companyId = $user->company_id; // For admin, we directly get the company_id
-        } else if ($user->role_id == Role::AGENT) {
-            // For agent, get the specific agent's company ID
-            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
-            $companyId = $user->agent->branch->company_id;
-        }
+        $branches = $agents->pluck('branch')->unique('id');
+        // $company = $agents->pluck('branch.company')->unique('id')->first();
 
         $invoices = Invoice::with([
             'agent.branch',
@@ -1071,10 +1056,7 @@ class InvoiceController extends Controller
         ])
             ->whereIn('agent_id', $agentIds)
             ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
-            ->whereHas('agent.branch', function ($query) use ($companyId) {
-                $query->where('company_id', $companyId);
-            })
-            ->paginate(500);
+            ->get();
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
@@ -1082,9 +1064,8 @@ class InvoiceController extends Controller
         // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
         $suppliers = Supplier::all();
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companyId)->get();
         $types = Task::distinct()->pluck('type');
-        $totalInvoices = $invoices->total();
+        $totalInvoices = $invoices->count();
 
         return view('invoice.link', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
     }

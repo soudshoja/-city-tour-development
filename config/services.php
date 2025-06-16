@@ -64,6 +64,7 @@ return [
 
     'resayil' => [
         'base_url'  => env('RESAYIL_BASE_URL'),
+        'version' => env('RESAYIL_API_VERSION', 'v1'),
         'api_token' => env('RESAYIL_API_TOKEN'),
     ],
 

@@ -366,10 +366,10 @@
             @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
             @if (auth()->check())
 
-            <form id="whatsappForm" action="{{ route('whatsapp.share-invoice') }}" method="POST" onsubmit="showSpinner()">
+            <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
                 @csrf
                 <!-- Hidden Inputs -->
-                <input type="hidden" name="clientid" id="clientid" value="{{ $invoice->client->id ?? '' }}">
+                <input type="hidden" name="client_id" id="clientid" value="{{ $invoice->client->id ?? '' }}">
                 <input type="hidden" name="invoiceNumber" value="{{ $invoice->invoice_number }}">
 
                 <button id="submitButton" type="submit"

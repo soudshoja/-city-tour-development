@@ -313,83 +313,47 @@
                     </div>
 
                     <hr>
-                     <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
+                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
+
                         @unlessrole('agent')
-                        <div x-data="searchableDropdownAgent()" x-init="init()" class="w-full">
-                            <div class="relative">
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium">Select an Agent:</label>
-                                    <button type="button"
-                                        @click="open = !open"
-                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black min-h-[42px]">
-                                        <span x-text="selectedAgent === '' ? 'Select Agent' : selectedAgent"></span>
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="agent_id" :value="selectedId">
-
-                                <div x-show="open" @click.away="open = false"
-                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
-                                    <div class="px-2 py-2">
-                                        <input type="text"
-                                            x-model="search"
-                                            @input="filterOptions"
-                                            placeholder="Search Agent Name"
-                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
-                                    </div>
-
-                                    <template x-for="option in filtered.slice(0, 5)" :key="option.id">
-                                        <div @click="select(option)"
-                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            x-html="highlightMatch(option.name)">
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
+                        <div class="mb-4">
+                            <x-searchable-dropdown
+                                name="agent_id"
+                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                placeholder="Select Agent"
+                                :selectedId="old('agent_id')"
+                                :selectedName="null"
+                                label="Select an Agent" />
                         </div>
                         @else
-                        <input type="hidden" name="agent_id" id="agent_id_task_modal" value="{{ Auth()->user()->agent->id }}">
+                        <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
 
-                        <div x-data="searchableDropdownSupplier()" x-init="init()" class="w-full">
-                            <div class="relative">
-                                <div class="mb-4">
-                                    <label class="block mb-1 text-sm font-medium">Select a Supplier:</label>
-                                    <button type="button"
-                                        @click="open = !open"
-                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black">
-                                        <span x-text="selectedSupplier === '' ? 'Select Supplier' : selectedSupplier"></span>
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="supplier_id" :value="selectedId">
-
-                                <div x-show="open" @click.away="open = false"
-                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
-
-                                    <div class="px-2 py-2">
-                                        <input type="text"
-                                            x-model="search"
-                                            @input="filterOptions"
-                                            placeholder="Search Supplier Name"
-                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
-                                    </div>
-
-                                    <template x-for="option in filtered.slice(0, 5)" :key="option.id">
-                                        <div @click="select(option)"
-                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            x-html="highlightMatch(option.name)">
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
+                        <div class="mb-4">
+                            <x-searchable-dropdown
+                                name="supplier_id"
+                                :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])"
+                                placeholder="Select Supplier"
+                                :selectedId="old('supplier_id')"
+                                :selectedName="null"
+                                label="Select a Supplier" />
                         </div>
 
-                        <div id="form-task-container" class="mb-2" data-company-id="{{ $companyId }}">
-                        </div>
+                        <!-- Hidden native select (logic only) -->
+                        <select id="select-supplier-task" class="hidden">
+                            @foreach ($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" data-supplier='@json(["name" => $supplier->name])'>
+                                {{ $supplier->name }}
+                            </option>
+                            @endforeach
+                        </select>
+
+
+                        <div id="form-task-container" class="mb-2" data-company-id="{{ $companyId }}"></div>
                     </form>
+
                     <hr>
                     <div class="p-4 flex justify-between items-center">
                         <button @click="addTaskModal = false"
@@ -800,13 +764,12 @@
                                                                             <x-searchable-dropdown
                                                                                 name="client_id"
                                                                                 :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                                                placeholder="Search Client Name"
+                                                                                placeholder="Select a Client"
                                                                                 :selectedId="old('client_id', $task->client_id ?? '')"
-                                                                                :selectedName="optional($task->client)->name"
-                                                                            />
+                                                                                :selectedName="optional($task->client)->name" />
                                                                         </div>
                                                                     </div>
-                                                                    
+
                                                                     <!-- Agent Selection (Role-based) -->
                                                                     @unlessrole('agent')
                                                                     <div class="flex items-center gap-4">
@@ -1803,6 +1766,7 @@
         button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full', 'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
+<<<<<<< Updated upstream
 </script>
 
 <script>
@@ -1912,4 +1876,6 @@
     }
 }
 
+=======
+>>>>>>> Stashed changes
 </script>

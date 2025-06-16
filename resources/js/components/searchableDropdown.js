@@ -23,7 +23,30 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
             this.selectedName = option.name;
             this.search = '';
             this.open = false;
-            this.$dispatch('dropdown-selected', { name, option });
+
+            // Trigger hidden select change if supplier
+            if (name === 'supplier_id') {
+                const selectElem = document.getElementById('select-supplier-task');
+                if (selectElem) {
+                    const matchingOption = Array.from(selectElem.options).find(opt => opt.value == option.id);
+                    if (matchingOption) {
+                        selectElem.value = matchingOption.value;
+                        selectElem.dispatchEvent(new Event('change'));
+                    }
+                }
+            }
+
+            // Store for logic triggering
+            if (name === 'agent_id') window.selectedAgentName = option.name;
+            if (name === 'supplier_id') window.selectedSupplierName = option.name;
+
+            if (window.selectedAgentName && window.selectedSupplierName) {
+                searchableDropdownSupplierInstance?.renderSupplierInput?.(window.selectedSupplierName);
+            }
+        },
+        focusSearch($refs) {
+            this.open = true;
+            this.$nextTick(() => $refs.searchInput.focus());
         },
         highlightMatch(name) {
             if (!this.search) return name;

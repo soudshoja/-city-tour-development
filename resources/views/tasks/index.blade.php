@@ -70,6 +70,203 @@
         .slider.round::before {
             border-radius: 50%;
         }
+
+        .filter-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .filter-modal.active {
+            display: flex;
+        }
+
+        .filter-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+
+        .filter-row select,
+        .filter-row input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .filter-row select {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-row input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .remove-filter-btn {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background-color 0.2s;
+        }
+
+        .remove-filter-btn:hover {
+            background-color: #dc2626;
+        }
+
+        .add-filter-btn {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .add-filter-btn:hover {
+            background-color: #059669;
+        }
+
+        .active-filters {
+            margin-top: 16px;
+            padding: 16px;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .active-filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #3b82f6;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 4px 8px 4px 0;
+        }
+
+        .active-filter-tag .remove-tag {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            margin-left: 4px;
+        }
+
+        .active-filter-tag .remove-tag:hover {
+            color: #fecaca;
+        }
+
+        .filter-modal-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .filter-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 4px;
+        }
+
+        .close-modal-btn:hover {
+            color: #374151;
+        }
+
+        .filter-modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .apply-filters-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .apply-filters-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .clear-all-filters-btn {
+            background-color: #6b7280;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .clear-all-filters-btn:hover {
+            background-color: #4b5563;
+        }
     </style>
 
     <div class="flex justify-between items-center gap-5 my-3 ">
@@ -214,7 +411,7 @@
 
     <div class="tableCon">
         <div class="content-70">
-            <div class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow-md">
+            <div class="panel oxShadow rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
                     <div class="relative w-full">
                         <input type="text" placeholder="Find fast and search here..."
@@ -233,8 +430,56 @@
                             </svg>
                         </button>
                     </div>
-
                     <div class="flex customCenter gap-5 w-full justify-end">
+                        <button id="toggleFilters"
+                            class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                <path fill="#333333"
+                                    d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
+                            </svg>
+                            <span class="text-xs md:text-sm dark:text-black">Filters</span>
+                        </button>
+                    </div>
+                    <div id="filterModal" class="filter-modal">
+                        <div class="filter-modal-content">
+                            <div class="filter-modal-header">
+                                <div class="relative w-full">
+                                    <h3>Advanced Filters</h3>
+                                </div>
+                                <div class="flex customCenter justify-end">
+                                    <button id="closeFilterModal" class="close-modal-btn">&times;</button>
+                                </div>
+                            </div>
+                            <div id="filterContainer">
+                                <!-- Filter rows will be dynamically added here -->
+                            </div>
+                            <div class="filter-modal-footer">
+                                <div class="flex gap-3">
+                                    <button id="addFilterRow" class="add-filter-btn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add Filter
+                                    </button>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button id="clearAllFilters" class="clear-all-filters-btn">Clear All</button>
+                                    <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="activeFiltersContainer" class="active-filters" style="display: none;">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-sm font-semibold text-gray-700">Active Filters:</h4>
+                        <button id="clearAllActiveFilters" class="text-xs text-red-600 hover:text-red-800 underline">
+                            Clear All
+                        </button>
+                    </div>
+                    <div id="activeFiltersList" class="flex flex-wrap">
+                        <!-- Active filter tags will be inserted here -->
                     </div>
                 </div>
 
@@ -315,8 +560,8 @@
                                                 Agent Name</th>
                                             @endif
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Date</th>
-                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type
-                                            </th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</th>
                                             @can('viewPrice', 'App\Models\Task')
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price
                                             </th>
@@ -674,6 +919,15 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $task->agent->name ?? 'Not Set' }}
+                                            </td>
+                                            @endif
+                                            @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->getFormattedDateAttribute() }}
+                                            </td>
+                                            @else
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->getFormattedDateTimeAttribute() }}
                                             </td>
                                             @endif
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">

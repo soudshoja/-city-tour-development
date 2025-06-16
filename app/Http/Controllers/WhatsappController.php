@@ -321,94 +321,38 @@ class WhatsappController extends Controller
         }
     }
 
-    public function sendToResayilSimple(Request $request)
-    {
-        $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'message' => 'required|string',
-        ]);
+    // public function sendToResayilSimple(Request $request)
+    // {
+    //     $request->validate([
+    //         'client_id' => 'required|exists:clients,id',
+    //         'message' => 'required|string',
+    //     ]);
 
-        $client = Client::findOrFail($request->client_id);
+    //     $client = Client::findOrFail($request->client_id);
 
-        // Prepare the payload
-        $payload = [
-            'phone' => $client->phone, 
-            'message' => $request->message,
-        ];
+    //     // Prepare the payload
+    //     $payload = [
+    //         'phone' => $client->phone, 
+    //         'message' => $request->message,
+    //     ];
 
-        $response = Http::withHeaders([
-            'Content-Type'  => 'application/json',
-            'Token' => config('services.whatsapp.token'),
-        ])->post(config('services.whatsapp.url') . '/messages', $payload);
+    //     $response = Http::withHeaders([
+    //         'Content-Type'  => 'application/json',
+    //         'Token' => config('services.whatsapp.token'),
+    //     ])->post(config('services.whatsapp.url') . '/messages', $payload);
 
-        // Log the response
-        logger('Resayil API Response: ' . $response->body());
+    //     // Log the response
+    //     logger('Resayil API Response: ' . $response->body());
 
-        // Return result to frontend
-        if ($response->successful()) {
-            return back()->with('success', 'Message sent successfully via Resayil');
-        } else {
-            return back()->with('error', 'Failed to send message via Resayil: ' . $response->body());
-        }
-    }
+    //     // Return result to frontend
+    //     if ($response->successful()) {
+    //         return back()->with('success', 'Message sent successfully via Resayil');
+    //     } else {
+    //         return back()->with('error', 'Failed to send message via Resayil: ' . $response->body());
+    //     }
+    // }
 
-    public function shareInvoice(Request $request)
-    {
-        //dd($request);
-        $request->validate([
-            'clientid' => 'required|exists:clients,id',
-            'invoiceNumber' => 'required|string',
-        ]);
-        Log::debug('Share Invoice:', $request->all());
-        $client = Client::findOrFail($request->clientid);
-        $invoiceNumber = $request->invoiceNumber;
-
-        $invoiceLink = url("/invoice/{$invoiceNumber}");
-
-        $message = "Hello {$client->name}, here is your invoice link: $invoiceLink";
-
-        $response = $this->sendToResayil($client->phone, $message);
-
-        if ($response['success'] ?? false) {
-            return back()->with('success', 'Invoice link successfully shared via WhatsApp message through Resayil!');
-        } else {
-            
-            Log::error('Failed to send WhatsApp message via Resayil', [
-                'response' => $response
-            ]);
-
-            return back()->withErrors(['error' => 'Failed to send message.']);
-        }
-
-    }
-
-    public function sharePaymentLink(Request $request)
-    {
-        $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'payment_id' => 'required|exists:payments,id',
-        ]);
-
-        Log::debug('Share Payment Link:', $request->all());
-        $client = Client::findOrFail($request->client_id);
-
-        // Assuming you have a method to generate the payment link
-        $paymentLink = route('payment.link.show', ['paymentId' => $request->payment_id]);
-
-        $message = "Hello {$client->name}, please complete your payment using this link: $paymentLink";
-
-        $response = $this->sendToResayil($client->phone, $message);
-
-        if ($response['success'] ?? false) {
-            return back()->with('success', 'Payment link successfully shared via WhatsApp message through Resayil!');
-        } else {
-            Log::error('Failed to send WhatsApp message via Resayil', [
-                'response' => $response
-            ]);
-            return back()->withErrors(['error' => 'Failed to send message.']);
-        }
-    }
-
+    
     // public function handleResayilWebhook(Request $request)
     // {
     //     // Log incoming webhook data

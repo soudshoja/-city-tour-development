@@ -77,7 +77,7 @@
                                         Send Link To Customer
                                     </a>
                                 @else
-                                    <form action="{{ route('whatsapp.share-payment-link') }}" method="POST" target="" class="inline">
+                                    <form action="{{ route('resayil.share-payment-link') }}" method="POST" target="" class="inline">
                                         @csrf
                                         <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
                                         <input type="hidden" name="payment_id" value="{{ $payment->id }}">

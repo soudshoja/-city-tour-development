@@ -29,7 +29,7 @@
 
 
             <!-- add new invoice -->
-            <a   href="{{ route('invoices.create') }}">
+            <a href="{{ route('invoices.create') }}">
                 <div data-tooltip="Create new Invoice"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
 
@@ -109,6 +109,7 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Link</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Expiry Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
@@ -157,6 +158,40 @@
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ ucwords($invoice->payment_type) }}
                                     </td>
+                                    <td
+                                        x-data="{ editClientPhone: false}">
+                                        <p
+                                        class="cursor-pointer text-blue-500 hover:underline"    @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
+                                            {{ $invoice->client->name}}
+                                        </p>
+                                        <div
+                                            x-show="editClientPhone"
+                                            class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
+                                            <div
+                                                @click.away="editClientPhone = false"
+                                                class="p-4 bg-white w-full max-w-md rounded">
+                                                <h2 class="text-xl font-bold mb-4">Update Phone Number</h2>
+                                                <form method="POST" action="{{ route('clients.update', $invoice->client->id) }}">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <div class="mb-4">
+                                                        <label class="block text-gray-700 mb-2" for="phone_{{ $invoice->client->id }}">Phone Number</label>
+                                                        <input
+                                                            type="text"
+                                                            name="phone"
+                                                            id="phone_{{ $invoice->client->id }}"
+                                                            value="{{ $invoice->client->phone }}"
+                                                            class="form-input w-full border rounded px-3 py-2"
+                                                            required>
+                                                    </div>
+                                                    <div class="flex justify-end gap-2">
+                                                        <button type="button" @click="editClientPhone = false" class="btn btn-secondary px-4 py-2">Cancel</button>
+                                                        <button type="submit" class="btn btn-success px-4 py-2">Update</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $invoice->currency }}
                                         {{ $invoice->amount }}
@@ -174,10 +209,10 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <form action="{{ route('whatsapp.send') }}" method="POST">
+                                        <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
                                             @csrf
-                                            <input type="hidden" name="client" id="client"
-                                                value="{{ $invoice->client }}">
+                                            <input type="hidden" name="client_id" id="client"
+                                                value="{{ $invoice->client->id }}">
                                             <input type="hidden" name="invoiceNumber"
                                                 value="{{ $invoice->invoice_number }}">
                                             <button type="submit" class="badge badge-outline-success">
@@ -220,6 +255,40 @@
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ ucwords($partial->type) }}
                                     </td>
+                                    <td x-data="{ editClientPhone: false }">
+                                        <p
+                                            class="cursor-pointer text-blue-500 hover:underline"
+                                            @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
+                                            {{ $partial->client->name }}
+                                        </p>
+                                        <div
+                                            x-show="editClientPhone"
+                                            class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
+                                            <div
+                                                @click.away="editClientPhone = false"
+                                                class="p-4 bg-white w-full max-w-md rounded">
+                                                <h2 class="text-xl font-bold mb-4">Update Phone Number</h2>
+                                                <form method="POST" action="{{ route('clients.update', $partial->client->id) }}">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <div class="mb-4">
+                                                        <label class="block text-gray-700 mb-2" for="phone_{{ $partial->client->id }}">Phone Number</label>
+                                                        <input
+                                                            type="text"
+                                                            name="phone"
+                                                            id="phone_{{ $partial->client->id }}"
+                                                            value="{{ $partial->client->phone }}"
+                                                            class="form-input w-full border rounded px-3 py-2"
+                                                            required>
+                                                    </div>
+                                                    <div class="flex justify-end gap-2">
+                                                        <button type="button" @click="editClientPhone = false" class="btn btn-secondary px-4 py-2">Cancel</button>
+                                                        <button type="submit" class="btn btn-success px-4 py-2">Update</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $invoice->currency }} {{ $partial->amount }}
                                     </td>
@@ -236,12 +305,12 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <form action="{{ route('whatsapp.send') }}" method="POST">
+                                        <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
                                             @csrf
-                                            <input type="hidden" name="client" id="client"
-                                                value="{{ $invoice->client }}">
+                                            <input type="hidden" name="client_id" id="client"
+                                                value="{{ $partial->invoice->client->id }}">
                                             <input type="hidden" name="invoiceNumber"
-                                                value="{{ $invoice->invoice_number }}">
+                                                value="{{ $partial->invoice->invoice_number }}">
                                             <button type="submit"
                                                 class="badge badge-outline-success">
                                                 Share via WhatsApp

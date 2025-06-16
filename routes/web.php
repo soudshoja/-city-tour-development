@@ -44,6 +44,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MyFatoorahController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Mail;
 
@@ -277,8 +278,6 @@ Route::middleware(['auth'])->group(function () {
     // whatsapp
     Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
     Route::post('/whatsapp/send1', [WhatsappController::class, 'sendMessage1'])->name('whatsapp.send1');
-    Route::post('/whatsapp/share-invoice', [WhatsappController::class, 'shareInvoice'])->name('whatsapp.share-invoice');
-    Route::post('/whatsapp/share-payment-link', [WhatsappController::class, 'sharePaymentLink'])->name('whatsapp.share-payment-link');
     Route::post('/whatsapp/sendpdf', [WhatsappController::class, 'sendMessagepdf'])->name('whatsapp.sendpdf');
 
     Route::match(['get', 'post'], '/whatsapp/whatsapp-webhook', [WhatsappController::class, 'handleWebhook'])->withoutMiddleware(['auth']);
@@ -605,16 +604,9 @@ Route::get('payment/process', [PaymentController::class, 'process'])->name('paym
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
 
-// routes/web.php
-Route::get('/whatsapp/send', function () {
-    $clients = \App\Models\Client::all();
-    return view('whatsapp.send', compact('clients'));
-})->name('whatsapp.send');
 
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
 Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
-
-require __DIR__ . '/auth.php';
 
 //Payment Method
 Route::group([
@@ -625,3 +617,14 @@ Route::group([
     Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');
     Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');
 });
+
+Route::group([
+    'prefix' => 'resayil',
+    'as' => 'resayil.',
+], function () {
+    Route::post('/share-invoice', [ResayilController::class, 'shareInvoiceLink'])->name('share-invoice-link');
+    Route::post('/share-payment-link', [ResayilController::class, 'sharePaymentLink'])->name('share-payment-link');
+    Route::post('/share-partial-link', [ResayilController::class, 'shareInvoicePartialLink'])->name('share-partial-link');
+});
+
+require __DIR__ . '/auth.php';

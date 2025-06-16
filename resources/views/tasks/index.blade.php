@@ -455,27 +455,17 @@
                                         showUploadForm: false, showManualForm: false, showFileInput: false,
                                         modalTaskId: null,
                                         modalClientName: '',
+                                        modalPassengerName: '',
                                         modalAgentName: '',
                                         modalAgentId: '',
                                         modalBranchName: '',
                                         chooseMethodModal: false,
                                         showUploadForm: false,
                                         showManualForm: false,
-                                        openChoose(taskId, clientName, agentName, agentId, branchName) {
+                                        openManualForm(taskId, clientName, passengerName, agentName, agentId, branchName) {
                                             this.modalTaskId = taskId;
                                             this.modalClientName = clientName;
-                                            this.modalAgentName = agentName;
-                                            this.modalAgentId = agentId;
-                                            this.modalBranchName = branchName;
-                                            this.chooseMethodModal = true;
-                                        },
-                                        openUpload() {
-                                            this.chooseMethodModal = false;
-                                            this.showUploadForm = true;
-                                        },
-                                        openManualForm(taskId, clientName, agentName, agentId, branchName) {
-                                            this.modalTaskId = taskId;
-                                            this.modalClientName = clientName;
+                                            this.modalPassengerName = passengerName;
                                             this.modalAgentName = agentName;
                                             this.modalAgentId = agentId;
                                             this.modalBranchName = branchName;
@@ -515,8 +505,8 @@
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
-                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
-                                                Name</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</th>
                                             @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Branch Name</th>
@@ -844,10 +834,10 @@
                                                 {{ $task->reference }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->gds_reference }}
+                                                {{ $task->gds_reference ?? 'Not Available' }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->airline_reference }}
+                                                {{ $task->airline_reference ?? 'Not Available' }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->created_by ?? 'Not Set' }}
@@ -859,8 +849,8 @@
                                                 class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
                                                 <p class="{{ $task->client ?? 'no-client' }}">
                                                     <button
-                                                        @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')">
-                                                        {{ $task->client_name ?? 'Not Set' }}
+                                                        @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')" {{ $task->client !== null ? 'disabled' : '' }}>
+                                                        {{ $task->client->name ?? $task->client_name ?? 'Not Set' }}
                                                     </button>
                                                 </p>
                                                 @if ($task->client)
@@ -875,7 +865,9 @@
                                                 </div>
                                                 @endif
                                             </td>
-
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->passenger_name ?? 'Not Set' }}
+                                            </td>
                                             @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $task->agent->branch->name ?? 'Not Set' }}
@@ -934,40 +926,6 @@
                                         @endforeach
                                         @endif
                                     </tbody>
-
-                                    <!-- Choose Method -->
-                                    <div x-show="chooseMethodModal" @click.away="closeAll()" x-transition class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 backdrop-blur-sm flex items-center justify-center">
-                                        <div
-                                            @click.stop
-                                            class="bg-white rounded-lg p-6 w-full max-w-xl shadow-lg">
-                                            <div class="flex items-center justify-between mb-10">
-                                                <h2 class="text-xl font-bold text-gray-800">How would you like to create the client?</h2>
-                                                <button @click="closeAll()" class="text-gray-400 hover:text-red-500 text-2xl leading-none">
-                                                    &times;
-                                                </button>
-                                            </div>
-                                            <div class="flex flex-col sm:flex-row gap-4 mb-8">
-                                                <button id="upload-passport-btn"
-                                                    @click="openUpload()"
-                                                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-full">
-                                                    Upload Passport
-                                                </button>
-                                                <button id="fill-form-btn"
-                                                    @click="openManualForm()"
-                                                    class="flex-1 bg-gray-800 hover:bg-gray-900 text-white py-2 rounded-full">
-                                                    Fill Form
-                                                </button>
-                                            </div>
-                                            <div class="mt-6 flex justify-center">
-                                                <button
-                                                    @click="closeAll()"
-                                                    type="button"
-                                                    class="w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
 
                                     <!-- Upload Passport -->
                                     <div x-show="showUploadForm" x-transition class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
@@ -1028,13 +986,45 @@
                                                 <input type="hidden" name="task_id" :value="modalTaskId">
                                                 <input type="hidden" name="agent_id" :value="modalAgentId">
                                                 <!-- Name -->
+                                                <div
+                                                    id="upload-passport-container"
+                                                    class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
+                                                    ondrop="dropHandler(event);"
+                                                    ondragover="dragOverHandler(event);">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
+                                                        <path d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5" stroke="#1C274C" stroke-width="1.5" />
+                                                        <path d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z" stroke="#1C274C" stroke-width="1.5" />
+                                                    </svg>
+                                                    <input type="file" name="file" id="file-task-passport" class="hidden" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
+                                                    <p id="task-passport-file-name">
+                                                        You can drag and drop a file here
+                                                    </p>
+                                                    <label for="file-task-passport" class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
+                                                        Upload File
+                                                    </label>
+                                                </div>
+                                                <div class="my-2">
+                                                    <button
+                                                        id="task-passport-process-btn"
+                                                        class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
+                                                        disabled>
+                                                        Process File
+                                                    </button>
+                                                </div>
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client's Name</label>
                                                     <input type="text" name="name" id="nameTask" :value="modalClientName" placeholder="Client's name"
                                                         class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         required>
                                                 </div>
-
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
+                                                    <input type="text" name="passenger_name" id="passengerName" :value="modalPassengerName" placeholder="Passengers's name"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        disabled>
+                                                </div>
+                                                
                                                 <!-- Email + DOB -->
                                                 <div class="flex gap-4">
                                                     <div class="w-2/3">
@@ -1081,32 +1071,6 @@
                                                         <input type="text" name="civil_no" id="civil_noTask"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
-                                                </div>
-                                                <div
-                                                    id="upload-passport-container"
-                                                    class="my-2 border-2 border-dashed border-gray-400 rounded-md w-full w-full flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48"
-                                                    ondrop="dropHandler(event);"
-                                                    ondragover="dragOverHandler(event);">
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                                        <path d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5" stroke="#1C274C" stroke-width="1.5" />
-                                                        <path d="M2 6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C22 7.84935 22 9.16554 22 11.7979V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V6.94975Z" stroke="#1C274C" stroke-width="1.5" />
-                                                    </svg>
-                                                    <input type="file" name="file" id="file-task-passport" class="hidden" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
-                                                    <p id="task-passport-file-name">
-                                                        You can drag and drop a file here
-                                                    </p>
-                                                    <label for="file-task-passport" class="bg-black text-white font-semibold p-2 rounded-md border-2 border-black hover:border-2 hover:border-cyan-500">
-                                                        Upload File
-                                                    </label>
-                                                </div>
-                                                <div class="my-2">
-                                                    <button
-                                                        id="task-passport-process-btn"
-                                                        class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition duration-150 cursor-not-allowed"
-                                                        disabled>
-                                                        Process File
-                                                    </button>
                                                 </div>
                                                 <!-- Address -->
                                                 <div>
@@ -1509,142 +1473,51 @@
         });
     });
 
-    function loadClient() {
-        console.log("loadClient() triggered");
+    // function loadClient() {
+    //     console.log("loadClient() triggered");
 
-        const clientOption = $("#client-option");
-        if (clientOption.length) {
-            console.log("#client-option found, showing...");
-            clientOption.show();
-        } else {
-            console.warn("#client-option not found!");
-        }
+    //     const clientOption = $("#client-option");
+    //     if (clientOption.length) {
+    //         console.log("#client-option found, showing...");
+    //         clientOption.show();
+    //     } else {
+    //         console.warn("#client-option not found!");
+    //     }
 
-        $('#upload-passport-btn').on('click', function() {
-            console.log("#upload-passport-btn clicked");
-            const input = $('#passport-upload-input');
-            if (input.length) {
-                console.log("#passport-upload-input found, triggering click");
-                input.click();
-            } else {
-                console.error("#passport-upload-input not found!");
-            }
-        });
+    //     $('#upload-passport-btn').on('click', function() {
+    //         console.log("#upload-passport-btn clicked");
+    //         const input = $('#passport-upload-input');
+    //         if (input.length) {
+    //             console.log("#passport-upload-input found, triggering click");
+    //             input.click();
+    //         } else {
+    //             console.error("#passport-upload-input not found!");
+    //         }
+    //     });
 
-        $('#fill-form-btn').on('click', function() {
-            console.log("#fill-form-btn clicked");
-            const chatClientForm = document.getElementById('chatClientForm');
-            if (chatClientForm) {
-                chatClientForm.value = "new";
-            } else {
-                console.warn("#chatClientForm not found");
-            }
+    //     $('#fill-form-btn').on('click', function() {
+    //         console.log("#fill-form-btn clicked");
+    //         const chatClientForm = document.getElementById('chatClientForm');
+    //         if (chatClientForm) {
+    //             chatClientForm.value = "new";
+    //         } else {
+    //             console.warn("#chatClientForm not found");
+    //         }
 
-            $("#create-client").show();
-            $("#client-option").hide();
-        });
+    //         $("#create-client").show();
+    //         $("#client-option").hide();
+    //     });
 
-        $('#submit-passport-upload').on('click', function() {
-            console.log("#submit-passport-upload clicked");
-            $('#passport-upload-input').click();
-        });
-    }
+    //     $('#submit-passport-upload').on('click', function() {
+    //         console.log("#submit-passport-upload clicked");
+    //         $('#passport-upload-input').click();
+    //     });
+    // }
 
-    $(document).ready(() => {
-        console.log("DOM ready, initializing loadClient()");
-        loadClient();
-    });
-
-    $('#passport-upload-input').on('change', function(event) {
-        console.log("#passport-upload-input changed");
-        const file = event.target.files[0];
-        console.log("Selected file:", file);
-
-        if (!file) {
-            console.warn("No file selected");
-            $('#upload-status').text('No file selected.');
-            return;
-        }
-
-        const previewContainer = document.getElementById('file-preview-container');
-        if (previewContainer) {
-            previewContainer.innerHTML = '';
-
-            const img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
-            img.width = 100;
-            img.height = 100;
-            img.alt = "Uploaded File Preview";
-            img.className = "rounded shadow";
-            previewContainer.appendChild(img);
-            console.log("File preview added");
-        } else {
-            console.warn("#file-preview-container not found");
-        }
-
-        if (typeof passport !== 'undefined') {
-            passport.show();
-        } else {
-            console.warn("passport element is undefined");
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        console.log("Sending file to OCR endpoint");
-
-        fetch("{{ route('chat.handleFileUpload') }}", {
-                method: "POST",
-                body: formData,
-                headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
-                }
-            })
-            .then(response => {
-                console.log("OCR response received");
-                return response.json();
-            })
-            .then(response => {
-                console.log("OCR response parsed:", response);
-
-                if (response.success && response.data) {
-                    const client = response.data;
-                    console.log("Extracted client data:", client);
-
-                    const nameInput = document.getElementById('nameTask');
-                    if (nameInput) nameInput.value = client.name || '';
-                    const passportInput = document.getElementById('passport_noTask');
-                    if (passportInput) passportInput.value = client.passport_no || '';
-
-                    const civilInput = document.getElementById('civil_noTask');
-                    if (civilInput) civilInput.value = client.civil_no || '';
-
-                    const addressInput = document.getElementById('addressTask');
-                    if (addressInput) addressInput.value = client.address || '';
-
-                    const dobInput = document.querySelector('input[name="date_of_birthTask"]');
-                    if (dobInput && client.date_of_birth) {
-                        dobInput.value = client.date_of_birth.replace(/\//g, '-');
-                    }
-
-                    if (client.date_of_birth) {
-                        const dob = client.date_of_birth.replace(/\//g, '-');
-                        const dobInput = document.querySelector('input[name="date_of_birthTask"]');
-                        if (dobInput) dobInput.value = dob;
-                    }
-
-                    if (typeof passport !== 'undefined') passport.hide();
-                    $("#create-client").show();
-                } else {
-                    const msg = response.message || 'Unknown error';
-                    $('#upload-status').text('Upload failed: ' + msg);
-                    console.error("OCR failed:", msg);
-                }
-            })
-            .catch(error => {
-                console.error("Upload error:", error);
-                $('#upload-status').text('Error uploading file. Please try again.');
-            });
-    });
+    // $(document).ready(() => {
+    //     console.log("DOM ready, initializing loadClient()");
+    //     loadClient();
+    // });
 
     const clientForm = document.getElementById("client-formTask");
 
@@ -1719,6 +1592,8 @@
                     const client = data.data;
                     console.log("Extracted client data:", client);
 
+                    const nameInput = document.getElementById('nameTask');
+                    if (nameInput) nameInput.value = client.name || '';
                     const passportInput = document.getElementById('passport_noTask');
                     if (passportInput) passportInput.value = client.passport_no || '';
 

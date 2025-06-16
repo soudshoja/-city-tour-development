@@ -116,7 +116,7 @@
                     </div>
 
                     <hr>
-                      <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
+                     <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
                         @unlessrole('agent')
@@ -302,8 +302,8 @@
                                                 Enable/Disable</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Reference</th>
-                                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</th>
-                                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client
@@ -549,41 +549,19 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
-                                                                    <div x-data="searchableDropdownClient()" class="flex items-center gap-4">
+                                                                    <div class="flex items-center gap-4">
                                                                         <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
-
-                                                                        <div class="relative w-2/4 sm:w-2/3">
-                                                                            <button type="button"
-                                                                                @click="open = !open"
-                                                                                class="client-select w-full border border-gray-300 dark:border-gray-600 p-2 rounded-md text-base text-left bg-white text-black min-h-[42px]">
-                                                                                <span x-text="selectedName || 'Choose Client'"></span>
-                                                                            </button>
-
-                                                                            <input type="hidden" name="client_id" :value="selectedId">
-
-                                                                            <div x-show="open" @click.away="open = false"
-                                                                                class="absolute bg-white z-10 border w-full max-h-48 rounded shadow mt-1">
-
-                                                                                <!-- Search bar inside dropdown -->
-                                                                                <div class="px-2 py-2">
-                                                                                    <input type="text"
-                                                                                        x-model="search"
-                                                                                        @input="filterOptions"
-                                                                                        placeholder="Search Client Name"
-                                                                                        class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black" />
-                                                                                </div>
-
-                                                                                <!-- Dropdown results with highlighting -->
-                                                                                <template x-for="option in filtered.slice(0, 5)" :key="option.id">
-                                                                                    <div @click="select(option)"
-                                                                                        class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                                                                        x-html="highlightMatch(option.name)">
-                                                                                    </div>
-                                                                                </template>
-                                                                            </div>
+                                                                        <div class="w-2/4 sm:w-2/3">
+                                                                            <x-searchable-dropdown
+                                                                                name="client_id"
+                                                                                :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                                                                placeholder="Search Client Name"
+                                                                                :selectedId="old('client_id', $task->client_id ?? '')"
+                                                                                :selectedName="optional($task->client)->name"
+                                                                            />
                                                                         </div>
                                                                     </div>
-
+                                                                    
                                                                     <!-- Agent Selection (Role-based) -->
                                                                     @unlessrole('agent')
                                                                     <div class="flex items-center gap-4">
@@ -1572,37 +1550,9 @@
         button.disabled = false;
     }
 </script>
-<!-- Searchable Dropdown -->
-<script>
-    function searchableDropdownClient() {
-        return {
-            open: false,
-            search: '',
-            selectedId: '',
-            selectedName: @json(optional($task ?? null)->client->name ?? ''), // Fallback to an empty string if no task is found
-            all: @json($clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])),
-            filtered: [],
-            init() {
-                this.filtered = [...this.all];
-            },
-            filterOptions() {
-                const term = this.search.toLowerCase();
-                this.filtered = this.all.filter(c => c.name.toLowerCase().includes(term));
-            },
-            select(option) {
-                this.selectedId = option.id;
-                this.selectedName = option.name;
-                this.search = '';
-                this.open = false;
-            },
-            highlightMatch(name) {
-                if (!this.search) return name;
-                const regex = new RegExp(`(${this.search})`, 'gi');
-                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>')
-            }
-        }
-    }
 
+<script>
+    
     function searchableDropdownAgent() {
         return {
             open: false,

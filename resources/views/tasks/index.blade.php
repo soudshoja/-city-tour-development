@@ -116,34 +116,81 @@
                     </div>
 
                     <hr>
-                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
+                      <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                         class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
                         @csrf
                         @unlessrole('agent')
-                        <select name="agent_id" id="task-agent-id"
-                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
-                            <option value="" class="">Select Agent</option>
-                            @foreach ($agents as $agent)
-                            <option value="{{ $agent->id }}" data-client="{{ $agent }}">
-                                {{ $agent->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @else
-                        <input type="hidden" name="agent_id" id="agent_id_task_modal"
-                            value="{{ Auth()->user()->agent->id }}">
-                        @endunlessrole
-                        <select name="supplier_id" id="select-supplier-task"
-                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-black">
-                            <option value="">Select Supplier</option>
-                            @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">
-                                {{ $supplier->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <div id="form-task-container" class="mt-2" data-company-id="{{ $companyId }}">
+                        <div x-data="searchableDropdownAgent()" x-init="init()" class="w-full">
+                            <div class="relative">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium">Select an Agent:</label>
+                                    <button type="button"
+                                        @click="open = !open"
+                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black min-h-[42px]">
+                                        <span x-text="selectedAgent === '' ? 'Select Agent' : selectedAgent"></span>
+                                    </button>
+                                </div>
 
+                                <input type="hidden" name="agent_id" :value="selectedId">
+
+                                <div x-show="open" @click.away="open = false"
+                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
+                                    <div class="px-2 py-2">
+                                        <input type="text"
+                                            x-model="search"
+                                            @input="filterOptions"
+                                            placeholder="Search Agent Name"
+                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
+                                    </div>
+
+                                    <template x-for="option in filtered.slice(0, 5)" :key="option.id">
+                                        <div @click="select(option)"
+                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                            x-html="highlightMatch(option.name)">
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        @else
+                        <input type="hidden" name="agent_id" id="agent_id_task_modal" value="{{ Auth()->user()->agent->id }}">
+                        @endunlessrole
+
+                        <div x-data="searchableDropdownSupplier()" x-init="init()" class="w-full">
+                            <div class="relative">
+                                <div class="mb-4">
+                                    <label class="block mb-1 text-sm font-medium">Select a Supplier:</label>
+                                    <button type="button"
+                                        @click="open = !open"
+                                        class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-full text-base text-left bg-white text-black">
+                                        <span x-text="selectedSupplier === '' ? 'Select Supplier' : selectedSupplier"></span>
+                                    </button>
+                                </div>
+
+                                <input type="hidden" name="supplier_id" :value="selectedId">
+
+                                <div x-show="open" @click.away="open = false"
+                                    class="absolute bg-white z-10 border w-full max-h-48 rounded shadow">
+
+                                    <div class="px-2 py-2">
+                                        <input type="text"
+                                            x-model="search"
+                                            @input="filterOptions"
+                                            placeholder="Search Supplier Name"
+                                            class="w-full border border-gray-300 rounded-full px-2 py-1 text-sm text-black">
+                                    </div>
+
+                                    <template x-for="option in filtered.slice(0, 5)" :key="option.id">
+                                        <div @click="select(option)"
+                                            class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                            x-html="highlightMatch(option.name)">
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="form-task-container" class="mb-2" data-company-id="{{ $companyId }}">
                         </div>
                     </form>
                     <hr>
@@ -502,7 +549,7 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
-                                                                    <div x-data="searchableDropdown()" class="flex items-center gap-4">
+                                                                    <div x-data="searchableDropdownClient()" class="flex items-center gap-4">
                                                                         <label for="client_id" class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
 
                                                                         <div class="relative w-2/4 sm:w-2/3">
@@ -527,7 +574,7 @@
                                                                                 </div>
 
                                                                                 <!-- Dropdown results with highlighting -->
-                                                                                <template x-for="option in filtered.slice(0, 3)" :key="option.id">
+                                                                                <template x-for="option in filtered.slice(0, 5)" :key="option.id">
                                                                                     <div @click="select(option)"
                                                                                         class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
                                                                                         x-html="highlightMatch(option.name)">
@@ -554,14 +601,11 @@
                                                                                 {{ $agent->name }}
                                                                             </option>
                                                                             @endforeach
-
-
                                                                         </select>
 
                                                                         <input type="hidden" name="agent_id"
                                                                             id="agent_id_hidden_{{ $task->id }}"
                                                                             value="{{ $task->agent->id ?? '' }}">
-
 
                                                                     </div>
                                                                     @else
@@ -599,12 +643,8 @@
                                                                 </x-primary-button>
                                                             </div>
                                                         </form>
-
-
                                                     </div>
                                                 </div>
-
-
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 <label class="switch">
@@ -1534,7 +1574,7 @@
 </script>
 <!-- Searchable Dropdown -->
 <script>
-    function searchableDropdown() {
+    function searchableDropdownClient() {
         return {
             open: false,
             search: '',
@@ -1595,31 +1635,77 @@
     }
 
     function searchableDropdownSupplier() {
-        return {
-            open: false,
-            search: '',
-            selectedId: '',
-            selectedSupplier: @json(optional($supplier ?? null)->name ?? ''), // Fallback if no supplier exists
-            all: @json($suppliers->map(function ($a) { return ['id' => $a->id, 'name' => $a->name]; })),
-            filtered: [],
-            init() {
-                this.filtered = [...this.all];
-            },
-            filterOptions() {
-                const term = this.search.toLowerCase();
-                this.filtered = this.all.filter(s => s.name.toLowerCase().includes(term));
-            },
-            select(option) {
-                this.selectedId = option.id;
-                this.selectedSupplier = option.name;
-                this.search = '';
-                this.open = false;
-            },
-            highlightMatch(name) {
-                if (!this.search) return name;
-                const regex = new RegExp(`(${this.search})`, 'gi');
-                return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+    return {
+        open: false,
+        search: '',
+        selectedId: '',
+        selectedSupplier: '',
+        all: @json($suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])),
+        filtered: [],
+        init() {
+            this.filtered = [...this.all];
+            this.$watch('selectedSupplier', (newValue) => {
+                this.triggerSupplierChange(newValue);
+            });
+        },
+        filterOptions() {
+            const term = this.search.toLowerCase();
+            this.filtered = this.all.filter(s => s.name.toLowerCase().includes(term));
+        },
+        select(option) {
+            this.selectedId = option.id;
+            this.selectedSupplier = option.name;
+            this.search = '';
+            this.open = false;
+        },
+        highlightMatch(name) {
+            if (!this.search) return name;
+            const regex = new RegExp(`(${this.search})`, 'gi');
+            return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+        },
+        triggerSupplierChange(supplierName) {
+            const formTaskContainer = document.getElementById('form-task-container');
+            if (!formTaskContainer) return;
+
+            const companyIdData = formTaskContainer.getAttribute('data-company-id');
+            const tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
+
+            formTaskContainer.innerHTML = '';
+
+            if (supplierName === 'Magic Holiday') {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'supplier_ref';
+                input.placeholder = 'Reference';
+                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
+                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
+                    'dark:text-gray-300', 'p-3');
+                formTaskContainer.appendChild(input);
+            } else if (supplierName === 'TBO Holiday') {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'supplier_ref';
+                input.placeholder = 'Coming Soon...';
+                input.disabled = true;
+                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
+                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
+                    'dark:text-gray-300', 'p-3', 'disabled:opacity-75', 'disabled:cursor-not-allowed');
+                formTaskContainer.appendChild(input);
+            } else if (supplierName === 'Amadeus') {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.name = 'task_file';
+                fileInput.id = 'amadeus-upload-task';
+                fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md', 'w-full', 'mt-2');
+                formTaskContainer.appendChild(fileInput);
+            } else if (supplierName !== '') {
+                const div = document.createElement('div');
+                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
+                div.innerHTML = 'API not available for this supplier';
+                formTaskContainer.appendChild(div);
             }
-        };
+        }
     }
+}
+
 </script>

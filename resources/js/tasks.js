@@ -9,10 +9,10 @@ const table = document.getElementById("myTable");
 const rows = Array.from(table.querySelector("tbody").rows);
 const totalPages = Math.ceil(rows.length / rowsPerPage);
 
-const toggleFiltersButton = document.getElementById("toggleFilters");
-const taskDetailsDiv = document.getElementById("taskDetails");
-const showRightDiv = document.getElementById("showRightDiv");
-let currentlyDisplayed = null;
+// const toggleFiltersButton = document.getElementById("toggleFilters");
+// const taskDetailsDiv = document.getElementById("taskDetails");
+// const showRightDiv = document.getElementById("showRightDiv");
+// let currentlyDisplayed = null;
 
 // toggleFiltersButton.addEventListener("click", function () {
 //     if (currentlyDisplayed === "filters") {
@@ -421,4 +421,340 @@ document.addEventListener('DOMContentLoaded', function () {
             loadMoreWrapper.classList.remove('hidden');
         }
     });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filterConfig = {
+        columns: {
+            'reference': {
+                label: 'Reference',
+                type: 'text'
+            },
+            'gds_reference': {
+                label: 'GDS Reference',
+                type: 'text'
+            },
+            'amadeus_reference': {
+                label: 'Amadeus Reference',
+                type: 'text'
+            },
+            'branch_name': {
+                label: 'Branch Name',
+                type: 'text'
+            },
+            'agent_name': {
+                label: 'Agent Name',
+                type: 'text'
+            },
+            'date': {
+                label: 'Date',
+                type: 'date'
+            },
+            'type': {
+                label: 'Type',
+                type: 'select',
+                options: ['hotel', 'flight']
+            },
+            'price': {
+                label: 'Price',
+                type: 'number'
+            },
+            'status': {
+                label: 'Status',
+                type: 'select',
+                options: ['issued', 'refund', 'reissued', 'void', 'ticketed', 'confirmed']
+            },
+            'supplier': {
+                label: 'Supplier',
+                type: 'text'
+            }
+        }
+    };
+
+    let activeFilters = [];
+    let filterCounter = 0;
+
+    const toggleFiltersBtn = document.getElementById('toggleFilters');
+    const filterModal = document.getElementById('filterModal');
+    const closeFilterModalBtn = document.getElementById('closeFilterModal');
+    const filterContainer = document.getElementById('filterContainer');
+    const addFilterRowBtn = document.getElementById('addFilterRow');
+    const applyFiltersBtn = document.getElementById('applyFilters');
+    const clearAllFiltersBtn = document.getElementById('clearAllFilters');
+    const activeFiltersContainer = document.getElementById('activeFiltersContainer');
+    const activeFiltersList = document.getElementById('activeFiltersList');
+    const clearAllActiveFiltersBtn = document.getElementById('clearAllActiveFilters');
+    const searchInput = document.getElementById("searchInput");
+    const noTasksFound = document.getElementById("noTasksFound");
+
+    toggleFiltersBtn.addEventListener('click', openFilterModal);
+    closeFilterModalBtn.addEventListener('click', closeFilterModal);
+    addFilterRowBtn.addEventListener('click', addFilterRow);
+    applyFiltersBtn.addEventListener('click', applyFilters);
+    clearAllFiltersBtn.addEventListener('click', clearAllFilters);
+    clearAllActiveFiltersBtn.addEventListener('click', clearAllActiveFilters);
+
+    filterModal.addEventListener('click', function(e) {
+        if (e.target === filterModal) {
+            closeFilterModal();
+        }
+    });
+
+    function openFilterModal() {
+        filterModal.classList.add('active');
+        if (filterContainer.children.length === 0) {
+            addFilterRow();
+        }
+    }
+
+    function closeFilterModal() {
+        filterModal.classList.remove('active');
+    }
+
+    function addFilterRow() {
+        const filterId = ++filterCounter;
+        const filterRow = document.createElement('div');
+        filterRow.className = 'filter-row';
+        filterRow.dataset.filterId = filterId;
+
+        filterRow.innerHTML = `
+            <select class="column-select w-48" onchange="updateConditions(this)">
+                ${Object.entries(filterConfig.columns)
+                    .filter(([key]) => !isColumnAlreadySelected(key))
+                    .map(([key, config]) => 
+                        `<option value="${key}" data-type="${config.type}">${config.label}</option>`
+                    ).join('')}
+            </select>
+            <input type="text" class="value-input" placeholder="Enter value...">
+            <button type="button" class="remove-filter-btn" onclick="removeFilterRow(${filterId})">
+                &times;
+            </button>
+        `;
+
+        filterContainer.appendChild(filterRow);
+    }
+
+    function isColumnAlreadySelected(column) {
+        const selectedColumns = Array.from(filterContainer.querySelectorAll('.column-select'))
+            .map(select => select.value);
+        return selectedColumns.includes(column);
+    }
+
+    window.updateConditions = function(columnSelect) {
+        const filterRow = columnSelect.closest('.filter-row');
+        const valueInput = filterRow.querySelector('.value-input');
+        const selectedOption = columnSelect.selectedOptions[0];
+        const columnType = selectedOption.dataset.type;
+        valueInput.disabled = false;
+
+        if (columnType === 'date') {
+            valueInput.type = 'date';
+        } else if (columnType === 'number') {
+            valueInput.type = 'number';
+        } else {
+            valueInput.type = 'text';
+        }
+
+        if (columnType === 'select') {
+            const column = columnSelect.value;
+            const options = filterConfig.columns[column].options || [];
+            const selectElement = document.createElement('select');
+            selectElement.className = 'value-input';
+            selectElement.innerHTML = `<option value="">Select value...</option>
+                ${options.map(option => `<option value="${option}">${option}</option>`).join('')}`;
+            filterRow.replaceChild(selectElement, valueInput);
+        } else {
+            const inputElement = document.createElement('input');
+            inputElement.type = columnType === 'date' ? 'date' : columnType === 'number' ? 'number' : 'text';
+            inputElement.className = 'value-input';
+            inputElement.placeholder = 'Enter value...';
+            filterRow.replaceChild(inputElement, valueInput);
+        }
+    };
+
+    window.removeFilterRow = function (filterId) {
+        const filterRow = document.querySelector(`[data-filter-id="${filterId}"]`);
+        if (filterRow && filterContainer.children.length > 1) {
+            const valueInput = filterRow.querySelector('.value-input');
+            if (valueInput) {
+                valueInput.value = '';  // Clear the input value
+            }
+            filterRow.remove(); // Remove the filter row
+        }
+    };
+
+    function applyFilters() {
+        const filterRows = filterContainer.querySelectorAll('.filter-row');
+        activeFilters = [];
+
+        filterRows.forEach(row => {
+            const column = row.querySelector('.column-select').value;
+            const value = row.querySelector('.value-input').value;
+
+            if (column && value) {
+                if (column === 'date') {
+                    const dateValue = convertToDate(value);
+                    activeFilters.push({
+                        column,
+                        value: dateValue,
+                        label: `${filterConfig.columns[column].label} "${value}"`
+                    });
+                } else {
+                    activeFilters.push({
+                        column,
+                        value,
+                        label: `${filterConfig.columns[column].label} "${value}"`
+                    });
+                }
+            }
+        });
+
+        updateActiveFiltersDisplay();
+        filterTableRows();
+        closeFilterModal();
+    }
+
+    function clearAllFilters() {
+        filterContainer.innerHTML = '';
+        activeFilters = [];
+
+        const allInputs = filterContainer.querySelectorAll('.value-input');
+        allInputs.forEach(input => {
+            input.value = '';
+        });
+
+        updateActiveFiltersDisplay();
+        filterTableRows();
+        addFilterRow();
+    }
+
+    function clearAllActiveFilters() {
+        filterContainer.innerHTML = '';
+        activeFilters = [];
+
+        const allInputs = filterContainer.querySelectorAll('.value-input');
+        allInputs.forEach(input => {
+            input.value = '';
+        });
+
+        updateActiveFiltersDisplay();
+        filterTableRows();
+    }
+
+    function updateActiveFiltersDisplay() {
+        if (activeFilters.length === 0) {
+            activeFiltersContainer.style.display = 'none';
+            return;
+        }
+
+        activeFiltersContainer.style.display = 'block';
+        activeFiltersList.innerHTML = activeFilters.map((filter, index) => `
+            <div class="active-filter-tag">
+                ${filter.label}
+                <button class="remove-tag" onclick="removeActiveFilter(${index})">&times;</button>
+            </div>
+        `).join('');
+    }
+
+    window.removeActiveFilter = function(index) {
+        activeFilters.splice(index, 1);
+        updateActiveFiltersDisplay();
+        filterTableRows();
+    };
+
+    function convertToDate(dateString) {
+        const [day, month, year] = dateString.split('-');
+        const formattedDate = `${year}-${month}-${day}`;
+        return formattedDate;
+    }
+
+    function filterTableRows() {
+        const tableRows = document.querySelectorAll('#myTable tbody tr.taskRow');
+        let anyVisible = false;
+
+        tableRows.forEach(row => {
+            let showRow = true;
+
+            if (activeFilters.length > 0) {
+                showRow = activeFilters.every(filter => {
+                    const cellValue = getCellValue(row, filter.column);
+
+                    if (filter.column === 'date') {
+                        const taskDate = cellValue.split(' ')[0];
+                        return taskDate === filter.value;
+                    }
+
+                    return matchesCondition(cellValue, filter.value);
+                });
+            }
+
+            row.style.display = showRow ? '' : 'none';
+            if (showRow) {
+                anyVisible = true;
+            }
+        });
+
+        noTasksFound.style.display = anyVisible ? 'none' : 'flex';
+    }
+
+    function getCellValue(row, column) {
+        const columnIndex = getColumnIndex(column);
+        if (columnIndex === -1) return '';
+
+        const cell = row.cells[columnIndex];
+        return cell ? cell.textContent.trim() : '';
+    }
+
+    function getColumnIndex(column) {
+        const headerRow = document.querySelector('#myTable thead tr');
+        const headers = Array.from(headerRow.cells);
+
+        const columnMap = {
+            'reference': 'Reference',
+            'gds_reference': 'GDS Reference',
+            'amadeus_reference': 'Amadeus Reference',
+            'branch_name': 'Branch Name',
+            'agent_name': 'Agent Name',
+            'date': 'Date',
+            'type': 'Type',
+            'price': 'Price',
+            'status': 'Status',
+            'supplier': 'Supplier'
+        };
+
+        const headerText = columnMap[column];
+        return headers.findIndex(header => header.textContent.trim() === headerText);
+    }
+
+    function matchesCondition(cellValue, filterValue) {
+        const lowerCellValue = cellValue.toLowerCase();
+        const lowerFilterValue = filterValue.toLowerCase();
+
+        return lowerCellValue.includes(lowerFilterValue);
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const keyword = this.value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#myTable tbody tr.taskRow');
+            let anyVisible = false;
+
+            rows.forEach(row => {
+                const rowText = row.textContent.toLowerCase();
+                const matchesSearch = rowText.includes(keyword);
+                const matchesFilters = activeFilters.length === 0 || activeFilters.every(filter => {
+                    const cellValue = getCellValue(row, filter.column);
+                    return matchesCondition(cellValue, filter.value);
+                });
+
+                const showRow = matchesSearch && matchesFilters;
+                row.style.display = showRow ? '' : 'none';
+                if (showRow) {
+                    anyVisible = true;
+                }
+            });
+
+            noTasksFound.style.display = anyVisible ? 'none' : 'flex';
+        });
+    }
 });

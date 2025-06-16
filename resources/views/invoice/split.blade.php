@@ -150,9 +150,9 @@
          <div class="mb-8 inline-flex gap-2">
              @if ($invoicePartial->status === 'unpaid')
                  @if (auth()->check())
-                     <form action="{{ route('whatsapp.send') }}" method="POST">
+                     <form action="{{ route('resayil.share-partial-link') }}" method="POST">
                          @csrf
-                         <input type="hidden" name="client" value='{{ $invoicePartial->client }}'>
+                         <input type="hidden" name="client_id" value='{{ $invoicePartial->client->id }}'>
                          <input type="hidden" name="invoiceNumber" value='{{ $invoicePartial->invoice_number }}'>
                          <button type="submit"
                              class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-black">

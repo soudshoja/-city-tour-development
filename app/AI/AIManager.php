@@ -34,4 +34,9 @@ class AIManager
     {
         return $this->client->extractPdfFiles($parameter);
     }
+
+    public function extractPassportData(string $filePath, string $fileName)
+    {
+        return $this->client->extractPassportData($filePath, $fileName);
+    }
 }

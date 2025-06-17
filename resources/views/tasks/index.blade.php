@@ -501,12 +501,12 @@
                                                 Enable/Disable</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Reference</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
+                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</th>
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</th>
-                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Client Name</th>
-                                            <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</th>
                                             @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                             <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Branch Name</th>
@@ -833,18 +833,6 @@
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->reference }}
                                             </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->gds_reference ?? 'Not Available' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->airline_reference ?? 'Not Available' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->created_by ?? 'Not Set' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->issued_by ?? 'Not Set' }}
-                                            </td>
                                             <td
                                                 class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
                                                 <p class="{{ $task->client ?? 'no-client' }}">
@@ -867,6 +855,18 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->passenger_name ?? 'Not Set' }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->gds_reference ?? 'Not Available' }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->airline_reference ?? 'Not Available' }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->created_by ?? 'Not Set' }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->issued_by ?? 'Not Set' }}
                                             </td>
                                             @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                             <td class="p-3 text-sm font-semibold text-gray-500">
@@ -929,7 +929,7 @@
 
                                     <!-- Upload Passport -->
                                     <div x-show="showUploadForm" x-transition class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
-                                        <div @click.stop class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
+                                        <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
                                             <div class="flex items-start justify-between mb-6">
                                                 <div>
                                                     <h2 class="text-xl font-bold text-gray-800">Upload Passport</h2>
@@ -970,7 +970,7 @@
 
                                     <!-- Manual Fill Form -->
                                     <div x-show="showManualForm" x-transition class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
-                                        <div @click.stop class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                                        <div @click.away="closeAll()"class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
                                             <!-- Header with title and close button -->
                                             <div class="flex items-center justify-between mb-2">
                                                 <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
@@ -1012,21 +1012,21 @@
                                                         Process File
                                                     </button>
                                                 </div>
-                                                <div>
+                                                <div class="mb-3">
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client's Name</label>
                                                     <input type="text" name="name" id="nameTask" :value="modalClientName" placeholder="Client's name"
                                                         class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         required>
                                                 </div>
-                                                <div>
+                                                <div class="mb-3">
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
                                                     <input type="text" name="passenger_name" id="passengerName" :value="modalPassengerName" placeholder="Passengers's name"
-                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"
                                                         disabled>
                                                 </div>
                                                 
                                                 <!-- Email + DOB -->
-                                                <div class="flex gap-4">
+                                                <div class="flex gap-4 mb-3">
                                                     <div class="w-2/3">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                                         <input type="email" name="email" id="emailTask" placeholder="Client's email"
@@ -1040,7 +1040,7 @@
                                                 </div>
 
                                                 <!-- Phone -->
-                                                <div>
+                                                <div class="mb-3">
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                                                     <div class="flex gap-2">
                                                         <div class="relative w-40">
@@ -1060,7 +1060,7 @@
                                                 </div>
 
                                                 <!-- Passport + Civil -->
-                                                <div class="flex gap-4">
+                                                <div class="flex gap-4 mb-3">
                                                     <div class="w-1/2">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Passport Number</label>
                                                         <input type="text" name="passport" id="passport_noTask"
@@ -1073,7 +1073,7 @@
                                                     </div>
                                                 </div>
                                                 <!-- Address -->
-                                                <div>
+                                                <div class="mb-3">
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                                     <input type="text" name="address" id="addressTask"
                                                         class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

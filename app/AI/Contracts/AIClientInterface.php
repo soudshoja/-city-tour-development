@@ -10,4 +10,5 @@ interface AiClientInterface
     public function processWithAiTool(string $filePath, string $fileName): array;
     public function extractAirFiles(string $content): array;
     public function extractPdfFiles(string $fileId): array;
+    public function extractPassportData(string $filePath, string $fileName): array;
 }

@@ -53,6 +53,130 @@ class OpenAIClient implements AIClientInterface
         return $response->json();
     }
 
+    public function extractPassportData(string $filePath, string $fileName): array
+    {
+        try {
+            $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'pdf'])) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Unsupported file type. Only JPG, JPEG, PNG, and PDF files are supported.',
+                    'data' => null
+                ];
+            }
+
+            $mimeTypes = [
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'pdf' => 'application/pdf'
+            ];
+            $mimeType = $mimeTypes[$extension];
+
+            $fileContent = File::get($filePath);
+            $base64Content = base64_encode($fileContent);
+
+            $prompt = "You are an assistant for a travel agency. Your task is to extract passport details from the provided image or document. 
+
+                Analyze the document carefully and extract the following fields. Return the data in JSON format only:
+
+                - `passport_no`: Passport number or Passport No.
+                - `civil_no`: Civil number or Civil No. (if available)
+                - `name`: Full name as per the passport
+                - `nationality`: Nationality
+                - `date_of_birth`: Date of birth in YYYY-MM-DD format
+                - `date_of_issue`: Date of issue in YYYY-MM-DD format
+                - `date_of_expiry`: Date of expiry in YYYY-MM-DD format
+                - `place_of_birth`: Place of birth
+                - `place_of_issue`: Place of issue
+
+                Important guidelines:
+                1. If a field is not found or not clearly visible, set its value to null
+                2. Ensure all dates are in YYYY-MM-DD format
+                3. Extract the full name exactly as it appears on the passport
+                4. For passport number, include only the alphanumeric passport number without any prefixes
+                5. Return only valid JSON format without any additional text or explanations";
+
+            $messages = [
+                [
+                    'role' => 'system',
+                    'content' => $prompt
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'Please extract the passport information from this document and return it in the specified JSON format.'
+                        ],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => "data:{$mimeType};base64,{$base64Content}"
+                            ]
+                        ]
+                    ]
+                ]
+            ];
+
+            $url = $this->apiUrl . '/chat/completions';
+            $response = Http::timeout(120)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($url, [
+                    'model' => $this->model,
+                    'messages' => $messages,
+                    'response_format' => [
+                        'type' => 'json_object'
+                    ]
+                ]);
+
+            Log::info('OpenAI Passport Extraction response: ', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            if ($response->failed()) {
+                return [
+                    'status' => 'error',
+                    'message' => 'OpenAI API request failed: ' . $response->body(),
+                    'data' => null
+                ];
+            }
+
+            $responseData = $response->json();
+
+            if (!isset($responseData['choices'][0]['message']['content'])) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid response format from OpenAI API',
+                    'data' => null
+                ];
+            }
+
+            $extractedContent = $responseData['choices'][0]['message']['content'];
+            $passportData = json_decode($extractedContent, true);
+
+            return [
+                'status' => 'success',
+                'message' => 'Passport data extracted successfully',
+                'data' => $passportData
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Exception in extractPassportData: ' . $e->getMessage());
+            
+            return [
+                'status' => 'error',
+                'message' => 'Exception occurred during passport extraction: ' . $e->getMessage(),
+                'data' => null
+            ];
+        }
+    }
+
     public function chatCompletionJsonResponse(array $message)
     {
         // Log::info('OpenAI config: ', [

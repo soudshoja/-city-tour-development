@@ -200,6 +200,19 @@ class TaskController extends Controller
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
+
+            if( $existingTask->gds_reference == null || $existingTask->airline_reference == null) {
+                $existingTask->gds_reference = $validatedData['gds_reference'];
+                $existingTask->airline_reference = $validatedData['airline_reference'];
+                $existingTask->save();
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task updated with GDS and Airline reference.',
+                    'data' => $existingTask,
+                ], 200);
+            }
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Task with this reference already exists.',

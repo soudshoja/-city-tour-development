@@ -579,7 +579,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "example response : {\"reference_number\": \"2833133219\"}";
 
         if(isset($data['example'])){
-            $prompt .= " Here are some example reference numbers you can refer to: " . implode(', ', $data['example']);
+            $prompt .= " Here are some example reference numbers you can refer to: " . json_encode($data['example']) . ". ";
         }
 
         $response = $this->chatCompletionJsonResponse([

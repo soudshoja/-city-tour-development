@@ -921,7 +921,7 @@ class CoaController extends Controller
             ->toArray();
         
         $notIssued = Task::where('company_id', $account->company_id)
-            ->whereNotNull('issued_by')
+            ->whereNull('issued_by')
             ->get();
         // dump($notIssued);
         $cumulativeTaskTotal = 0;

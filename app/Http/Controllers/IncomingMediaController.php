@@ -124,7 +124,14 @@ class IncomingMediaController extends Controller
 
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
+
+                if (!$localPath || !Storage::exists("public/{$localPath}")) {
+                    Log::error("Local file does not exist: public/{$localPath}");
+                    return response()->json(['message' => 'Local file missing.'], 200);
+                }
+
                 $fullPath = storage_path("app/public/{$localPath}");
+                $filename = preg_replace('/[^\w\-.]/', '_', str_replace("\0", '', $filename));
 
                 $file = new \Illuminate\Http\UploadedFile(
                     $fullPath,

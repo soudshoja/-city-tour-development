@@ -53,9 +53,11 @@ class OpenAIClient implements AIClientInterface
         return $response->json();
     }
 
-    public function extractPassportData(string $filePath, string $fileName): array
+    public function extractPassportData($file, string $fileName): array
     {
         try {
+            $fileId = $this->uploadFileToOpenAI($file);
+
             $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
             
             if (!in_array($extension, ['jpg', 'jpeg', 'png', 'pdf'])) {
@@ -65,17 +67,6 @@ class OpenAIClient implements AIClientInterface
                     'data' => null
                 ];
             }
-
-            $mimeTypes = [
-                'jpg' => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
-                'png' => 'image/png',
-                'pdf' => 'application/pdf'
-            ];
-            $mimeType = $mimeTypes[$extension];
-
-            $fileContent = File::get($filePath);
-            $base64Content = base64_encode($fileContent);
 
             $prompt = "You are an assistant for a travel agency. Your task is to extract passport details from the provided image or document. 
 
@@ -107,32 +98,30 @@ class OpenAIClient implements AIClientInterface
                     'role' => 'user',
                     'content' => [
                         [
-                            'type' => 'text',
-                            'text' => 'Please extract the passport information from this document and return it in the specified JSON format.'
+                            'type' => $extension === 'pdf' ? 'input_file' : 'input_image',
+                            'file_id' => $fileId
                         ],
                         [
-                            'type' => 'image_url',
-                            'image_url' => [
-                                'url' => "data:{$mimeType};base64,{$base64Content}"
-                            ]
+                            'type' => 'input_text',
+                            'text' => 'Please extract the passport information from this document and return it in the specified JSON format.'
                         ]
                     ]
                 ]
             ];
 
-            $url = $this->apiUrl . '/chat/completions';
-            $response = Http::timeout(120)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type' => 'application/json',
-                ])
-                ->post($url, [
-                    'model' => $this->model,
-                    'messages' => $messages,
-                    'response_format' => [
+            $url = $this->apiUrl . '/responses';
+            $response = Http::timeout(120)->withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->post($url, [
+                'model' => $this->model,
+                'input' => $messages,
+                'text' => [
+                    'format' => [
                         'type' => 'json_object'
                     ]
-                ]);
+                ]
+            ]);
 
             Log::info('OpenAI Passport Extraction response: ', [
                 'status' => $response->status(),
@@ -149,16 +138,18 @@ class OpenAIClient implements AIClientInterface
 
             $responseData = $response->json();
 
-            if (!isset($responseData['choices'][0]['message']['content'])) {
+            if (!isset($responseData['output'][0]['content'][0]['text'])) {
                 return [
                     'status' => 'error',
                     'message' => 'Invalid response format from OpenAI API',
                     'data' => null
                 ];
             }
-
-            $extractedContent = $responseData['choices'][0]['message']['content'];
+            
+            $extractedContent = $responseData['output'][0]['content'][0]['text'];
             $passportData = json_decode($extractedContent, true);
+
+            $this->deleteFileFromOpenAI($fileId);
 
             return [
                 'status' => 'success',

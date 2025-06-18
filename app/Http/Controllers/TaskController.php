@@ -339,7 +339,76 @@ class TaskController extends Controller
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $liabilities->id)
                     ->first();
+                
+                $companyIssuedBy = $task->issued_by;
 
+                // if($companyIssuedBy) {
+                //    $issuedByAccount = Account::where('name', $companyIssuedBy)
+                //         ->where('company_id', $task->company_id)
+                //         ->where('root_id', $liabilities->id)
+                //         ->where('parent_id', $supplierPayable->id)
+                //         ->first();
+
+                //     if (!$issuedByAccount) {
+                //         throw new Exception('Issued by account not found.');
+                //     }
+
+                // } else {
+                //     throw new Exception('Issued by field is required for flight tasks.');
+                // }
+
+                if(!$companyIssuedBy) {
+                    Log::error('Issued by field is required for flight tasks.', [
+                        'task_id' => $task->id,
+                        'type' => $task->type,
+                        'company_id' => $task->company_id,
+                    ]);
+
+                    throw new Exception('Issued by field is required for flight tasks.');
+                }  
+
+                $issuedByAccount = Account::where('name', $companyIssuedBy)
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->where('parent_id', $supplierPayable->id)
+                    ->first();
+                
+                if (!$issuedByAccount) {
+                    $code = 2151; //Default
+
+                    $lastIssuedByAccount = Account::where('company_id', $task->company_id)
+                        ->where('root_id', $liabilities->id)
+                        ->where('parent_id', $supplierPayable->id)
+                        ->orderBy('code', 'desc')
+                        ->first();
+
+                    if ($lastIssuedByAccount) {
+                        $code = $lastIssuedByAccount->code + 1;
+                    }
+
+                    $issuedByAccount = Account::create([
+                        'name' => $companyIssuedBy,
+                        'parent_id' => $supplierPayable->id,
+                        'company_id' => $task->company_id,
+                        'branch_id' => $task->agent->branch_id,
+                        'root_id' => $liabilities->id,
+                        'code' => $code,
+                        'account_type' => 'liability',
+                        'report_type' => 'balance sheet',
+                        'level' => $supplierPayable->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                    ]);
+
+                    if (!$issuedByAccount) {
+                        throw new Exception('Issued by account creation failed.');
+                    }
+                }
+                
                 $supplierCost = Account::where('name', $supplier->name)
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $expenses->id)
@@ -399,7 +468,7 @@ class TaskController extends Controller
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $supplierPayable->id,
+                    'account_id' => $issuedByAccount->id,
                     'task_id' => $task->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
@@ -1781,6 +1850,23 @@ class TaskController extends Controller
             ->where('company_id', $originalTask->company_id)
             ->where('root_id', $liabilities->id)
             ->first();
+        
+        $companyIssuedBy = $originalTask->issued_by;
+
+        if (!$companyIssuedBy) {
+            Log::error('Company issued by not found for task ID: ' . $originalTask->id);
+            throw new Exception('Company issued by not found.');
+        }
+
+        $issuedByAccount = Account::where('name', $companyIssuedBy->name)
+            ->where('company_id', $originalTask->company_id)
+            ->where('root_id', $liabilities->id)
+            ->first();
+
+        if (!$issuedByAccount) {
+            Log::error('Issued by account not found for task ID: ' . $originalTask->id);
+            throw new Exception('Issued by account not found.');
+        }
 
         $supplierCost = Account::where('name', $supplier->name)
             ->where('company_id', $originalTask->company_id)
@@ -1829,7 +1915,7 @@ class TaskController extends Controller
             'transaction_id' => $transaction->id,
             'company_id' => $originalTask->company_id,
             'branch_id' => $originalTask->agent->branch_id,
-            'account_id' => $supplierPayable->id,
+            'account_id' => $issuedByAccount->id,
             'task_id' => $originalTask->id,
             'transaction_date' => now(),
             'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,

@@ -148,4 +148,9 @@ class Task extends Model
     {
         return $this->hasOne(Task::class, 'original_task_id');
     }
+
+    public function journalEntries()
+    {
+        return $this->hasMany(JournalEntry::class, 'task_id');
+    }
 }

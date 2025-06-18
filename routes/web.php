@@ -241,6 +241,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('addCategory');
         Route::get('/export', [CoaController::class, 'exportAccounts'])->name('export');
         Route::post('/import', [CoaController::class, 'importAccounts'])->name('import');
+        Route::post('/delegate-price', [CoaController::class, 'delegatePriceAmadeus'])->name('delegate-price');
     });
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');

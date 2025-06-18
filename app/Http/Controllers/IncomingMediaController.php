@@ -2,14 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\AI\AIManager;
-use App\AI\Services;
-use App\AI\Contracts;
 use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
 use App\Models\Agent;
 use App\Models\Client;
-
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -31,7 +27,7 @@ class IncomingMediaController extends Controller
 
         $agentEmail = null;
         $agentPhone = $request->input('device.phone') ?? null;
-        $agentId = 1;
+        $agentId = 1; // default fallback
         $fallbackPhone = config('app.agent_default_phone', '+96522210017');
         $fallbackEmail = config('app.agent_default_email', 'admin@citytravelers.co');
 
@@ -73,7 +69,7 @@ class IncomingMediaController extends Controller
         $filename = $mediaData['filename'] ?? 'file.jpg';
         $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
 
-        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
         if (!in_array($mimeType, $allowedMimeTypes)) {
             Log::warning("Unsupported media type: {$mimeType}");
             return response()->json(['message' => 'Unsupported media type.'], 200);
@@ -86,6 +82,7 @@ class IncomingMediaController extends Controller
         $localPath = null;
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
+
             $response = Http::withHeaders([
                 'Token' => config('services.resayil.api_token', ''),
             ])->get($mediaUrl);
@@ -101,7 +98,6 @@ class IncomingMediaController extends Controller
             Log::error("Media download exception: " . $e->getMessage());
         }
 
-        $incomingMedia = null;
         try {
             $incomingMedia = IncomingMedia::create([
                 'phone' => $phone,
@@ -124,31 +120,19 @@ class IncomingMediaController extends Controller
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
                 $fullPath = storage_path("app/public/{$localPath}");
-                if (!file_exists($fullPath)) {
-                    Log::error("Local file does not exist at path: {$fullPath}");
-                    return response()->json(['message' => 'Local file missing.'], 200);
-                }
 
-                // Upload to OpenAI
-                $filename = preg_replace('/[^\x20-\x7E]/', '', $filename); // sanitize
-                $handle = fopen($fullPath, 'r');
+                $uploadResponse = Http::asMultipart()
+                    ->attach('file', file_get_contents($fullPath), basename($fullPath))
+                    ->post(config('app.url') . '/api/chat/upload');
 
-                $aicontrol = new \App\AI\Services\OpenAIClient;
-                $fileId = $aicontrol->uploadFileToOpenAi($handle, $filename); // Pass handle, not contents
-                fclose($handle);
-                Log::info("Uploaded to OpenAI with file_id: {$fileId}");
+                if ($uploadResponse->successful()) {
+                    $data = $uploadResponse->json('data');
+                    Log::info("Upload response received");
 
-                // Extract data
-                $result = $aicontrol->extractPassportData(file_get_contents($fullPath), $filename);
-                Log::info("Extract data result: {$result}");
-
-                if ($result['status'] === 'success') {
-                    $data = $result['data'];
-
-                    if (is_array($data) && !empty($data['name']) && !empty($data['civil_no'])) {
-                        DB::beginTransaction();
-
+                    if ($data && isset($data['name'], $data['civil_no'])) {
                         $client = Client::where('civil_no', $data['civil_no'])->first();
+
+                        DB::beginTransaction();
 
                         if (!$client) {
                             $client = Client::create([
@@ -161,7 +145,7 @@ class IncomingMediaController extends Controller
                                 'civil_no' => $data['civil_no'] ?? null,
                                 'passport_no' => $data['passport_no'] ?? null,
                                 'old_passport_no' => $data['passport_no'] ?? null,
-                                'agent_id' => $agentId,
+                                'agent_id' => $agentId
                             ]);
                             $autoReplyText = "Thank you, your profile has been created.";
                             Log::info("Client created: ID {$client->id}");
@@ -188,10 +172,10 @@ class IncomingMediaController extends Controller
 
                         DB::commit();
                     } else {
-                        Log::error("Required data missing from extraction result.");
+                        Log::error("No valid data from upload response.");
                     }
                 } else {
-                    Log::error("OpenAI extraction failed: " . $result['message']);
+                    Log::error("Upload failed: " . $uploadResponse->status() . ' ' . $uploadResponse->body());
                 }
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -214,7 +198,4 @@ class IncomingMediaController extends Controller
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
-
-
-
 }

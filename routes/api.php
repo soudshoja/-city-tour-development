@@ -10,6 +10,7 @@ use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\IncomingMediaController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\WhatsAppHotelController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -80,6 +81,10 @@ use App\Http\Controllers\ChatController;
         ->name('webhook.resayil.media');
         Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
 
-        Route::post('/whatssap/hotel-city', [WhatsappController::class, 'getCityIdFromHotelName']);
-
+        Route::prefix('/whatsapp/hotel')->group(function () {
+            Route::post('/city-id', [WhatsAppHotelController::class, 'getCityIdFromHotelName']);
+            Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
+            Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);
+        });
+        
 require __DIR__.'/auth.php';

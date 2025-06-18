@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class JournalEntry extends Model
 {
@@ -42,6 +43,23 @@ class JournalEntry extends Model
         static::addGlobalScope('company', function ($query) {
             if (auth()->check() && auth()->user()->company != null) {
                 $query->where('company_id', auth()->user()->company->id);
+            }
+        });
+    }
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($journalEntry) {
+            $account = Account::find($journalEntry->account_id);
+
+            // Log::info('Creating Journal Entry for Account ID: ' . $journalEntry->account_id);
+            // Log::info('Account Details: ', $account->toArray());
+            // Log::infO('Account Children'. json_encode($account->children()->get()));
+            
+            if ($account && $account->children()->exists()) {
+                throw new \Exception('Cannot create journal entry for an account that has child accounts.');
             }
         });
     }

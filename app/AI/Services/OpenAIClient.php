@@ -39,11 +39,11 @@ class OpenAIClient implements AIClientInterface
     {
         $url = $this->apiUrl . '/chat/completions';
         $response = Http::withToken($this->apiKey)
-        ->withoutVerifying()
-        ->post($url, [
-            'model' => $this->model,
-            'messages' => $messages,
-        ]);
+            ->withoutVerifying()
+            ->post($url, [
+                'model' => $this->model,
+                'messages' => $messages,
+            ]);
 
         // Check if the API call failed
         if ($response->failed()) {
@@ -56,10 +56,11 @@ class OpenAIClient implements AIClientInterface
     public function extractPassportData($file, string $fileName): array
     {
         try {
+            // Upload the file to OpenAI and get the file ID
             $fileId = $this->uploadFileToOpenAI($file);
 
             $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            
+
             if (!in_array($extension, ['jpg', 'jpeg', 'png', 'pdf'])) {
                 return [
                     'status' => 'error',
@@ -68,26 +69,27 @@ class OpenAIClient implements AIClientInterface
                 ];
             }
 
+            // Prepare the prompt for OpenAI API
             $prompt = "You are an assistant for a travel agency. Your task is to extract passport details from the provided image or document. 
 
-                Analyze the document carefully and extract the following fields. Return the data in JSON format only:
+            Analyze the document carefully and extract the following fields. Return the data in JSON format only:
 
-                - `passport_no`: Passport number or Passport No.
-                - `civil_no`: Civil number or Civil No. (if available)
-                - `name`: Full name as per the passport
-                - `nationality`: Nationality
-                - `date_of_birth`: Date of birth in YYYY-MM-DD format
-                - `date_of_issue`: Date of issue in YYYY-MM-DD format
-                - `date_of_expiry`: Date of expiry in YYYY-MM-DD format
-                - `place_of_birth`: Place of birth
-                - `place_of_issue`: Place of issue
+            - `passport_no`: Passport number or Passport No.
+            - `civil_no`: Civil number or Civil No. (if available)
+            - `name`: Full name as per the passport
+            - `nationality`: Nationality
+            - `date_of_birth`: Date of birth in YYYY-MM-DD format
+            - `date_of_issue`: Date of issue in YYYY-MM-DD format
+            - `date_of_expiry`: Date of expiry in YYYY-MM-DD format
+            - `place_of_birth`: Place of birth
+            - `place_of_issue`: Place of issue
 
-                Important guidelines:
-                1. If a field is not found or not clearly visible, set its value to null
-                2. Ensure all dates are in YYYY-MM-DD format
-                3. Extract the full name exactly as it appears on the passport
-                4. For passport number, include only the alphanumeric passport number without any prefixes
-                5. Return only valid JSON format without any additional text or explanations";
+            Important guidelines:
+            1. If a field is not found or not clearly visible, set its value to null
+            2. Ensure all dates are in YYYY-MM-DD format
+            3. Extract the full name exactly as it appears on the passport
+            4. For passport number, include only the alphanumeric passport number without any prefixes
+            5. Return only valid JSON format without any additional text or explanations";
 
             $messages = [
                 [
@@ -109,44 +111,22 @@ class OpenAIClient implements AIClientInterface
                 ]
             ];
 
-            $url = $this->apiUrl . '/responses';
-            $response = Http::timeout(120)->withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->post($url, [
-                'model' => $this->model,
-                'input' => $messages,
-                'text' => [
-                    'format' => [
-                        'type' => 'json_object'
-                    ]
-                ]
-            ]);
+            $response = $this->createResponse($messages);
 
-            Log::info('OpenAI Passport Extraction response: ', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+            if ($response['status'] === 'error') {
+                return $response; 
+            }
 
-            if ($response->failed()) {
+            $extractedContent = $response['output'][0]['content'][0]['text'] ?? null;
+
+            if (!$extractedContent) {
                 return [
                     'status' => 'error',
-                    'message' => 'OpenAI API request failed: ' . $response->body(),
+                    'message' => 'No passport data found or invalid response format',
                     'data' => null
                 ];
             }
 
-            $responseData = $response->json();
-
-            if (!isset($responseData['output'][0]['content'][0]['text'])) {
-                return [
-                    'status' => 'error',
-                    'message' => 'Invalid response format from OpenAI API',
-                    'data' => null
-                ];
-            }
-            
-            $extractedContent = $responseData['output'][0]['content'][0]['text'];
             $passportData = json_decode($extractedContent, true);
 
             $this->deleteFileFromOpenAI($fileId);
@@ -156,10 +136,9 @@ class OpenAIClient implements AIClientInterface
                 'message' => 'Passport data extracted successfully',
                 'data' => $passportData
             ];
-
         } catch (\Exception $e) {
             Log::error('Exception in extractPassportData: ' . $e->getMessage());
-            
+
             return [
                 'status' => 'error',
                 'message' => 'Exception occurred during passport extraction: ' . $e->getMessage(),
@@ -167,6 +146,7 @@ class OpenAIClient implements AIClientInterface
             ];
         }
     }
+
 
     public function chatCompletionJsonResponse(array $message)
     {
@@ -222,9 +202,11 @@ class OpenAIClient implements AIClientInterface
     {
         // logger('content: ', $content);
 
-        $input = [
-            $content
-        ];
+        if (isset($content[0]) && is_array($content[0])) {
+            $input = $content;
+        } else {
+            $input = [$content];
+        }
 
         logger('input: ', $input);
 
@@ -253,21 +235,20 @@ class OpenAIClient implements AIClientInterface
         $response = json_decode($response->body(), true);
 
         return $response;
-
     }
 
-    public function processWithAiTool(string $filePath, string $fileName) : array
+    public function processWithAiTool(string $filePath, string $fileName): array
     {
         $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
         // Helper to normalize data structure for all scenarios
-        
+
         if ($extension === 'pdf') {
             $response = $this->extractPdfFiles($filePath);
 
             Log::info("extractPdfFiles response for {$fileName}: " . json_encode($response));
 
-            if($response['status'] !== 'success') {
+            if ($response['status'] !== 'success') {
                 $errorMessage = $response['message'] ?? 'Unknown error occurred.';
                 return [
                     'status' => 'error',
@@ -279,7 +260,7 @@ class OpenAIClient implements AIClientInterface
 
             $data = $response['data'] ?? null;
 
-            if(!$data) {
+            if (!$data) {
                 Log::error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
                 return [
                     'status' => 'error',
@@ -305,14 +286,13 @@ class OpenAIClient implements AIClientInterface
             //     'task_flight_details' => $data['task_flight_details'] ?? [],
             //     'task_hotel_details' => $data['task_hotel_details'] ?? [],
             // ]), $taskType);
-           
+
             return [
                 'status' => 'success',
                 'message' => "Successfully processed {$fileName} using AI.",
                 'original_filename' => $fileName,
                 'data' => $normalized,
             ];
-
         } elseif (in_array($extension, ['txt', 'text', 'air'])) {
 
             $fileContent = File::get($filePath);
@@ -343,7 +323,7 @@ class OpenAIClient implements AIClientInterface
                     ];
                 }
 
-                if(!is_array($extractedData)) {
+                if (!is_array($extractedData)) {
                     Log::error("AI Tool response for {$fileName} is not an array: " . json_last_error_msg());
                     return [
                         'status' => 'error',
@@ -409,7 +389,7 @@ class OpenAIClient implements AIClientInterface
         $branchesGdsId = Branch::whereNotNull('gds_office_id')
             ->pluck('gds_office_id')
             ->toArray();
-        
+
         $gdsOfficeIdList = array_merge($companiesGdsId, $branchesGdsId);
 
         $gdsOfficeIdList = array_merge($gdsOfficeIdList, $exampleGdsId);
@@ -613,17 +593,17 @@ class OpenAIClient implements AIClientInterface
         }
         $message = $response['choices'][0]['message']['content'];
         $decodedResponse = json_decode($message, true);
-        
-        foreach($decodedResponse['result'] as $task){
-            
-            if(!isset($task['reference']) || empty($task['reference'])){
-                
+
+        foreach ($decodedResponse['result'] as $task) {
+
+            if (!isset($task['reference']) || empty($task['reference'])) {
+
                 $checkResponse = $this->getReferenceNumberFromFile([
                     'content' => $content,
                     'passenger_name' => $task['client_name'] ?? '',
                     'example' => $task['reference'] ?? [],
                 ]);
-                if($checkResponse['status'] === 'error'){
+                if ($checkResponse['status'] === 'error') {
                     return [
                         'status' => 'error',
                         'message' => $checkResponse['message'],
@@ -637,14 +617,14 @@ class OpenAIClient implements AIClientInterface
 
             while ($checkResponse['status'] === 'error') {
                 Log::warning('Invalid reference number detected: ' . $task['reference']);
-                
+
                 $getReferenceResponse = $this->getReferenceNumberFromFile([
                     'content' => $content,
                     'passenger_name' => $task['client_name'] ?? '',
                     'example' => $task['reference'] ?? [],
                 ]);
 
-                if($getReferenceResponse['status'] === 'error') {
+                if ($getReferenceResponse['status'] === 'error') {
                     return [
                         'status' => 'error',
                         'message' => $getReferenceResponse['message'],
@@ -656,8 +636,8 @@ class OpenAIClient implements AIClientInterface
             }
 
             $task['reference'] = $checkResponse['data']['reference_number'];
-        }            
-        
+        }
+
         return [
             'status' => 'success',
             'message' => 'Data extracted successfully',
@@ -668,8 +648,8 @@ class OpenAIClient implements AIClientInterface
 
     public function getReferenceNumberFromFile($data = [])
     {
-        if(!isset($data['passenger_name']) || empty($data['passenger_name'])){
-            
+        if (!isset($data['passenger_name']) || empty($data['passenger_name'])) {
+
             return [
                 'status' => 'error',
                 'message' => 'Passenger name is required to extract reference number',
@@ -677,7 +657,7 @@ class OpenAIClient implements AIClientInterface
             ];
         }
 
-        if(!isset($data['content']) || empty($data['content'])){
+        if (!isset($data['content']) || empty($data['content'])) {
             return [
                 'status' => 'error',
                 'message' => 'Content is required to extract reference number',
@@ -689,11 +669,11 @@ class OpenAIClient implements AIClientInterface
 
         $prompt .= " The reference number is usually like this: T-K229-2833133219, and it is usually preceded by a 3-digit airline code, so you can just take the last 10 digits as the ticket number. For example, if the ticket number is T-K229-2833133219, you can just use '2833133219' as the ticket number.";
 
-        $prompt .= "If there is multiple reference numbers/ticket numbers, make sure you return for the correct passenger/client, i want for this passenger/client: ". $data['passenger_name'] .". ";
+        $prompt .= "If there is multiple reference numbers/ticket numbers, make sure you return for the correct passenger/client, i want for this passenger/client: " . $data['passenger_name'] . ". ";
 
         $prompt .= "example response : {\"reference_number\": \"2833133219\"}";
 
-        if(isset($data['example'])){
+        if (isset($data['example'])) {
             $prompt .= " Here are some example reference numbers you can refer to: " . json_encode($data['example']) . ". ";
         }
 
@@ -725,7 +705,7 @@ class OpenAIClient implements AIClientInterface
         ];
     }
 
-    public function extractPdfFiles(string $fileId) : array
+    public function extractPdfFiles(string $fileId): array
     {
         $uploadFileResponseId = $this->uploadFileToOpenAI($fileId);
 
@@ -739,7 +719,7 @@ class OpenAIClient implements AIClientInterface
 
         $supplierList = Supplier::all()->pluck('name')->toArray();
         $supplierList = json_encode($supplierList);
-  
+
 
         $content = [
             [
@@ -750,7 +730,7 @@ class OpenAIClient implements AIClientInterface
                 'type' => 'input_text',
                 'text' => 'Please extract the data from this file and return it in JSON format.',
             ],
-                        [
+            [
                 'type' => 'input_text',
                 'text' => 'Try to get information following my models, if the task is a flight, you can use the task_flight_details model, if the task is a hotel, you can use the task_hotel_details model. If the task is a flight and hotel, you can use both models.',
             ],
@@ -766,7 +746,7 @@ class OpenAIClient implements AIClientInterface
                 'type' => 'input_text',
                 'text' => json_encode($taskModel),
             ]
-            
+
         ];
 
         $response = $this->createResponse(
@@ -800,8 +780,7 @@ class OpenAIClient implements AIClientInterface
             'message' => 'Data extracted successfully',
             'data' => $decodedResponse,
         ];
-
-    } 
+    }
 
     public function uploadFileToOpenAI($file, string $purpose = 'user_data')
     {
@@ -813,7 +792,7 @@ class OpenAIClient implements AIClientInterface
             ->post($this->apiUrl . '/files', [
                 'purpose' => $purpose,
             ]);
-        
+
         logger('upload file response: ', $response->json());
 
         fclose($fileResource);
@@ -843,9 +822,9 @@ class OpenAIClient implements AIClientInterface
     public function checkReferenceNumber(string $referenceNumber): array
     {
         // This method can be implemented to check if the reference number return by OpenAI is valid.
-    
+
         $exampleReferenceNumbers = [
-            '1234567890', 
+            '1234567890',
             '9876543210',
             '2833133212',
             '4567891234',

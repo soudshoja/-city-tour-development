@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\AI\AIManager;
+use App\AI\Services;
+use App\AI\Contracts;
 use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
 use App\Models\Agent;
 use App\Models\Client;
+
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -25,18 +28,19 @@ class IncomingMediaController extends Controller
 
         $deviceId = $request->input('device.id');
         $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
-        $receivedAt = $request->input('data.date') ?? now();
 
-        $agentId = 1; // default
-        $agentPhone = $request->input('device.phone');
         $agentEmail = null;
+        $agentPhone = $request->input('device.phone') ?? null;
+        $agentId = 1; // default fallback
+        $fallbackPhone = config('app.agent_default_phone', '+96522210017');
+        $fallbackEmail = config('app.agent_default_email', 'admin@citytravelers.co');
 
         try {
             $agent = Agent::where('phone_number', $phone)->first();
 
             if (!$agent) {
                 $agent = Agent::inRandomOrder()->first();
-                Log::info("Fallback to random agent: " . ($agent ? $agent->name : 'None'));
+                Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
             }
 
             if ($agent) {
@@ -44,59 +48,61 @@ class IncomingMediaController extends Controller
                 $agentPhone = $agent->phone_number;
                 $agentEmail = $agent->email;
             } else {
-                $agentPhone = config('app.agent_default_phone', '+96522210017');
-                $agentEmail = config('app.agent_default_email', 'admin@citytravelers.co');
-                Log::warning("No agent found, using fallback credentials.");
+                $agentPhone = $fallbackPhone;
+                $agentEmail = $fallbackEmail;
+                Log::warning("No agent found, using fallback.");
             }
         } catch (\Exception $e) {
-            Log::error("Agent lookup error: " . $e->getMessage());
-            $agentPhone = config('app.agent_default_phone');
-            $agentEmail = config('app.agent_default_email');
+            Log::error("Error fetching agent: " . $e->getMessage());
+            $agentPhone = $fallbackPhone;
+            $agentEmail = $fallbackEmail;
         }
 
         $mediaData = $request->input('media') ?? $request->input('data.media');
         $downloadLink = $mediaData['links']['download'] ?? null;
 
         if (!$downloadLink) {
-            Log::info("No media to download.");
+            Log::info("No media download link found.");
             return response()->json(['message' => 'No media found.'], 200);
         }
 
+        $mediaId = $mediaData['id'] ?? null;
         $mimeType = $mediaData['mime'] ?? null;
-        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-        if (!in_array($mimeType, $allowedMimeTypes)) {
-            Log::warning("Unsupported MIME type: {$mimeType}");
-            return response()->json(['message' => 'Unsupported media type.'], 200);
-        }
-
+        $caption = $mediaData['caption'] ?? null;
+        $receivedAt = $request->input('data.date') ?? now();
         $filename = $mediaData['filename'] ?? 'file.jpg';
         $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
-        $mediaId = $mediaData['id'] ?? null;
-        $caption = $mediaData['caption'] ?? null;
+
+        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+        if (!in_array($mimeType, $allowedMimeTypes)) {
+            Log::warning("Unsupported media type: {$mimeType}");
+            return response()->json(['message' => 'Unsupported media type.'], 200);
+        }
 
         $mediaUrl = str_starts_with($downloadLink, 'http')
             ? $downloadLink
             : config('services.resayil.base_url') . "chat/{$deviceId}/files/{$mediaId}/download";
 
         $localPath = null;
-
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
-            $response = Http::withHeaders(['Token' => config('services.resayil.api_token', '')])->get($mediaUrl);
+
+            $response = Http::withHeaders([
+                'Token' => config('services.resayil.api_token', ''),
+            ])->get($mediaUrl);
 
             if ($response->ok()) {
                 Storage::put("public/uploads/{$newFilename}", $response->body());
                 $localPath = "uploads/{$newFilename}";
-                Log::info("Media saved to: {$localPath}");
+                Log::info("Media downloaded: {$localPath}");
             } else {
-                Log::error("Download failed, HTTP status: " . $response->status());
+                Log::error("Failed to download media: " . $response->status());
             }
         } catch (\Exception $e) {
-            Log::error("Download exception: " . $e->getMessage());
+            Log::error("Media download exception: " . $e->getMessage());
         }
 
         $incomingMedia = null;
-
         try {
             $incomingMedia = IncomingMedia::create([
                 'phone' => $phone,
@@ -111,7 +117,7 @@ class IncomingMediaController extends Controller
                 'media_type' => 'whatsapp',
             ]);
         } catch (\Exception $e) {
-            Log::error("Failed to save IncomingMedia: " . $e->getMessage());
+            Log::error("Error saving IncomingMedia: " . $e->getMessage());
         }
 
         $autoReplyText = null;
@@ -119,78 +125,101 @@ class IncomingMediaController extends Controller
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
                 $fullPath = storage_path("app/public/{$localPath}");
-                $fileContent = file_get_contents($fullPath);
-                $fileName = basename($fullPath);
 
-                $aiService = new AIManager();
-                $response = $aiService->extractPassportData($fileContent, $fileName);
+                $file = new \Illuminate\Http\UploadedFile(
+                    $fullPath,
+                    $filename,
+                    $mimeType,
+                    null,
+                    true
+                );
 
-                Log::info("AI response: " . json_encode($response));
+                $aicontrol = new \App\AI\Services\OpenAIClient;
+                $fileId = $aicontrol->uploadFileToOpenAi($file);
+                Log::info("Uploaded to OpenAI with file_id: {$fileId}");
 
-                if ($response['status'] === 'success' && !empty($response['data']['civil_no']) && !empty($response['data']['name'])) {
-                    $data = $response['data'];
+                $result = $aicontrol->extractPassportData(file_get_contents($fullPath), $filename);
 
-                    DB::beginTransaction();
+                if ($result['status'] === 'success') {
+                    $data = $result['data'];
 
-                    $client = Client::where('civil_no', $data['civil_no'])->first();
+                    if (is_array($data) && !empty($data['name']) && !empty($data['civil_no'])) {
+                        DB::beginTransaction();
 
-                    if (!$client) {
-                        $client = Client::create([
-                            'name' => $data['name'],
-                            'email' => $agentEmail,
-                            'status' => 'active',
-                            'phone' => $phone ?? $agentPhone,
-                            'date_of_birth' => $data['date_of_birth'] ?? null,
-                            'address' => $data['place_of_birth'] ?? null,
-                            'civil_no' => $data['civil_no'],
-                            'passport_no' => $data['passport_no'] ?? null,
-                            'old_passport_no' => $data['passport_no'] ?? null,
-                            'agent_id' => $agentId,
-                        ]);
-                        $autoReplyText = "Thank you, your profile has been created.";
-                        Log::info("New client created: {$client->id}");
-                    } else {
-                        if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
-                            $client->update([
+                        $client = Client::where('civil_no', $data['civil_no'])->first();
+
+                        if (!$client) {
+                            $client = Client::create([
+                                'name' => $data['name'],
+                                'email' => $agentEmail,
+                                'status' => 'active',
                                 'phone' => $phone ?? $agentPhone,
                                 'date_of_birth' => $data['date_of_birth'] ?? null,
                                 'address' => $data['place_of_birth'] ?? null,
-                                'passport_no' => $data['passport_no'],
-                                'updated_at' => Carbon::parse($receivedAt),
+                                'civil_no' => $data['civil_no'] ?? null,
+                                'passport_no' => $data['passport_no'] ?? null,
+                                'old_passport_no' => $data['passport_no'] ?? null,
+                                'agent_id' => $agentId,
+                                'nationality' => $data['nationality'] ?? null,
+                                'date_of_issue' => $data['date_of_issue'] ?? null,
+                                'date_of_expiry' => $data['date_of_expiry'] ?? null,
+                                'place_of_issue' => $data['place_of_issue'] ?? null,
                             ]);
-                            $autoReplyText = "Thank you for updating your passport details.";
-                            Log::info("Client passport updated: {$client->id}");
+                            $autoReplyText = "Thank you, your profile has been created.";
+                            Log::info("Client created: ID {$client->id}");
                         } else {
-                            $autoReplyText = "Thank you. We already have your passport information.";
+                            if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
+                                $client->update([
+                                    'phone' => $phone ?? $agentPhone,
+                                    'date_of_birth' => $data['date_of_birth'] ?? null,
+                                    'address' => $data['place_of_birth'] ?? null,
+                                    'passport_no' => $data['passport_no'],
+                                    'updated_at' => Carbon::parse($receivedAt),
+                                    'nationality' => $data['nationality'] ?? null,
+                                    'date_of_issue' => $data['date_of_issue'] ?? null,
+                                    'date_of_expiry' => $data['date_of_expiry'] ?? null,
+                                    'place_of_issue' => $data['place_of_issue'] ?? null,
+                                ]);
+                                $autoReplyText = "Thank you for updating your passport details.";
+                                Log::info("Client passport updated: ID {$client->id}");
+                            } else {
+                                $autoReplyText = "Thank you. We already have your passport information.";
+                            }
                         }
-                    }
 
-                    if ($incomingMedia) {
-                        $incomingMedia->client_id = $client->id;
-                        $incomingMedia->save();
-                    }
+                        if ($incomingMedia) {
+                            $incomingMedia->client_id = $client->id;
+                            $incomingMedia->save();
+                        }
 
-                    DB::commit();
+                        DB::commit();
+                    } else {
+                        Log::error("Required data missing from extraction result.");
+                    }
                 } else {
-                    Log::error("Invalid or missing fields in AI response.");
+                    Log::error("OpenAI extraction failed: " . $result['message']);
                 }
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error("AI or DB error: " . $e->getMessage());
+                Log::error("Client creation/upload error: " . $e->getMessage());
             }
         }
 
         try {
-            $to = $chatWid ?? $request->input('from');
+            $to = $request->input('data.from') ?? $request->input('from');
             if ($to && $autoReplyText) {
-                (new WhatsappController())->sendToResayil($to, $autoReplyText);
+                $wa = new WhatsappController();
+                $wa->sendToResayil($to, $autoReplyText);
                 Log::info("Auto-reply sent to {$to}");
+            } else {
+                Log::warning("Missing recipient or message for auto-reply.");
             }
         } catch (\Exception $e) {
-            Log::error("Auto-reply exception: " . $e->getMessage());
+            Log::error("Auto-reply failed: " . $e->getMessage());
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
+
 
 }

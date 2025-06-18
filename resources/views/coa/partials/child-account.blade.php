@@ -15,7 +15,7 @@
                 {{ $account->balance }}
             </div>
             <div class="px-2 flex items-center gap-2">
-                @if($account->name == 'Amadeus' && $account->root->name == 'Liabilities' && $account->journalEntries->count() == 0)
+                @if($account->name == 'Amadeus' && $account->root->name == 'Liabilities' && $account->journalEntries->count() > 0)
                 <div x-data='{ delegateBalanceAmadeus : false }' class="flex items-center" data-tooltip-left="You have child accounts for Amadeus, you have to delegate the balance to the company that issued tasks">
                     <button @click="delegateBalanceAmadeus = !delegateBalanceAmadeus"
                         class="text-red-600 hover:text-red-800 animate-pulse">

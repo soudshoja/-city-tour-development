@@ -129,64 +129,60 @@ class IncomingMediaController extends Controller
 
                 Log::info("AI passport extraction response: " . json_encode($response));
 
-                if ($response['status'] === 'success' && !empty($response['data'])) {
+                if ($response['status'] === 'success' && is_array($response['data']) && !empty($response['data']['name']) && !empty($response['data']['civil_no'])) {
                     $data = $response['data'];
 
-                    if (isset($data['name'], $data['civil_no'])) {
-                        $client = Client::where('civil_no', $data['civil_no'])->first();
+                    DB::beginTransaction();
 
-                        DB::beginTransaction();
+                    $client = Client::where('civil_no', $data['civil_no'])->first();
 
-                        if (!$client) {
-                            $client = Client::create([
-                                'name' => $data['name'],
-                                'email' => $agentEmail,
-                                'status' => 'active',
+                    if (!$client) {
+                        $client = Client::create([
+                            'name' => $data['name'],
+                            'email' => $agentEmail,
+                            'status' => 'active',
+                            'phone' => $phone ?? $agentPhone,
+                            'date_of_birth' => $data['date_of_birth'] ?? null,
+                            'address' => $data['place_of_birth'] ?? null,
+                            'civil_no' => $data['civil_no'] ?? null,
+                            'passport_no' => $data['passport_no'] ?? null,
+                            'old_passport_no' => $data['passport_no'] ?? null,
+                            'agent_id' => $agentId,
+                            'nationality' => $data['nationality'] ?? null,
+                            'date_of_issue' => $data['date_of_issue'] ?? null,
+                            'date_of_expiry' => $data['date_of_expiry'] ?? null,
+                            'place_of_issue' => $data['place_of_issue'] ?? null,
+                        ]);
+                        $autoReplyText = "Thank you, your profile has been created.";
+                        Log::info("Client created: ID {$client->id}");
+                    } else {
+                        if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
+                            $client->update([
                                 'phone' => $phone ?? $agentPhone,
                                 'date_of_birth' => $data['date_of_birth'] ?? null,
                                 'address' => $data['place_of_birth'] ?? null,
-                                'civil_no' => $data['civil_no'] ?? null,
-                                'passport_no' => $data['passport_no'] ?? null,
-                                'old_passport_no' => $data['passport_no'] ?? null,
-                                'agent_id' => $agentId,
+                                'passport_no' => $data['passport_no'],
+                                'updated_at' => Carbon::parse($receivedAt),
                                 'nationality' => $data['nationality'] ?? null,
                                 'date_of_issue' => $data['date_of_issue'] ?? null,
                                 'date_of_expiry' => $data['date_of_expiry'] ?? null,
                                 'place_of_issue' => $data['place_of_issue'] ?? null,
                             ]);
-                            $autoReplyText = "Thank you, your profile has been created.";
-                            Log::info("Client created: ID {$client->id}");
+                            $autoReplyText = "Thank you for updating your passport details.";
+                            Log::info("Client passport updated: ID {$client->id}");
                         } else {
-                            if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
-                                $client->update([
-                                    'phone' => $phone ?? $agentPhone,
-                                    'date_of_birth' => $data['date_of_birth'] ?? null,
-                                    'address' => $data['place_of_birth'] ?? null,
-                                    'passport_no' => $data['passport_no'],
-                                    'updated_at' => Carbon::parse($receivedAt),
-                                    'nationality' => $data['nationality'] ?? null,
-                                    'date_of_issue' => $data['date_of_issue'] ?? null,
-                                    'date_of_expiry' => $data['date_of_expiry'] ?? null,
-                                    'place_of_issue' => $data['place_of_issue'] ?? null,
-                                ]);
-                                $autoReplyText = "Thank you for updating your passport details.";
-                                Log::info("Client passport updated: ID {$client->id}");
-                            } else {
-                                $autoReplyText = "Thank you. We already have your passport information.";
-                            }
+                            $autoReplyText = "Thank you. We already have your passport information.";
                         }
-
-                        if ($incomingMedia) {
-                            $incomingMedia->client_id = $client->id;
-                            $incomingMedia->save();
-                        }
-
-                        DB::commit();
-                    } else {
-                        Log::error("Required data missing from extraction result.");
                     }
+
+                    if ($incomingMedia) {
+                        $incomingMedia->client_id = $client->id;
+                        $incomingMedia->save();
+                    }
+
+                    DB::commit();
                 } else {
-                    Log::error("Passport extraction failed: " . $response['message']);
+                    Log::error("Required data missing from extraction result.");
                 }
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -209,4 +205,5 @@ class IncomingMediaController extends Controller
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
+
 }

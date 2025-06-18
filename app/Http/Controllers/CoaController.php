@@ -914,7 +914,12 @@ class CoaController extends Controller
             return redirect()->back()->with('error', 'This account is not Amadeus');
         }
 
-        $issuedBy = Task::where('company_id', $account->company_id)->pluck('issued_by')->unique()->toArray();
+        $issuedBy = Task::where('company_id', $account->company_id)
+            ->whereNotNull('issued_by')
+            ->pluck('issued_by')
+            ->unique()
+            ->toArray();
+        
         $notIssued = Task::where('company_id', $account->company_id)
             ->whereNotNull('issued_by')
             ->get();
@@ -976,6 +981,31 @@ class CoaController extends Controller
 
                 $code++;
             }
+
+            if($notIssued->isNotEmpty()){
+                $notIssuedAccount = Account::create([
+                    'name' => 'Not Issued',
+                    'parent_id' => $account->id,
+                    'company_id' => $account->company_id,
+                    'level' => $account->level + 1,
+                    'root_id' => $account->root_id,
+                    'account_type' => $account->account_type,
+                    'report_type' => $account->report_type,
+                    'code' =>  $code,
+                    'actual_balance' => 0,
+                    'budget_balance' => 0,
+                    'variance' => 0,
+                ]);
+
+                foreach($notIssued as $task){
+                    foreach($task->journalEntries->where('account_id',$account->id) as $journalEntry){
+                        $journalEntry->account_id = $notIssuedAccount->id;
+                        $journalEntry->update();
+                    }
+                }
+                $cumulativeTaskTotal += $notIssued->sum('total');
+            }
+
             // dd($cumulativeTaskTotal, $totalAmount);
         } catch (Exception $e) {
             Log::error('Error creating account', [

@@ -120,59 +120,55 @@ class IncomingMediaController extends Controller
 
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
-                $fullFilePath = storage_path("app/public/{$localPath}");
+                $fullPath = storage_path("app/public/{$localPath}");
+                $fileContent = file_get_contents($fullPath);
+                $fileName = basename($fullPath);
 
-                // $uploadResponse = Http::asMultipart()
-                //     ->attach('file', file_get_contents($fullPath), basename($fullPath))
-                //     ->post(config('app.url') . '/api/chat/upload');
-                
-                Log::info('Processing passport file with AI:', [
-                    'fileName' => $newFilename,
-                    'filePath' => $fullFilePath
-                ]);
+                $aiService = new AIManager(); 
+                $response = $aiService->extractPassportData($fileContent, $fileName);
 
-                $aiManager = new AIManager();
-                $response = $aiManager->extractPassportData($fullFilePath, $newFilename);
+                Log::info("AI passport extraction response: " . json_encode($response));
 
-                Log::info('AI passport extraction response:', ['response' => $response]);
+                if ($response['status'] === 'success' && !empty($response['data'])) {
+                    $data = $response['data'];
 
-                if ($response['status'] === 'success') {
-                    $passportData = $response['data'];
-
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Passport data extracted successfully using AI!',
-                        'data' => $passportData,
-                    ], 200);
-
-                    if ($data && isset($data['name'], $data['civil_no'])) {
+                    if (isset($data['name'], $data['civil_no'])) {
                         $client = Client::where('civil_no', $data['civil_no'])->first();
 
                         DB::beginTransaction();
 
-                        $clientData = [
-                            'name' => $data['name'],
-                            'email' => $agentEmail,
-                            'status' => 'active',
-                            'phone' => $phone ?? $agentPhone,
-                            'date_of_birth' => $data['date_of_birth'] ?? null,
-                            'address' => $data['place_of_birth'] ?? null,
-                            'civil_no' => $data['civil_no'] ?? null,
-                            'passport_no' => $data['passport_no'] ?? null,
-                            'old_passport_no' => $data['passport_no'] ?? null,
-                            'nationality' => $data['nationality'] ?? null,
-                            'agent_id' => $agentId,
-                        ];
-
                         if (!$client) {
-                            $client = Client::create($clientData);
+                            $client = Client::create([
+                                'name' => $data['name'],
+                                'email' => $agentEmail,
+                                'status' => 'active',
+                                'phone' => $phone ?? $agentPhone,
+                                'date_of_birth' => $data['date_of_birth'] ?? null,
+                                'address' => $data['place_of_birth'] ?? null,
+                                'civil_no' => $data['civil_no'] ?? null,
+                                'passport_no' => $data['passport_no'] ?? null,
+                                'old_passport_no' => $data['passport_no'] ?? null,
+                                'agent_id' => $agentId,
+                                'nationality' => $data['nationality'] ?? null,
+                                'date_of_issue' => $data['date_of_issue'] ?? null,
+                                'date_of_expiry' => $data['date_of_expiry'] ?? null,
+                                'place_of_issue' => $data['place_of_issue'] ?? null,
+                            ]);
                             $autoReplyText = "Thank you, your profile has been created.";
                             Log::info("Client created: ID {$client->id}");
                         } else {
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
-                                $client->update(array_merge($clientData, [
+                                $client->update([
+                                    'phone' => $phone ?? $agentPhone,
+                                    'date_of_birth' => $data['date_of_birth'] ?? null,
+                                    'address' => $data['place_of_birth'] ?? null,
+                                    'passport_no' => $data['passport_no'],
                                     'updated_at' => Carbon::parse($receivedAt),
-                                ]));
+                                    'nationality' => $data['nationality'] ?? null,
+                                    'date_of_issue' => $data['date_of_issue'] ?? null,
+                                    'date_of_expiry' => $data['date_of_expiry'] ?? null,
+                                    'place_of_issue' => $data['place_of_issue'] ?? null,
+                                ]);
                                 $autoReplyText = "Thank you for updating your passport details.";
                                 Log::info("Client passport updated: ID {$client->id}");
                             } else {
@@ -186,42 +182,31 @@ class IncomingMediaController extends Controller
                         }
 
                         DB::commit();
+                    } else {
+                        Log::error("Required data missing from extraction result.");
                     }
-
                 } else {
-                    Log::error('AI passport extraction failed: ' . $response['message']);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to extract passport data using AI: ' . $response['message'],
-                        'errors' => $response['message'],
-                    ], 400);
-                }
-
-            } catch (\Exception $e) {
-                Log::error('Failed to process passport with AI: ' . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error processing passport with AI',
-                    'errors' => $e->getMessage(),
-                ], 400);
-            }
-
-            try {
-                $to = $request->input('data.from') ?? $request->input('from');
-                if ($to && $autoReplyText) {
-                    $wa = new WhatsappController();
-                    $wa->sendToResayil($to, $autoReplyText);
-                    Log::info("Auto-reply sent to {$to}");
-                } else {
-                    Log::warning("Missing recipient or message for auto-reply.");
+                    Log::error("Passport extraction failed: " . $response['message']);
                 }
             } catch (\Exception $e) {
-                Log::error("Auto-reply failed: " . $e->getMessage());
+                DB::rollBack();
+                Log::error("Client creation/upload error: " . $e->getMessage());
             }
-
         }
-        
+
+        try {
+            $to = $request->input('data.from') ?? $request->input('from');
+            if ($to && $autoReplyText) {
+                $wa = new WhatsappController();
+                $wa->sendToResayil($to, $autoReplyText);
+                Log::info("Auto-reply sent to {$to}");
+            } else {
+                Log::warning("Missing recipient or message for auto-reply.");
+            }
+        } catch (\Exception $e) {
+            Log::error("Auto-reply failed: " . $e->getMessage());
+        }
+
         return response()->json(['message' => 'Webhook received successfully']);
     }
 }

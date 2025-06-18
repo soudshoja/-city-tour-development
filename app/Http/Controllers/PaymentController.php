@@ -207,7 +207,7 @@ class PaymentController extends Controller
                     'url' => $data['webhook_url'],
                 ],
             ];
-
+            
             $tap = new Tap();
             Log::info('requestTap', ['requestTap' => $requestTap]);
             $response = $tap->createCharge($requestTap);
@@ -258,13 +258,26 @@ class PaymentController extends Controller
             // }
 
             // Step 2: Execute Payment
+            $customerName = $invoice->client->name ?? 'Customer';
+            if (strpos($customerName, '/') !== false) {
+                $customerName = trim(explode('/', $customerName)[0]);
+            }
+
+            $clientPhone = $data['client_phone'] ?? '50000000';
+
+            if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
+                // Remove country code if present (e.g., +96512345678 -> 12345678)
+                $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+                $clientPhone = ltrim($clientPhone, '0'); // Optionally remove leading zero
+            }
+            // dd($clientPhone);
             $executePayload = [
                 "PaymentMethodId"     => $paymentMethodId,
                 "InvoiceValue"        => $amount,
-                "CustomerName"        => $invoice->client->name ?? 'Customer',
+                "CustomerName"        => $customerName,
                 "CustomerEmail"       => $data['client_email'] ?? 'email@example.com',
                 "MobileCountryCode"   => "+965",
-                "CustomerMobile"      => $data['client_mobile'] ?? '50000000',
+                "CustomerMobile"      => $clientPhone,
                 "DisplayCurrencyIso"  => "KWD",
                 "CallBackUrl"         => route('payments.callback'),
                 "ErrorUrl"            => route('payments.error'),
@@ -279,23 +292,23 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-
+            // dd($executePayload);
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
             ])->post("$baseUrl/ExecutePayment", $executePayload);
-
+            // dd($executeResponse->body());
             if (!$executeResponse->successful()) {
                 Log::error('MyFatoorah: ExecutePayment failed', ['response' => $executeResponse->body()]);
                 return response()->json(['error' => 'ExecutePayment failed.'], 500);
             }
 
             $resData = $executeResponse->json();
-            Log::info('MyFatoorah: ExecutePayment response', $resData);
-
+            Log::info('MyFatoorah: ExecutePayment response' , ['response' => $resData]);
+           
             $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
             $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
-
+            // dd($invoiceUrl, $mfInvoiceId);
             if ($invoiceUrl && $mfInvoiceId) {
                 $payment->payment_reference = $mfInvoiceId;
                 $payment->status = 'initiate';
@@ -315,14 +328,14 @@ class PaymentController extends Controller
     }
 
     public function process(Request $request)
-    {   //dd($request);
+    {  
         Log::info('process:', ['process' => $request]);
         $tap = new Tap();
 
         $tap_id = $request->tap_id;
 
         $response = $tap->getCharge($tap_id);
-
+       
         if (isset($response['errors'])) {
 
             // $this->storeNotification([
@@ -331,8 +344,12 @@ class PaymentController extends Controller
             //     'message' => 'Payment failed: ' . $response['errors'][0]['description'],
             // ]);
 
-            return Redirect::route('dashboard')->with('error', $response['errors'][0]['description']);
+            Log::error('Payment failed', ['errors' => $response['errors']]);
+
+            abort(500, 'Payment failed');
         }
+
+        $invoiceNumber = $response['metadata']['invoice_number'];
 
         if ($response['status'] != 'CAPTURED') {
 
@@ -342,7 +359,12 @@ class PaymentController extends Controller
             //     'message' => 'Payment failed: ' . $response['status'],
             // ]);
 
-            return Redirect::route('dashboard')->with('error', 'Payment error');
+            Log::error('Payment failed', [
+                'status' => $response['status'],
+                'response' => $response,
+            ]);
+
+            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Payment failed');
         }
 
         $clientName = $response['customer']['first_name'];
@@ -352,18 +374,14 @@ class PaymentController extends Controller
         }
         $totalAmount = $response['amount'];
         $paymentId = $response['metadata']['payment_id'];
-        $invoiceNumber = $response['metadata']['invoice_number'];
         $paymentGateway = $response['metadata']['payment_gateway'];
         // $invoicePartialIds = $response['metadata']['invoice_partial_id'];
         $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'], true);
 
-        //dd($paymentGateway);
-
-        // $this->storeNotification([
-        //     'user_id' => Auth::id(),
-        //     'title' => 'Payment Successful',
-        //     'message' => 'Payment successful for invoice: ' . $invoiceNumber,
-        // ]);
+        if(!$paymentGateway){
+            Log::error('Payment gateway not found in response', ['response' => $response]);
+            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+        }
 
         $totalPaidAmount = $response['amount'];
 
@@ -384,12 +402,12 @@ class PaymentController extends Controller
         $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
-
-        $chargeRecord = Charge::where('name', 'LIKE', $paymentGateway)
+      
+        $chargeRecord = Charge::where('id', (int)$paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
             ->first();
-
+       
         if ($chargeRecord) {
             $defaultPaymentGatewayFee = $chargeRecord->amount;
             $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
@@ -403,17 +421,21 @@ class PaymentController extends Controller
             $tapAccount = Account::where('id', $coaFeeIdRec)
                 ->where('company_id', $invoice->agent->branch->company->id)
                 ->first();
-
+           
             $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
                 ->where('company_id', $invoice->agent->branch->company->id)
                 ->first();
 
             //dd($bankAccountAccRecord->id,$tapAccount->id,$bankPaymentFee->id);
+        } else {
+            Log::error('Charge record not found for payment gateway', ['payment_gateway' => $paymentGateway, 'company_id' => $invoice->agent->branch->company->id]);
+            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
 
 
         if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found.');
+            Log::error('Invoice not found', ['invoice_number' => $invoiceNumber]);
+            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
         //dd($invoiceDetails);
 
@@ -427,7 +449,8 @@ class PaymentController extends Controller
 
                 // Check if there's at least one invoice detail to process
                 if (!$invoiceDetail) {
-                    return response()->json(['error' => 'No invoice details found'], 400);
+                    Log::error('No invoice details found for processing', ['invoice_number' => $invoiceNumber]);
+                    return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
                 }
 
                 $selectedtask = Task::where('id', $invoiceDetail->task_id)->first();
@@ -440,9 +463,16 @@ class PaymentController extends Controller
                 $receivableAccountId = $receivableAccount->id;
                 //dd($receivableAccount, $client->name);
 
-                if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
-                    return response()->json(['error' => 'Invalid invoice/agent/branch/company structure'], 400);
+                if(!$receivableAccount || !$receivableAccountId) {
+                    Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
+                    return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
                 }
+                
+                if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
+                    Log::error('Agent or branch or company not found for invoice', ['invoice_id' => $invoice->id]);
+                    return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+                }
+
                 // Create a transaction record first
                 $transaction = Transaction::create([
                     'branch_id' =>  $invoice->agent->branch->id,
@@ -484,7 +514,7 @@ class PaymentController extends Controller
                     'receipt_email' => $response['receipt']['email'],
                     'receipt_sms' => $response['receipt']['sms'],
                 ]);
-
+                
                 // Create record to receivable account (OK)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
@@ -570,7 +600,8 @@ class PaymentController extends Controller
                     'trace' => $e->getTraceAsString(),
                 ]);
 
-                return response()->json(['error' => 'Failed to create InvoiceDetails for task: ' . $invoiceDetail['task_description']], 500);
+                return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])
+                    ->with('error', 'Something went wrong while processing the invoice. Please try again later.');
             }
             //}
         }

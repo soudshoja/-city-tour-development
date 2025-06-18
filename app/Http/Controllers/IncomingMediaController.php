@@ -31,7 +31,7 @@ class IncomingMediaController extends Controller
 
         $agentEmail = null;
         $agentPhone = $request->input('device.phone') ?? null;
-        $agentId = 1; // default fallback
+        $agentId = 1;
         $fallbackPhone = config('app.agent_default_phone', '+96522210017');
         $fallbackEmail = config('app.agent_default_email', 'admin@citytravelers.co');
 
@@ -86,7 +86,6 @@ class IncomingMediaController extends Controller
         $localPath = null;
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
-
             $response = Http::withHeaders([
                 'Token' => config('services.resayil.api_token', ''),
             ])->get($mediaUrl);
@@ -124,31 +123,24 @@ class IncomingMediaController extends Controller
 
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
-
-                if (!$localPath || !Storage::exists("public/{$localPath}")) {
-                    Log::error("Local file does not exist: public/{$localPath}");
+                $fullPath = storage_path("app/public/{$localPath}");
+                if (!file_exists($fullPath)) {
+                    Log::error("Local file does not exist at path: {$fullPath}");
                     return response()->json(['message' => 'Local file missing.'], 200);
                 }
-                Log::debug('Prev opening file:', ['filename' => $filename]);
 
-                $fullPath = storage_path("app/public/{$localPath}");
-                $filename = preg_replace('/[^\x20-\x7E]/', '', $filename); 
-                Log::debug('Opening file:', ['filename' => $filename]);
-
-
-                $file = new \Illuminate\Http\UploadedFile(
-                    $fullPath,
-                    $filename,
-                    $mimeType,
-                    null,
-                    true
-                );
+                // Upload to OpenAI
+                $filename = preg_replace('/[^\x20-\x7E]/', '', $filename); // sanitize
+                $handle = fopen($fullPath, 'r');
 
                 $aicontrol = new \App\AI\Services\OpenAIClient;
-                $fileId = $aicontrol->uploadFileToOpenAi($file);
+                $fileId = $aicontrol->uploadFileToOpenAi($handle, $filename); // Pass handle, not contents
+                fclose($handle);
                 Log::info("Uploaded to OpenAI with file_id: {$fileId}");
 
+                // Extract data
                 $result = $aicontrol->extractPassportData(file_get_contents($fullPath), $filename);
+                Log::info("Extract data result: {$result}");
 
                 if ($result['status'] === 'success') {
                     $data = $result['data'];
@@ -222,6 +214,7 @@ class IncomingMediaController extends Controller
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
+
 
 
 }

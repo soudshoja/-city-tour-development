@@ -69,7 +69,7 @@
 <body>
     <div class="email-container">
 
-        <img src="https://tour.citycommerce.group/images/City0logo.svg" alt="City Tour Logo" class="logo">
+        <img src="{!! url('images/City0logo.svg') !!}" alt="City Tour Logo" class="logo">
 
         <div class="brand-name">City Tour</div>
 

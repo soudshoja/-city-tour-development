@@ -69,17 +69,24 @@ class IncomingMediaController extends Controller
         $filename = $mediaData['filename'] ?? 'file.jpg';
         $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
 
-        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-        if (!in_array($mimeType, $allowedMimeTypes)) {
-            Log::warning("Unsupported media type: {$mimeType}");
-            return response()->json(['message' => 'Unsupported media type.'], 200);
-        }
+        // $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        // if (!in_array($mimeType, $allowedMimeTypes)) {
+        //     Log::warning("Unsupported media type: {$mimeType}");
+        //     return response()->json(['message' => 'Unsupported media type.'], 200);
+        // }
 
         $mediaUrl = str_starts_with($downloadLink, 'http')
             ? $downloadLink
             : config('services.resayil.base_url') . "chat/{$deviceId}/files/{$mediaId}/download";
 
         $localPath = null;
+
+        $existingMedia = IncomingMedia::where('media_id', $mediaId)->first();
+        if ($existingMedia) {
+            Log::info("Duplicate media ignored.");
+            return response()->json(['message' => 'Duplicate media.'], 200);
+        }
+
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
 
@@ -150,6 +157,7 @@ class IncomingMediaController extends Controller
                             $autoReplyText = "Thank you, your profile has been created.";
                             Log::info("Client created: ID {$client->id}");
                         } else {
+                            // Client exists
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
                                 $client->update([
                                     'phone' => $phone ?? $agentPhone,
@@ -164,6 +172,7 @@ class IncomingMediaController extends Controller
                                 $autoReplyText = "Thank you. We already have your passport information.";
                             }
                         }
+
 
                         if ($incomingMedia) {
                             $incomingMedia->client_id = $client->id;

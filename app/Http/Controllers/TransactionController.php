@@ -15,14 +15,17 @@ class TransactionController extends Controller
             
             $branchesId = Auth::user()->company->branches->pluck('id')->toArray();
 
-            $totalRecords = Transaction::whereIn('branch_id', $branchesId)->count();
-            $transactions = Transaction::whereIn('branch_id', $branchesId)->get();
+            $transactions = Transaction::whereIn('branch_id', $branchesId)->orderBy('created_at', 'desc')->get();
+            $totalRecords = $transactions->count();
+
         } elseif (Auth::user()->role->id == Role::BRANCH) {
-            $totalRecords = Transaction::where('branch_id', Auth::user()->branch->id)->count();
+
             $transactions = Transaction::where('branch_id', Auth::user()->branch->id)->get();
+            $totalRecords = $transactions->count();
+
         } else {
-            $totalRecords = 0;
             $transactions = collect(); 
+            $totalRecords = 0; // No transactions for other roles
         }
         return view('transactions.index', compact('transactions','totalRecords'));
     }

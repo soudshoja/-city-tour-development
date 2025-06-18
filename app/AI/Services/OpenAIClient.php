@@ -780,30 +780,75 @@ class OpenAIClient implements AIClientInterface
             'message' => 'Data extracted successfully',
             'data' => $decodedResponse,
         ];
-    }
+
+    } 
+
+    // public function uploadFileToOpenAI($file, string $purpose = 'user_data')
+    // {
+    //     // Accepts either UploadedFile or file path
+    //     $fileResource = $file instanceof UploadedFile ? fopen($file->getRealPath(), 'r') : fopen($file, 'r');
+
+    //     $response = Http::withToken($this->apiKey)
+    //         ->attach('file', $fileResource, is_string($file) ? basename($file) : $file->getClientOriginalName())
+    //         ->post($this->apiUrl . '/files', [
+    //             'purpose' => $purpose,
+    //         ]);
+        
+    //     logger('upload file response: ', $response->json());
+
+    //     fclose($fileResource);
+
+    //     if ($response->failed()) {
+    //         throw new \Exception('Error uploading file: ' . $response->body());
+    //     }
+
+    //     return $response->json('id'); // Return file_id
+    // }
 
     public function uploadFileToOpenAI($file, string $purpose = 'user_data')
     {
-        // Accepts either UploadedFile or file path
-        $fileResource = $file instanceof UploadedFile ? fopen($file->getRealPath(), 'r') : fopen($file, 'r');
+        try {
+            if ($file instanceof UploadedFile) {
+                $filePath = $file->getRealPath();
+                $fileName = $file->getClientOriginalName();
+            } elseif (is_string($file)) {
+                // Sanitize and validate string path
+                $file = str_replace("\0", '', $file); // Remove null bytes
+                $filePath = $file;
+                $fileName = basename($file);
 
-        $response = Http::withToken($this->apiKey)
-            ->attach('file', $fileResource, is_string($file) ? basename($file) : $file->getClientOriginalName())
-            ->post($this->apiUrl . '/files', [
-                'purpose' => $purpose,
-            ]);
+                if (!file_exists($filePath)) {
+                    throw new \Exception("File not found at path: $filePath");
+                }
+            } else {
+                throw new \InvalidArgumentException('Invalid file type. Expected UploadedFile or file path string.');
+            }
 
-        logger('upload file response: ', $response->json());
+            logger('Uploading to OpenAI', ['filePath' => $filePath, 'fileName' => $fileName]);
 
-        fclose($fileResource);
+            $fileResource = fopen($filePath, 'r');
 
-        if ($response->failed()) {
-            throw new \Exception('Error uploading file: ' . $response->body());
+            $response = Http::withToken($this->apiKey)
+                ->attach('file', $fileResource, $fileName)
+                ->post($this->apiUrl . '/files', [
+                    'purpose' => $purpose,
+                ]);
+
+            fclose($fileResource);
+
+            logger('upload file response: ', $response->json());
+
+            if ($response->failed()) {
+                throw new \Exception('Error uploading file: ' . $response->body());
+            }
+
+            return $response->json('id');
+
+        } catch (\Throwable $e) {
+            logger()->error('Failed to upload file to OpenAI', ['error' => $e->getMessage()]);
+            throw $e; // re-throw for handling elsewhere if needed
         }
-
-        return $response->json('id'); // Return file_id
     }
-
 
     public function deleteFileFromOpenAI($fileId)
     {

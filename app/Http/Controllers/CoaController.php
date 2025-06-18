@@ -21,6 +21,7 @@ use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Sequence;
 use App\Models\SupplierCompany;
+use App\Models\Task;
 use App\Models\Transaction;
 use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -140,15 +141,6 @@ class CoaController extends Controller
         return redirect()->back()->with('success', 'Category created successfully');
     }
 
-    private function getAssets()
-    {
-        $assets = Account::where('name', 'Assets')->first();
-
-        $assets = $this->childAccount($assets);
-
-        return $assets;
-    }
-
     public function childAccount($account, $debitCreditType = 'normal')
     {
         $childAccounts = Account::where('parent_id', $account->id)->get();
@@ -181,7 +173,6 @@ class CoaController extends Controller
         } else {
             // If it's the last level, calculate debit and credit from journal entries
             $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)->get();
-
             $debit = $journalEntries->sum('debit');
             $credit = $journalEntries->sum('credit');
 
@@ -880,6 +871,141 @@ class CoaController extends Controller
             public function __construct(Collection $data) { $this->data = $data; }
             public function collection() { return $this->data; }
         }, 'accounts_export.xlsx');
+    }
+
+
+    public function delegatePriceAmadeus(Request $request)
+    {
+        $request->validate([
+            'account_id' => 'required|integer|exists:accounts,id',
+            'code' => 'required|integer',
+        ]);
+
+        $accountId = $request->input('account_id');
+        $code = $request->input('code');
+
+        $account = Account::with('journalEntries')
+            ->where('id', $accountId)
+            ->where('company_id', auth()->user()->company->id)
+            ->first();
+
+        $debit = $account->journalEntries->sum('debit');
+        $credit = $account->journalEntries->sum('credit');
+        $isDebit = $debit > 0;
+
+        $totalAmount = 0;
+
+        // if ($debit === 0 && $credit === 0) {
+        //     return redirect()->back()->with('error', 'No debit or credit entries found for this account');
+        // } else if ($debit > 0 && $credit > 0) {
+        //     return redirect()->back()->with('error', 'Both debit and credit entries found for this account, contact your support');
+        // }
+
+        if ($isDebit) {
+            $totalAmount = $debit;
+        } else {
+            $totalAmount = $credit;
+        }
+        if (!$account) {
+            return redirect()->back()->with('error', 'Account not found');
+        }
+
+        if($account->name !== 'Amadeus'){
+            return redirect()->back()->with('error', 'This account is not Amadeus');
+        }
+
+        $issuedBy = Task::where('company_id', $account->company_id)->pluck('issued_by')->unique()->toArray();
+        $notIssued = Task::where('company_id', $account->company_id)
+            ->whereNotNull('issued_by')
+            ->get();
+        // dump($notIssued);
+        $cumulativeTaskTotal = 0;
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($issuedBy as $company) {
+                if (Account::where('code', $code)->where('company_id', $account->company_id)->exists()) {
+                    throw new Exception('Account with this code already exists');
+                }
+
+                if (Account::where('name', $company)->where('parent_id', $account->id)->where('company_id', $account->company_id)->exists()) {
+                    throw new Exception('Account with this name already exists under the parent account');
+                }
+
+                $tasks = Task::where('issued_by', $company);
+                $sumTotal = $tasks->sum('total');
+                // dump($company, $sumTotal);
+
+                if ($sumTotal <= 0) {
+                    continue; // Skip tasks with zero or negative amounts
+                }
+
+
+                $data = [
+                    'name' => $company,
+                    'parent_id' => $account->id,
+                    'company_id' => $account->company_id,
+                    'level' => $account->level + 1,
+                    'root_id' => $account->root_id,
+                    'account_type' => $account->account_type,
+                    'report_type' => $account->report_type,
+                    'code' =>  $code,
+                    'actual_balance' => 0,
+                    'budget_balance' => 0,
+                    'variance' => 0,
+                ];
+
+                if ($isDebit) {
+                    $data['debit'] = $sumTotal;
+                    $data['credit'] = 0;
+                } else {
+                    $data['debit'] = 0;
+                    $data['credit'] = $sumTotal;
+                }
+
+                $childAccount = Account::create($data);
+                foreach($tasks->get() as $task){
+                   foreach($task->journalEntries->where('account_id',$account->id) as $journalEntry){
+                        $journalEntry->account_id = $childAccount->id;
+                        $journalEntry->update();
+                    }
+                }
+
+                $cumulativeTaskTotal += $sumTotal;
+
+                $code++;
+            }
+            // dd($cumulativeTaskTotal, $totalAmount);
+        } catch (Exception $e) {
+            Log::error('Error creating account', [
+                'error' => $e->getMessage(),
+                'code' => $code,
+                'company_gds' => $company,
+            ]);
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Error creating account: contact you support ');
+        }
+       
+        if($cumulativeTaskTotal !== $totalAmount){
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Cumulative task price does not match account balance');
+        }
+
+        DB::commit();
+
+        return redirect()->back()->with('success', 'Account has been delegated successfully');
+        // Get all companies
+        // $companies = Company::all();
+
+        // foreach ($companies as $company) {
+        //     // Clone the account for each company
+        //     $newAccount = $account->replicate();
+        //     $newAccount->company_id = $company->id;
+        //     $newAccount->save();
+        // }
+
+        // return response()->json(['success' => 'Account has been relegated to all companies successfully']);
     }
 
 

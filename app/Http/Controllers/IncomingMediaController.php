@@ -129,9 +129,12 @@ class IncomingMediaController extends Controller
                     Log::error("Local file does not exist: public/{$localPath}");
                     return response()->json(['message' => 'Local file missing.'], 200);
                 }
+                Log::debug('Prev opening file:', ['filename' => $filename]);
 
                 $fullPath = storage_path("app/public/{$localPath}");
-                $filename = preg_replace('/[^\w\-.]/', '_', str_replace("\0", '', $filename));
+                $filename = preg_replace('/[^\x20-\x7E]/', '', $filename); 
+                Log::debug('Opening file:', ['filename' => $filename]);
+
 
                 $file = new \Illuminate\Http\UploadedFile(
                     $fullPath,
@@ -167,10 +170,6 @@ class IncomingMediaController extends Controller
                                 'passport_no' => $data['passport_no'] ?? null,
                                 'old_passport_no' => $data['passport_no'] ?? null,
                                 'agent_id' => $agentId,
-                                'nationality' => $data['nationality'] ?? null,
-                                'date_of_issue' => $data['date_of_issue'] ?? null,
-                                'date_of_expiry' => $data['date_of_expiry'] ?? null,
-                                'place_of_issue' => $data['place_of_issue'] ?? null,
                             ]);
                             $autoReplyText = "Thank you, your profile has been created.";
                             Log::info("Client created: ID {$client->id}");
@@ -182,10 +181,6 @@ class IncomingMediaController extends Controller
                                     'address' => $data['place_of_birth'] ?? null,
                                     'passport_no' => $data['passport_no'],
                                     'updated_at' => Carbon::parse($receivedAt),
-                                    'nationality' => $data['nationality'] ?? null,
-                                    'date_of_issue' => $data['date_of_issue'] ?? null,
-                                    'date_of_expiry' => $data['date_of_expiry'] ?? null,
-                                    'place_of_issue' => $data['place_of_issue'] ?? null,
                                 ]);
                                 $autoReplyText = "Thank you for updating your passport details.";
                                 Log::info("Client passport updated: ID {$client->id}");

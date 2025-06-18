@@ -9,9 +9,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::connection('mysql_map')->table('cities', function (Blueprint $table) {
-            $table->dropColumn(['latitude', 'longitude']);
+
+            if (Schema::connection('mysql_map')->hasColumn('cities', 'latitude')) {
+                $table->dropColumn('latitude');
+            }
+
+            if (Schema::connection('mysql_map')->hasColumn('cities', 'longitude')) {
+                $table->dropColumn('longitude');
+            }
+
+            if (Schema::connection('mysql_map')->hasColumn('cities', 'services')) {
+                $table->dropColumn('services');
+            }
+
             $table->string('services')->nullable()->after('country_id');
-            $table->string('code')->nullable()->after('services');
         });
     }
 

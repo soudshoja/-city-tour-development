@@ -914,17 +914,38 @@ class CoaController extends Controller
             return redirect()->back()->with('error', 'This account is not Amadeus');
         }
 
-        $issuedBy = Task::where('company_id', $account->company_id)
-            ->where('type', 'flight')
-            ->whereNotNull('issued_by')
+        $journalEntries = $account->journalEntries;
+        $tasks = collect();
+        foreach ($journalEntries as $journalEntry) {
+            $task = $journalEntry->task;
+            if ($task && $task->type === 'flight') {
+                $tasks->push($task);
+            }
+        }
+
+        $issuedBy = $tasks->whereNotNull('issued_by')
             ->pluck('issued_by')
             ->unique()
             ->toArray();
         
-        $notIssued = Task::where('company_id', $account->company_id)
-            ->where('type', 'flight')
-            ->whereNull('issued_by')
-            ->get();
+        if (empty($issuedBy)) {
+            return redirect()->back()->with('error', 'No issued tasks found for this account');
+        }
+
+        $notIssuedTask = $tasks->whereNull('issued_by')
+            ->values();
+
+        // $issuedBy = Task::where('company_id', $account->company_id)
+        //     ->where('type', 'flight')
+        //     ->whereNotNull('issued_by')
+        //     ->pluck('issued_by')
+        //     ->unique()
+        //     ->toArray();
+        
+        // $notIssued = Task::where('company_id', $account->company_id)
+        //     ->where('type', 'flight')
+        //     ->whereNull('issued_by')
+        //     ->get();
 
         // dump($notIssued);
         $cumulativeTaskTotal = 0;
@@ -984,8 +1005,8 @@ class CoaController extends Controller
 
                 $code++;
             }
-
-            if($notIssued->isNotEmpty()){
+           
+            if($notIssuedTask->isNotEmpty()){
                 $notIssuedAccount = Account::create([
                     'name' => 'Not Issued',
                     'parent_id' => $account->id,
@@ -1000,16 +1021,15 @@ class CoaController extends Controller
                     'variance' => 0,
                 ]);
 
-                foreach($notIssued as $task){
+                foreach($notIssuedTask as $task){
                     foreach($task->journalEntries->where('account_id',$account->id) as $journalEntry){
                         $journalEntry->account_id = $notIssuedAccount->id;
                         $journalEntry->update();
                     }
                 }
-                $cumulativeTaskTotal += $notIssued->sum('total');
+                $cumulativeTaskTotal += $notIssuedTask->sum('total');
             }
 
-            // dd($cumulativeTaskTotal, $totalAmount);
         } catch (Exception $e) {
             Log::error('Error creating account', [
                 'error' => $e->getMessage(),
@@ -1019,8 +1039,12 @@ class CoaController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Error creating account: contact you support ');
         }
-       
-        if($cumulativeTaskTotal !== $totalAmount){
+        // dd($cumulativeTaskTotal, $totalAmount);
+        if(number_format($cumulativeTaskTotal, 2) !== number_format($totalAmount, 2)){
+            Log::error('Cumulative task price does not match account balance', [
+                'cumulative_task_total' => $cumulativeTaskTotal,
+                'total_amount' => $totalAmount,
+            ]);
             DB::rollBack();
             return redirect()->back()->with('error', 'Cumulative task price does not match account balance');
         }

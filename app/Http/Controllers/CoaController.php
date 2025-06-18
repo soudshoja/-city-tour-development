@@ -915,14 +915,17 @@ class CoaController extends Controller
         }
 
         $issuedBy = Task::where('company_id', $account->company_id)
+            ->where('type', 'flight')
             ->whereNotNull('issued_by')
             ->pluck('issued_by')
             ->unique()
             ->toArray();
         
         $notIssued = Task::where('company_id', $account->company_id)
+            ->where('type', 'flight')
             ->whereNull('issued_by')
             ->get();
+
         // dump($notIssued);
         $cumulativeTaskTotal = 0;
 

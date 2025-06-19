@@ -1078,7 +1078,7 @@ class PaymentController extends Controller
             return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
         }
 
-        $payment = Payment::with('agent', 'client')->where('id', $paymentId)->first();
+        $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
         $companyId = optional($payment->agent->branch)->company_id;
 
         $chargeData = [
@@ -1666,6 +1666,8 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
             return redirect()->to('/invoices')->with('error', 'Something went wrong. Please contact support.');
+
+            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');  
         }
     }
 

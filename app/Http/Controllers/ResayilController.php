@@ -22,13 +22,15 @@ class ResayilController extends Controller
         $this->token = config('services.whatsapp.token');
     }
 
-    public function message($phone, $message, $header = null, $footer = null, $buttons = null)
+    public function message($phone, $country_code ,$message, $header = null, $footer = null, $buttons = null)
     {
         $url = $this->url . 'messages';
       
         // Build the payload according to Resayil spec
+        $phoneNumber = $country_code . $phone;
+
         $payload = [
-            'phone' => $phone,
+            'phone' => $phoneNumber,
             'message' => $message,
         ];
 
@@ -121,7 +123,7 @@ class ResayilController extends Controller
 
         $message = "👋 Hello {$client->name},\n\n🧾 Your invoice is ready!\n\nYou can view it here:\n🔗 $invoiceLink\n\nThank you for choosing us! 😊";
 
-        $response = $this->message($client->phone, $message);
+        $response = $this->message($client->phone, $client->country_code, $message);
 
         Log::debug('Resayil API Response:', $response);
 
@@ -194,7 +196,7 @@ class ResayilController extends Controller
        
         $message = "👋 Hello {$client->name},\n\n💳 Your payment link is ready!\n\nYou can complete your payment here:\n🔗 $paymentLink\n\nThank you for choosing us! 😊";
 
-        $response = $this->message($client->phone, $message);
+        $response = $this->message($client->phone, $client->country_code, $message);
 
         if ($response['success'] ?? false) {
             return back()->with('success', 'Payment link successfully shared via WhatsApp message through Resayil!');

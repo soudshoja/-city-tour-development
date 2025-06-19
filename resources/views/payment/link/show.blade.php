@@ -111,7 +111,7 @@
 
             <!-- Payment Details -->
             <div class="mb-8 inline-flex gap-2">
-                @if (auth()->user())
+                {{-- @if (auth()->user())
                     <form action="" method="POST">
                         @csrf
                         <input type="hidden" name="client" value=''>
@@ -121,7 +121,7 @@
                             Send Payment To Client
                         </button>
                     </form>
-                @endif
+                @endif --}}
                 <form id="" action="{{ route('payment.link.initiate') }}" method="POST">
                     @csrf
                     <input type="hidden" id="payment_id" name="payment_id" value="{{ $payment->id }}">

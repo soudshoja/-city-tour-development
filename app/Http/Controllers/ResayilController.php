@@ -17,7 +17,7 @@ class ResayilController extends Controller
 
     public function __construct()
     {
-        $this->url = config('services.resayil.base_url') . config('services.resayil.version');
+        $this->url = config('services.resayil.base_url') . config('services.resayil.version') . '/';
         $this->token = config('services.whatsapp.token');
     }
 

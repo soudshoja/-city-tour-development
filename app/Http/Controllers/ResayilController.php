@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\IncomingMedia;
 use App\Models\InvoicePartial;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -17,13 +18,14 @@ class ResayilController extends Controller
 
     public function __construct()
     {
-        $this->url = config('services.resayil.base_url') . config('services.resayil.version');
+        $this->url = config('services.resayil.base_url') . config('services.resayil.version') . '/';
         $this->token = config('services.whatsapp.token');
     }
 
     public function message($phone, $message, $header = null, $footer = null, $buttons = null)
     {
         $url = $this->url . 'messages';
+      
         // Build the payload according to Resayil spec
         $payload = [
             'phone' => $phone,
@@ -185,10 +187,11 @@ class ResayilController extends Controller
 
         Log::debug('Share Payment Link:', $request->all());
         $client = Client::findOrFail($request->client_id);
+        $payment = Payment::findOrFail($request->payment_id);
 
         // Assuming you have a method to generate the payment link
-        $paymentLink = route('payment.link.show', ['paymentId' => $request->payment_id]);
-
+        $paymentLink = route('payment.link.show', ['voucherNumber' => $payment->voucher_number ]);
+       
         $message = "👋 Hello {$client->name},\n\n💳 Your payment link is ready!\n\nYou can complete your payment here:\n🔗 $paymentLink\n\nThank you for choosing us! 😊";
 
         $response = $this->message($client->phone, $message);

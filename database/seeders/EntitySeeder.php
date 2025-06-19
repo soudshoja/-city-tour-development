@@ -55,7 +55,7 @@ class EntitySeeder extends Seeder
                 'code' => 'CT00001',
                 'country_id' => $countryId,
                 'address' => 'Kuwait City',
-                'phone' => '+965 12345678',
+                'phone' => '+96522210017',
                 'user_id' => $user->id,
                 'status' => 1,
             ]);
@@ -103,7 +103,7 @@ class EntitySeeder extends Seeder
                 'user_id' => $user->id,
                 'name' => $name,
                 'email' => $email,
-                'phone' => '+965 4543266',
+                'phone' => '+96522210017',
                 'address' => 'Kuwait City',
                 'company_id' => $company->id,
             ]);
@@ -178,7 +178,7 @@ class EntitySeeder extends Seeder
                 'tbo_reference' => null,
                 'email' => $email,
                 'type_id' => $agentType->id,
-                'phone_number' => '+965 12345678',
+                'phone_number' => '+96512345678',
                 'branch_id' => $branch->id,
             ]);
         } catch (Exception $e) {
@@ -264,9 +264,19 @@ class EntitySeeder extends Seeder
         try {
             $paymentGatewayNames = ['Tap', 'MyFatoorah', 'Hesabe'];
 
+            $count = 1;
             foreach ($paymentGatewayNames as $paymentGatewayName) {
-                $coaPaymentGateway = Account::where('name', 'like', '%' . $paymentGatewayName . '%')
-                    ->where('company_id', $userCompany->company->id)
+                $asset = Account::where('name', 'Assets')->first();
+                $expenses = Account::where('name', 'Expenses')->first();
+                $parentPaymentGateway = Account::where('name', 'Payment Gateway')
+                    ->where('root_id', $asset->id)
+                    ->first();
+
+                $coaPaymentGateway = Account::where(function ($query) use ($paymentGatewayName, $userCompany, $asset) {
+                        $query->where('name', 'like', '%' . $paymentGatewayName . '%')
+                            ->where('company_id', $userCompany->company->id)
+                            ->where('root_id', $asset->id);
+                    })
                     ->orWhere(function ($query) {
                         $query->whereHas('parent', function ($query) {
                             $query->where('name', 'Payment Gateway Charges');
@@ -278,14 +288,12 @@ class EntitySeeder extends Seeder
                     throw new Exception("COA account for {$paymentGatewayName} not found.");
                 }
 
-                $asset = Account::where('name', 'Assets')->first();
-
                 // Create a new sub-account under the payment gateway parent (if needed)
                 $newAccountBankFee = Account::create([
                     'name' => $paymentGatewayName,
-                    'code' => '1310', // You might want to dynamically generate this code if needed
+                    'code' => '130'.$count, 
                     'root_id' => $asset->id,
-                    'parent_id' => $coaPaymentGateway->id,
+                    'parent_id' => $parentPaymentGateway->id,
                     'company_id' => $userCompany->company->id,
                     'branch_id' => $userCompany->branch_id,
                     'account_type' => 'asset',
@@ -306,8 +314,9 @@ class EntitySeeder extends Seeder
                     throw new Exception("Kuwait International Bank account not found.");
                 }
 
-                $coaChargesAcc = Account::where('name', 'like', '%' . $paymentGatewayName . ' Charges%')
+                $coaChargesAcc = Account::where('name', $paymentGatewayName . ' Charges')
                     ->where('company_id', $userCompany->company->id)
+                    ->where('root_id', $expenses->id)
                     ->first();
 
                 Charge::create([
@@ -321,6 +330,8 @@ class EntitySeeder extends Seeder
                     'company_id' => $userCompany->company->id,
                     'branch_id' => $userCompany->branch->id,
                 ]);
+
+                $count++;
             }
 
     

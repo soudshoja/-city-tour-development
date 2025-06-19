@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Change Password Verification Code</title>
+    <title>Payment Link</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -68,20 +68,24 @@
 
 <body>
     <div class="email-container">
-        {{-- 
-        <img src="{!! url('images/City0logo.svg') !!}" alt="City Tour Logo" class="logo"> --}}
-
         <div class="brand-name">City Tour</div>
 
         <p>Hello,</p>
 
-        <p>You requested to change your password. Use the verification code below to proceed:</p>
+        <p>Thank you for choosing City Tour.</p>
 
-        <h2>{{ $code }}</h2>
+        <p>Please proceed with your payment using the link below:</p>
 
-        <p>This code will expire in 10 minutes.</p>
+        <p>
+            <a href="{{ $paymentUrl }}" target="_blank" style="color: #1a73e8;">
+                Click here to pay
+            </a>
+        </p>
 
-        <p>If you did not request a password change, please ignore this email.</p>
+        <p>If the button above doesn’t work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all;">{{ $paymentUrl }}</p>
+
+        <p>Should you have any questions, feel free to contact our support team.</p>
 
         <p>Regards,<br>City Tour App</p>
 
@@ -90,5 +94,6 @@
         </div>
     </div>
 </body>
+
 
 </html>

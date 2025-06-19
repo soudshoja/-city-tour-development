@@ -38,15 +38,15 @@
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100 flex justify-center items-center">
     <div>
         @if (session('status'))
-        <div class="bg-green-100 text-green-700 p-4 rounded mb-4">
-            {{ session('status') }}
-        </div>
+            <div class="bg-green-100 text-green-700 p-4 rounded mb-4">
+                {{ session('status') }}
+            </div>
         @endif
 
         @if (session('error'))
-        <div class="bg-red-100 text-red-700 p-4 rounded mb-4">
-            {{ session('error') }}
-        </div>
+            <div class="bg-red-100 text-red-700 p-4 rounded mb-4">
+                {{ session('error') }}
+            </div>
         @endif
 
         <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
@@ -54,7 +54,7 @@
             <div class="flex justify-between items-center mb-8">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-800">PAYMENT</h1>
-                    <p class="text-sm text-gray-600">Payment Voucher #{{$payment->voucher_number}}</p>
+                    <p class="text-sm text-gray-600">Payment Voucher #{{ $payment->voucher_number }}</p>
                     <p class="text-sm text-gray-600">Date: {{ $payment->created_at->format('d M, Y') }}</p>
                 </div>
                 <div class="text-right">
@@ -95,80 +95,83 @@
                         <td class="py-3 px-4">Total Amount</td>
                         <td class="py-3 px-4 text-right">{{ $payment->amount }} {{ $payment->currency }}</td>
                     </tr>
-                    @if($chargeResult['paid_by'] !== 'Company')
-                    <tr class="border-b border-gray-100">
-                        <td class="py-3 px-4">Service Charge</td>
-                        <td class="py-3 px-4 text-right">{{ $chargeResult['fee'] }} {{ $payment->currency }}</td>
-                    </tr>
+                    @if ($chargeResult['paid_by'] !== 'Company')
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4">Service Charge</td>
+                            <td class="py-3 px-4 text-right">{{ $chargeResult['fee'] }} {{ $payment->currency }}</td>
+                        </tr>
                     @endif
                     <tr class="font-bold">
                         <td class="py-3 px-4">Final Total</td>
-                        <td class="py-3 px-4 text-right">{{ $chargeResult['finalAmount'] }} {{ $payment->currency}}</td>
+                        <td class="py-3 px-4 text-right">{{ $chargeResult['finalAmount'] }} {{ $payment->currency }}
+                        </td>
                     </tr>
                 </tbody>
             </table>
 
             <!-- Payment Details -->
             <div class="mb-8 inline-flex gap-2">
-                @if(auth()->user())
-                <form action="" method="POST">
-                    @csrf
-                    <input type="hidden" name="client" value=''>
-                    <input type="hidden" name="invoiceNumber" value=''>
-                    <button type="submit"
-                        class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                        Send Payment To Client
-                    </button>
-                </form>
-                @endif
-                <form id=""
-                    action="{{ route('payment.link.initiate') }}"
-                    method="POST">
-                    @csrf
-
-                    <input type="hidden" id="payment_id" name="payment_id" value="{{ $payment->id }}">
-
-                    <div class="flex items-center gap-2">
-                        <button type="submit" id="payNowBtn"
-                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                            Pay Now
-                        </button>
-                        <span id="" class="text-lg font-semibold text-gray-800 pl-[30vh]">
-                            {{ $finalAmount }} {{ $payment->currency }}
-                        </span>
-                    </div>
-                </form>
-
                 @if (auth()->user())
-                <div class="flex gap-2 mt-2" id="invoice-link">
-                    <button
-                        onclick="copyToClipboard('{{ route('payment.link.show', $payment->id) }}')">
-                        <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
-                    </button>
-
-                </div>
+                    <form action="" method="POST">
+                        @csrf
+                        <input type="hidden" name="client" value=''>
+                        <input type="hidden" name="invoiceNumber" value=''>
+                        <button type="submit"
+                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                            Send Payment To Client
+                        </button>
+                    </form>
                 @endif
-                <!-- <span class="text-green-600 font-bold">PAID</span> -->
+                <form id="" action="{{ route('payment.link.initiate') }}" method="POST">
+                    @csrf
+                    <input type="hidden" id="payment_id" name="payment_id" value="{{ $payment->id }}">
+                    @if ($payment->status == 'pending')
+                        <div class="flex items-center gap-2">
+                            <button type="submit" id="payNowBtn"
+                                class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                Pay Now
+                            </button>
+                            {{-- @if (auth()->user())
+                                <div class="flex gap-2 mt-2" id="invoice-link">
+                                    <button
+                                        onclick="copyToClipboard('{{ route('payment.link.show', $payment->id) }}')">
+                                        <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
+                                    </button>
+                                </div>
+                            @endif --}}
+                            <span id="" class="text-lg font-semibold text-gray-800 pl-[30vh]">
+                                {{ $finalAmount }} {{ $payment->currency }}
+                            </span>
+
+                        </div>
+                    @endif
+
+                </form>
+
             </div>
+            @if ($payment->status == 'completed')
+                <p><span class="text-green-600 font-bold">PAID</span>
+                </p>
+            @endif
             <div class="flex justify-between items-center">
                 <div class="text-sm">
                     <p class="text-gray-600">If you have any questions about this invoice, please contact:</p>
                     <p class="text-gray-600">
                         <span>
-                            {{ $payment->agent->name}}:
+                            {{ $payment->agent->name }}:
                         </span>
                         <span>
                             {{ $payment->agent->email }}
                         </span>
-                        @if($payment->agent->phone)
-                        <span>
-                            || {{ $payment->agent->phone }}
-                        </span>
+                        @if ($payment->agent->phone)
+                            <span>
+                                || {{ $payment->agent->phone }}
+                            </span>
                         @endif
                     </p>
                 </div>
                 <div class="text-right">
-                    <p class="font-bold text-gray-800">Thank you for your business!</p>
+                    <p class="pt-20 font-bold text-gray-800">Thank you for your business!</p>
                 </div>
             </div>
         </div>

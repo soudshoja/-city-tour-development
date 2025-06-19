@@ -411,13 +411,12 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
             Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');
-            Route::get('/show/{paymentId}', [PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
+            Route::get('/show/{voucherNumber}', [PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');
             Route::post('/initiate', [PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
             Route::get('/process', [PaymentController::class, 'paymentLinkProcess'])->name('process')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
-            Route::get('/{voucherNumber}', [PaymentController::class, 'paymentShow'])->name('show')->withoutMiddleware(['auth']);
         });
 
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');

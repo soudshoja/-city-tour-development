@@ -84,8 +84,7 @@
                                             <form action="{{ route('resayil.share-payment-link') }}" method="POST"
                                                 target="" class="inline">
                                                 @csrf
-                                                <input type="hidden" name="client_id"
-                                                    value="{{ $payment->client_id }}">
+                                                <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
                                                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
                                                 <button type="submit"
                                                     class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium">

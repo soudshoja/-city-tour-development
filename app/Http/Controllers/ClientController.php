@@ -51,6 +51,7 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
+            $branch = Branch::pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
             // retrieve client that has the latest task
             $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(

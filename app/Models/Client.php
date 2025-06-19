@@ -23,6 +23,7 @@ class Client extends Model
         'civil_no',
         'date_of_birth',
         'phone',
+        'country_code',
     ];
 
 

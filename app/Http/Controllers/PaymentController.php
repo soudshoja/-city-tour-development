@@ -165,6 +165,12 @@ class PaymentController extends Controller
 
         $invoice = $data['invoice'];
 
+        $client = $invoice->client;
+
+        if(!$client) {
+            return response()->json(['error' => 'Client not found for the invoice'], 404);
+        }
+
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->name,
@@ -277,8 +283,8 @@ class PaymentController extends Controller
                 "PaymentMethodId"     => $paymentMethodId,
                 "InvoiceValue"        => $amount,
                 "CustomerName"        => $customerName,
-                "CustomerEmail"       => $data['client_email'] ?? 'email@example.com',
-                "MobileCountryCode"   => "+965",
+                "CustomerEmail"       => 'shoja@citytravelers.co',
+                "MobileCountryCode"   => $client->country_code ?? '+965',
                 "CustomerMobile"      => $clientPhone,
                 "DisplayCurrencyIso"  => "KWD",
                 "CallBackUrl"         => route('payments.callback'),
@@ -1185,7 +1191,8 @@ class PaymentController extends Controller
                 $customerName = trim(explode('/', $customerName)[0]);
             }
 
-            $clientPhone = optional($payment->client)->phone ?? '50000000';
+            $client = $payment->client;
+            $clientPhone = $client->phone ?? null;
 
             if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
                 // Remove country code if present (e.g., +96512345678 -> 12345678)
@@ -1201,8 +1208,8 @@ class PaymentController extends Controller
                 "PaymentMethodId"     => $paymentMethod,
                 "InvoiceValue"        => $finalAmount,
                 "CustomerName"       => $customerName ?? 'Customer',
-                "CustomerEmail"       => $payment->client->email ?? 'email@example.com',
-                "MobileCountryCode"   => "+965",
+                "CustomerEmail"       => 'shoja@citytravelers.co',
+                "MobileCountryCode"   => $client->country_code ?? '+965',
                 "CustomerMobile"      => $clientPhone ?? '50000000',
                 "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
                 "CallBackUrl"         => route('payments.callback'),

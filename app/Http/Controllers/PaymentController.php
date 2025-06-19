@@ -1062,9 +1062,9 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
 
-    public function paymentShowLink($paymentId)
+    public function paymentShowLink($voucherNumber)
     {
-        $payment = Payment::with('agent', 'client')->where('id', $paymentId)->first();
+        $payment = Payment::with('agent', 'client')->where('voucher_number', $voucherNumber)->first();
 
         if (!$payment) {
             return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
@@ -1079,46 +1079,6 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::with('agent', 'client')->where('id', $paymentId)->first();
-        $companyId = optional($payment->agent->branch)->company_id;
-
-        $chargeData = [
-            'amount'     => $payment->amount,
-            'currency'   => $payment->currency,
-            'client_id'  => $payment->client_id,
-            'agent_id'   => $payment->agent_id,
-            'currency'   => $payment->currency,
-        ];
-     
-        $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-            ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-            : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
-
-        $gatewayFee = $chargeResult['fee'];
-        $selfCharge = isset($chargeResult['self_charge']) ? $chargeResult['self_charge'] : $chargeResult['fee'];
-        $finalAmount = $chargeResult['finalAmount'];
-        $paidBy = $chargeResult['paid_by'];
-        $chargeType = $chargeResult['charge_type'];
-
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'chargeType', 'selfCharge'));
-    }
-
-        public function paymentShow($paymentVoucher)
-    {
-        $payment = Payment::with('agent', 'client')->where('voucher_number', $paymentVoucher)->first();
-
-        if (!$payment) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
-        }
-
-        if (!$payment->client) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
-        }
-
-        if (!$payment->agent) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
-        }
-
-        $payment = Payment::with('agent', 'client')->where('voucher_number', $paymentVoucher)->first();
         $companyId = optional($payment->agent->branch)->company_id;
 
         $chargeData = [

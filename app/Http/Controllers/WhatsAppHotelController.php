@@ -36,12 +36,15 @@ class WhatsAppHotelController extends Controller
             'telephone' => 'required|string',
             'srk' => 'required|string',
             'hotel_index' => 'required|integer',
+            'hotel_name' => 'required|string',
             'offer_index' => 'required|string',
             'result_token' => 'required|string',
             'package_token' => 'required|string',
             'enquiry_id' => 'required|string',
             'room_details' => 'required|array|min:1',
             'room_details.*.room_name' => 'required|string',
+            'room_details.*.board_basis' => 'required|string',
+            'room_details.*.refundable' => 'required|boolean',
             'room_details.*.room_token' => 'required|string',
             'room_details.*.min_price' => 'required|numeric',
         ]);
@@ -53,8 +56,11 @@ class WhatsAppHotelController extends Controller
                 'telephone' => $request->telephone,
                 'srk' => $request->srk,
                 'hotel_index' => $request->hotel_index,
+                'hotel_name' => $request->hotel_name,
                 'offer_index' => $request->offer_index,
                 'room_name' => $room['room_name'],
+                'board_basis' => $room['board_basis'],
+                'refundable' => $room['refundable'],
                 'room_token' => $room['room_token'],
                 'result_token' => $request->result_token,
                 'package_token' => $request->package_token,
@@ -66,9 +72,18 @@ class WhatsAppHotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'All room offers stored successfully.',
-            'data' => $saved,
+            'offerDetails' => [
+                'hotelName' => $request->hotel_name,
+                'roomDetails' => collect($saved)->map(fn($item) => [
+                    'roomName' => $item->room_name,
+                    'boardBasis' => $item->board_basis,
+                    'nonRefundable' => !$item->refundable,
+                    'roomToken' => $item->room_token,
+                    'min_price' => $item->min_price,
+                ]),
+            ],
         ], 201);
-    }    
+    }
 
     public function findOffer(Request $request)
     {

@@ -36,12 +36,13 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Http;
 use App\Support\PaymentGateway\Tap;
 use App\Support\PaymentGateway\MyFatoorah;
+use App\Mail\PaymentLinkEmail;
 use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
 use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
 use Google\Rpc\Context\AttributeContext\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-
+use Illuminate\Support\Facades\Mail;
 class PaymentController extends Controller
 {
     use NotificationTrait;
@@ -149,7 +150,7 @@ class PaymentController extends Controller
     public function initiatePayment($data)
     {
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-
+        //dd($data);
         if (!$voucherSequence) {
             $voucherSequence = Sequence::create([
                 'sequence_for' => 'VOUCHER',
@@ -270,7 +271,8 @@ class PaymentController extends Controller
                 $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
                 $clientPhone = ltrim($clientPhone, '0'); // Optionally remove leading zero
             }
-            // dd($clientPhone);
+            //dd($clientPhone);
+
             $executePayload = [
                 "PaymentMethodId"     => $paymentMethodId,
                 "InvoiceValue"        => $amount,
@@ -292,7 +294,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-            // dd($executePayload);
+            
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
@@ -1041,6 +1043,7 @@ class PaymentController extends Controller
         return [
             'status' => 'success',
             'message' => 'Payment Link Created',
+            'clientEmail' => $client->email,
             'data' => $payment
         ];
     }
@@ -1051,13 +1054,17 @@ class PaymentController extends Controller
         if ($response['status'] === 'error') {
             return redirect()->back()->with('error', $response['message']);
         }
-
+        
+        //dd($response['data']);
+        $voucherNumber = $response['data']['voucher_number'];
+        $paymentUrl = url('/payment/link/' . $voucherNumber); 
+        Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
 
-    public function paymentShowLink($paymentId)
+    public function paymentShowLink($voucherNumber)
     {
-        $payment = Payment::with('agent', 'client')->where('id', $paymentId)->first();
+        $payment = Payment::with('agent', 'client')->where('voucher_number', $voucherNumber)->first();
 
         if (!$payment) {
             return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
@@ -1172,17 +1179,31 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = optional($payment->agent->branch)->company_id;
 
+            //filter record
+            $customerName = optional($payment->client)->name ?? 'Customer';
+            if (strpos($customerName, '/') !== false) {
+                $customerName = trim(explode('/', $customerName)[0]);
+            }
+
+            $clientPhone = optional($payment->client)->phone ?? '50000000';
+
+            if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
+                // Remove country code if present (e.g., +96512345678 -> 12345678)
+                $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+                $clientPhone = ltrim($clientPhone, '0'); // Optionally remove leading zero
+            }
+
             $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
 
             $finalAmount = $chargeResult['finalAmount'];
-
+   
             $executePayload = [
                 "PaymentMethodId"     => $paymentMethod,
                 "InvoiceValue"        => $finalAmount,
-                "CustomerName"       => optional($payment->client)->name ?? 'Customer',
+                "CustomerName"       => $customerName ?? 'Customer',
                 "CustomerEmail"       => $payment->client->email ?? 'email@example.com',
                 "MobileCountryCode"   => "+965",
-                "CustomerMobile"      => substr(optional($payment->client)->phone, 1)  ?? '50000000',
+                "CustomerMobile"      => $clientPhone ?? '50000000',
                 "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
                 "CallBackUrl"         => route('payments.callback'),
                 "ErrorUrl"            => route('payments.error'),
@@ -1202,7 +1223,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-
+            //dd($executePayload);
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
@@ -1232,13 +1253,17 @@ class PaymentController extends Controller
     }
 
     public function paymentLinkProcess(Request $request)
-    {
-        $tapId = $request->tap_id;
+    {   
+        //dd($request);
 
-        $tap = new Tap();
-
-        $response = $tap->getCharge($tapId);
-
+        if ($request->tap_id) {
+            $tapId = $request->tap_id;
+            $tap = new Tap();
+            $response = $tap->getCharge($tapId);
+        } else {
+             return redirect()->back()->with('error', 'Payment not found.');
+        }
+        
         if (isset($response['errors'])) {
             return redirect()->back()->with('error', $response['errors'][0]['description']);
         }
@@ -1389,15 +1414,18 @@ class PaymentController extends Controller
 
             //dd($process);
 
+            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+
         } catch (Exception $e) {
             logger('Failed to update payment status', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->route('payment.link.index')->with('error', 'Payment cannot be updated');
+            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
         }
 
-        return redirect()->route('payment.link.index')->with('success', 'Payment successful!');
+        return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+
     }
 
     public function handleMyFatoorahCallback(Request $request)
@@ -1632,7 +1660,8 @@ class PaymentController extends Controller
                     'payload'          => $statusData,
                 ]);
                 
-                return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');     
+                //return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');   
+                return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');  
             }   
         } catch (\Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
@@ -1662,7 +1691,8 @@ class PaymentController extends Controller
         }
 
         // Redirect or show a friendly error page
-        return redirect('/invoices')->with('error', 'Payment was not completed or was cancelled.');
+        //return redirect('/invoices')->with('error', 'Payment was not completed or was cancelled.');
+        return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('error', 'Payment was not completed or was cancelled.');
     }
 
 

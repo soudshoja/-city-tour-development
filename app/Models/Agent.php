@@ -24,6 +24,7 @@ class Agent extends Model
         'email',
         'type_id',
         'phone_number',
+        'country_code',
         'company_id',
         'branch_id',
         'account_id'

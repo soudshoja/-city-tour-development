@@ -15,6 +15,7 @@ use App\Imports\ClientsImport;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\Charge;
+use App\Models\Country;
 use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\RefundClient;
@@ -88,7 +89,8 @@ class ClientController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:clients,email',
-            'phone' => 'nullable|string|max:15',
+            'dial_code' => 'required|string|max:30',
+            'phone' => 'required|string|max:15',
             'agent_id' => 'nullable|exists:agents,id',
         ]);
 
@@ -99,7 +101,8 @@ class ClientController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'status' => 'active',
-                'phone' => $request->dial_code . $request->phone,
+                'phone' => $request->phone,
+                'country_code' => $request->dial_code,
                 'date_of_birth' => $request->date_of_birth,
                 'address' => $request->address,
                 'civil_no' => $request->civil_no,
@@ -208,6 +211,10 @@ class ClientController extends Controller
         $clients = Client::with('agent.branch')->get();
         $balanceCredit = Credit::getTotalCreditsByClient($id);
 
+        $countries = Country::all(); // Fetch all countries for the view
+
+        $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
+
         // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
         // $childClients = ClientGroup::where('parent_client_id', $id)
         //     ->with('childClient') // Load related child clients
@@ -229,7 +236,18 @@ class ClientController extends Controller
         //         ];
         //     });
 
-        return view('clients.new-profile', compact('client', 'agents', 'invoices', 'tasks', 'paid', 'unpaid', 'clients', 'balanceCredit')); // Ensure the view exists
+        return view('clients.new-profile', compact(
+            'client',
+            'agents',
+            'invoices',
+            'tasks',
+            'paid',
+            'unpaid',
+            'clients',
+            'balanceCredit',
+            'countries',
+            'selectedDialingCode',
+        )); // Ensure the view exists
     }
 
     // Show the form for editing a client
@@ -257,12 +275,13 @@ class ClientController extends Controller
             'email' => 'email|unique:clients,email,' . $id,
             'status' => 'nullable',
             'phone' => 'string|max:15',
+            'country_code' => 'string|max:30',
             'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
         ]);
 
         try {
             // Update the client data
-            $client->update($request->only(['name', 'email', 'status', 'phone', 'address']));
+            $client->update($request->only(['name', 'email', 'status', 'country_code','phone', 'address']));
 
             // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {

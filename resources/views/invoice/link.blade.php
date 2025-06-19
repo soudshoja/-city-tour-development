@@ -165,6 +165,7 @@
                                             {{ $invoice->client->name}}
                                         </p>
                                         <div
+                                            x-cloak
                                             x-show="editClientPhone"
                                             class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
                                             <div
@@ -174,8 +175,17 @@
                                                 <form method="POST" action="{{ route('clients.update', $invoice->client->id) }}">
                                                     @csrf
                                                     @method('PUT')
-                                                    <div class="mb-4">
+                                                    <div class="mb-4 flex flex-col">
                                                         <label class="block text-gray-700 mb-2" for="phone_{{ $invoice->client->id }}">Phone Number</label>
+                                                        <select class="form-select w-full border rounded px-3 py-2 mb-2" name="country_code" id="dialing_code_{{ $invoice->client->id }}" required>
+                                                            <option value="" selected disabled>Select Dialing Code</option>
+                                                            @foreach($countries as $country)
+                                                            <option value="{{ $country->dialing_code }}"
+                                                                @if($invoice->client->country_code === $country->dialing_code) selected @endif>
+                                                                {{ $country->name }} ({{ $country->dialing_code }})
+                                                            </option>
+                                                            @endforeach
+                                                        </select>
                                                         <input
                                                             type="text"
                                                             name="phone"
@@ -262,6 +272,7 @@
                                             {{ $partial->client->name }}
                                         </p>
                                         <div
+                                            x-cloak
                                             x-show="editClientPhone"
                                             class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
                                             <div
@@ -271,8 +282,17 @@
                                                 <form method="POST" action="{{ route('clients.update', $partial->client->id) }}">
                                                     @csrf
                                                     @method('PUT')
-                                                    <div class="mb-4">
+                                                    <div class="mb-4 flex flex-col">
                                                         <label class="block text-gray-700 mb-2" for="phone_{{ $partial->client->id }}">Phone Number</label>
+                                                        <select class="form-select w-full border rounded px-3 py-2 mb-2" name="country_code" id="dialing_code_{{ $partial->client->id }}" required>
+                                                            <option value="" selected disabled>Select Dialing Code</option>
+                                                            @foreach($countries as $country)
+                                                            <option value="{{ $country->dialing_code }}"
+                                                                @if($partial->client->country_code === $country->dialing_code) selected @endif>
+                                                                {{ $country->name }} ({{ $country->dialing_code }})
+                                                            </option>
+                                                            @endforeach
+                                                        </select>
                                                         <input
                                                             type="text"
                                                             name="phone"

@@ -14,6 +14,7 @@ use App\Models\InvoicePartial;
 use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\Company;
+use App\Models\Country;
 use App\Models\JournalEntry;
 use App\Models\InvoiceDetail;
 use App\Models\Task;
@@ -1066,8 +1067,19 @@ class InvoiceController extends Controller
         $suppliers = Supplier::all();
         $types = Task::distinct()->pluck('type');
         $totalInvoices = $invoices->count();
+        $countries = Country::all();
 
-        return view('invoice.link', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
+        return view('invoice.link', compact(
+            'invoices',
+            'types',
+            'suppliers',
+            'branches',
+            'agents',
+            'clients',
+            'tasks',
+            'totalInvoices',
+            'countries'
+        ));
     }
 
     /**

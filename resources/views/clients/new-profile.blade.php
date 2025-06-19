@@ -351,6 +351,15 @@
                         <input type="email" name="email" value="{{ $client->email }}"
                             class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
                             placeholder="Client Email">
+                        <select name="country_code" id="country_code"
+                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
+                            @foreach ($countries as $country)
+                            <option value="{{ $country->dialing_code }}"
+                                {{ $client->country_code == $country->dialing_code ? 'selected' : '' }}>
+                                {{ $country->name }} ({{ $country->dialing_code }})
+                            </option>
+                            @endforeach
+                        </select>
                         <input type="text" name="phone" value="{{ $client->phone }}"
                             class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
                             placeholder="Client Phone">
@@ -423,6 +432,10 @@
     <script>
         function EditClientDetails() {
             editClientModal.classList.remove('hidden');
+        }
+
+        function closeClientModal() {
+            document.getElementById('editClientModal').classList.add('hidden');
         }
     </script>
 

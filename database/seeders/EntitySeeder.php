@@ -264,6 +264,7 @@ class EntitySeeder extends Seeder
         try {
             $paymentGatewayNames = ['Tap', 'MyFatoorah', 'Hesabe'];
 
+            $count = 1;
             foreach ($paymentGatewayNames as $paymentGatewayName) {
                 $asset = Account::where('name', 'Assets')->first();
                 $expenses = Account::where('name', 'Expenses')->first();
@@ -290,7 +291,7 @@ class EntitySeeder extends Seeder
                 // Create a new sub-account under the payment gateway parent (if needed)
                 $newAccountBankFee = Account::create([
                     'name' => $paymentGatewayName,
-                    'code' => '1310', 
+                    'code' => '130'.$count, 
                     'root_id' => $asset->id,
                     'parent_id' => $parentPaymentGateway->id,
                     'company_id' => $userCompany->company->id,
@@ -329,6 +330,8 @@ class EntitySeeder extends Seeder
                     'company_id' => $userCompany->company->id,
                     'branch_id' => $userCompany->branch->id,
                 ]);
+
+                $count++;
             }
 
     

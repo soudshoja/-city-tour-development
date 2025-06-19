@@ -33,9 +33,14 @@
                 </thead>
                 <tbody>
                     @foreach ($payments as $payment)
+                        @php
+                            $paymentUrl = route('payment.link.show', [
+                                'voucherNumber' => $payment->voucher_number,
+                            ]);
+                        @endphp
                         <tr class="border-b hover:bg-gray-50">
                             <td class="px-4 py-2">
-                                <a href="link/{{ $payment->voucher_number }}" target="_blank"
+                                <a href="{{ $paymentUrl }}" target="_blank"
                                     class="text-blue-500 hover:underline">{{ $payment->voucher_number }}</a>
                             </td>
                             <td class="px-4 py-2"> {{ $payment->client ? $payment->client->name : 'N/A' }} </td>
@@ -68,6 +73,7 @@
                             <td class="px-4 py-2">
                                 @if ($payment->status !== 'completed')
                                     <div class="flex flex-col space-y-2">
+
                                         @if ($payment->invoice)
                                             <a href="{{ route('invoice.show', $payment->invoice->invoice_number) }}"
                                                 target="_blank"
@@ -84,8 +90,11 @@
                                             <form action="{{ route('resayil.share-payment-link') }}" method="POST"
                                                 target="" class="inline">
                                                 @csrf
-                                                <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
+                                                <input type="hidden" name="client_id"
+                                                    value="{{ $payment->client_id }}">
                                                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                                                <input type="hidden" name="voucher_number"
+                                                    value="{{ $payment->voucher_number }}">
                                                 <button type="submit"
                                                     class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1"
@@ -98,7 +107,19 @@
                                                 </button>
                                             </form>
                                         @endif
-                                        <a href="link/{{ $payment->voucher_number }}" target="_blank"
+
+
+                                        <button onclick="copyToClipboard('{{ $paymentUrl }}')"
+                                            class="inline-flex items-center px-3 py-1 bg-yellow-100 text-gray-700 rounded hover:bg-gray-200 transition font-medium">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 16h8M8 12h8m-6 8h6a2 2 0 002-2V7a2 2 0 00-2-2H9m-2 0H7a2 2 0 00-2 2v12a2 2 0 002 2h2V5z" />
+                                            </svg>
+                                            Copy Link to Clipboard
+                                        </button>
+
+                                        <a href="{{ $paymentUrl }}" target="_blank"
                                             class="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition font-medium">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor">
@@ -197,4 +218,13 @@
         @endif
 
     </div>
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Link copied to clipboard!');
+            }, function(err) {
+                alert('Failed to copy: ', err);
+            });
+        }
+    </script>
 </x-app-layout>

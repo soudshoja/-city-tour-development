@@ -6,6 +6,7 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
         selectedName,
         all: items,
         filtered: [],
+        selectedIndex: -1, // Track the selected index
         placeholder,
         init() {
             this.filtered = [...this.all];
@@ -17,6 +18,14 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
         filterOptions() {
             const term = this.search.toLowerCase();
             this.filtered = this.all.filter(item => item.name.toLowerCase().includes(term));
+            this.selectedIndex = -1; // Reset selectedIndex when filtering
+        },
+        moveSelection(direction) {
+            if (direction === 'down' && this.selectedIndex < this.filtered.length - 1) {
+                this.selectedIndex++;
+            } else if (direction === 'up' && this.selectedIndex > 0) {
+                this.selectedIndex--;
+            }
         },
         select(option) {
             this.selectedId = option.id;
@@ -52,6 +61,16 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
             if (!this.search) return name;
             const regex = new RegExp(`(${this.search})`, 'gi');
             return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+        },
+        // Additional methods for keyboard navigation
+        handleKeydown(event) {
+            if (event.key === 'ArrowDown') {
+                this.moveSelection('down');
+            } else if (event.key === 'ArrowUp') {
+                this.moveSelection('up');
+            } else if (event.key === 'Enter' && this.selectedIndex >= 0) {
+                this.select(this.filtered[this.selectedIndex]);
+            }
         }
     };
 }

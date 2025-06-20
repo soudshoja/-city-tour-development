@@ -45,7 +45,7 @@ class WhatsAppHotelController extends Controller
             'offers.*.room_details' => 'required|array|min:1',
             'offers.*.room_details.*.room_name' => 'required|string',
             'offers.*.room_details.*.board_basis' => 'required|string',
-            'offers.*.room_details.*.non_refundable' => 'required|boolean',
+            'offers.*.room_details.*.non_refundable' => 'nullable|boolean',
             'offers.*.room_details.*.room_token' => 'required|string',
             'offers.*.room_details.*.price' => 'required|numeric',
             'offers.*.room_details.*.currency' => 'nullable|string',

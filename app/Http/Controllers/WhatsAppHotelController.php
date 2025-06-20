@@ -113,6 +113,7 @@ class WhatsAppHotelController extends Controller
             'room_name' => 'required|string',
             'board_basis' => 'nullable|string',
             'non_refundable' => 'nullable|boolean',
+            'price' => 'nullable|numeric'
         ]);
 
         $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
@@ -142,6 +143,10 @@ class WhatsAppHotelController extends Controller
 
         if ($request->has('non_refundable')) {
             $roomQuery->where('non_refundable', $request->non_refundable);
+        }
+
+        if ($request->has('price')) {
+            $roomQuery->where('price', $request->price);
         }
 
         $rooms = $roomQuery->get();

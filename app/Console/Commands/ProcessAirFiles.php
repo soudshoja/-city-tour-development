@@ -113,31 +113,172 @@ class ProcessAirFiles extends Command
                             $agentEmail = $taskData['agent_email'] ?? null;
                             $agentAmadeusId = $taskData['agent_amadeus_id'] ?? null;
 
-                            if (!$agentName || !$agentEmail || !$agentAmadeusId) {
-                                Log::warning("AIR File Processing: Missing agent information in {$fileName}. Skipping save.");
-                                $this->warn("Missing agent information in {$fileName}.");
+                            Log::info("Processing file {$fileName} with agent data: ", [
+                                'agent_name' => $agentName,
+                                'agent_email' => $agentEmail,
+                                'amadeus_id_agent' => $agentAmadeusId
+                            ]);
 
-                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-                                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Missing agent information');
-                                $allSuccess = false;
-                                break; // Stop processing further tasks in this file
+                            // Check if all agent fields are missing
+                            if ($taskData['status'] == 'reissued' || $taskData['status'] == 'refund' || $taskData['status'] == 'void' || $taskData['status'] == 'emd') {
+                                Log::info("Task status is not 'issued'. Checking original task for reference: {$taskData['reference']}");
+
+                                $originalTask = Task::where('reference', $taskData['reference'])
+                                    ->where('status', 'issued')
+                                    ->first();
+
+                                if (!$originalTask) {
+                                    Log::warning('Original task not found for reference: ', $taskData);
+                                    return response()->json([
+                                        'status' => 'error',
+                                        'message' => 'Original task not found. Task status: ' . $taskData['status'],
+                                    ], 404);
+                                }
+
+                                $taskData['original_task_id'] = $originalTask->id;
+                                Log::info("Original Task ID: " . $taskData['original_task_id']);
+
+                                $flightDetails = TaskFlightDetail::where('task_id', $taskData['original_task_id'])->get();
+
+                                if ($flightDetails->isEmpty()) {
+                                    Log::warning("No flight details found for original task ID: {$taskData['original_task_id']}");
+                                    return response()->json([
+                                        'status' => 'error',
+                                        'message' => 'No flight details found for original task.',
+                                    ], 404);
+                                }
+                                $flightDetailsArray = $flightDetails->toArray();
+                                Log::info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
+                                $taskData['task_flight_details'] = $flightDetailsArray;
+                                $agentQuery = Agent::query();
+
+                                if ($agentAmadeusId) {
+                                    $agentQuery->orWhere('amadeus_id', 'like', $agentAmadeusId);
+                                }
+
+                                if ($agentName) {
+                                    $agentQuery->orWhere('name', 'like', $agentName);
+                                }
+
+                                if ($agentEmail) {
+                                    $agentQuery->orWhere('email', 'like', $agentEmail);
+                                }
+
+                                $agent = $agentQuery->first();
+                                $taskData['agent_id'] = $agent->id;
+
+                                // Fetch the branch associated with the agent
+                                $branchId = $agent->branch_id;
+                                $branch = Branch::find($branchId);
+
+                                if (!$branch) {
+                                    Log::error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName}. Skipping save.");
+                                    $this->error("Branch not found for agent {$agentName} in {$fileName}. File will remain in place.");
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Branch not found');
+                                    $allSuccess = false;
+                                    break;
+                                }
+
+                                $companyId = $branch->company_id;
+
+                                // Save the task data
+                                $response = $this->saveTask($companyId, $taskData);
+
+                                if ($response['status'] === 'error') {
+                                    if (isset($response['code']) && $response['code'] === 409) {
+                                        Log::info("Task already exists for {$fileName}. Skipping save.");
+                                        $this->info("Task already exists for {$fileName}. Skipping save.");
+
+                                        $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                        $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Task already exists');
+                                        $allSuccess = false;
+                                        break;
+                                    } else {
+                                        Log::error("Failed to save task for {$fileName}: " . $response['message']);
+                                        $this->error("Failed to save task for {$fileName}: " . $response['message']);
+
+                                        $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                        $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Failed to save task');
+                                        Log::info("AIR File Processing: Moved {$fileName} to error directory {$errorPath}.");
+                                        $this->info("File {$fileName} moved to error directory due to save failure.");
+                                        $allSuccess = false;
+                                        break;
+                                    }
+                                }
+
+                            } else {
+                                // If task is 'issued', use the agent data from the current task
+                                Log::info("Task is 'issued', checking agent using Amadeus ID, name, or email");
+
+                                // Log the values being used for the query
+                                Log::info("Querying for agent with values: ", [
+                                    'amadeus_id' => $agentAmadeusId,
+                                    'name' => $agentName,
+                                    'email' => $agentEmail,
+                                ]);
+
+                                $agentQuery = Agent::query();
+
+                                if ($agentAmadeusId) {
+                                    $agentQuery->orWhere('amadeus_id', 'like', $agentAmadeusId);
+                                }
+
+                                if ($agentName) {
+                                    $agentQuery->orWhere('name', 'like', $agentName);
+                                }
+
+                                if ($agentEmail) {
+                                    $agentQuery->orWhere('email', 'like', $agentEmail);
+                                }
+
+                                $agent = $agentQuery->first();
+
+
+                                // Log the SQL query to check for issues
+                                Log::info('SQL Query Executed: ', [
+                                    'agentQuery' => DB::getQueryLog()
+                                ]);
+
+                                if (!$agent) {
+                                    Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
+                                    $this->warn("Agent not found for {$fileName}.");
+                                } else {
+                                    Log::info("Agent found: ", [
+                                        'agent_name' => $agent->name,
+                                        'agent_email' => $agent->email,
+                                        'amadeus_id_agent' => $agent->amadeus_id
+                                    ]);
+                                }
                             }
 
-                            $agent = Agent::where('name', 'like', $agentName)
+                            // Try to find the agent using the Amadeus ID, name, or email
+                           /*  $agent = Agent::where('amadeus_id', 'like', $agentAmadeusId)
+                                ->orWhere('name', 'like', $agentName)
                                 ->orWhere('email', 'like', $agentEmail)
-                                ->orWhere('amadeus_id', 'like', $agentAmadeusId)
-                                ->first();
+                                ->first(); */
 
-                            if (!$agent) {
+                            // Log the SQL query to check for issues
+                           /*  Log::info('SQL Query Executed: ', [
+                                'query' => DB::getQueryLog()
+                            ]); */
+
+                           /*  if (!$agent) {
                                 Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
                                 $this->warn("Agent not found for {$fileName}.");
+                            } else {
+                                Log::info("Agent found: ", [
+                                    'agent_name' => $agent->name,
+                                    'agent_email' => $agent->email,
+                                    'amadeus_id_agent' => $agent->amadeus_id
+                                ]);
+                            } */
 
-                                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-                                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Agent not found');
-                                $allSuccess = false;
-                                break;
-                            }
+                            // Associate the agent with the task data
+                            $taskData['agent_id'] = $agent->id;
 
+                            // Fetch the branch associated with the agent
                             $branchId = $agent->branch_id;
                             $branch = Branch::find($branchId);
 
@@ -151,9 +292,9 @@ class ProcessAirFiles extends Command
                                 break;
                             }
 
-                            $taskData['agent_id'] = $agent->id;
                             $companyId = $branch->company_id;
 
+                            // Save the task data
                             $response = $this->saveTask($companyId, $taskData);
 
                             if ($response['status'] === 'error') {
@@ -206,11 +347,11 @@ class ProcessAirFiles extends Command
     }
 
 
-    protected function saveTask($companyId, $data) : array
+    protected function saveTask($companyId, $data): array
     {
-        $existingTask = Task::where('reference' , $data['reference'])
-            ->where('company_id' , $companyId)
-            ->where('status' , $data['status'])
+        $existingTask = Task::where('reference', $data['reference'])
+            ->where('company_id', $companyId)
+            ->where('status', $data['status'])
             ->first();
 
         if ($existingTask) {
@@ -221,7 +362,6 @@ class ProcessAirFiles extends Command
                 'message' => 'Task already exists',
                 'code' => 409,
             ];
-
         }
 
         $supplier = Supplier::where('name', 'Amadeus')->first();
@@ -249,7 +389,6 @@ class ProcessAirFiles extends Command
                 Log::error("Failed to save task: " . $response->getContent());
                 throw new Exception("Failed to save task: " . $response->getContent());
             }
-
         } catch (Exception $e) {
             Log::error("Failed to save task: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
@@ -268,7 +407,6 @@ class ProcessAirFiles extends Command
             'message' => 'Task saved successfully',
             'task' => $task,
         ];
-
     }
 
     protected function moveFileWithLogging(
@@ -276,8 +414,7 @@ class ProcessAirFiles extends Command
         string $destinationDir,
         string $fileName,
         string $reason = ''
-    )
-    {
+    ) {
         if (!File::isDirectory($destinationDir)) {
             File::makeDirectory($destinationDir, 0755, true, true);
             Log::info("Created directory: {$destinationDir}");

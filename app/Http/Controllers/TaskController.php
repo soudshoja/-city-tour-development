@@ -157,53 +157,92 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'type' => 'required|string',
-            'company_id' => 'required|exists:companies,id',
-            'supplier_id' => 'required|exists:suppliers,id',
+
+        $request->validate([
             'reference' => 'required|string',
-            'gds_reference' => 'nullable|string',
-            'airline_reference' => 'nullable|string',
-            'created_by' => 'nullable|string',
-            'issued_by' => 'nullable|string',
-            'status' => 'required|string',
-            'supplier_status' => 'required|string',
-            'price' => 'required|numeric',
-            'exchange_currency' => 'nullable|string',
-            'original_price' => 'nullable|numeric',
-            'original_currency' => 'nullable|string',
-            'total' => 'required|numeric',
-            'tax' => 'required|numeric',
-            'penalty_fee' => 'nullable|numeric',
-            'client_name' => 'nullable|string',
-            'agent_id' => 'required',
-            'client_id' => 'nullable|exists:clients,id',
-            'additional_info' => 'nullable|string',
-            'taxes_record' => 'nullable|string',
-            'enabled' => 'required|boolean',
-            'refund_date' => 'nullable|date',
-            'ticket_number' => 'nullable|string',
-            'refund_charge' => 'nullable|numeric',
-            'task_hotel_details' => 'required_if:type,hotel|array|nullable',
-            'task_flight_details' => 'required_if:type,flight|array|nullable',
+            'status' => 'required',
         ]);
+
+        if ($request->status == 'void' || $request->status == 'reissued' || $request->status == 'refund' || $request->status == 'emd') {
+            $request->validate([
+                'type' => 'required|string',
+                'company_id' => 'required|exists:companies,id',
+                'supplier_id' => 'required|exists:suppliers,id',
+                'reference' => 'required|string',
+                'gds_reference' => 'nullable|string',
+                'airline_reference' => 'nullable|string',
+                'created_by' => 'nullable|string',
+                'issued_by' => 'nullable|string',
+                'status' => 'required|string',
+                'supplier_status' => 'required|string',
+                'price' => 'nullable|numeric',
+                'exchange_currency' => 'nullable|string',
+                'original_price' => 'nullable|numeric',
+                'original_currency' => 'nullable|string',
+                'total' => 'nullable|numeric',
+                'tax' => 'required|numeric',
+                'penalty_fee' => 'nullable|numeric',
+                'client_name' => 'nullable|string',
+                'agent_id' => 'required',
+                'client_id' => 'nullable|exists:clients,id',
+                'additional_info' => 'nullable|string',
+                'taxes_record' => 'nullable|string',
+                'enabled' => 'required|boolean',
+                'refund_date' => 'nullable|date',
+                'ticket_number' => 'nullable|string',
+                'refund_charge' => 'nullable|numeric',
+                'task_hotel_details' => 'required_if:type,hotel|array|nullable',
+                'task_flight_details' => 'required_if:type,flight|array|nullable',
+            ]);
+        } else {
+            $request->validate([
+                'type' => 'required|string',
+                'company_id' => 'required|exists:companies,id',
+                'supplier_id' => 'required|exists:suppliers,id',
+                'reference' => 'required|string',
+                'gds_reference' => 'nullable|string',
+                'airline_reference' => 'nullable|string',
+                'created_by' => 'nullable|string',
+                'issued_by' => 'nullable|string',
+                'status' => 'required|string',
+                'supplier_status' => 'required|string',
+                'price' => 'required|numeric',
+                'exchange_currency' => 'nullable|string',
+                'original_price' => 'nullable|numeric',
+                'original_currency' => 'nullable|string',
+                'total' => 'required|numeric',
+                'tax' => 'required|numeric',
+                'penalty_fee' => 'nullable|numeric',
+                'client_name' => 'nullable|string',
+                'agent_id' => 'required',
+                'client_id' => 'nullable|exists:clients,id',
+                'additional_info' => 'nullable|string',
+                'taxes_record' => 'nullable|string',
+                'enabled' => 'required|boolean',
+                'refund_date' => 'nullable|date',
+                'ticket_number' => 'nullable|string',
+                'refund_charge' => 'nullable|numeric',
+                'task_hotel_details' => 'required_if:type,hotel|array|nullable',
+                'task_flight_details' => 'required_if:type,flight|array|nullable',
+            ]);
+        }
 
         //dd($request->task_flight_details['ticket_number']);
         //dd($request);
         $queryChkExistTask = Task::query(); // <- make sure it's a query builder
 
-        $queryChkExistTask->where('reference', $validatedData['reference'])
-            ->where('supplier_id', $validatedData['supplier_id'])
-            ->where('company_id', $validatedData['company_id'])
-            ->where('status', $validatedData['status']);
+        $queryChkExistTask->where('reference', $request->reference)
+            ->where('supplier_id', $request->supplier_id)
+            ->where('company_id', $request->company_id)
+            ->where('status', $request->status);
 
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
 
-            if( $existingTask->gds_reference == null || $existingTask->airline_reference == null) {
-                $existingTask->gds_reference = $validatedData['gds_reference'];
-                $existingTask->airline_reference = $validatedData['airline_reference'];
+            if ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
+                $existingTask->gds_reference = $request->gds_reference;
+                $existingTask->airline_reference = $request->airline_reference;
                 $existingTask->save();
 
                 return response()->json([
@@ -219,34 +258,34 @@ class TaskController extends Controller
             ], 422);
         }
 
-        $supplier = Supplier::find($validatedData['supplier_id']);
+        $supplier = Supplier::find($request->supplier_id);
 
-        if (!$supplier) {
+      if (!$supplier) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Supplier not found.',
             ], 404);
         }
 
-        $validatedData['penalty_fee'] = isset($validatedData['penalty_fee']) ? $validatedData['penalty_fee'] : 0;
-        $validatedData['passenger_name'] = isset($validatedData['client_name']) ? $validatedData['client_name'] : null;
+        $request->penalty_fee = isset($request->penalty_fee) ? $request->penalty_fee : 0;
+        $request->passenger_name = isset($request->client_name) ? $request->client_name : null;
 
-        if($validatedData['status'] == 'reissued' || $validatedData['status'] == 'refund' || $validatedData['status'] == 'void' || $validatedData['status'] == 'emd') {
-            $originalTask = Task::where('reference', $validatedData['reference'])
-                ->where('supplier_id', $validatedData['supplier_id'])
-                ->where('company_id', $validatedData['company_id'])
+      if ($request->status == 'reissued' || $request->status == 'refund' || $request->status == 'void' || $request->status == 'emd') {
+            $originalTask = Task::where('reference', $request->reference)
+                ->where('supplier_id', $request->supplier_id)
+                ->where('company_id', $request->company_id)
                 ->where('status', 'issued')
                 ->first();
-            
+
             if (!$originalTask) {
-                Log::warning('Original task not found for reference: ' , $validatedData);
+                Log::warning('Original task not found for reference: ', $request);
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Original task not found. Task status: ' . $validatedData['status'],
+                    'message' => 'Original task not found. Task status: ' . $request->status,
                 ], 404);
             }
 
-            $validatedData['original_task_id'] = $originalTask->id; 
+            $request->original_task_id = $originalTask->id;
         }
 
         // $validatedData['total'] = $validatedData['price'];
@@ -254,9 +293,10 @@ class TaskController extends Controller
         DB::beginTransaction();
 
         try {
-            Log::debug('Task Data:', $validatedData);
+           Log::debug('Task Data:', $request->all());
 
-            $task = Task::create($validatedData);
+
+            $task = Task::create($request->all());
 
             if ($task->status !== 'refund' && $task->status !== 'void') {
                 if ($task->type === 'hotel' && $request->has('task_hotel_details')) {
@@ -339,7 +379,7 @@ class TaskController extends Controller
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $liabilities->id)
                     ->first();
-                
+
                 $companyIssuedBy = $task->issued_by;
 
                 // if($companyIssuedBy) {
@@ -357,7 +397,7 @@ class TaskController extends Controller
                 //     throw new Exception('Issued by field is required for flight tasks.');
                 // }
 
-                if(!$companyIssuedBy) {
+                if (!$companyIssuedBy) {
                     Log::error('Issued by field is required for flight tasks.', [
                         'task_id' => $task->id,
                         'type' => $task->type,
@@ -365,14 +405,14 @@ class TaskController extends Controller
                     ]);
 
                     throw new Exception('Issued by field is required for flight tasks.');
-                }  
+                }
 
                 $issuedByAccount = Account::where('name', $companyIssuedBy)
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $liabilities->id)
                     ->where('parent_id', $supplierPayable->id)
                     ->first();
-                
+
                 if (!$issuedByAccount) {
                     $code = 2151; //Default
 
@@ -408,7 +448,7 @@ class TaskController extends Controller
                         throw new Exception('Issued by account creation failed.');
                     }
                 }
-                
+
                 $supplierCost = Account::where('name', $supplier->name)
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $expenses->id)
@@ -486,10 +526,10 @@ class TaskController extends Controller
                 $payment = Payment::whereHas('partials.invoice.invoiceDetails', function ($query) use ($originalTask) {
                     $query->where('task_id', $originalTask->id);
                 })
-                ->whereHas('partials', function ($query) {
-                    $query->where('status', 'paid');
-                })
-                ->first();
+                    ->whereHas('partials', function ($query) {
+                        $query->where('status', 'paid');
+                    })
+                    ->first();
 
                 if ($payment && $payment->client_id) {
                     Log::info('Invoice is already paid. Skipping reversal.');
@@ -677,20 +717,16 @@ class TaskController extends Controller
 
         $client = Client::find($clientId);
 
-        try{
+        try {
             $client->credit += $originalTask->total;
             $client->save();
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to update client credit: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to update client credit: ' . $e->getMessage(),
             ], 500);
         }
-
-
-
-
     }
 
     public function voidTask(Task $task, Task $issuedTask, Payment $payment)
@@ -817,11 +853,12 @@ class TaskController extends Controller
         // dd($tasks, $agent, $agents, $taskCount);
         return view('tasks.tasksVoucher', compact('tasks', 'agent', 'taskCount', 'agents', 'clients', 'suppliers')); // Pass the tasks and task count to the view
     }
+
     public function toggleStatus(Request $request, Task $task)
     {
         $task->enabled = $request->is_enabled;
 
-        if($task->enabled && !$task->is_complete){
+        if ($task->enabled && !$task->is_complete) {
             return response()->json(['success' => false, 'message' => 'Task is not complete. Please complete the task before enabling it.'], 400);
         }
 
@@ -829,6 +866,7 @@ class TaskController extends Controller
 
         return response()->json(['success' => true]);
     }
+    
     public function show($id)
     {
         $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel', 'supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
@@ -853,7 +891,6 @@ class TaskController extends Controller
         // Return the task data as JSON for the modal to load dynamically
         return response()->json($task, 200);
     }
-
 
     public function edit($id)
     {
@@ -897,7 +934,7 @@ class TaskController extends Controller
                 $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total', 'status']));
                 $task->client_name = $client->name;
 
-                if($task->is_complete){
+                if ($task->is_complete) {
                     $task->enabled = true;
                 } else {
                     $task->enabled = false;
@@ -973,7 +1010,7 @@ class TaskController extends Controller
         $createdTasks = [];
         $loop = 0;
         foreach ($extractedData['data'] as $taskData) {
-            
+
             $newRequest = new Request($taskData);
 
             $supplier = Supplier::where('name', 'like', $taskData['supplier_name'])->first();
@@ -1028,7 +1065,6 @@ class TaskController extends Controller
                 if ($createdTask) {
                     $createdTasks[] = $createdTask;
                 }
-
             }
             $responses = [
                 'status' => 'success',
@@ -1041,8 +1077,6 @@ class TaskController extends Controller
 
         return $responses;
     }
-
-   
 
     public function exportCsv()
     {
@@ -1275,7 +1309,7 @@ class TaskController extends Controller
 
         $cancellationPolicy = [];
 
-        if($agentId === null) {
+        if ($agentId === null) {
             $agent = $reservation['agent'];
 
             if (!$agent) {
@@ -1283,10 +1317,10 @@ class TaskController extends Controller
             }
 
             $agentInDB = Agent::where('name', $agent['name'])
-                            ->orWhere('email', 'like', $agent['email'])
-                            ->orWhere('phone_number', 'like', $agent['telephone'])
-                            ->first();
-            
+                ->orWhere('email', 'like', $agent['email'])
+                ->orWhere('phone_number', 'like', $agent['telephone'])
+                ->first();
+
             if ($agentInDB) {
                 $agentId = $agentInDB->id;
             } else {
@@ -1296,7 +1330,7 @@ class TaskController extends Controller
         }
 
         if (isset($reservation['service']['cancellationPolicy'])) {
-            logger('Cancellation Policy: ', $reservation['service']['cancellationPolicy']);
+            //logger('Cancellation Policy: ', $reservation['service']['cancellationPolicy']);
 
             foreach ($reservation['service']['cancellationPolicy']['policies'] as $policy) {
                 $cancellationPolicy[] = [
@@ -1310,12 +1344,11 @@ class TaskController extends Controller
             if ($cancellationDate) {
                 $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
 
-                if(Date::now()->greaterThanOrEqualTo($cancellationDate)){
+                if (Date::now()->greaterThanOrEqualTo($cancellationDate)) {
                     $status = 'issued';
                 } else {
                     $status = 'confirmed';
                 }
-
             } else {
                 throw new Exception('Cancellation date not found in reservation data');
             }
@@ -1344,7 +1377,7 @@ class TaskController extends Controller
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
 
-            if($reservation['service']['status'] ?? null){
+            if ($reservation['service']['status'] ?? null) {
                 $statusMagicTask = $reservation['service']['status'] == 'OK' ? 'issued' : 'confirmed'; //not used for now
 
             } else { // but we still throw an exception if status is not found
@@ -1571,7 +1604,7 @@ class TaskController extends Controller
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
             case 'Amadeus':
                 $response = $this->upload($request);
-                
+
                 return redirect()->back()->with($response['status'], $response['message']);
             default:
                 return redirect()->back()->with('error', 'This supplier will be available soon');
@@ -1833,6 +1866,7 @@ class TaskController extends Controller
 
     public function ReverseUnpaidVoidedTask(Task $originalTask)
     {
+
         $liabilities = Account::where('name', 'like', '%Liabilities%')
             ->where('company_id', $originalTask->company_id)
             ->first();
@@ -1850,7 +1884,7 @@ class TaskController extends Controller
             ->where('company_id', $originalTask->company_id)
             ->where('root_id', $liabilities->id)
             ->first();
-        
+
         $companyIssuedBy = $originalTask->issued_by;
 
         if (!$companyIssuedBy) {
@@ -1858,7 +1892,7 @@ class TaskController extends Controller
             throw new Exception('Company issued by not found.');
         }
 
-        $issuedByAccount = Account::where('name', $companyIssuedBy->name)
+        $issuedByAccount = Account::where('name', $companyIssuedBy)
             ->where('company_id', $originalTask->company_id)
             ->where('root_id', $liabilities->id)
             ->first();
@@ -1867,7 +1901,6 @@ class TaskController extends Controller
             Log::error('Issued by account not found for task ID: ' . $originalTask->id);
             throw new Exception('Issued by account not found.');
         }
-
         $supplierCost = Account::where('name', $supplier->name)
             ->where('company_id', $originalTask->company_id)
             ->where('root_id', $expenses->id)
@@ -1944,7 +1977,7 @@ class TaskController extends Controller
                 $filePath = $file->storeAs('uploads', $fileName, 'public');
 
                 $fullFilePath = storage_path('app/public/' . $filePath);
-                
+
                 Log::info('Processing passport file with AI:', [
                     'fileName' => $fileName,
                     'filePath' => $fullFilePath
@@ -1952,7 +1985,7 @@ class TaskController extends Controller
 
                 $aiManager = new AIManager();
                 $response = $aiManager->extractPassportData($fullFilePath, $fileName);
-                
+
                 Log::info('AI passport extraction response:', ['response' => $response]);
 
                 if ($response['status'] === 'success') {
@@ -1963,17 +1996,15 @@ class TaskController extends Controller
                         'message' => 'Passport data extracted successfully using AI!',
                         'data' => $passportData,
                     ], 200);
-
                 } else {
                     Log::error('AI passport extraction failed: ' . $response['message']);
-                    
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Failed to extract passport data using AI: ' . $response['message'],
                         'errors' => $response['message'],
                     ], 400);
                 }
-
             } catch (Exception $e) {
                 Log::error('Failed to process passport with AI: ' . $e->getMessage());
                 return response()->json([

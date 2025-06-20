@@ -75,7 +75,7 @@
                                     <div class="flex flex-col space-y-2">
 
                                         @if ($payment->invoice)
-                                            <a href="{{ route('invoice.show', $payment->invoice->invoice_number) }}"
+                                            {{-- <a href="{{ route('invoice.show', $payment->invoice->invoice_number) }}"
                                                 target="_blank"
                                                 class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1"
@@ -85,7 +85,27 @@
                                                         d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                                 </svg>
                                                 Send Link To Customer
-                                            </a>
+                                            </a> --}}
+
+                                            <form action="{{ route('resayil.share-payment-link') }}" method="POST"
+                                                target="" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="client_id"
+                                                    value="{{ $payment->client_id }}">
+                                                <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                                                <input type="hidden" name="voucher_number"
+                                                    value="{{ $payment->voucher_number }}">
+                                                <button type="submit"
+                                                    class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1"
+                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                    </svg>
+                                                    Send Link To Customer
+                                                </button>
+                                            </form>
                                         @else
                                             <form action="{{ route('resayil.share-payment-link') }}" method="POST"
                                                 target="" class="inline">

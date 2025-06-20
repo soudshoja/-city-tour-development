@@ -323,8 +323,6 @@
                                 name="agent_id"
                                 :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
                                 placeholder="Select Agent"
-                                :selectedId="old('agent_id')"
-                                :selectedName="null"
                                 label="Select an Agent" />
                         </div>
                         @else
@@ -336,8 +334,6 @@
                                 name="supplier_id"
                                 :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])"
                                 placeholder="Select Supplier"
-                                :selectedId="old('supplier_id')"
-                                :selectedName="null"
                                 label="Select a Supplier" />
                         </div>
 
@@ -754,9 +750,7 @@
                                                                             <x-searchable-dropdown
                                                                                 name="client_id"
                                                                                 :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                                                placeholder="Select a Client"
-                                                                                :selectedId="old('client_id', $task->client_id ?? '')"
-                                                                                :selectedName="optional($task->client)->name" />
+                                                                                placeholder="Select a Client"/>
                                                                         </div>
                                                                     </div>
 

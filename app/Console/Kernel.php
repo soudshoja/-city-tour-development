@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('emails:process')->everyTenMinutes();
         $schedule->command('app:payment-release-to-company-bankacc-process')->dailyAt('0:00');
         $schedule->command('app:sync-myfatoorah-methods')->twiceDaily(0, 12);
+        $schedule->command('app:delete-expired-offers')->everyFifteenMinutes();
 
            // Countries - weekly full sync
         $schedule->command('mapping:sync countries --full')

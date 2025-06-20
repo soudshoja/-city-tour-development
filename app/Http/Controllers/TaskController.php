@@ -373,6 +373,7 @@ class TaskController extends Controller
 
             $supplierPayable = collect();
             $supplierCost = collect();
+            $issuedByAccount = collect();
 
             if ($task->type == 'flight') {
                 $supplierPayable = Account::where('name', $supplier->name)
@@ -397,21 +398,41 @@ class TaskController extends Controller
                 //     throw new Exception('Issued by field is required for flight tasks.');
                 // }
 
-                if (!$companyIssuedBy) {
-                    Log::error('Issued by field is required for flight tasks.', [
+                dd($companyIssuedBy);
+                if ($companyIssuedBy) {
+                    Log::warning('Issued by field is empty for flight tasks.', [
                         'task_id' => $task->id,
                         'type' => $task->type,
                         'company_id' => $task->company_id,
                     ]);
 
-                    throw new Exception('Issued by field is required for flight tasks.');
-                }
+                    $issuedByAccount = Account::create([
+                        'name' => 'Not Issued',
+                        'parent_id' => $supplierPayable->id,
+                        'company_id' => $task->company_id,
+                        'branch_id' => $task->agent->branch_id,
+                        'root_id' => $liabilities->id,
+                        'code' => 2151, // Default code for issued by account
+                        'account_type' => 'liability',
+                        'report_type' => 'balance sheet',
+                        'level' => $supplierPayable->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                    ]);
 
-                $issuedByAccount = Account::where('name', $companyIssuedBy)
-                    ->where('company_id', $task->company_id)
-                    ->where('root_id', $liabilities->id)
-                    ->where('parent_id', $supplierPayable->id)
-                    ->first();
+                } else {
+
+                    $issuedByAccount = Account::where('name', $companyIssuedBy)
+                        ->where('company_id', $task->company_id)
+                        ->where('root_id', $liabilities->id)
+                        ->where('parent_id', $supplierPayable->id)
+                        ->first();
+
+                }
 
                 if (!$issuedByAccount) {
                     $code = 2151; //Default
@@ -447,6 +468,7 @@ class TaskController extends Controller
                     if (!$issuedByAccount) {
                         throw new Exception('Issued by account creation failed.');
                     }
+
                 }
 
                 $supplierCost = Account::where('name', $supplier->name)
@@ -487,7 +509,7 @@ class TaskController extends Controller
                 if (!$transaction) {
                     throw new Exception('Transaction creation failed.');
                 }
-
+              
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
@@ -503,12 +525,11 @@ class TaskController extends Controller
                     'type' => 'payable',
                 ]);
 
-
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $issuedByAccount->id,
+                    'account_id' => $issuedByAccount->isNotEmpty() ? $issuedByAccount->id : $supplierPayable->id, //flight task will use issued by account while hotel task will use supplier account
                     'task_id' => $task->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,

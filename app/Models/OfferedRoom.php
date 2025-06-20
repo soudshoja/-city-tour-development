@@ -17,4 +17,9 @@ class OfferedRoom extends Model
         'room_token',
         'package_token',
     ];
+
+    public function temporaryOffer()
+    {
+        return $this->belongsTo(TemporaryOffer::class, 'temp_offer_id');
+    }
 }

@@ -201,7 +201,14 @@ class ClientController extends Controller
 
         foreach ($tasks as $task) {
             if (is_string($task->cancellation_policy) && $this->isValidJson($task->cancellation_policy)) {
-                $task->cancellation_policy = json_decode($task->cancellation_policy)->policies;
+                $stringCancelPolicy = json_decode($task->cancellation_policy, true);
+                $arrayCancelPolicy = json_decode($stringCancelPolicy, true);
+
+                if (is_array($arrayCancelPolicy)) {
+                    $task->cancellation_policy = $arrayCancelPolicy;
+                } else {
+                    $task->cancellation_policy = [];
+                }
             }
         }
 

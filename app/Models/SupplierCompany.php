@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SupplierCompany extends Pivot
 {
@@ -12,7 +13,8 @@ class SupplierCompany extends Pivot
     protected $fillable = [
         'supplier_id',
         'company_id',
-        'account_id'
+        'account_id',
+        'is_active',
     ];
 
     public function supplier()

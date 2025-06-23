@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SupplierAuthType;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Account;
+use App\Models\Country;
 use App\Models\JournalEntry;
 use App\Models\Role;
 use Illuminate\Http\Request;
@@ -34,21 +36,22 @@ class SupplierController extends Controller
 
         $suppliers = Supplier::all();
 
-        // if($user->role_id == Role::ADMIN) {
-        //     $suppliers = Supplier::with('companies')->get();
-        // } elseif($user->role_id == Role::COMPANY) {
-        //     $suppliers = $user->company->suppliers()->get();
-        // } else {
-        //     return redirect()->back()->with('error', 'Unauthorized action.');
-        // }
         if($user->role_id == Role::ADMIN) {
-            $suppliers = Supplier::with('companies')->get();
-        }elseif($user->role_id == Role::COMPANY) {
-            $suppliers = Supplier::with(['credentials'], function($query) use ($user){
-                $query->where('company_id', $user->company_id);
-            })->get();
+
+            // Only get SupplierCompany which is active
+            $suppliers = Supplier::with(['companies' => function($query) {
+            $query->where('is_active', true);
+            }])->get();
+        } elseif ($user->role_id == Role::COMPANY) {
+
+            $suppliers = Supplier::with('credentials')->whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->company->id)->where('is_active', true);
+            })->with('companies')->get();
+
         } else {
+            
             return redirect()->back()->with('error', 'Unauthorized action.');
+
         }
 
         foreach ($suppliers as $supplier) {
@@ -59,13 +62,17 @@ class SupplierController extends Controller
                 $supplier->named_route = null;
             }
         }
-        $suppliersCount = Supplier::count();
-        if(auth()->user()->company !== null){
-            $supplierCompany = SupplierCompany::where('company_id', $user->company->id)->get();
-            return view('suppliers.index', compact('suppliers', 'suppliersCount', 'supplierCompany'));
-        }
-
-        return view('suppliers.index', compact('suppliers', 'suppliersCount'));
+       
+        $suppliersCount = $suppliers->count();
+        $countries = Country::all();
+        $supplierAuthTypes = SupplierAuthType::cases();
+        
+        return view('suppliers.index', compact(
+            'suppliers',
+            'suppliersCount',
+            'countries',
+            'supplierAuthTypes'
+        ));
     }
 
     public function show($suppliersId)
@@ -98,33 +105,31 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
-        if (Auth::user()->role_id !== Role::ADMIN) {
+        if (Auth::user()->role_id != Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
 
         $request->validate([
             'name' => 'required',
-            'email' => 'required|email',
-            'phone' => 'required',
-            'address' => 'required',
+            'auth_type' => 'required|in:basic,oauth', 
+            'has_hotel' => 'nullable',
+            'has_flight' => 'nullable',
+            'country_id' => 'required|exists:countries,id',
         ]);
 
-        $accountPayable = Account::where('name', 'Account Payable')->first();
-
-        $account = Account::create([
-            'name' => $request->name,
-            'level' => 4,
-            'actual_balance' => 0,
-            'budget_balance' => 0,
-            'variance' => 0,
-            'company_id' => Auth::user()->company_id,
-            'parent_id' => $accountPayable->id,
-            'code' => 'SUP' . $accountPayable->id . str_pad($accountPayable->children->count() + 1, 3, '0', STR_PAD_LEFT),
+        $supplier = Supplier::create([
+            'name' => $request->input('name'),
+            'auth_type' => $request->input('auth_type'),
+            'has_hotel' => $request->input('has_hotel') ? true : false,
+            'has_flight' => $request->input('has_flight') ? true : false,
+            'country_id' => $request->input('country_id'),
         ]);
 
+        if(!$supplier) {
+            return redirect()->back()->with('error', 'Failed to create supplier.');
+        }
 
-
-        return redirect()->route('suppliers.index');
+        return redirect()->back()->with('success', 'Supplier created successfully.');
     }
 
     public function getTotalDebitCredit($supplierId, $endDate)

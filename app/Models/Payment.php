@@ -26,6 +26,8 @@ class Payment extends Model
         'amount',
         'payment_gateway',
         'payment_method_id',
+        'payment_url',
+        'expiry_date',
         'status',
         'account_number',
         'bank_name',

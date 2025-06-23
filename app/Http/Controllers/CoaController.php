@@ -597,7 +597,9 @@ class CoaController extends Controller
             $query->whereDate('created_at', '<=', Carbon::parse($endDate)->endOfDay());
         }
     
-        $transactions = $query->get();
+        $transactions = $query
+            ->orderBy('created_at', 'desc')
+            ->get();
     
         $grouped = $transactions->groupBy(function ($item) {
             return Carbon::parse($item->created_at)->format('Y-m-d');

@@ -59,6 +59,12 @@ class JournalEntry extends Model
             // Log::infO('Account Children'. json_encode($account->children()->get()));
             
             if ($account && $account->children()->exists()) {
+
+                Log::error('Attempt to create journal entry for an account with child accounts.', [
+                    'account_id' => $journalEntry->account_id,
+                    'account_name' => $account->name,
+                ]);
+
                 throw new \Exception('Cannot create journal entry for an account that has child accounts.');
             }
         });

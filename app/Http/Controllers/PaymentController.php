@@ -43,6 +43,7 @@ use Google\Rpc\Context\AttributeContext\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+
 class PaymentController extends Controller
 {
     use NotificationTrait;
@@ -167,7 +168,7 @@ class PaymentController extends Controller
 
         $client = $invoice->client;
 
-        if(!$client) {
+        if (!$client) {
             return response()->json(['error' => 'Client not found for the invoice'], 404);
         }
 
@@ -214,7 +215,7 @@ class PaymentController extends Controller
                     'url' => $data['webhook_url'],
                 ],
             ];
-            
+
             $tap = new Tap();
             Log::info('requestTap', ['requestTap' => $requestTap]);
             $response = $tap->createCharge($requestTap);
@@ -300,7 +301,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-            
+
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
@@ -312,8 +313,8 @@ class PaymentController extends Controller
             }
 
             $resData = $executeResponse->json();
-            Log::info('MyFatoorah: ExecutePayment response' , ['response' => $resData]);
-           
+            Log::info('MyFatoorah: ExecutePayment response', ['response' => $resData]);
+
             $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
             $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
             // dd($invoiceUrl, $mfInvoiceId);
@@ -336,14 +337,14 @@ class PaymentController extends Controller
     }
 
     public function process(Request $request)
-    {  
+    {
         Log::info('process:', ['process' => $request]);
         $tap = new Tap();
 
         $tap_id = $request->tap_id;
 
         $response = $tap->getCharge($tap_id);
-       
+
         if (isset($response['errors'])) {
 
             // $this->storeNotification([
@@ -386,7 +387,7 @@ class PaymentController extends Controller
         // $invoicePartialIds = $response['metadata']['invoice_partial_id'];
         $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'], true);
 
-        if(!$paymentGateway){
+        if (!$paymentGateway) {
             Log::error('Payment gateway not found in response', ['response' => $response]);
             return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
@@ -410,12 +411,12 @@ class PaymentController extends Controller
         $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
-      
+
         $chargeRecord = Charge::where('id', (int)$paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
             ->first();
-       
+
         if ($chargeRecord) {
             $defaultPaymentGatewayFee = $chargeRecord->amount;
             $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
@@ -429,7 +430,7 @@ class PaymentController extends Controller
             $tapAccount = Account::where('id', $coaFeeIdRec)
                 ->where('company_id', $invoice->agent->branch->company->id)
                 ->first();
-           
+
             $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
                 ->where('company_id', $invoice->agent->branch->company->id)
                 ->first();
@@ -471,11 +472,11 @@ class PaymentController extends Controller
                 $receivableAccountId = $receivableAccount->id;
                 //dd($receivableAccount, $client->name);
 
-                if(!$receivableAccount || !$receivableAccountId) {
+                if (!$receivableAccount || !$receivableAccountId) {
                     Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
                     return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
                 }
-                
+
                 if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
                     Log::error('Agent or branch or company not found for invoice', ['invoice_id' => $invoice->id]);
                     return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
@@ -522,7 +523,7 @@ class PaymentController extends Controller
                     'receipt_email' => $response['receipt']['email'],
                     'receipt_sms' => $response['receipt']['sms'],
                 ]);
-                
+
                 // Create record to receivable account (OK)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
@@ -1033,7 +1034,7 @@ class PaymentController extends Controller
             }
 
             $data['created_by'] = Auth::id();
-            
+
             $payment = Payment::create($data);
         } catch (Exception $e) {
             logger('Failed to create payment', [
@@ -1060,7 +1061,7 @@ class PaymentController extends Controller
         if ($response['status'] === 'error') {
             return redirect()->back()->with('error', $response['message']);
         }
-        
+
         //dd($response['data']);
         $voucherNumber = $response['data']['voucher_number'];
         $paymentUrl = url('/payment/link/show/' . $voucherNumber); 
@@ -1094,7 +1095,7 @@ class PaymentController extends Controller
             'agent_id'   => $payment->agent_id,
             'currency'   => $payment->currency,
         ];
-     
+
         $chargeResult = $payment->payment_gateway === 'MyFatoorah'
             ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
             : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
@@ -1185,6 +1186,22 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = optional($payment->agent->branch)->company_id;
 
+            if ($payment->status === 'initiate') {
+
+                if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
+                    Log::info('Reusing existing payment URL', [
+                        'invoice_id' => $payment->payment_reference,
+                        'url' => $payment->payment_url,
+                        'expires_at' => $payment->expiry_date,
+                    ]);
+
+                    return redirect($payment->payment_url);
+                }
+                Log::info('Old payment URL expired, reinitiating new payment');
+                return $this->paymentLinkReinitiate($payment->payment_reference);
+            }
+
+
             //filter record
             $customerName = optional($payment->client)->name ?? 'Customer';
             if (strpos($customerName, '/') !== false) {
@@ -1203,7 +1220,7 @@ class PaymentController extends Controller
             $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
 
             $finalAmount = $chargeResult['finalAmount'];
-   
+
             $executePayload = [
                 "PaymentMethodId"     => $paymentMethod,
                 "InvoiceValue"        => $finalAmount,
@@ -1244,12 +1261,20 @@ class PaymentController extends Controller
             $resData = $executeResponse->json();
             $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
             $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
+            $expiryDateURL = $resData['Data']['ExpiryDate'] ?? null;
 
             if ($invoiceUrl && $mfInvoiceId) {
                 $payment->payment_reference = $mfInvoiceId;
+                $payment->payment_url = $invoiceUrl;
+                $payment->expiry_date = $expiryDateURL ? Carbon::parse($expiryDateURL) : now()->addDays(2);
                 $payment->status = 'initiate';
                 $payment->save();
 
+                Log::info('MyFatoorah payment initiated', [
+                    'old_invoice_id' => $mfInvoiceId,
+                    'old_url' => $invoiceUrl,
+                    'old_expires_at' => $payment->expiry_date,
+                ]);
                 return redirect($invoiceUrl);
             }
 
@@ -1259,8 +1284,98 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
     }
 
+    public function paymentLinkReinitiate($paymentReference)
+    {
+        if (!$paymentReference) {
+            return redirect()->back()->with('error', 'Missing payment reference for reinitiation.');
+        }
+
+        Log::info('Reinitiating MyFatoorah payment', ['payment_reference' => $paymentReference]);
+
+        $payment = Payment::with('client', 'agent.branch')->where('payment_reference', $paymentReference)->first();
+
+        if (!$payment || $payment->status !== 'initiate') {
+            return redirect()->back()->with('error', 'Invalid or already processed payment.');
+        }
+
+        $apiKey = config('services.myfatoorah.api_key');
+        $baseUrl = config('services.myfatoorah.base_url');
+
+        $companyId = optional($payment->agent->branch)->company_id;
+
+        // Clean client name
+        $customerName = optional($payment->client)->name ?? 'Customer';
+        if (strpos($customerName, '/') !== false) {
+            $customerName = trim(explode('/', $customerName)[0]);
+        }
+
+        // Clean client phone
+        $client = $payment->client;
+        $clientPhone = $client->phone ?? '50000000';
+        if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
+            $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+            $clientPhone = ltrim($clientPhone, '0');
+        }
+
+        // Recalculate amount + fees
+        $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+        $finalAmount = $chargeResult['finalAmount'];
+
+        $executePayload = [
+            "PaymentMethodId"     => $payment->payment_method_id,
+            "InvoiceValue"        => $finalAmount,
+            "CustomerName"        => $customerName,
+            "CustomerEmail"       => $client->email ?? 'email@example.com',
+            "MobileCountryCode"   => $client->country_code ?? '+965',
+            "CustomerMobile"      => $clientPhone,
+            "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
+            "CallBackUrl"         => route('payments.callback'),
+            "ErrorUrl"            => route('payments.error'),
+            "Language"            => "en",
+            "UserDefinedField"    => json_encode([
+                'voucher_number'   => $payment->voucher_number,
+                'payment_id'       => $payment->id,
+                'payment_gateway'  => $payment->payment_gateway,
+                'payment_method'   => $payment->payment_method_id,
+                'process'          => $payment->invoice ? 'invoice' : 'topup',
+            ]),
+            "InvoiceItems" => [
+                [
+                    "ItemName"   => "Voucher " . $payment->voucher_number,
+                    "Quantity"   => 1,
+                    "UnitPrice"  => $finalAmount,
+                ]
+            ],
+        ];
+
+        $executeResponse = Http::withHeaders([
+            'Authorization' => "Bearer $apiKey",
+            'Content-Type'  => 'application/json',
+        ])->post("$baseUrl/ExecutePayment", $executePayload);
+
+        if (!$executeResponse->successful()) {
+            Log::error('Reinitiate MyFatoorah ExecutePayment failed', ['response' => $executeResponse->body()]);
+            return redirect()->to('/invoices')->with('error', 'Failed to reinitiate payment.');
+        }
+
+        $resData = $executeResponse->json();
+        $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
+        $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
+
+        if ($invoiceUrl && $mfInvoiceId) {
+            // Optionally update the same payment record (or skip if already stored)
+            $payment->payment_reference = $mfInvoiceId;
+            $payment->status = 'initiate';
+            $payment->save();
+
+            return redirect($invoiceUrl);
+        }
+
+        return redirect()->to('/invoices')->with('error', 'Failed to retrieve reinitiation URL.');
+    }
+
     public function paymentLinkProcess(Request $request)
-    {   
+    {
         //dd($request);
 
         if ($request->tap_id) {
@@ -1268,9 +1383,9 @@ class PaymentController extends Controller
             $tap = new Tap();
             $response = $tap->getCharge($tapId);
         } else {
-             return redirect()->back()->with('error', 'Payment not found.');
+            return redirect()->back()->with('error', 'Payment not found.');
         }
-        
+
         if (isset($response['errors'])) {
             return redirect()->back()->with('error', $response['errors'][0]['description']);
         }
@@ -1422,7 +1537,6 @@ class PaymentController extends Controller
             //dd($process);
 
             return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
-
         } catch (Exception $e) {
             logger('Failed to update payment status', [
                 'message' => $e->getMessage(),
@@ -1432,7 +1546,6 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
-
     }
 
     public function handleMyFatoorahCallback(Request $request)
@@ -1753,17 +1866,15 @@ class PaymentController extends Controller
                 );
                 
                 //return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');   
-                return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');  
-            }   
+                return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            }
         } catch (\Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
             return redirect()->to('/invoices')->with('error', 'Something went wrong. Please contact support.');
 
-            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');  
+            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
         }
     }
-
-
 
     public function handleMyFatoorahError(Request $request)
     {
@@ -1804,7 +1915,5 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
     }
 
-    public function shareLink($paymentId) {
-
-    }
+    public function shareLink($paymentId) {}
 }

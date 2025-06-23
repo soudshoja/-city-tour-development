@@ -417,6 +417,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/initiate', [PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
             Route::get('/process', [PaymentController::class, 'paymentLinkProcess'])->name('process')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
+            Route ::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']); 
         });
 
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');

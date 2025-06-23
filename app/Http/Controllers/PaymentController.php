@@ -1494,6 +1494,87 @@ class PaymentController extends Controller
             $payment->status = 'completed';
             $payment->save();
 
+            if($statusData['Data']['UserDefinedField']){
+                $userDefinedField = json_decode($statusData['Data']['UserDefinedField'], true);
+            } else {
+                $userDefinedField = [];
+            }
+
+            $process = $userDefinedField['process'] ?? 'invoice';
+
+            if ($process == 'topup') {
+                $clientController = new ClientController;
+
+                $addCreditResponse = $clientController->addCredit($payment);
+
+                if (isset($addCreditResponse['error'])) {
+                    logger('Failed to add credit to client', [
+                        'message' => $addCreditResponse['error'],
+                        'payment_id' => $paymentId,
+                    ]);
+                    return redirect()->route('invoices.index')->with('error', $addCreditResponse['error']);
+                }
+
+                $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+                    ->where('company_id', $payment->agent->branch->company->id)
+                    ->first();
+
+                if (!$liabilitiesAccount) {
+                    return redirect()->route('invoices.index')->with('error', 'Liabilities account not found.');
+                }
+
+                $clientAdvance = Account::where('name', 'Client')
+                    ->where('company_id', $payment->agent->branch->company->id)
+                    ->where('root_id', $liabilitiesAccount->id)
+                    ->first();
+
+                if (!$clientAdvance) {
+                    return redirect()->route('invoices.index')->with('error', 'Client advance account not found.');
+                }
+
+                DB::beginTransaction();
+
+                try {
+                    $transaction = Transaction::create([
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'entity_id' => $payment->agent->branch->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $payment->amount,
+                        'date' => now(),
+                        'description' => 'Topup by ' . $payment->client->name,
+                        'invoice_id' => $payment->invoice_id,
+                        'reference_type' => 'Payment',
+                    ]);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'invoice_id' => $payment->invoice_id,
+                        'account_id' => $clientAdvance->id,
+                        'transaction_date' => now(),
+                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                        'debit' => 0,
+                        'credit' => $payment->amount,
+                        'balance' => $clientAdvance->actual_balance - $payment->amount,
+                        'name' => $payment->client->name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $clientAdvance->id
+                    ]);
+                } catch (Exception $e) {
+                    DB::rollBack();
+                    logger('Failed to create journal entry', [
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    return redirect()->route('invoices.index')->with('error', 'Payment cannot be updated');
+                }
+                DB::commit();
+            }
+
             if ($payment->invoice) {
                 $payment->invoice->status = 'paid';
                 $payment->invoice->save();
@@ -1658,14 +1739,18 @@ class PaymentController extends Controller
             } else {
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
             
-                MyFatoorahPayment::create([
-                    'payment_int_id'   => $payment->id,
-                    'payment_id'       => $transaction['PaymentId'] ?? null,
-                    'invoice_id'       => $statusData['Data']['InvoiceId'],
-                    'invoice_status'   => $statusData['Data']['InvoiceStatus'],
-                    'customer_reference' => $payment->voucher_number,
-                    'payload'          => $statusData,
-                ]);
+                MyFatoorahPayment::updateOrCreate(
+                    [
+                        'payment_int_id'   => $payment->id,
+                        'payment_id'       => $transaction['PaymentId'] ?? null,
+                    ],
+                    [
+                        'invoice_id'       => $statusData['Data']['InvoiceId'],
+                        'invoice_status'   => $statusData['Data']['InvoiceStatus'],
+                        'customer_reference' => $payment->voucher_number,
+                        'payload'          => $statusData,
+                    ]
+                );
                 
                 //return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');   
                 return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');  
@@ -1701,7 +1786,7 @@ class PaymentController extends Controller
 
         // Redirect or show a friendly error page
         //return redirect('/invoices')->with('error', 'Payment was not completed or was cancelled.');
-        return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('error', 'Payment was not completed or was cancelled.');
+        return redirect()->route('payment.link.index')->with('error', 'Payment was not completed or was cancelled.');
     }
 
 

@@ -30,8 +30,8 @@ jobs:
         php-version: '8.3'
         extensions: mbstring, xml, curl, json, zip, gd, fileinfo, bcmath, intl, openssl, xml
     
-    - name: Install Composer dependencies
-      run: composer install --no-dev --optimize-autoloader --prefer-dist
+    # - name: Install Composer dependencies
+    #   run: composer install --no-dev --optimize-autoloader --prefer-dist
 
     - name: Create deployment artifact
       run: tar -czf deployment.tar.gz --exclude=node_modules --exclude='.git' --exclude='tests' .

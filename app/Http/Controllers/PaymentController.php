@@ -900,6 +900,15 @@ class PaymentController extends Controller
                 return in_array($payment->invoice->agent_id, $agentsId);
             }
             return in_array($payment->agent_id, $agentsId);
+        })->map(function ($payment) {
+            if ($payment->payment_gateway === 'MyFatoorah') {
+                $mfPayment = MyFatoorahPayment::where('payment_int_id', $payment->id)->first();
+                $payment->invoice_ref = $mfPayment->invoice_ref;
+            } else {
+                $payment->invoice_ref = null;
+            }
+    
+            return $payment;
         })->values();
 
         // $invoice = Invoice::where('id', $payment->invoice_id)->first();
@@ -1708,6 +1717,7 @@ class PaymentController extends Controller
                     'payment_int_id' => $payment->id,
                     'payment_id' => $transaction['PaymentId'] ?? null,
                     'invoice_id' => $statusData['Data']['InvoiceId'],
+                    'invoice_ref' => $statusData['Data']['InvoiceReference'],
                     'invoice_status' => $statusData['Data']['InvoiceStatus'],
                     'customer_reference' => $payment->invoice->invoice_number,
                     'payload' => $statusData,
@@ -1859,6 +1869,7 @@ class PaymentController extends Controller
                     ],
                     [
                         'invoice_id'       => $statusData['Data']['InvoiceId'],
+                        'invoice_ref'       => $statusData['Data']['InvoiceReference'],
                         'invoice_status'   => $statusData['Data']['InvoiceStatus'],
                         'customer_reference' => $payment->voucher_number,
                         'payload'          => $statusData,

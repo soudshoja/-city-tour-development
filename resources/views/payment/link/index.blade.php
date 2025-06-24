@@ -57,7 +57,7 @@
                                 {{ $payment->createdBy ? $payment->createdBy->name : 'N/A' }}
                             </td>
                             <td class="px-4 py-2">
-                                {{ $payment->payment_reference ?? 'N/A' }}
+                                {{ $payment->payment_reference ? ($payment->invoice_ref ? $payment->payment_reference . '/' . $payment->invoice_ref : $payment->payment_reference) : 'N/A' }}
                             </td>
                             <td class="px-4 py-2">
                                 @php

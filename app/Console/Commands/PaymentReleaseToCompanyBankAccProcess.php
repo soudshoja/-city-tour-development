@@ -89,7 +89,6 @@ class PaymentReleaseToCompanyBankAccProcess extends Command
                         'entity_type' => 'company',
                         'transaction_type' => 'payment',
                         'amount'=> $totalPaidAmount,
-                        'date'=> Carbon::now(),
                         'description'=> ''.$bankPaymentFee->name.' Settles to Bank (After 24h) (Assets) for Invoice:'. $invoiceDetail->invoice_number,
                         'invoice_id' => $payment->invoice_id, 
                         'reference_type' => 'Invoice',

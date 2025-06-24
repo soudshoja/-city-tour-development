@@ -398,7 +398,6 @@ class TaskController extends Controller
                 //     throw new Exception('Issued by field is required for flight tasks.');
                 // }
 
-                dd($companyIssuedBy);
                 if ($companyIssuedBy) {
                     Log::warning('Issued by field is empty for flight tasks.', [
                         'task_id' => $task->id,

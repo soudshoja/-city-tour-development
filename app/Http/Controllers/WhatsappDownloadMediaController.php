@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
-class DownloadMediaController extends Controller
+class WhatsappDownloadMediaController extends Controller
 {
     public function download(Request $request)
     {

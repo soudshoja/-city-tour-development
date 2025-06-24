@@ -11,6 +11,7 @@ use App\Http\Controllers\IncomingMediaController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WhatsAppHotelController;
+use App\Http\Controllers\PaymentController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -35,6 +36,8 @@ use App\Http\Controllers\WhatsAppHotelController;
         Route::put('/invoice/{id}', [MobileController::class, 'updateInvoice']);
         Route::delete('/invoice/delete/{id}', [MobileController::class, 'deleteInvoice']);
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
+
+        Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
 
 
         Route::get('/clients', [MobileController::class, 'client']);  

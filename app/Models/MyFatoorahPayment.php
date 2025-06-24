@@ -12,6 +12,7 @@ class MyFatoorahPayment extends Model
         'payment_int_id',
         'payment_id',
         'invoice_id',
+        'invoice_ref',
         'invoice_status',
         'customer_reference',
         'payload',

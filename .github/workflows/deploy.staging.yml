@@ -54,6 +54,12 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
+        timeout: 190000
+        log-level: verbose
+        exclude: |
+          .git*
+          node_modules
+          
 
     - name: Generate version.json
       run: |

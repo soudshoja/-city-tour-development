@@ -1928,55 +1928,48 @@ class PaymentController extends Controller
 
     public function shareLink($paymentId) {}
 
-    /* API */
     public function handleWebhookFatoorah(Request $request)
     {
-        $apikey = config('services.myfatoorah.api_key');
-        $baseUrl = config('services.myfatoorah.base_url');
+        $secretKey = env('MYFATOORAH_SECRET_KEY');
+        $incomingSignature = $request->header('MyFatoorah-Signature');
+        $rawBody = $request->getContent();
 
-        Log::info('MyFatoorah Webhook Received', $request->all());
+        $generatedSignature = $this->generateSignature($rawBody, $secretKey);
 
-        $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
-
-        if (!$paymentId) {
-            return response()->json(['error' => 'Invalid payment callback data.'], 400);
+        if (!hash_equals($generatedSignature, $incomingSignature)) {
+            Log::error('Invalid signature', [
+                'received_signature' => $incomingSignature,
+                'generated_signature' => $generatedSignature,
+            ]);
+            return response()->json(['error' => 'Unauthorized request'], 403);
         }
 
+        Log::info('MyFatoorah Webhook Received', ['body' => json_decode($rawBody, true)]);
+
+        $event = $request->input('Event');
+        $data = $request->input('Data');
+        $transaction = $data['Transaction'];
+        $customer = $data['Customer'];
+        $amount = $data['Amount'];
+
+        $paymentId = $transaction['PaymentId'];
         $payment = Payment::where('payment_reference', $paymentId)->first();
 
-        if (!$payment) {
-            return response()->json(['error' => 'Payment not found'], 404);
-        }
-
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer $apikey",
-            'Content-Type'  => 'application/json',
-        ])->post("$baseUrl/getPaymentStatus", [
-            "Key" => $paymentId,
-            "KeyType" => "PaymentId"
-        ]);
-
-        if ($response->successful()) {
-            $statusData = $response->json()['Data'];
-            $status = $statusData['InvoiceStatus'];
-
-            // Update payment status in the database
-            $payment->status = $status;
+        if ($payment) {
+            $payment->status = $transaction['Status'];
             $payment->save();
 
-            Log::info('MyFatoorah Webhook Processed', [
-                'payment_id' => $payment->id,
-                'status' => $status,
-            ]);
-
-            return response()->json(['message' => 'Webhook processed successfully'], 200);
-        } else {
-            Log::error('Failed to retrieve payment status from MyFatoorah', [
+            Log::info('Payment Status Updated', [
                 'payment_id' => $paymentId,
-                'response' => $response->body(),
+                'new_status' => $transaction['Status']
             ]);
-
-            return response()->json(['error' => 'Failed to retrieve payment status from MyFatoorah'], 500);
         }
+
+        return response()->json(['message' => 'Webhook processed successfully'], 200);
+    }
+
+    private function generateSignature($data, $secretKey)
+    {
+        return hash_hmac('sha256', $data, $secretKey);
     }
 }

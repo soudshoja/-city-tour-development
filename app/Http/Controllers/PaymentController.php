@@ -907,7 +907,7 @@ class PaymentController extends Controller
             } else {
                 $payment->invoice_ref = null;
             }
-    
+
             return $payment;
         })->values();
 
@@ -1073,7 +1073,7 @@ class PaymentController extends Controller
 
         //dd($response['data']);
         $voucherNumber = $response['data']['voucher_number'];
-        $paymentUrl = url('/payment/link/show/' . $voucherNumber); 
+        $paymentUrl = url('/payment/link/show/' . $voucherNumber);
         Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
@@ -1616,7 +1616,7 @@ class PaymentController extends Controller
             $payment->status = 'completed';
             $payment->save();
 
-            if($statusData['Data']['UserDefinedField']){
+            if ($statusData['Data']['UserDefinedField']) {
                 $userDefinedField = json_decode($statusData['Data']['UserDefinedField'], true);
             } else {
                 $userDefinedField = [];
@@ -1861,7 +1861,7 @@ class PaymentController extends Controller
                 return redirect()->route('invoice.show', $payment->invoice->invoice_number)->with('success', 'Payment completed successfully!');
             } else {
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
-            
+
                 MyFatoorahPayment::updateOrCreate(
                     [
                         'payment_int_id'   => $payment->id,
@@ -1875,7 +1875,7 @@ class PaymentController extends Controller
                         'payload'          => $statusData,
                     ]
                 );
-                
+
                 //return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');   
                 return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
             }
@@ -1927,4 +1927,56 @@ class PaymentController extends Controller
     }
 
     public function shareLink($paymentId) {}
+
+    /* API */
+    public function handleWebhookFatoorah(Request $request)
+    {
+        $apikey = config('services.myfatoorah.api_key');
+        $baseUrl = config('services.myfatoorah.base_url');
+
+        Log::info('MyFatoorah Webhook Received', $request->all());
+
+        $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
+
+        if (!$paymentId) {
+            return response()->json(['error' => 'Invalid payment callback data.'], 400);
+        }
+
+        $payment = Payment::where('payment_reference', $paymentId)->first();
+
+        if (!$payment) {
+            return response()->json(['error' => 'Payment not found'], 404);
+        }
+
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer $apikey",
+            'Content-Type'  => 'application/json',
+        ])->post("$baseUrl/getPaymentStatus", [
+            "Key" => $paymentId,
+            "KeyType" => "PaymentId"
+        ]);
+
+        if ($response->successful()) {
+            $statusData = $response->json()['Data'];
+            $status = $statusData['InvoiceStatus'];
+
+            // Update payment status in the database
+            $payment->status = $status;
+            $payment->save();
+
+            Log::info('MyFatoorah Webhook Processed', [
+                'payment_id' => $payment->id,
+                'status' => $status,
+            ]);
+
+            return response()->json(['message' => 'Webhook processed successfully'], 200);
+        } else {
+            Log::error('Failed to retrieve payment status from MyFatoorah', [
+                'payment_id' => $paymentId,
+                'response' => $response->body(),
+            ]);
+
+            return response()->json(['error' => 'Failed to retrieve payment status from MyFatoorah'], 500);
+        }
+    }
 }

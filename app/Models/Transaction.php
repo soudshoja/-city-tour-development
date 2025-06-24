@@ -17,8 +17,8 @@ class Transaction extends Model
         'branch_id',
         'transaction_type',
         'amount',
-        'date',
         'description',
+        'payment_id',
         'invoice_id',
         'reference_type',
         'reference_number',
@@ -49,6 +49,11 @@ class Transaction extends Model
     public function invoice()
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class, 'payment_id');
     }
 
     public function account()

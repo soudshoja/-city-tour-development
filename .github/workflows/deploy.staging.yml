@@ -34,8 +34,10 @@ jobs:
     #   run: composer install --no-dev --optimize-autoloader --prefer-dist
 
     - name: Create deployment artifact
-      run: tar -czf deployment.tar.gz --exclude=node_modules --exclude='.git' --exclude='tests' .
-    
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: tar -czf "${GITHUB_SHA}".tar.gz --exclude=*.git --exclude=node_modules *
+
     # - name: Deploy to cPanel via FTP
     #   uses: SamKirkland/FTP-Deploy-Action@v4.3.4
     #   with:

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class WhatsAppWebhookController extends Controller
+class WhatsappWebhookController extends Controller
 {
     // You can customize this as needed
     private $VERIFY_TOKEN = 'd41d8cd98f00b204e9800998ecf8427e';

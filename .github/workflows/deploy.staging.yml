@@ -23,18 +23,36 @@ jobs:
       
     - name: Build assets
       run: npm run build
-
-    - name: Deploy to cPanel via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    
+    - name: Configure PHP 8.3
+      uses: shivammathur/setup-php@v2
       with:
-        local-dir: ./  # Path to your build output
-        server: ${{ secrets.FTP_STAGING_SERVER }}
-        username: ${{ secrets.FTP_STAGING_USERNAME }}
-        password: ${{ secrets.FTP_STAGING_PASSWORD }}
-        port: ${{ secrets.FTP_PORT }}
-        protocol: 'ftp'  # or 'sftp' if you're using SFTP
-        timeout: 190000
-        dry-run: false
+        php-version: '8.3'
+        extensions: mbstring, xml, curl, json, zip, gd, fileinfo, bcmath, intl, openssl, xml
+    
+    # - name: Install Composer dependencies
+    #   run: composer install --no-dev --optimize-autoloader --prefer-dist
+
+    - name: Create deployment artifact
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: tar -czf "${GITHUB_SHA}".tar.gz --exclude=*.git --exclude=node_modules *
+    
+    - name: Store artifact for distribution
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-artifact
+        path: "${GITHUB_SHA}.tar.gz"
+
+    # - name: Deploy to cPanel via FTP
+    #   uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    #   with:
+    #     local-dir: ./  # Path to your build output
+    #     server: ${{ secrets.FTP_STAGING_SERVER }}
+    #     username: ${{ secrets.FTP_STAGING_USERNAME }}
+    #     password: ${{ secrets.FTP_STAGING_PASSWORD }}
+    #     port: ${{ secrets.FTP_PORT }}
+    #     protocol: 'ftp'  # or 'sftp' if you're using SFTP
 
     - name: Generate version.json
       run: |

@@ -37,7 +37,7 @@
                                     <a href="{{ route('journal-entries.index', $transaction->id) }}" target="_blank" class="text-blue-600 dark:text-blue-400 text-sm hover:underline">
                                         Transaction ID: {{ $transaction->id }}
                                     </a>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $transaction->date }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $transaction->created_at }}</span>
                                 </div>
                                 @endforeach
                             </div>

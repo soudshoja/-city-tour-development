@@ -69,7 +69,7 @@
                                     </a>
                                 </div>
                             </td>
-                            <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ $journalEntry->transaction->date }}</td>
+                            <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ $journalEntry->transaction->created_at }}</td>
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ $journalEntry->description }}</td>
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ number_format($journalEntry->debit, 2) }}</td>
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ number_format($journalEntry->credit, 2) }}</td>

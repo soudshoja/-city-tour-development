@@ -47,10 +47,10 @@ jobs:
     - name: Deploy to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        local-dir: ./  # Path to your build output
-        server: ${{ secrets.FTP_STAGING_SERVER }}
-        username: ${{ secrets.FTP_STAGING_USERNAME }}
-        password: ${{ secrets.FTP_STAGING_PASSWORD }}
+        local-dir: ./staging.citycommerce.group
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
 

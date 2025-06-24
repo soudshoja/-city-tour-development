@@ -132,6 +132,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M12 6h.01M12 12h.01M12 18h.01" />
                                     </svg>
                                 </button>
+                                @unless($transaction->journalEntries->isEmpty())
                                 <div x-show="showMenu === {{ $transaction->id }}" x-transition
                                     class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-10">
                                     <a href="{{ route('journal-entries.index', $transaction->id) }}"
@@ -139,6 +140,7 @@
                                         View Ledger
                                     </a>
                                 </div>
+                                @endunless
                             </div>
                         </li>
                         @endforeach

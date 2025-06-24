@@ -650,14 +650,18 @@
 
                         <!-- Payment Gateway Section -->
                         <section id="payment_gateway_section" class="mb-6">
-                            <div class="mt-4">
+                            <div class="mt-4" x-data="{ selectedGateway: '{{ optional($invoice->invoicePartials->first())->payment_gateway }}' }">
+                            <div class="flex items-center">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                <span x-show="selectedGateway && selectedGateway !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
+                                    @click="updateGateway">(Change)</span>
+                            </div>
                                 @php
                                 $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway;
                                 @endphp
 
                                 <select id="payment_gateway_option" name="payment_gateway_option"
-                                    class="border border-gray-300 p-2 rounded w-full">
+                                    class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
                                     @foreach ($paymentGateways as $gateway)
                                     <option value="{{ $gateway }}"
                                         {{ $selectedGateway === $gateway ? 'selected' : '' }}>
@@ -684,6 +688,7 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                             <div class="mt-4">
                                 <button id="update-invoice-btn" type="button"
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
@@ -2295,6 +2300,55 @@
             document.getElementById('agentPhone').value = agent.phone;
         }
 
+        async function updateGateway() {
+            const gateway = document.getElementById('payment_gateway_option').value;
+            const amount = document.getElementById('subTotal').value;
+            const invoiceId = document.getElementById('invoiceId').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const responseBox = document.getElementById('payment-response-message');
+
+            const data = {
+                invoiceId,
+                gateway,
+                amount,
+                invoiceNumber
+            };
+
+            if (gateway !== 'Tap') {
+                const method = document.getElementById('payment_method').value;
+                data.method = method;
+            }
+
+            const csrfToken = "{{ csrf_token() }}";
+            const invoiceUrl = "{{ route('invoice.update-gateway') }}";
+
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+
+                responseBox.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+                responseBox.classList.add('bg-green-100', 'text-green-700');
+                responseBox.textContent = result.message || 'Success';
+
+            } catch (error) {
+                responseBox.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                responseBox.classList.add('bg-red-100', 'text-red-700');
+                responseBox.textContent = error.message || 'Something went wrong';
+            }
+
+            setTimeout(() => {
+                responseBox.classList.add('hidden');
+                responseBox.textContent = '';
+            }, 3000);
+        }
 
         function savePartial(mode) {
             if (mode === 'full') {

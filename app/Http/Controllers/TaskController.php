@@ -529,7 +529,7 @@ class TaskController extends Controller
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $issuedByAccount->isNotEmpty() ? $issuedByAccount->id : $mai->id, //flight task will use issued by account while hotel task will use supplier account
+                    'account_id' => $issuedByAccount->isNotEmpty() ? $issuedByAccount->id : $supplierPayable->id, //flight task will use issued by account while hotel task will use supplier account
                     'task_id' => $task->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,

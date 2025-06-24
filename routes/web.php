@@ -369,6 +369,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
         // Route::patch('/invoice/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('updateStatus');
         Route::get('/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
+        Route::post('/update-gateway', [InvoiceController::class, 'updatePaymentGateway'])->name('update-gateway');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');

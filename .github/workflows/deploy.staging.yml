@@ -23,27 +23,6 @@ jobs:
       
     - name: Build assets
       run: npm run build
-    
-    - name: Configure PHP 8.3
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.3'
-        extensions: mbstring, xml, curl, json, zip, gd, fileinfo, bcmath, intl, openssl, xml
-    
-    # - name: Install Composer dependencies
-    #   run: composer install --no-dev --optimize-autoloader --prefer-dist
-
-    # - name: Create deployment artifact
-    #   env:
-    #     GITHUB_SHA: ${{ github.sha }}
-    #   run: tar -czf "${GITHUB_SHA}".tar.gz --exclude=*.git --exclude=node_modules *
-    
-    # - name: Store artifact for distribution
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: app-build
-    #     path: ${{ github.sha}}.tar.gz
-
     - name: Deploy to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:

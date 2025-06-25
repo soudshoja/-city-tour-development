@@ -23,10 +23,10 @@ deployment:
     - /usr/local/bin/php artisan migrate --force
 
     # # Clear caches and optimize (optional but recommended)
-    # - /usr/local/bin/php artisan cache:clear
-    # - /usr/local/bin/php artisan config:cache
-    # - /usr/local/bin/php artisan route:cache
-    # - /usr/local/bin/php artisan view:cache
+    - /usr/local/bin/php artisan cache:clear
+    - /usr/local/bin/php artisan config:cache
+    - /usr/local/bin/php artisan route:cache
+    - /usr/local/bin/php artisan view:cache
 
     # Take the application out of maintenance mode
     - /usr/local/bin/php artisan up

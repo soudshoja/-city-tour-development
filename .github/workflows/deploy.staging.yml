@@ -34,7 +34,7 @@ jobs:
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
         timeout: 190000
-        log-level: verbose
+        log-level: standard
         exclude: |
           .git*
           node_modules

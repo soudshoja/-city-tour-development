@@ -69,8 +69,6 @@ class SupplierCompanyController extends Controller
                     'message' => 'Supplier is already activated for this company.'
                 ];
 
-            } else {
-                dd("Supplier is not activated for this company.");
             }
 
             // Check if credentials exist

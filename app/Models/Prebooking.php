@@ -14,6 +14,7 @@ class Prebooking extends Model
         'package_token',
         'hotel_id',
         'offer_index',
+        'result_token',
         'room_token',
         'room_name',
         'non_refundable',

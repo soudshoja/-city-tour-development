@@ -1989,10 +1989,21 @@ class PaymentController extends Controller
     public function handleWebhookFatoorah(Request $request)
     {
         $secretKey = env('MYFATOORAH_SECRET_KEY');
-        $incomingSignature = $request->header('MyFatoorah-Signature');
-        $rawBody = $request->getContent();
 
-        $generatedSignature = $this->generateSignature($rawBody, $secretKey);
+        $incomingSignature = $request->header('MyFatoorah-Signature');
+        Log::info('Received Signature From MyFatoorah: ' . $incomingSignature);
+
+        $rawBody = $request->getContent();
+        Log::info('Raw Body: ' . $rawBody);
+        if ($rawBody) {
+            $data = json_decode($rawBody, true);
+        } else {
+            Log::error('Webhook body is empty');
+            return response()->json(['error' => 'Empty body received'], 400);
+        }
+
+        $generatedSignature = hash_hmac('sha256', $rawBody, $secretKey);
+        Log::info('Our Generated Signature: ' . $generatedSignature);
 
         if (!hash_equals($generatedSignature, $incomingSignature)) {
             Log::error('Invalid signature', [
@@ -2004,25 +2015,28 @@ class PaymentController extends Controller
 
         Log::info('MyFatoorah Webhook Received', ['body' => json_decode($rawBody, true)]);
 
-        $event = $request->input('Event');
         $data = $request->input('Data');
-        $transaction = $data['Transaction'];
-        $customer = $data['Customer'];
-        $amount = $data['Amount'];
+        $invoice = $data['Invoice'];
 
-        $paymentId = $transaction['PaymentId'];
-        $payment = Payment::where('payment_reference', $paymentId)->first();
+        $invoiceId = $invoice['Id'];
+        $invoiceStatus = $invoice['Status'];  
+
+        Log::info('Looking for Payment with Invoice ID: ' . $invoiceId);
+
+        $payment = Payment::where('payment_reference', $invoiceId)->first();
+        Log::info('Looking in Payments table for payment_reference: ' . $invoiceId);
 
         if ($payment) {
-            $payment->status = $transaction['Status'];
+            $payment->status = $invoiceStatus;
             $payment->save();
 
             Log::info('Payment Status Updated', [
-                'payment_id' => $paymentId,
-                'new_status' => $transaction['Status']
+                'payment_reference' => $invoiceId,
+                'new_status' => $invoiceStatus
             ]);
+        } else {
+            Log::warning('No matching payment found for Invoice ID: ' . $invoiceId);
         }
-
         return response()->json(['message' => 'Webhook processed successfully'], 200);
     }
 
@@ -2030,4 +2044,6 @@ class PaymentController extends Controller
     {
         return hash_hmac('sha256', $data, $secretKey);
     }
+
+
 }

@@ -201,7 +201,14 @@ class ClientController extends Controller
 
         foreach ($tasks as $task) {
             if (is_string($task->cancellation_policy) && $this->isValidJson($task->cancellation_policy)) {
-                $task->cancellation_policy = json_decode($task->cancellation_policy)->policies;
+                $stringCancelPolicy = json_decode($task->cancellation_policy, true);
+                $arrayCancelPolicy = json_decode($stringCancelPolicy, true);
+
+                if (is_array($arrayCancelPolicy)) {
+                    $task->cancellation_policy = $arrayCancelPolicy;
+                } else {
+                    $task->cancellation_policy = [];
+                }
             }
         }
 
@@ -628,7 +635,6 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
-                'date' => Carbon::now(),
                 'description' => 'Client Credit of ' . $client->name,
                 'invoice_id' => null,
                 'reference_type' => 'Payment',
@@ -874,7 +880,6 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'credit',
                 'amount' => $request->amount,
-                'date' => Carbon::now(),
                 'description' => 'Client Refund of ' . $client->name . ' of ' . $request->amount,
                 'invoice_id' => null,
                 'reference_type' => 'Refund',

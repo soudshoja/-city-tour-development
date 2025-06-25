@@ -32,15 +32,6 @@
                     </svg>
                 </div>
 
-                <!-- <div 
-                    x-show="addSupplierModal"
-                    class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-                    <div 
-                        @click.away="addSupplierModal = false" 
-                        class="bg-white w-1/2 h-1/2 rounded-md shadow-md">
-                        Add Supplier
-                    </div>
-                </div> -->
 
             </div>
         </div>
@@ -52,10 +43,14 @@
                 <circle cx="12" cy="16" r="1" fill="#ff0000" />
                 <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" />
             </svg>
+            @if(auth()->user()->role->name === 'admin')
             <span class="">Activate supplier to allow the system users to request API from the supplier</span>
+            @else
+            <span class="">Only system admin can activate suppliers, please contact your admin to activate the supplier</span>
+            @endif
         </div>
+        @if(auth()->user()->role->name === 'admin')
         <x-primary-button @click="addSupplierModal = true">Add Supplier</x-primary-button>
-        @if(auth()->user()->company !== null)
         <div
             x-cloak
             x-show="addSupplierModal"
@@ -64,31 +59,42 @@
                 @click.away="addSupplierModal = false"
                 class="bg-white w-1/2 max-h-1/4 rounded-md shadow-md p-5">
                 <h1 class="font-semibold">
-                    Register Supplier
+                    Add Supplier To The System
                 </h1>
-                <form action="{{ route('supplier-company.activate') }}" method="POST" class="flex flex-col gap-2 mb-2">
+                <form action="{{ route('suppliers.store') }}" method="POST" class="flex flex-col gap-2 mb-2">
                     @csrf
-                    <input type="hidden" name="company_id" id="company_id" value="{{ auth()->user()->company->id }}">
-                    <input type="hidden" name="type" id="supplier_company_type" value="">
-                    <select name="supplier_id" id="supplier" class="border border-gray-300 rounded-md p-2 w-full">
-                        <option value="">Select Supplier</option>
-                        @foreach($suppliers as $supplier)
-                        <option value="{{ $supplier->id }}" data-supplier="{{ $supplier }}">{{ $supplier->name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="basic-input w-full hidden">
-                        <label for="username">Username</label>
-                        <input type="text" name="username" id="username" class="border border-gray-300 rounded-md p-2 w-full">
-                        <label for="password">Password</label>
-                        <input type="password" name="password" id="password" class="border border-gray-300 rounded-md p-2 w-full">
+                    <div class="mb-3">
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Supplier Name</label>
+                        <input type="text" name="name" id="name" placeholder="Supplier Name"
+                            class="border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
                     </div>
-                    <div class="oauth-input w-full hidden">
-                        <label for="client_id">Client ID</label>
-                        <input type="text" name="client_id" id="client_id" class="border border-gray-300 rounded-md p-2 w-full">
-                        <label for="client_secret">Client Secret</label>
-                        <input type="password" name="client_secret" id="client_secret" class="border border-gray-300 rounded-md p-2 w-full">
+                    <div class="mb-3">
+                        <label for="auth_type" class="block text-sm font-medium text-gray-700 mb-1">Authentication Type</label>
+                        <select name="auth_type" id="auth_type"
+                            class="border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                            @foreach ($supplierAuthTypes as $type)
+                            <option value="{{ $type }}">{{ strtolower($type->name) }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <button type="submit" class="py-2 px-6 bg-blue-500 text-white w-fit rounded shadow">Submit</button>
+                    <div class="flex items-center mb-2">
+                        <input type="checkbox" name="has_hotel" id="has_hotel"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_hotel" class="ml-2 text-sm text-gray-700">Has Hotel</label>
+                    </div>
+                    <div class="flex items-center mb-2">
+                        <input type="checkbox" name="has_flight" id="has_flight"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
+                    </div>
+                    <div>
+                        <x-searchable-dropdown
+                            name="country_id"
+                            :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                            placeholder="Select Country"
+                            />
+                    </div>
+                    <x-primary-button type="submit" class="py-2 px-6 bg-blue-500 text-white w-fit rounded shadow">Submit</x-primary-button>
                 </form>
 
             </div>
@@ -99,26 +105,26 @@
 
     @role('admin')
     <div class="max-h-160 overflow-y-auto custom-scrollbar bg-white dark:bg-dark rounded-md p-2">
-        <table>
+        <table class="w-full border-collapse">
             <thead>
                 <tr>
-                    <th class="px-4 py-2">Supplier Name</th>
-                    <th class="px-4 py-2">Company</th>
-                    <th class="px-4 py-2">Actions</th>
+                    <th class="px-4 py-2 border-b border-r">Supplier Name</th>
+                    <th class="px-4 py-2 border-b border-r">Company</th>
+                    <th class="px-4 py-2 border-b">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @if($suppliers->isEmpty())
                 <tr>
-                    <td colspan="2" class="text-center">No suppliers found</td>
+                    <td colspan="3" class="text-center">No suppliers found</td>
                 </tr>
                 @else
                 @foreach($suppliers as $supplier)
                 <tr class="hover:bg-gray-200 dark:hover:bg-gray-600">
-                    <td>
+                    <td class="border-r px-4 py-2">
                         {{ $supplier->name }}
                     </td>
-                    <td>
+                    <td class="border-r px-4 py-2 overflow-x-auto">
                         <div class="flex gap-2">
                             @if($supplier->companies->isEmpty())
                             <p class="text-center font-semibold">
@@ -126,12 +132,14 @@
                             </p>
                             @else
                             @foreach($supplier->companies as $company)
-                            <div class="p-2 bg-gray-100"></div>
+                            <div class="p-2 bg-gray-100 rounded">
+                                {{ $company->name }}
+                            </div>
                             @endforeach
                             @endif
                         </div>
                     </td>
-                    <td>
+                    <td class="px-4 py-2">
                         <a href="{{ route('supplier-company.edit', $supplier->id) }}" class="group">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black group-hover:stroke-blue-500">
                                 <path d="M22 22L2 22" stroke="" stroke-width="1.5" stroke-linecap="round" />
@@ -174,11 +182,11 @@
                     <td colspan="2" class="text-center">No suppliers found</td>
                 </tr>
                 @else
-                @foreach ($supplierCompany as $supplier)
+                @foreach ($suppliers as $supplier)
                 <tr class=" hover:bg-gray-200 dark:hover:bg-gray-600">
                     <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
                         <a href="{{ route('suppliers.show', $supplier->id) }}">
-                            <span class="font-bold">» {{ $supplier->supplier->name }}</span><br>
+                            <span class="font-bold">» {{ $supplier->name }}</span><br>
                         </a>
                     </td>
                     <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2 flex">
@@ -186,9 +194,9 @@
                             <x-primary-button @click="credentialModal = true">
                                 Credentials
                             </x-primary-button>
-                            @include('suppliers.partials.supplier_credential', ['supplier' => $supplier->supplier])
+                            @include('suppliers.partials.supplier_credential', ['supplier' => $supplier])
                         </div>
-                        <x-primary-a-button href="{{ route('tasks.supplier', $supplier->supplier->id) }}">
+                        <x-primary-a-button href="{{ route('tasks.supplier', $supplier->id) }}">
                             Get All Task
                         </x-primary-a-button>
                         @if($supplier->named_route)
@@ -245,7 +253,7 @@
 
         supplierSelect.addEventListener('change', (e) => {
             const supplier = JSON.parse(e.target.selectedOptions[0].getAttribute('data-supplier'));
-            const authMethod = supplier.auth_method
+            const authMethod = supplier.auth_type
             let type = document.getElementById('supplier_company_type');
 
             console.log(type);

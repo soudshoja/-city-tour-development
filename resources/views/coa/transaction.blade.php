@@ -123,9 +123,18 @@
                                     <p class="text-gray-600 text-sm">Transaction ID: {{ $transaction->id }}</p>
                                     <p class="text-gray-600 text-sm">Type: {{ ucwords($transaction->transaction_type ?? 'N/A') }}</p>
                                     <p class="text-gray-600 text-sm">Date: {{ $transaction->created_at }}</p>
+                                    @if ($transaction->payment)
+                                    <p class="text-gray-600 text-sm">
+                                        Payment Reference: 
+                                        <a href="{{ route('payment.link.index') }}" class="text-blue-500 hover:underline">
+                                            {{ $transaction->payment_reference }}
+                                        </a>
+                                    </p>
+                                    @endif
                                 </div>
                             </div>
                             <div x-data="{ showMenu: null }" class="relative" @click.outside="showMenu = null">
+                                @unless($transaction->journalEntries->isEmpty())
                                 <button @click="showMenu = (showMenu === {{ $transaction->id }} ? null : {{ $transaction->id }})"
                                     class="text-black hover:text-gray-700 pl-4">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -139,6 +148,7 @@
                                         View Ledger
                                     </a>
                                 </div>
+                                @endunless
                             </div>
                         </li>
                         @endforeach

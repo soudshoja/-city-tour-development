@@ -31,16 +31,17 @@ class getMagicHolidayReservationList extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->companies = Company::whereHas('suppliers', function ($query) {
-            $query->where('name', 'Magic Holiday');
-        })->with(['suppliers' => function ($query) {
-            $query->where('name', 'Magic Holiday');
-        }, 'suppliers.credentials'])->get();
     }
 
     public function handle()
     {
-        foreach ($this->companies as $company) {
+        $companies = Company::whereHas('suppliers', function ($query) {
+            $query->where('name', 'Magic Holiday');
+        })->with(['suppliers' => function ($query) {
+            $query->where('name', 'Magic Holiday');
+        }, 'suppliers.credentials'])->get();
+
+        foreach ($companies as $company) {
 
             $companyId = $company->id;
 

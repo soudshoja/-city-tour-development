@@ -50,8 +50,14 @@
                                     <td> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}
                                     </td>
                                     @if (is_array($task->cancellation_policy) && !empty($task->cancellation_policy))
-                                    <td>
-                                        {{ $task->cancellation_policy[0]->type }}
+                                    <td class="grid">
+                                        @foreach ($task->cancellation_policy as  $policy)
+                                        <div class="p-1 m-1 border rounded">
+                                            @foreach ($policy as $key => $value)
+                                            <p>{{ $key }}: {{ $value }}</p>
+                                            @endforeach
+                                        </div>
+                                        @endforeach
                                     </td>
                                     @else
                                     <td>

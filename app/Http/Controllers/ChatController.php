@@ -690,7 +690,6 @@ class ChatController extends Controller
                             'entity_type' => 'company',
                             'transaction_type' => 'credit',
                             'amount' =>  $task['invprice'],
-                            'date' => Carbon::now(),
                             'description' => 'Invoice:' . $invoiceNumber . ' Generated',
                             'invoice_id' => $invoice->id,
                             'reference_type' => 'Invoice',

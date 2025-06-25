@@ -26,6 +26,7 @@
                         <th class="px-4 py-2 text-left">Amount</th>
                         <th class="px-4 py-2 text-left">Created At</th>
                         <th class="px-4 py-2 text-left">Created By</th>
+                        <th class="px-4 py-2 text-left">Reference</th>
                         <th class="px-4 py-2 text-left">Status</th>
                         <th class="px-4 py-2 text-left">Link</th>
                         <th class="px-4 py-2 text-left">Actions</th>
@@ -54,6 +55,9 @@
                             @endif
                             <td class="px-4 py-2">
                                 {{ $payment->createdBy ? $payment->createdBy->name : 'N/A' }}
+                            </td>
+                            <td class="px-4 py-2">
+                                {{ $payment->payment_reference ? ($payment->invoice_ref ? $payment->payment_reference . '/' . $payment->invoice_ref : $payment->payment_reference) : 'N/A' }}
                             </td>
                             <td class="px-4 py-2">
                                 @php

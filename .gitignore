@@ -1,6 +1,5 @@
 /.phpunit.cache
 /node_modules
-/public/build
 /public/hot
 /public/uploads
 /public/storage
@@ -11,6 +10,7 @@
 /vendor
 .env
 .env.testing
+.env.staging
 .env.backup
 .env.production
 .phpactor.json

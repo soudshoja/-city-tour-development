@@ -27,7 +27,7 @@ jobs:
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         local-dir: ./
-        server-dir: /home/citycomm/staging.citycommerce.group/
+        server-dir: /home/citycomm/amir2.citycommerce.group/
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}

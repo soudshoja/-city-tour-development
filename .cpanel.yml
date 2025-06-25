@@ -20,7 +20,7 @@ deployment:
     - /usr/local/bin/php /opt/cpanel/composer/bin/composer install --no-dev --prefer-dist
 
     # # Run database migrations
-    # - /usr/local/bin/php artisan migrate --force
+    - /usr/local/bin/php artisan migrate --force
 
     # # Clear caches and optimize (optional but recommended)
     # - /usr/local/bin/php artisan cache:clear

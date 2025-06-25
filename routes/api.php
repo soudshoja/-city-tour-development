@@ -39,7 +39,6 @@ use App\Http\Controllers\PaymentController;
 
         Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
 
-
         Route::get('/clients', [MobileController::class, 'client']);  
         Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);
 
@@ -79,7 +78,7 @@ use App\Http\Controllers\PaymentController;
         Route::get('pin', function(){
             return view('auth.pin');
         })->name('pin');
-
+        
         Route::post('/webhook/resayil/media', [IncomingMediaController::class, 'handleResayilWebhook'])
         ->name('webhook.resayil.media');
         Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);

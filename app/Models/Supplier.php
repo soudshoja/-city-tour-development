@@ -12,8 +12,9 @@ class Supplier extends Model
 
     protected $fillable = [
         'name', 
-        'account_id',
         'auth_method',
+        'has_hotel',
+        'has_flight',
         'contact_person',
         'email',
         'phone',
@@ -39,7 +40,8 @@ class Supplier extends Model
     public function companies()
     {
         return $this->belongsToMany(Company::class, 'supplier_companies')
-            ->using(SupplierCompany::class);
+            ->using(SupplierCompany::class)
+            ->withPivot('is_active');
     }
 
     public function credentials()

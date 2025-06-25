@@ -68,8 +68,16 @@ class TaskController extends Controller
             $tasks = $tasks->where('company_id', $user->company->id)->get();
             $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
+                $query->where('company_id', $user->company->id)->where('is_active', true);
             })->get();
+
+            // Add is_active property for each supplier based on pivot 'active' field
+            $suppliers->transform(function ($supplier) use ($user) {
+                $company = $supplier->companies()->where('company_id', $user->company->id)->first();
+                $supplier->is_active = $company && isset($company->pivot->is_active) ? (bool)$company->pivot->is_active : false;
+                return $supplier;
+            });
+        
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');

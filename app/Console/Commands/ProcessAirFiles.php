@@ -8,6 +8,7 @@ use App\Models\Agent;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Supplier;
+use App\Models\SupplierCompany;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
 use Exception;
@@ -29,7 +30,7 @@ class ProcessAirFiles extends Command
     // protected $airFilesPath;
     // protected $processedFilesPath;
     protected $aiManager;
-    protected $suppliers;
+    // protected $suppliers;
     protected $companies;
 
     public function __construct(AIManager $aiManager)
@@ -39,7 +40,7 @@ class ProcessAirFiles extends Command
         // $this->airFilesPath = storage_path('app/air_files_unprocessed');
         // $this->processedFilesPath = storage_path('app/air_files_processed');
         $this->aiManager = $aiManager;
-        $this->suppliers = Supplier::all();
+        // $this->suppliers = Supplier::all();
         $this->companies = Company::all();
     }
 
@@ -50,9 +51,24 @@ class ProcessAirFiles extends Command
 
         foreach ($this->companies as $company) {
             $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
+            $suppliers = $company->suppliers()
+                ->wherePivot('is_active', true)
+                ->get();
 
-            foreach ($this->suppliers as $supplier) {
+            if ($suppliers->isEmpty()) {
+                $this->info("No active suppliers found for company: {$companyName}");
+                Log::info("AIR File Processing: No active suppliers found for company {$companyName}.");
+                continue; // Skip to the next company
+            }
+
+            foreach ($suppliers as $supplier) {
                 $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
+                
+                if(!$supplierName) {
+                    $this->error("Supplier name is empty for company: {$companyName}");
+                    Log::error("AIR File Processing: Supplier name is empty for company {$companyName}.");
+                    continue; // Skip to the next supplier
+                }
 
                 $filePath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
 

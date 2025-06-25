@@ -151,7 +151,6 @@ class PaymentController extends Controller
     public function initiatePayment($data)
     {
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-        //dd($data);
         if (!$voucherSequence) {
             $voucherSequence = Sequence::create([
                 'sequence_for' => 'VOUCHER',
@@ -373,6 +372,7 @@ class PaymentController extends Controller
                 'description' => 'Payment failed: ' . $invoiceNumber,
                 'invoice_id' => $invoice->id,
                 'payment_id' => $paymentId,
+                'payment_reference' => $response['id'],
                 'reference_type' => 'Invoice'
             ]);
 
@@ -426,7 +426,7 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-        $chargeRecord = Charge::where('id', (int)$paymentGateway)
+        $chargeRecord = Charge::where('name', $paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
             ->first();
@@ -504,8 +504,10 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $totalPaidAmount,
-                    'description' => 'Pay to Invoice:' . $invoiceNumber,
+                    'description' => 'Invoice ' . $invoiceNumber . ' paid successfully',
                     'invoice_id' => $invoice->id,
+                    'payment_id' => $paymentId,
+                    'payment_reference' => $response['id'],
                     'reference_type' => 'Invoice',
                 ]);
 
@@ -1424,6 +1426,7 @@ class PaymentController extends Controller
                 'description' => 'Topup failed by ' . $payment->client->name,
                 'payment_id' => $payment->id,
                 'invoice_id' => $payment->invoice_id,
+                'payment_reference' => $response['id'],
                 'reference_type' => 'Payment',
             ]);
             return redirect()->back()->with('error', 'Payment error');
@@ -1487,6 +1490,7 @@ class PaymentController extends Controller
                     'description' => 'Topup success by ' . $payment->client->name,
                     'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
+                    'payment_reference' => $response['id'],
                     'reference_type' => 'Payment',
                 ]);
 
@@ -1693,6 +1697,7 @@ class PaymentController extends Controller
                         'description' => 'Topup success by ' . $payment->client->name,
                         'payment_id' => $payment->id,
                         'invoice_id' => $payment->invoice_id,
+                        'payment_reference' => $statusData['Data']['InvoiceReference'],
                         'reference_type' => 'Payment',
                     ]);
 
@@ -1777,8 +1782,10 @@ class PaymentController extends Controller
                             'entity_type' => 'company',
                             'transaction_type' => 'debit',
                             'amount' => $statusData['Data']['InvoiceValue'],
-                            'description' => 'MyFatoorah payment success for Invoice ' . $payment->invoice->invoice_number,
+                            'description' => 'MyFatoorah payment success: ' . $payment->invoice->invoice_number,
                             'invoice_id' => $payment->invoice->id,
+                            'payment_id' => $payment->id,
+                            'payment_reference' => $statusData['Data']['InvoiceReference'],
                             'reference_type' => 'Invoice',
                         ]);
                     } catch (\Exception $e) {
@@ -1941,9 +1948,10 @@ class PaymentController extends Controller
             'entity_type' => 'company',
             'transaction_type' => 'credit',
             'amount' => $invoice->amount,
-            'description' => 'MyFatoorah payment failed for Invoice ' . $invoice->invoice_number,
+            'description' => 'MyFatoorah payment failed: ' . $invoice->invoice_number,
             'invoice_id' => $invoice->id,
-            'payment_id' => $paymentId,
+            'payment_id' => $invoice->payment->id,
+            'payment_reference' => $invoice->payment->payment_reference,
             'reference_type' => 'Invoice'
             ]);
             
@@ -1962,6 +1970,7 @@ class PaymentController extends Controller
                 'description' => 'Topup failed by ' . $payment->client->name,
                 'payment_id' => $payment->id,
                 'invoice_id' => $payment->invoice_id,
+                'payment_reference' => $payment->payment_reference,
                 'reference_type' => 'Payment',
             ]);
         }

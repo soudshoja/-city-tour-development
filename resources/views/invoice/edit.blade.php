@@ -650,10 +650,10 @@
 
                         <!-- Payment Gateway Section -->
                         <section id="payment_gateway_section" class="mb-6">
-                            <div class="mt-4" x-data="{ selectedGateway: '{{ optional($invoice->invoicePartials->first())->payment_gateway }}' }">
+                            <div class="mt-4" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }">
                             <div class="flex items-center">
                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                <span x-show="selectedGateway && selectedGateway !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
+                                <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
                                     @click="updateGateway">(Change)</span>
                             </div>
                                 @php

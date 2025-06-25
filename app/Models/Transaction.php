@@ -20,6 +20,7 @@ class Transaction extends Model
         'description',
         'payment_id',
         'invoice_id',
+        'payment_reference',
         'reference_type',
         'reference_number',
         'name',

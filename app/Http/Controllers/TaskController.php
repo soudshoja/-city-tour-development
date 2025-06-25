@@ -125,7 +125,6 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
-
         if ($user->hasAnyRole('admin', 'company')) {
 
             $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
@@ -530,12 +529,12 @@ class TaskController extends Controller
                     'balance' => $task->total,
                     'type' => 'payable',
                 ]);
-
+              
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $issuedByAccount->isNotEmpty() ? $issuedByAccount->id : $supplierPayable->id, //flight task will use issued by account while hotel task will use supplier account
+                    'account_id' => $issuedByAccount !== null ? $issuedByAccount->id : $supplierPayable->id, //flight task will use issued by account while hotel task will use supplier account
                     'task_id' => $task->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,

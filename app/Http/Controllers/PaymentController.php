@@ -961,7 +961,7 @@ class PaymentController extends Controller
         } else {
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
-
+        
         $clients = Client::whereIn('agent_id', $agentsId)->get();
         $invoices = Invoice::all();
         $payments = Payment::all();

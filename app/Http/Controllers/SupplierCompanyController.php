@@ -10,20 +10,31 @@ use App\Models\SupplierCredential;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SupplierCompanyController extends Controller
 {
     public function edit($id)
     {
-        $supplier = Supplier::find($id);
-        $companies = Company::with('suppliers.credentials')->get();
+        $companies = Company::all();
+        $supplier = Supplier::findOrFail($id);
+
+        // Check if the supplier is already activated for any company
+        $activatedCompanies = SupplierCompany::where('supplier_id', $supplier->id)
+            ->where('is_active', true)
+            ->pluck('company_id')
+            ->toArray();
+        $companies = $companies->map(function ($company) use ($activatedCompanies) {
+            $company->is_active = in_array($company->id, $activatedCompanies);
+            return $company;
+        });
 
         // $companies = $companies->map(function ($company) use ($supplier) {
         //     $company->is_active = $company->suppliers->contains('id', $supplier->id);
         //     return $company;
         // });
 
-        return view('supplier-company.index', compact('supplier', 'companies'));
+        return view('supplier-company.index', compact( 'supplier', 'companies'));
     }
 
     public function activateSupplierProcess(Supplier $supplier, Company $company)
@@ -31,12 +42,35 @@ class SupplierCompanyController extends Controller
         DB::beginTransaction();
         try {
             // Check if supplier is already activated
-            $isActivated = SupplierCompany::where('supplier_id', $supplier->id)
+            $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
                 ->where('company_id', $company->id)
-                ->exists();
+                ->first();
 
-            if ($isActivated) {
-                throw new Exception('Supplier already activated.');
+            if ($supplierCompany) {
+                
+                    try{
+
+                    $supplierCompany->is_active = true;
+                    $supplierCompany->update();
+                    
+                } catch (Exception $e) {
+
+                    Log::error('Failed to activate supplier: ' . $e->getMessage());
+                    DB::rollBack();
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to activate supplier'
+                    ];
+                }
+
+                DB::commit();
+                return [
+                    'status' => 'success',
+                    'message' => 'Supplier is already activated for this company.'
+                ];
+
+            } else {
+                dd("Supplier is not activated for this company.");
             }
 
             // Check if credentials exist
@@ -89,6 +123,7 @@ class SupplierCompanyController extends Controller
             SupplierCompany::firstOrCreate([
                 'supplier_id' => $supplier->id,
                 'company_id' => $company->id,
+                'is_active' => true,
             ]);
 
 
@@ -138,10 +173,18 @@ class SupplierCompanyController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             logger('Created Supplier Company Account Error: ' . $e->getMessage());
-            throw new Exception('Failed to create supplier account.');
+            return [
+                'status' => 'error',
+                'message' => 'Failed to activate supplier: ' . $e->getMessage()
+            ];
         }
 
         DB::commit();
+
+        return [
+            'status' => 'success',
+            'message' => 'Supplier activated successfully.'
+        ];
 
     }
 
@@ -156,7 +199,11 @@ class SupplierCompanyController extends Controller
                 $supplier = Supplier::findOrFail($request->input('supplier_id'));
                 $company = Company::findOrFail($request->input('company_id'));
 
-                $this->activateSupplierProcess($supplier, $company);
+                $response = $this->activateSupplierProcess($supplier, $company);
+
+                if($response['status'] === 'error') {
+                    return redirect()->back()->with('error', $response['message']);
+                }
 
             } catch (Exception $e) {
                 return redirect()->back()->with('error', 'Failed to activate supplier: ' . $e->getMessage());
@@ -177,10 +224,25 @@ class SupplierCompanyController extends Controller
 
     public function deactivateSupplier(Request $request, Supplier $supplier, Company $company)
     {
-        // Deactivate supplier using SupplierCompany model
-        SupplierCompany::where('supplier_id', $supplier->id)
-            ->where('company_id', $company->id)
-            ->delete();
+        if(isset($request->supplier_id)) {
+
+            try{
+                $supplierCompany = SupplierCompany::where('supplier_id', $request->supplier_id)
+                    ->where('company_id', $request->company_id)
+                    ->first();
+                if (!$supplierCompany) {
+                    return redirect()->back()->with('error', 'Supplier is not activated for this company.');
+                }
+                $supplierCompany->is_active = false;
+                $supplierCompany->update();
+
+            } catch (Exception $e) {
+
+                Log::error('Failed to deactivate supplier: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to deactivate supplier');
+
+            }
+        }
 
         return redirect()->back()->with('success', 'Supplier deactivated successfully.');
     }

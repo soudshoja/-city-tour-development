@@ -20,10 +20,12 @@
                 <p class="text-sm text-gray-500">{{ $company->address }}</p>
             </div>
             <div>
-                @if($company->suppliers->isNotEmpty())
-                <a href="{{ route('supplier-company.deactivate', [$supplier->id ,$company->id]) }}" class="p-2 bg-red-500 hover:bg-red-600 rounded shadow text-white">Deactivate</a>
+                @if($company->is_active)
+                <a href="{{ route('supplier-company.deactivate',['supplier_id' => $supplier , 'company_id' => $company]) }}"
+                 class="p-2 bg-red-500 hover:bg-red-600 rounded shadow text-white">Deactivate</a>
                 @else
-                <a href="{{ route('supplier-company.activate', [$supplier->id, $company->id]) }}" class="p-2 bg-green-500 hover:bg-green-600 rounded shadow text-white">activate</a>
+                <a href="{{ route('supplier-company.activate', ['supplier_id' => $supplier , 'company_id' => $company]) }}"
+                class="p-2 bg-green-500 hover:bg-green-600 rounded shadow text-white">activate</a>
                 @endif
             </div>
         </div>

@@ -68,8 +68,16 @@ class TaskController extends Controller
             $tasks = $tasks->where('company_id', $user->company->id)->get();
             $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
+                $query->where('company_id', $user->company->id)->where('is_active', true);
             })->get();
+
+            // Add is_active property for each supplier based on pivot 'active' field
+            $suppliers->transform(function ($supplier) use ($user) {
+                $company = $supplier->companies()->where('company_id', $user->company->id)->first();
+                $supplier->is_active = $company && isset($company->pivot->is_active) ? (bool)$company->pivot->is_active : false;
+                return $supplier;
+            });
+        
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
@@ -117,7 +125,6 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
-
         if ($user->hasAnyRole('admin', 'company')) {
 
             $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
@@ -398,7 +405,6 @@ class TaskController extends Controller
                 //     throw new Exception('Issued by field is required for flight tasks.');
                 // }
 
-                dd($companyIssuedBy);
                 if ($companyIssuedBy) {
                     Log::warning('Issued by field is empty for flight tasks.', [
                         'task_id' => $task->id,
@@ -501,7 +507,6 @@ class TaskController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'credit',
                     'amount' => $task->total,
-                    'date' => Carbon::now(),
                     'description' => 'Task created: ' . $task->reference,
                     'reference_type' => 'Payment',
                 ]);
@@ -524,12 +529,12 @@ class TaskController extends Controller
                     'balance' => $task->total,
                     'type' => 'payable',
                 ]);
-
+              
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
-                    'account_id' => $issuedByAccount->isNotEmpty() ? $issuedByAccount->id : $mai->id, //flight task will use issued by account while hotel task will use supplier account
+                    'account_id' => $issuedByAccount !== null ? $issuedByAccount->id : $supplierPayable->id, //flight task will use issued by account while hotel task will use supplier account
                     'task_id' => $task->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
@@ -649,7 +654,6 @@ class TaskController extends Controller
                     'branch_id' => $task->agent->branch_id,
                     'transaction_type' => 'debit',
                     'amount' => $task->total,
-                    'date' => Carbon::now(),
                     'description' => 'Refund Task: ' . $task->reference,
                     'reference_type' => 'Refund',
                     'name' => $task->client_name,
@@ -773,7 +777,6 @@ class TaskController extends Controller
             'entity_type'      => 'client',
             'transaction_type' => 'debit',
             'amount'           => $payment->amount,
-            'date'             => now(),
             'description'      => 'Void task: ' . $task->reference,
             'reference_type'   => 'Refund',
             'reference_number' => $payment->voucher_number,
@@ -1944,7 +1947,6 @@ class TaskController extends Controller
             'entity_type' => 'company',
             'transaction_type' => 'debit',
             'amount' => $originalTask->total,
-            'date' => now(),
             'task_id' => $originalTask->id,
             'description' => 'Void reversal for: ' . $originalTask->reference,
             'reference_type' => 'Payment',

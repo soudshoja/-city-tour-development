@@ -411,6 +411,56 @@ class InvoiceController extends Controller
         ));
     }
 
+    public function updatePaymentGateway(Request $request)
+    {
+        $validated = $request->validate([
+            'invoiceId' => 'required',
+            'gateway' => 'required|string',
+            'method' => 'nullable',
+            'amount' => 'required',
+            'invoiceNumber' => 'required|string'
+        ]);
+
+        $invoice = Invoice::findOrFail($validated['invoiceId']);
+
+        $invoice = Invoice::where('invoice_number', $validated['invoiceNumber'])->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
+        $companyId = $invoice->agent->branch->company_id;
+
+        if (strtolower($validated['gateway']) === 'myfatoorah' && $validated['method']) {
+            try {
+                $gatewayFee = ChargeService::FatoorahCharge($validated['amount'], $validated['method'], $companyId);
+            } catch (\Exception $e) {
+                Log::error('FatoorahCharge exception during partial save', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $validated['method'],
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
+        } else {
+            $gatewayFee = ChargeService::TapCharge([
+                'amount' => $validated['amount'],
+                'client_id' => $invoice->client_id,
+                'agent_id' => $invoice->agent_id,
+                'currency' => $invoice->currency
+            ], $validated['gateway']);
+        }
+
+        $invoicePartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
+
+        if ($invoicePartial) {
+            $invoicePartial->update([
+                'payment_gateway' => $validated['gateway'],
+                'payment_method' => $validated['method'] ?? null,
+                'service_charge' => $gatewayFee['fee'] ?? 0,
+                'amount' => $invoice->amount,
+            ]);
+        } else {
+            return response()->json(['message' => 'Invoice partial not found.'], 404);
+        }
+
+        return response()->json(['message' => 'Payment method updated successfully!', 'invoice' => $invoicePartial]);
+    }
 
     public function savePartial(Request $request)
     {
@@ -532,7 +582,6 @@ class InvoiceController extends Controller
                 'entity_type' => 'company',
                 'transaction_type' => 'credit',
                 'amount' =>  $invoice->amount,
-                'date' => Carbon::now(),
                 'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
                 'invoice_id' => $invoice->id,
                 'reference_type' => 'Invoice',
@@ -1329,7 +1378,6 @@ class InvoiceController extends Controller
                         'entity_type' => 'company',
                         'transaction_type' => 'credit',
                         'amount' =>  $task['invprice'],
-                        'date' => Carbon::now(),
                         'description' => 'Invoice:' . $invoiceNumber . ' Updated',
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
@@ -1560,7 +1608,6 @@ class InvoiceController extends Controller
                         'entity_type' => 'company',
                         'transaction_type' => 'credit',
                         'amount' =>  $invoice->amount,
-                        'date' => Carbon::now(),
                         'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
@@ -1687,7 +1734,6 @@ class InvoiceController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'credit',
                     'amount' => $newinvoice->amount,
-                    'date' => now(),
                     'description' => 'Invoice:' . $newinvoice->invoice_number . ' Generated',
                     'invoice_id' => $newinvoice->id,
                     'reference_type' => 'Invoice',
@@ -1771,7 +1817,6 @@ class InvoiceController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'credit',
                     'amount' => $invoice->amount,
-                    'date' => Carbon::now(),
                     'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
                     'invoice_id' => $invoice->id,
                     'reference_type' => 'Invoice',

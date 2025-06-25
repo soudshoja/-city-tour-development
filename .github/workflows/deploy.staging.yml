@@ -23,17 +23,22 @@ jobs:
       
     - name: Build assets
       run: npm run build
-
     - name: Deploy to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        local-dir: ./  # Path to your build output
-        server: ${{ secrets.FTP_STAGING_SERVER }}
-        username: ${{ secrets.FTP_STAGING_USERNAME }}
-        password: ${{ secrets.FTP_STAGING_PASSWORD }}
+        local-dir: ./
+        server-dir: /home/citycomm/amir2.citycommerce.group/
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
         port: ${{ secrets.FTP_PORT }}
         protocol: 'ftp'  # or 'sftp' if you're using SFTP
-        dry-run: false
+        timeout: 190000
+        log-level: standard
+        exclude: |
+          .git*
+          node_modules
+          
 
     - name: Generate version.json
       run: |

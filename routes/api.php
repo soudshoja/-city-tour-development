@@ -11,6 +11,7 @@ use App\Http\Controllers\IncomingMediaController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WhatsAppHotelController;
+use App\Http\Controllers\PaymentController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -36,6 +37,7 @@ use App\Http\Controllers\WhatsAppHotelController;
         Route::delete('/invoice/delete/{id}', [MobileController::class, 'deleteInvoice']);
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
 
+        Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
 
         Route::get('/clients', [MobileController::class, 'client']);  
         Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);
@@ -76,7 +78,7 @@ use App\Http\Controllers\WhatsAppHotelController;
         Route::get('pin', function(){
             return view('auth.pin');
         })->name('pin');
-
+        
         Route::post('/webhook/resayil/media', [IncomingMediaController::class, 'handleResayilWebhook'])
         ->name('webhook.resayil.media');
         Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
@@ -85,6 +87,9 @@ use App\Http\Controllers\WhatsAppHotelController;
             Route::post('/city-id', [WhatsAppHotelController::class, 'getCityIdFromHotelName']);
             Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
             Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);
+            Route::post('/store-prebook', [WhatsAppHotelController::class, 'storePrebook']);
+            Route::post('/prebook-details', [WhatsAppHotelController::class, 'getPrebookDetails']);
+            Route::post('/store-book', [WhatsAppHotelController::class, 'storeBooking']);
         });
         
 require __DIR__.'/auth.php';

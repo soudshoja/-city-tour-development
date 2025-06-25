@@ -35,8 +35,6 @@ use App\Models\Role;
 use App\Models\Task;
 use App\Models\Charge;
 use Google\ApiCore\Testing\ProtobufMessageComparator;
-use App\Http\Controllers\DownloadMediaController;
-use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\BankPaymentController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\JournalEntryController;
@@ -182,6 +180,7 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'suppliers.',
     ], function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
+        Route::post('/store', [SupplierController::class, 'store'])->name('store');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
         Route::get('/magic/get', [SupplierController::class, 'getMagicHoliday'])->name('magic.get');
@@ -369,6 +368,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
         // Route::patch('/invoice/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('updateStatus');
         Route::get('/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
+        Route::post('/update-gateway', [InvoiceController::class, 'updatePaymentGateway'])->name('update-gateway');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
@@ -488,8 +488,8 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'supplier-company.',
     ], function () {
         Route::get('/edit/{id}', [SupplierCompanyController::class, 'edit'])->name('edit');
-        Route::post('/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
-        Route::post('/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
+        Route::get('/activate', [SupplierCompanyController::class, 'activateSupplier'])->name('activate');
+        Route::get('/deactivate', [SupplierCompanyController::class, 'deactivateSupplier'])->name('deactivate');
     });
 
     // NOIFICATIONS

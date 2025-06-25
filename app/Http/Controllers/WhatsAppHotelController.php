@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\TemporaryOffer;
 use App\Models\OfferedRoom;
 use App\Models\MapHotel;
+use App\Models\Prebooking;
+use App\Models\HotelBooking;
 
 class WhatsAppHotelController extends Controller
 {
@@ -188,6 +190,146 @@ class WhatsAppHotelController extends Controller
                 'result_token' => $offer->result_token,
                 'offers' => $groupedOffers,
             ],
+        ]);
+    }
+
+    public function storePrebook(Request $request)
+    {
+        $request->validate([
+            'telephone' => 'required|string',
+            'availability_token' => 'required|string',
+            'srk' => 'required|string',
+            'package_token' => 'required|string',
+            'hotel_id' => 'required|integer',
+            'offer_index' => 'required|string',
+            'result_token' => 'required|string',
+            'room_token' => 'required|string',
+            'room_name' => 'required|string',
+            'board_basis' => 'required|string',
+            'non_refundable' => 'nullable|boolean',
+            'price' => 'required|numeric',
+            'currency' => 'required|string',
+            'checkin' => 'required|date',
+            'checkout' => 'required|date',
+            'duration' => 'nullable|integer',
+            'occupancy' => 'nullable|array',
+            'autocancel_date' => 'nullable|date',
+            'cancel_policy' => 'nullable|array',
+            'remarks' => 'nullable|array',
+        ]);
+
+        $prebookKey = 'PB-' . uniqid();
+
+        $prebook = Prebooking::create([
+            'prebook_key' => $prebookKey,
+            'telephone' => $request->telephone,
+            'availability_token' => $request->availability_token,
+            'srk' => $request->srk,
+            'package_token' => $request->package_token,
+            'hotel_id' => $request->hotel_id,
+            'offer_index' => $request->offer_index,
+            'result_token' => $request->result_token,
+            'room_token' => $request->room_token,
+            'room_name' => $request->room_name,
+            'board_basis' => $request->board_basis,
+            'non_refundable' => $request->non_refundable,
+            'price' => $request->price,
+            'currency' => $request->currency,
+            'checkin' => $request->checkin,
+            'checkout' => $request->checkout,
+            'duration' => $request->duration,
+            'occupancy' => json_encode($request->occupancy ?? null),
+            'autocancel_date' => $request->autocancel_date ?? null,
+            'cancel_policy' => json_encode($request->cancel_policy) ?? null,
+            'remarks' => json_encode($request->remarks) ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'prebook_key' => $prebookKey,
+            'prebooking_id' => $prebook->id,
+        ]);
+    }
+
+    public function getPrebookDetails(Request $request)
+    {
+        $request->validate([
+            'telephone' => 'required|string',
+            'prebook_key' => 'required|string',
+        ]);
+
+        $prebook = Prebooking::where('telephone', $request->telephone)
+            ->where('prebook_key', $request->prebook_key)
+            ->first();
+
+        if (!$prebook) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prebooking not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'prebook_key' => $prebook->prebook_key,
+                'telephone' => $prebook->telephone,
+                'availability_token' => $prebook->availability_token,
+                'srk' => $request->srk,
+                'package_token' => $prebook->package_token,
+                'hotel_id' => $prebook->hotel_id,
+                'offer_index' => $request->offer_index,
+                'room_token' => $prebook->room_token,
+                'room_name' => $prebook->room_name,
+                'board_basis' => $prebook->board_basis,
+                'non_refundable' => $prebook->non_refundable,
+                'price' => $prebook->price,
+                'currency' => $prebook->currency,
+                'checkin' => $prebook->checkin,
+                'checkout' => $prebook->checkout,
+                'duration' => $prebook->duration,
+                'occupancy' => json_decode($prebook->occupancy, true),
+                'autocancel_date' => $prebook->autocancel_date,
+                'cancel_policy' => json_decode($prebook->cancel_policy, true),
+                'remarks' => json_decode($prebook->remarks, true),
+            ],
+        ]);
+    }
+
+    public function storeBooking(Request $request)
+    {
+        $request->validate([
+            'prebook_key' => 'required|string',
+            'supplier_booking_id' => 'required|string',
+            'client_ref' => 'required|string',
+            'status' => 'required|string',
+            'price' => 'required|numeric',
+            'currency' => 'required|string',
+            'booking_time' => 'required|date'
+        ]);
+
+        $prebook = Prebooking::where('prebook_key', $request->prebook_key)->first();
+
+        if (!$prebook) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prebooking not found.',
+            ], 404);
+        }
+
+        $booking = HotelBooking::create([
+            'prebook_id' => $prebook->id,
+            'supplier_booking_id' => $request->supplier_booking_id,
+            'client_ref' => $request->client_ref,
+            'status' => $request->status,
+            'price' => $request->price,
+            'currency' => $request->currency,
+            'booking_time' => $request->booking_time,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'booking_id' => $booking->id,
         ]);
     }
 }

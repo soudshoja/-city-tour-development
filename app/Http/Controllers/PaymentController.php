@@ -151,7 +151,6 @@ class PaymentController extends Controller
     public function initiatePayment($data)
     {
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-        //dd($data);
         if (!$voucherSequence) {
             $voucherSequence = Sequence::create([
                 'sequence_for' => 'VOUCHER',
@@ -205,7 +204,7 @@ class PaymentController extends Controller
                 'metadata' => [
                     'invoice_number' => $invoice->invoice_number,
                     'payment_id' => $payment->id,
-                    'payment_gateway' => $payment->payment_method_id,
+                    'payment_gateway' => $payment->payment_gateway,
                     'invoice_partial_id' => json_encode($data['invoice_partial_id']),
                 ],
                 'redirect' => [
@@ -289,7 +288,7 @@ class PaymentController extends Controller
                 "CustomerMobile"      => $clientPhone,
                 "DisplayCurrencyIso"  => "KWD",
                 "CallBackUrl"         => route('payments.callback'),
-                "ErrorUrl"            => route('payments.error'),
+                "ErrorUrl"            => route('payments.error', ['invoice_id' => $invoice->id]),
                 "Language"            => "en",
                 "CustomerReference"   => $invoiceNumber,
                 "UserDefinedField"    => (string) $invoice->id,
@@ -361,6 +360,21 @@ class PaymentController extends Controller
         $invoiceNumber = $response['metadata']['invoice_number'];
 
         if ($response['status'] != 'CAPTURED') {
+            $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
+            $paymentId = $response['metadata']['payment_id'] ?? null;
+            Transaction::create([
+                'branch_id' => $invoice->agent->branch->id,
+                'company_id' => $invoice->agent->branch->company->id,
+                'entity_id' => $invoice->agent->branch->company->id,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' => $response['amount'],
+                'description' => 'Payment failed: ' . $invoiceNumber,
+                'invoice_id' => $invoice->id,
+                'payment_id' => $paymentId,
+                'payment_reference' => $response['id'],
+                'reference_type' => 'Invoice'
+            ]);
 
             // $this->storeNotification([
             //     'user_id' => Auth::id(),
@@ -412,7 +426,7 @@ class PaymentController extends Controller
             ->where('company_id', $invoice->agent->branch->company->id)
             ->first();
 
-        $chargeRecord = Charge::where('id', (int)$paymentGateway)
+        $chargeRecord = Charge::where('name', $paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
             ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
             ->first();
@@ -490,9 +504,10 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $totalPaidAmount,
-                    'date' => Carbon::now(),
-                    'description' => 'Pay to Invoice:' . $invoiceNumber,
+                    'description' => 'Invoice ' . $invoiceNumber . ' paid successfully',
                     'invoice_id' => $invoice->id,
+                    'payment_id' => $paymentId,
+                    'payment_reference' => $response['id'],
                     'reference_type' => 'Invoice',
                 ]);
 
@@ -714,7 +729,6 @@ class PaymentController extends Controller
             'entity_type' => 'company',
             'transaction_type' => 'debit',
             'amount' => $totalPaidAmount,
-            'date' => now(),
             'description' => 'Payment via MyFatoorah for Invoice: ' . $invoice->invoice_number,
             'invoice_id' => $invoice->id,
             'reference_type' => 'Invoice',
@@ -900,6 +914,15 @@ class PaymentController extends Controller
                 return in_array($payment->invoice->agent_id, $agentsId);
             }
             return in_array($payment->agent_id, $agentsId);
+        })->map(function ($payment) {
+            if ($payment->payment_gateway === 'MyFatoorah') {
+                $mfPayment = MyFatoorahPayment::where('payment_int_id', $payment->id)->first();
+                $payment->invoice_ref = $mfPayment->invoice_ref ?? null;
+            } else {
+                $payment->invoice_ref = null;
+            }
+
+            return $payment;
         })->values();
 
         // $invoice = Invoice::where('id', $payment->invoice_id)->first();
@@ -938,7 +961,7 @@ class PaymentController extends Controller
         } else {
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
-
+        
         $clients = Client::whereIn('agent_id', $agentsId)->get();
         $invoices = Invoice::all();
         $payments = Payment::all();
@@ -1064,7 +1087,7 @@ class PaymentController extends Controller
 
         //dd($response['data']);
         $voucherNumber = $response['data']['voucher_number'];
-        $paymentUrl = url('/payment/link/show/' . $voucherNumber); 
+        $paymentUrl = url('/payment/link/show/' . $voucherNumber);
         Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
@@ -1230,7 +1253,8 @@ class PaymentController extends Controller
                 "CustomerMobile"      => $clientPhone ?? '50000000',
                 "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
                 "CallBackUrl"         => route('payments.callback'),
-                "ErrorUrl"            => route('payments.error'),
+                "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
+                // "ErrorUrl"            => route('payments.error'),
                 "Language"            => "en",
                 "UserDefinedField"   => json_encode([
                     'voucher_number' => $payment->voucher_number,
@@ -1330,7 +1354,7 @@ class PaymentController extends Controller
             "CustomerMobile"      => $clientPhone,
             "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
             "CallBackUrl"         => route('payments.callback'),
-            "ErrorUrl"            => route('payments.error'),
+            "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
             "Language"            => "en",
             "UserDefinedField"    => json_encode([
                 'voucher_number'   => $payment->voucher_number,
@@ -1391,6 +1415,20 @@ class PaymentController extends Controller
         }
 
         if ($response['status'] != 'CAPTURED') {
+            $payment = Payment::with('client', 'agent.branch')->find($response['metadata']['payment_id']);
+            Transaction::create([
+                'branch_id' => $payment->agent->branch->id,
+                'company_id' => $payment->agent->branch->company->id,
+                'entity_id' => $payment->agent->branch->company->id,
+                'entity_type' => 'company',
+                'transaction_type' => 'debit',
+                'amount' => $payment->amount,
+                'description' => 'Topup failed by ' . $payment->client->name,
+                'payment_id' => $payment->id,
+                'invoice_id' => $payment->invoice_id,
+                'payment_reference' => $response['id'],
+                'reference_type' => 'Payment',
+            ]);
             return redirect()->back()->with('error', 'Payment error');
         }
 
@@ -1449,9 +1487,10 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $payment->amount,
-                    'date' => now(),
-                    'description' => 'Topup by ' . $payment->client->name,
+                    'description' => 'Topup success by ' . $payment->client->name,
+                    'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
+                    'payment_reference' => $response['id'],
                     'reference_type' => 'Payment',
                 ]);
 
@@ -1607,7 +1646,7 @@ class PaymentController extends Controller
             $payment->status = 'completed';
             $payment->save();
 
-            if($statusData['Data']['UserDefinedField']){
+            if ($statusData['Data']['UserDefinedField']) {
                 $userDefinedField = json_decode($statusData['Data']['UserDefinedField'], true);
             } else {
                 $userDefinedField = [];
@@ -1655,9 +1694,10 @@ class PaymentController extends Controller
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
                         'amount' => $payment->amount,
-                        'date' => now(),
-                        'description' => 'Topup by ' . $payment->client->name,
+                        'description' => 'Topup success by ' . $payment->client->name,
+                        'payment_id' => $payment->id,
                         'invoice_id' => $payment->invoice_id,
+                        'payment_reference' => $statusData['Data']['InvoiceReference'],
                         'reference_type' => 'Payment',
                     ]);
 
@@ -1708,6 +1748,7 @@ class PaymentController extends Controller
                     'payment_int_id' => $payment->id,
                     'payment_id' => $transaction['PaymentId'] ?? null,
                     'invoice_id' => $statusData['Data']['InvoiceId'],
+                    'invoice_ref' => $statusData['Data']['InvoiceReference'],
                     'invoice_status' => $statusData['Data']['InvoiceStatus'],
                     'customer_reference' => $payment->invoice->invoice_number,
                     'payload' => $statusData,
@@ -1741,9 +1782,10 @@ class PaymentController extends Controller
                             'entity_type' => 'company',
                             'transaction_type' => 'debit',
                             'amount' => $statusData['Data']['InvoiceValue'],
-                            'date' => now(),
-                            'description' => 'Payment via MyFatoorah for Invoice: ' . $payment->invoice->invoice_number,
+                            'description' => 'MyFatoorah payment success: ' . $payment->invoice->invoice_number,
                             'invoice_id' => $payment->invoice->id,
+                            'payment_id' => $payment->id,
+                            'payment_reference' => $statusData['Data']['InvoiceReference'],
                             'reference_type' => 'Invoice',
                         ]);
                     } catch (\Exception $e) {
@@ -1851,7 +1893,7 @@ class PaymentController extends Controller
                 return redirect()->route('invoice.show', $payment->invoice->invoice_number)->with('success', 'Payment completed successfully!');
             } else {
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
-            
+
                 MyFatoorahPayment::updateOrCreate(
                     [
                         'payment_int_id'   => $payment->id,
@@ -1859,12 +1901,13 @@ class PaymentController extends Controller
                     ],
                     [
                         'invoice_id'       => $statusData['Data']['InvoiceId'],
+                        'invoice_ref'       => $statusData['Data']['InvoiceReference'],
                         'invoice_status'   => $statusData['Data']['InvoiceStatus'],
                         'customer_reference' => $payment->voucher_number,
                         'payload'          => $statusData,
                     ]
                 );
-                
+
                 //return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');   
                 return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
             }
@@ -1895,8 +1938,43 @@ class PaymentController extends Controller
             }
         }
 
-        // Redirect or show a friendly error page
-        //return redirect('/invoices')->with('error', 'Payment was not completed or was cancelled.');
+        if ($request->has('invoice_id')) {
+            $invoice = Invoice::with('agent.branch', 'client')->find($request->input('invoice_id'));
+            $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
+            Transaction::create([
+            'branch_id' => $invoice->agent->branch->id,
+            'company_id' => $invoice->agent->branch->company->id,
+            'entity_id' => $invoice->agent->branch->company->id,
+            'entity_type' => 'company',
+            'transaction_type' => 'credit',
+            'amount' => $invoice->amount,
+            'description' => 'MyFatoorah payment failed: ' . $invoice->invoice_number,
+            'invoice_id' => $invoice->id,
+            'payment_id' => $invoice->payment->id,
+            'payment_reference' => $invoice->payment->payment_reference,
+            'reference_type' => 'Invoice'
+            ]);
+            
+            return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
+        }
+
+        if ($request->has('payment_id')) {
+            $payment = Payment::with('client', 'agent.branch')->find($request->input('payment_id'));
+            Transaction::create([
+                'branch_id' => $payment->agent->branch->id,
+                'company_id' => $payment->agent->branch->company->id,
+                'entity_id' => $payment->agent->branch->company->id,
+                'entity_type' => 'company',
+                'transaction_type' => 'debit',
+                'amount' => $payment->amount,
+                'description' => 'Topup failed by ' . $payment->client->name,
+                'payment_id' => $payment->id,
+                'invoice_id' => $payment->invoice_id,
+                'payment_reference' => $payment->payment_reference,
+                'reference_type' => 'Payment',
+            ]);
+        }
+
         return redirect()->route('payment.link.index')->with('error', 'Payment was not completed or was cancelled.');
     }
 
@@ -1916,4 +1994,65 @@ class PaymentController extends Controller
     }
 
     public function shareLink($paymentId) {}
+
+    public function handleWebhookFatoorah(Request $request)
+    {
+        $secretKey = env('MYFATOORAH_SECRET_KEY');
+
+        $incomingSignature = $request->header('MyFatoorah-Signature');
+        Log::info('Received Signature From MyFatoorah: ' . $incomingSignature);
+
+        $rawBody = $request->getContent();
+        Log::info('Raw Body: ' . $rawBody);
+        if ($rawBody) {
+            $data = json_decode($rawBody, true);
+        } else {
+            Log::error('Webhook body is empty');
+            return response()->json(['error' => 'Empty body received'], 400);
+        }
+
+        $generatedSignature = hash_hmac('sha256', $rawBody, $secretKey);
+        Log::info('Our Generated Signature: ' . $generatedSignature);
+
+        if (!hash_equals($generatedSignature, $incomingSignature)) {
+            Log::error('Invalid signature', [
+                'received_signature' => $incomingSignature,
+                'generated_signature' => $generatedSignature,
+            ]);
+            return response()->json(['error' => 'Unauthorized request'], 403);
+        }
+
+        Log::info('MyFatoorah Webhook Received', ['body' => json_decode($rawBody, true)]);
+
+        $data = $request->input('Data');
+        $invoice = $data['Invoice'];
+
+        $invoiceId = $invoice['Id'];
+        $invoiceStatus = $invoice['Status'];  
+
+        Log::info('Looking for Payment with Invoice ID: ' . $invoiceId);
+
+        $payment = Payment::where('payment_reference', $invoiceId)->first();
+        Log::info('Looking in Payments table for payment_reference: ' . $invoiceId);
+
+        if ($payment) {
+            $payment->status = $invoiceStatus;
+            $payment->save();
+
+            Log::info('Payment Status Updated', [
+                'payment_reference' => $invoiceId,
+                'new_status' => $invoiceStatus
+            ]);
+        } else {
+            Log::warning('No matching payment found for Invoice ID: ' . $invoiceId);
+        }
+        return response()->json(['message' => 'Webhook processed successfully'], 200);
+    }
+
+    private function generateSignature($data, $secretKey)
+    {
+        return hash_hmac('sha256', $data, $secretKey);
+    }
+
+
 }

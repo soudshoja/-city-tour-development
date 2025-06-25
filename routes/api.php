@@ -88,6 +88,8 @@ use App\Http\Controllers\PaymentController;
             Route::post('/city-id', [WhatsAppHotelController::class, 'getCityIdFromHotelName']);
             Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
             Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);
+            Route::post('/store-prebook', [WhatsAppHotelController::class, 'storePrebook']);
+            Route::post('/store-book', [WhatsAppHotelController::class, 'storeBooking']);
         });
         
 require __DIR__.'/auth.php';

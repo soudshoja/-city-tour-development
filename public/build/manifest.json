@@ -1,0 +1,41 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-DuJqzS8R.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/cityCss.css": {
+    "file": "assets/cityCss-CA_Ld3l2.css",
+    "src": "resources/css/cityCss.css",
+    "isEntry": true
+  },
+  "resources/css/style.css": {
+    "file": "assets/style-kXjhsEK_.css",
+    "src": "resources/css/style.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-D7GcAAmo.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/jsbyNisma.js": {
+    "file": "assets/jsbyNisma-B3Pv2v3g.js",
+    "name": "jsbyNisma",
+    "src": "resources/js/jsbyNisma.js",
+    "isEntry": true
+  },
+  "resources/js/tasks.js": {
+    "file": "assets/tasks-CFSH9pH4.js",
+    "name": "tasks",
+    "src": "resources/js/tasks.js",
+    "isEntry": true
+  },
+  "resources/js/tools.js": {
+    "file": "assets/tools-CbIJHyuW.js",
+    "name": "tools",
+    "src": "resources/js/tools.js",
+    "isEntry": true
+  }
+}

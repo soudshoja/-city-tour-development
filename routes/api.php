@@ -89,6 +89,7 @@ use App\Http\Controllers\PaymentController;
             Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
             Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);
             Route::post('/store-prebook', [WhatsAppHotelController::class, 'storePrebook']);
+            Route::post('/prebook-details', [WhatsAppHotelController::class, 'getPrebookDetails']);
             Route::post('/store-book', [WhatsAppHotelController::class, 'storeBooking']);
         });
         

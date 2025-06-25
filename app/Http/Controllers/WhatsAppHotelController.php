@@ -198,8 +198,10 @@ class WhatsAppHotelController extends Controller
         $request->validate([
             'telephone' => 'required|string',
             'availability_token' => 'required|string',
+            'srk' => 'required|string',
             'package_token' => 'required|string',
             'hotel_id' => 'required|integer',
+            'offer_index' => 'required|string',
             'room_token' => 'required|string',
             'room_name' => 'required|string',
             'board_basis' => 'required|string',
@@ -215,12 +217,16 @@ class WhatsAppHotelController extends Controller
             'remarks' => 'nullable|array',
         ]);
 
+        $prebookKey = 'PB-' . uniqid();
+
         $prebook = Prebooking::create([
-            'prebook_key' => 'PB-' . uniqid(),
+            'prebook_key' => $prebookKey,
             'telephone' => $request->telephone,
             'availability_token' => $request->availability_token,
+            'srk' => $request->srk,
             'package_token' => $request->package_token,
             'hotel_id' => $request->hotel_id,
+            'offer_index' => $request->offer_index,
             'room_token' => $request->room_token,
             'room_name' => $request->room_name,
             'board_basis' => $request->board_basis,
@@ -238,7 +244,53 @@ class WhatsAppHotelController extends Controller
 
         return response()->json([
             'success' => true,
+            'prebook_key' => $prebookKey,
             'prebooking_id' => $prebook->id,
+        ]);
+    }
+
+    public function getPrebookDetails(Request $request)
+    {
+        $request->validate([
+            'telephone' => 'required|string',
+            'prebook_key' => 'required|string',
+        ]);
+
+        $prebook = Prebooking::where('telephone', $request->telephone)
+            ->where('prebook_key', $request->prebook_key)
+            ->first();
+
+        if (!$prebook) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Prebooking not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'prebook_key' => $prebook->prebook_key,
+                'telephone' => $prebook->telephone,
+                'availability_token' => $prebook->availability_token,
+                'srk' => $request->srk,
+                'package_token' => $prebook->package_token,
+                'hotel_id' => $prebook->hotel_id,
+                'offer_index' => $request->offer_index,
+                'room_token' => $prebook->room_token,
+                'room_name' => $prebook->room_name,
+                'board_basis' => $prebook->board_basis,
+                'non_refundable' => $prebook->non_refundable,
+                'price' => $prebook->price,
+                'currency' => $prebook->currency,
+                'checkin' => $prebook->checkin,
+                'checkout' => $prebook->checkout,
+                'duration' => $prebook->duration,
+                'occupancy' => json_decode($prebook->occupancy, true),
+                'autocancel_date' => $prebook->autocancel_date,
+                'cancel_policy' => json_decode($prebook->cancel_policy, true),
+                'remarks' => json_decode($prebook->remarks, true),
+            ],
         ]);
     }
 

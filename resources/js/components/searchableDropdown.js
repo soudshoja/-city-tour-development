@@ -1,4 +1,11 @@
-export function searchableDropdown({ items = [], selectedId = '', name = '', selectedName = '', placeholder = 'Select an option' }) {
+export function searchableDropdown({
+    items = [],
+    selectedId = '',
+    name = '',
+    selectedName = '',
+    placeholder = 'Select an option',
+    showAllOnOpen = false // NEW PROP
+}) {
     return {
         open: false,
         search: '',
@@ -6,8 +13,10 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
         selectedName,
         all: items,
         filtered: [],
-        selectedIndex: -1, // Track the selected index
+        selectedIndex: -1,
         placeholder,
+        showAllOnOpen, // store the prop
+
         init() {
             this.filtered = [...this.all];
             const selectedItem = this.all.find(item => item.id == this.selectedId);
@@ -15,11 +24,13 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
                 this.selectedName = selectedItem.name;
             }
         },
+
         filterOptions() {
             const term = this.search.toLowerCase();
             this.filtered = this.all.filter(item => item.name.toLowerCase().includes(term));
-            this.selectedIndex = -1; // Reset selectedIndex when filtering
+            this.selectedIndex = -1;
         },
+
         moveSelection(direction) {
             if (direction === 'down' && this.selectedIndex < this.filtered.length - 1) {
                 this.selectedIndex++;
@@ -27,13 +38,13 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
                 this.selectedIndex--;
             }
         },
+
         select(option) {
             this.selectedId = option.id;
             this.selectedName = option.name;
             this.search = '';
             this.open = false;
 
-            // Trigger hidden select change if supplier
             if (name === 'supplier_id') {
                 const selectElem = document.getElementById('select-supplier-task');
                 if (selectElem) {
@@ -45,7 +56,6 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
                 }
             }
 
-            // Store for logic triggering
             if (name === 'agent_id') window.selectedAgentName = option.name;
             if (name === 'supplier_id') window.selectedSupplierName = option.name;
 
@@ -53,16 +63,28 @@ export function searchableDropdown({ items = [], selectedId = '', name = '', sel
                 searchableDropdownSupplierInstance?.renderSupplierInput?.(window.selectedSupplierName);
             }
         },
+
         focusSearch($refs) {
             this.open = true;
-            this.$nextTick(() => $refs.searchInput.focus());
+            this.search = '';
+
+            // Force refresh of filtered list
+            this.filtered = [...this.all];
+
+            this.$nextTick(() => {
+                $refs.searchInput.focus();
+
+                // Trigger a dummy input event to ensure rendering
+                $refs.searchInput.dispatchEvent(new Event('input'));
+            });
         },
+
         highlightMatch(name) {
             if (!this.search) return name;
             const regex = new RegExp(`(${this.search})`, 'gi');
             return name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
         },
-        // Additional methods for keyboard navigation
+
         handleKeydown(event) {
             if (event.key === 'ArrowDown') {
                 this.moveSelection('down');

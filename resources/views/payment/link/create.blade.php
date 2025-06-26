@@ -111,17 +111,27 @@
                                 <div class="mb-3">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                                     <div class="flex gap-2">
-                                        <div class="relative w-40">
-                                            <select name="dial_code" id="dial_codeTask" class="w-full h-full text-sm px-3 py-2 pr-8 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md appearance-none">
-                                                @foreach (\App\Models\Country::all() as $country)
-                                                <option value="{{ $country->dialing_code }}">{{ $country->dialing_code }} ({{ $country->name }})</option>
-                                                @endforeach
-                                            </select>
+                                        <!-- Dial Code as searchable dropdown -->
+                                        <div class="w-40">
+                                            <x-searchable-dropdown
+                                                name="dial_code"
+                                                :items="\App\Models\Country::all()->map(fn($country) => [
+                                                    'id' => $country->dialing_code,
+                                                    'name' => $country->dialing_code . ' ' . $country->name
+                                                ])"
+                                                placeholder=" Search Dial Code"
+                                                :showAllOnOpen="true" />
+
                                         </div>
+
+                                        <!-- Phone number input -->
                                         <input type="text" name="phone" id="phoneTask"
-                                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Client's phone number" required>
+                                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Client's phone number" required>
                                     </div>
                                 </div>
+
+
 
                                 <div class="flex gap-4 mb-3">
                                     <div class="w-1/2">
@@ -146,7 +156,7 @@
                                     <x-searchable-dropdown
                                         name="agent_id"
                                         :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                        placeholder="Select Agent"
+                                        placeholder="Select an Agent"
                                         label="Agent" />
                                 </div>
 
@@ -190,32 +200,35 @@
                 </div>
 
                 <!-- Payment Gateway Section -->
-                <div x-data="{ selectedGateway: '' }" class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <!-- Payment Gateway -->
-                    <div>
-                        <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
-                        <select name="payment_gateway" id="payment-gateway"
-                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            x-model="selectedGateway">
-                            <option value="">Select Payment Gateway</option>
-                            @foreach ($paymentGateways as $gateway)
-                            <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Payment Method (conditionally shown beside gateway) -->
-                    <template x-if="selectedGateway === 'MyFatoorah'">
+                <div x-data="{ selectedGateway: '' }">
+                    <!-- Dynamic layout wrapper -->
+                    <div :class="selectedGateway === 'MyFatoorah' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+                        <!-- Payment Gateway -->
                         <div>
-                            <label for="payment-method" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select name="payment_method" id="payment-method"
-                                class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                @foreach ($paymentMethods as $methods)
-                                <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                            <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
+                            <select name="payment_gateway" id="payment-gateway"
+                                class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                x-model="selectedGateway">
+                                <option value="">Select Payment Gateway</option>
+                                @foreach ($paymentGateways as $gateway)
+                                <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                                 @endforeach
                             </select>
                         </div>
-                    </template>
+
+                        <!-- Payment Method (conditionally shown beside gateway) -->
+                        <template x-if="selectedGateway === 'MyFatoorah'">
+                            <div>
+                                <label for="payment-method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select name="payment_method" id="payment-method"
+                                    class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    @foreach ($paymentMethods as $methods)
+                                    <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Amount & Currency Row -->

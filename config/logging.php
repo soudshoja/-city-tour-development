@@ -154,6 +154,13 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
+
+        'whatsapp' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/services/whatsapp.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

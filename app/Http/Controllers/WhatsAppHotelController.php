@@ -8,6 +8,7 @@ use App\Models\OfferedRoom;
 use App\Models\MapHotel;
 use App\Models\Prebooking;
 use App\Models\HotelBooking;
+use App\Models\RequestBookingRoom;
 
 class WhatsAppHotelController extends Controller
 {
@@ -17,6 +18,13 @@ class WhatsAppHotelController extends Controller
             'first_name' => 'required|string',
             'second_name' => 'required|string',
             'city' => 'required|string',
+            'checkIn' => 'required|date',
+            'checkOut' => 'required|date',
+            'phone_number' => 'required|string',
+            'occupancy' => 'required|array',
+            'occupancy.rooms' => 'required|array',
+            'occupancy.rooms.*.adults' => 'required|integer|min:1',
+            'occupancy.rooms.*.childrenAges' => 'nullable|array',
         ]);
 
         $hotel = MapHotel::where('name', 'like', '%' . $request->first_name . '%')
@@ -32,27 +40,58 @@ class WhatsAppHotelController extends Controller
                     'hotel_address' => $hotel->address,
                 ];
             })->toArray();
-        
-        
-        if ($hotel) {
 
-            return response()->json([
-                'success' => true,
-                'hotels' => $hotel,
-            ]);
-
-        } else {
+        $rooms = $request->occupancy['rooms'];
+        
+        if (!$hotel) {
             return response()->json([
                 'success' => false,
                 'message' => 'Hotel not found.',
             ], 404);
+
         }
+
+        $requestBookingRoomId = [];
+        foreach ($rooms as $index => $room) {
+            if (!isset($room['adults']) || $room['adults'] < 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Each room must have at least one adult.',
+                ], 422);
+            }
+
+            $requestBookingRoom = RequestBookingRoom::create([
+                'phone_number' => $request->phone_number,
+                'check_in' => $request->checkIn,
+                'check_out' => $request->checkOut,
+                'adults' => $room['adults'],
+                'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
+            ]);
+
+            if(!$requestBookingRoom) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create booking request.',
+                ], 500);
+            }
+
+            $requestBookingRoomId[] = $requestBookingRoom->id;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hotels found successfully.',
+            'hotels' => $hotel,
+            'request_booking_room_id' => $requestBookingRoomId,
+        ]);
+    
     }
 
     public function getHotelDetails(Request $request)
     {
         $request->validate([
             'hotel_name' => 'required|string',
+            'phone_number' => 'required|string',
         ]);
 
         $hotel = MapHotel::with(['city:id,name'])
@@ -66,6 +105,28 @@ class WhatsAppHotelController extends Controller
             ], 404);
         }
 
+        // Check booking request associated with the phone number
+        $bookingRequest = RequestBookingRoom::where('phone_number', $request->phone_number)
+            ->get()
+            ->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'phone_number' => $item->phone_number,
+                'check_in' => $item->check_in ? date('Y-m-d', strtotime($item->check_in)) : null,
+                'check_out' => $item->check_out ? date('Y-m-d', strtotime($item->check_out)) : null,
+                'adults' => $item->adults,
+                'children_ages' => $item->children_ages ? json_decode($item->children_ages, true) : [],
+            ];
+            })
+            ->toArray();
+
+        if (!$bookingRequest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No booking request found for this phone number.',
+            ], 400);
+        }
+
         $cityId = $hotel->city->id ?? null;
 
         if($cityId === null) {
@@ -77,6 +138,9 @@ class WhatsAppHotelController extends Controller
 
         $cityName = $hotel->city->name;
 
+        // RequestBookingRoom::where('phone_number', $request->phone_number)
+            // ->delete();
+
         return response()->json([
             'success' => true,
             'hotel' => [
@@ -84,6 +148,7 @@ class WhatsAppHotelController extends Controller
                 'hotel_address' => $hotel->address,
                 'city_id' => $cityId,
                 'city_name' => $cityName,
+                'booking_request' => $bookingRequest,
             ],
         ]);
     }

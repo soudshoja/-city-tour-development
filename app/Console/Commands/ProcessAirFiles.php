@@ -63,8 +63,8 @@ class ProcessAirFiles extends Command
 
             foreach ($suppliers as $supplier) {
                 $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
-                
-                if(!$supplierName) {
+
+                if (!$supplierName) {
                     $this->error("Supplier name is empty for company: {$companyName}");
                     Log::error("AIR File Processing: Supplier name is empty for company {$companyName}.");
                     continue; // Skip to the next supplier
@@ -112,11 +112,9 @@ class ProcessAirFiles extends Command
 
                         $dataItems = [];
                         if (isset($extractedData['data']) && is_array($extractedData['data'])) {
-                            // If it's an array of objects
                             if (array_keys($extractedData['data']) === range(0, count($extractedData['data']) - 1)) {
                                 $dataItems = $extractedData['data'];
                             } else {
-                                // Single object as associative array
                                 $dataItems[] = $extractedData['data'];
                             }
                         } else {
@@ -135,20 +133,23 @@ class ProcessAirFiles extends Command
                                 'amadeus_id_agent' => $agentAmadeusId
                             ]);
 
-                            // Check if all agent fields are missing
                             if ($taskData['status'] == 'reissued' || $taskData['status'] == 'refund' || $taskData['status'] == 'void' || $taskData['status'] == 'emd') {
                                 Log::info("Task status is not 'issued'. Checking original task for reference: {$taskData['reference']}");
 
                                 $originalTask = Task::where('reference', $taskData['reference'])
                                     ->where('status', 'issued')
                                     ->first();
+                                Log::info('Checking if original task exists', ['originalTask' => $originalTask]);
 
                                 if (!$originalTask) {
-                                    Log::warning('Original task not found for reference: ', $taskData);
-                                    return response()->json([
-                                        'status' => 'error',
-                                        'message' => 'Original task not found. Task status: ' . $taskData['status'],
-                                    ], 404);
+                                    Log::warning("Original task not found for reference: ", $taskData);
+
+                                    Log::info("Skipping processing for task {$taskData['reference']} as the original task is not found.");
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Original task not found');
+                                    $allSuccess = false;  
+                                    continue;  
                                 }
 
                                 $taskData['original_task_id'] = $originalTask->id;
@@ -158,11 +159,13 @@ class ProcessAirFiles extends Command
 
                                 if ($flightDetails->isEmpty()) {
                                     Log::warning("No flight details found for original task ID: {$taskData['original_task_id']}");
-                                    return response()->json([
-                                        'status' => 'error',
-                                        'message' => 'No flight details found for original task.',
-                                    ], 404);
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'No flight details found');
+                                    $allSuccess = false;
+                                    continue;  
                                 }
+                                
                                 $flightDetailsArray = $flightDetails->toArray();
                                 Log::info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
                                 $taskData['task_flight_details'] = $flightDetailsArray;
@@ -223,7 +226,6 @@ class ProcessAirFiles extends Command
                                         break;
                                     }
                                 }
-
                             } else {
                                 // If task is 'issued', use the agent data from the current task
                                 Log::info("Task is 'issued', checking agent using Amadeus ID, name, or email");
@@ -270,17 +272,17 @@ class ProcessAirFiles extends Command
                             }
 
                             // Try to find the agent using the Amadeus ID, name, or email
-                           /*  $agent = Agent::where('amadeus_id', 'like', $agentAmadeusId)
+                            /*  $agent = Agent::where('amadeus_id', 'like', $agentAmadeusId)
                                 ->orWhere('name', 'like', $agentName)
                                 ->orWhere('email', 'like', $agentEmail)
                                 ->first(); */
 
                             // Log the SQL query to check for issues
-                           /*  Log::info('SQL Query Executed: ', [
+                            /*  Log::info('SQL Query Executed: ', [
                                 'query' => DB::getQueryLog()
                             ]); */
 
-                           /*  if (!$agent) {
+                            /*  if (!$agent) {
                                 Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
                                 $this->warn("Agent not found for {$fileName}.");
                             } else {

@@ -31,16 +31,28 @@ class WhatsAppHotelController extends Controller
                     'hotel_id' => $hotel->id,
                     'hotel_name' => $hotel->name,
                     'hotel_address' => $hotel->address,
-                    'city_id' => $hotel->city_id,
-                    'city_name' => $hotel->city ? $hotel->city->name : null,
                 ];
             })->toArray();
         
+        $cityId = $hotel[0]['city_id'] ?? null;
+        $cityName = $hotel[0]['city_name'] ?? null;
+
+        if( !$cityId || !$cityName) {
+            return response()->json([
+                'success' => false,
+                'message' => 'City not found for the given hotel name.',
+            ], 404);
+        }
+        
         if ($hotel) {
+
             return response()->json([
                 'success' => true,
+                'city_id' => $cityId,
+                'city_name' => $cityName,
                 'hotels' => $hotel,
             ]);
+
         } else {
             return response()->json([
                 'success' => false,

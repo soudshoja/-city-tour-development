@@ -11,7 +11,7 @@ use App\Models\HotelBooking;
 
 class WhatsAppHotelController extends Controller
 {
-    public function getCityIdFromHotelName(Request $request)
+    public function getListOfHotels(Request $request)
     {
         $request->validate([
             'first_name' => 'required|string',
@@ -19,8 +19,7 @@ class WhatsAppHotelController extends Controller
             'city' => 'required|string',
         ]);
 
-        $hotel = MapHotel::with(['city:id,name'])
-            ->where('name', 'like', '%' . $request->first_name . '%')
+        $hotel = MapHotel::where('name', 'like', '%' . $request->first_name . '%')
             ->where('name', 'like', '%' . $request->second_name . '%')
             ->whereHas('city', function ($query) use ($request) {
                 $query->where('name', 'like', '%' . $request->city . '%');
@@ -34,22 +33,11 @@ class WhatsAppHotelController extends Controller
                 ];
             })->toArray();
         
-        $cityId = $hotel[0]['city_id'] ?? null;
-        $cityName = $hotel[0]['city_name'] ?? null;
-
-        if( !$cityId || !$cityName) {
-            return response()->json([
-                'success' => false,
-                'message' => 'City not found for the given hotel name.',
-            ], 404);
-        }
         
         if ($hotel) {
 
             return response()->json([
                 'success' => true,
-                'city_id' => $cityId,
-                'city_name' => $cityName,
                 'hotels' => $hotel,
             ]);
 
@@ -59,6 +47,45 @@ class WhatsAppHotelController extends Controller
                 'message' => 'Hotel not found.',
             ], 404);
         }
+    }
+
+    public function getHotelDetails(Request $request)
+    {
+        $request->validate([
+            'hotel_id' => 'required|integer',
+        ]);
+
+        $hotel = MapHotel::with(['city:id,name'])
+            ->find($request->hotel_id);
+
+
+        if (!$hotel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel not found.',
+            ], 404);
+        }
+
+        $cityId = $hotel->city->id ?? null;
+
+        if($cityId === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'City not found for this hotel.',
+            ], 404);
+        }
+
+        $cityName = $hotel->city->name;
+
+        return response()->json([
+            'success' => true,
+            'hotel' => [
+                'hotel_name' => $hotel->name,
+                'hotel_address' => $hotel->address,
+                'city_id' => $cityId,
+                'city_name' => $cityName,
+            ],
+        ]);
     }
 
     public function storeTemporaryOffer(Request $request)

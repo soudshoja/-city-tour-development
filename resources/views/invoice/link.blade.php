@@ -161,42 +161,54 @@
                                     <td
                                         x-data="{ editClientPhone: false}">
                                         <p
-                                        class="cursor-pointer text-blue-500 hover:underline"    @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
+                                            class="cursor-pointer text-blue-500 hover:underline" @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
                                             {{ $invoice->client->name}}
                                         </p>
-                                        <div
-                                            x-cloak
-                                            x-show="editClientPhone"
-                                            class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
+                                        <div x-cloak x-show="editClientPhone" class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
                                             <div
                                                 @click.away="editClientPhone = false"
-                                                class="p-4 bg-white w-full max-w-md rounded">
-                                                <h2 class="text-xl font-bold mb-4">Update Phone Number</h2>
+                                                class="p-4 bg-white w-full max-w-md rounded relative">
+                                                <div class="flex items-center justify-between mb-6">
+                                                    <div>
+                                                        <h2 class="text-xl font-bold text-gray-800">Update Phone Number</h2>
+                                                        <p class="text-gray-600 italic text-xs mt-1">Please update the client's phone number to ensure accurate communication</p>
+                                                    </div>
+                                                    <button @click="editClientPhone = false" class="absolute top-0 right-0 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                                                        &times;
+                                                    </button>
+                                                </div>
                                                 <form method="POST" action="{{ route('clients.update', $invoice->client->id) }}">
                                                     @csrf
                                                     @method('PUT')
                                                     <div class="mb-4 flex flex-col">
                                                         <label class="block text-gray-700 mb-2" for="phone_{{ $invoice->client->id }}">Phone Number</label>
-                                                        <select class="form-select w-full border rounded px-3 py-2 mb-2" name="country_code" id="dialing_code_{{ $invoice->client->id }}" required>
-                                                            <option value="" selected disabled>Select Dialing Code</option>
-                                                            @foreach($countries as $country)
-                                                            <option value="{{ $country->dialing_code }}"
-                                                                @if($invoice->client->country_code === $country->dialing_code) selected @endif>
-                                                                {{ $country->name }} ({{ $country->dialing_code }})
-                                                            </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <input
-                                                            type="text"
-                                                            name="phone"
-                                                            id="phone_{{ $invoice->client->id }}"
-                                                            value="{{ $invoice->client->phone }}"
-                                                            class="form-input w-full border rounded px-3 py-2"
-                                                            required>
+                                                        <div class="flex gap-4 mb-4">
+                                                            <div class="w-2/5">
+                                                                <x-searchable-dropdown
+                                                                    name="dial_code"
+                                                                    :items="\App\Models\Country::all()->map(fn($country) => [
+                                                                            'id' => $country->dialing_code,
+                                                                            'name' => $country->dialing_code . ' ' . $country->name
+                                                                        ])"
+                                                                    placeholder="Dial Code"
+                                                                    :showAllOnOpen="true" />
+                                                            </div>
+                                                            <div class="w-3/5">
+                                                                <input
+                                                                    type="text"
+                                                                    name="phone"
+                                                                    id="phone_{{ $invoice->client->id }}"
+                                                                    value="{{ $invoice->client->phone }}"
+                                                                    class="form-input w-full border rounded px-3 py-2"
+                                                                    required>
+                                                            </div>
+                                                        </div>
+
                                                     </div>
-                                                    <div class="flex justify-end gap-2">
-                                                        <button type="button" @click="editClientPhone = false" class="btn btn-secondary px-4 py-2">Cancel</button>
-                                                        <button type="submit" class="btn btn-success px-4 py-2">Update</button>
+
+                                                    <div class="flex justify-between mt-3 gap-2">
+                                                        <button type="button" @click="editClientPhone = false" class="rounded-full shadow-md border border-gray-200 hover:bg-red-200 px-4 py-2">Cancel</button>
+                                                        <button type="submit" class="rounded-full shadow-md border border-blue-200 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2">Update</button>
                                                     </div>
                                                 </form>
                                             </div>

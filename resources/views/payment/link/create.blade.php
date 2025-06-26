@@ -121,7 +121,6 @@
                                                 ])"
                                                 placeholder=" Search Dial Code"
                                                 :showAllOnOpen="true" />
-
                                         </div>
 
                                         <!-- Phone number input -->
@@ -209,7 +208,7 @@
                             <select name="payment_gateway" id="payment-gateway"
                                 class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 x-model="selectedGateway">
-                                <option value="">Select Payment Gateway</option>
+                                <option value="" disabled>Select Payment Gateway</option>
                                 @foreach ($paymentGateways as $gateway)
                                 <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                                 @endforeach
@@ -264,12 +263,12 @@
                 <div class="flex justify-between">
                     <a href="{{ route('payment.link.index') }}">
                         <button type="button"
-                            class="px-6 py-2 bg-gray-200 rounded-full shadow hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2">
+                            class="px-6 py-2 rounded-full shadow-md border border-gray-300 hover:bg-red-200">
                             Cancel
                         </button>
                     </a>
                     <button type="submit"
-                        class="px-6 py-2 bg-blue-500 text-white rounded-full shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        class="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         Create Payment Link
                     </button>
                 </div>

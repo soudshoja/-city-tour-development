@@ -19,22 +19,22 @@ class WhatsAppHotelController extends Controller
             'city' => 'required|string',
         ]);
 
-        $hotel = MapHotel::select('id', 'name', 'city_id')
-            ->with(['city:id,name'])
+        $hotel = MapHotel::with(['city:id,name'])
             ->where('name', 'like', '%' . $request->first_name . '%')
             ->where('name', 'like', '%' . $request->second_name . '%')
             ->whereHas('city', function ($query) use ($request) {
-            $query->where('name', 'like', '%' . $request->city . '%');
+                $query->where('name', 'like', '%' . $request->city . '%');
             })
             ->get()
             ->map(function ($hotel) {
-            return [
-                'id' => $hotel->id,
-                'name' => $hotel->name,
-                'city_name' => $hotel->city ? $hotel->city->name : null,
-            ];
-            })
-            ->toArray();
+                return [
+                    'hotel_id' => $hotel->id,
+                    'hotel_name' => $hotel->name,
+                    'hotel_address' => $hotel->address,
+                    'city_id' => $hotel->city_id,
+                    'city_name' => $hotel->city ? $hotel->city->name : null,
+                ];
+            })->toArray();
         
         if ($hotel) {
             return response()->json([
@@ -291,11 +291,10 @@ class WhatsAppHotelController extends Controller
                 'prebook_key' => $prebook->prebook_key,
                 'telephone' => $prebook->telephone,
                 'availability_token' => $prebook->availability_token,
-                'srk' => $prebook->srk,
+                'srk' => $request->srk,
                 'package_token' => $prebook->package_token,
                 'hotel_id' => $prebook->hotel_id,
-                'offer_index' => $prebook->offer_index,
-                'result_token' => $prebook->result_token,
+                'offer_index' => $request->offer_index,
                 'room_token' => $prebook->room_token,
                 'room_name' => $prebook->room_name,
                 'board_basis' => $prebook->board_basis,

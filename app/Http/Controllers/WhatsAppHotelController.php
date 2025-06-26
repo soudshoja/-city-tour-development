@@ -564,4 +564,43 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
+    public function deleteBookingRequest(Request $request)
+    {
+        Log::channel('whatsapp')->info('deleteBookingRequest: Incoming request', ['request' => $request->all()]);
+
+        $request->validate([
+            'phone_number' => 'required|string',
+        ]);
+
+        try {
+            $bookingRequests = RequestBookingRoom::where('phone_number', $request->phone_number)->get();
+
+            if ($bookingRequests->isEmpty()) {
+                Log::channel('whatsapp')->warning('deleteBookingRequest: No booking requests found', ['phone_number' => $request->phone_number]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No booking requests found for this phone number.',
+                ], 404);
+            }
+
+            foreach ($bookingRequests as $bookingRequest) {
+                $bookingRequest->delete();
+            }
+
+            Log::channel('whatsapp')->info('deleteBookingRequest: Booking requests deleted successfully', ['phone_number' => $request->phone_number]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking requests deleted successfully.',
+            ]);
+
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('deleteBookingRequest: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while deleting booking requests.',
+            ], 500);
+        }
+    }
 }

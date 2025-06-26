@@ -11,26 +11,81 @@ use App\Models\HotelBooking;
 
 class WhatsAppHotelController extends Controller
 {
-    public function getCityIdFromHotelName(Request $request)
+    public function getListOfHotels(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
+            'first_name' => 'required|string',
+            'second_name' => 'required|string',
+            'city' => 'required|string',
         ]);
 
-        $hotel = MapHotel::where('name', $request->name)->first();
-
+        $hotel = MapHotel::where('name', 'like', '%' . $request->first_name . '%')
+            ->where('name', 'like', '%' . $request->second_name . '%')
+            ->whereHas('city', function ($query) use ($request) {
+                $query->where('name', 'like', '%' . $request->city . '%');
+            })
+            ->get()
+            ->map(function ($hotel) {
+                return [
+                    'hotel_id' => $hotel->id,
+                    'hotel_name' => $hotel->name,
+                    'hotel_address' => $hotel->address,
+                ];
+            })->toArray();
+        
+        
         if ($hotel) {
+
             return response()->json([
                 'success' => true,
-                'city_id' => $hotel->city_id,
-                'hotel_name' => $hotel->name,
+                'hotels' => $hotel,
             ]);
+
         } else {
             return response()->json([
                 'success' => false,
                 'message' => 'Hotel not found.',
             ], 404);
         }
+    }
+
+    public function getHotelDetails(Request $request)
+    {
+        $request->validate([
+            'hotel_name' => 'required|string',
+        ]);
+
+        $hotel = MapHotel::with(['city:id,name'])
+            ->where('name', 'like', '%' . $request->hotel_name . '%');
+
+
+        if (!$hotel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel not found.',
+            ], 404);
+        }
+
+        $cityId = $hotel->city->id ?? null;
+
+        if($cityId === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'City not found for this hotel.',
+            ], 404);
+        }
+
+        $cityName = $hotel->city->name;
+
+        return response()->json([
+            'success' => true,
+            'hotel' => [
+                'hotel_name' => $hotel->name,
+                'hotel_address' => $hotel->address,
+                'city_id' => $cityId,
+                'city_name' => $cityName,
+            ],
+        ]);
     }
 
     public function storeTemporaryOffer(Request $request)
@@ -53,8 +108,9 @@ class WhatsAppHotelController extends Controller
             'offers.*.room_details.*.currency' => 'nullable|string',
             'offers.*.room_details.*.package_token' => 'required|string',
             'offers.*.room_details.*.info' => 'nullable|string',
+            'offers.*.room_details.*.occupancy' => 'nullable|array',
         ]);
-
+       
         TemporaryOffer::where('telephone', $request->telephone)->delete();
 
         $allOffers = [];
@@ -79,6 +135,7 @@ class WhatsAppHotelController extends Controller
                     'board_basis' => $room['board_basis'],
                     'non_refundable' => $room['non_refundable'],
                     'info' => $room['info'] ?? '',
+                    'occupancy' => json_encode($room['occupancy'] ?? []),
                     'price' => $room['price'],
                     'currency' => $room['currency'] ?? 'KWD',
                     'room_token' => $room['room_token'],
@@ -93,6 +150,7 @@ class WhatsAppHotelController extends Controller
                     'board_basis' => $r->board_basis,
                     'non_refundable' => $r->non_refundable,
                     'room_token' => $r->room_token,
+                    'occupancy' => json_decode($r->occupancy, true) ?: [],
                     'package_token' => $r->package_token,
                     'price' => $r->price,
                     'currency' => $r->currency,
@@ -115,7 +173,8 @@ class WhatsAppHotelController extends Controller
             'room_name' => 'required|string',
             'board_basis' => 'nullable|string',
             'non_refundable' => 'nullable|boolean',
-            'price' => 'nullable|numeric'
+            'price' => 'nullable|numeric',
+            'occupancy' => 'nullable|array',
         ]);
 
         $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
@@ -151,6 +210,10 @@ class WhatsAppHotelController extends Controller
             $roomQuery->where('price', $request->price);
         }
 
+        if( $request->has('occupancy')) {
+            $roomQuery->where('occupancy', 'like', '%' . json_encode($request->occupancy) . '%');
+        }
+
         $rooms = $roomQuery->get();
 
         if ($rooms->isEmpty()) {
@@ -174,6 +237,7 @@ class WhatsAppHotelController extends Controller
                         'package_token' => $room->package_token,
                         'price' => (float) $room->price,
                         'currency' => $room->currency ?? 'KWD',
+                        'occupancy' => json_decode($room->occupancy, true) ?: [],
                     ];
                 })->values(),
             ];

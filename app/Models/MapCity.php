@@ -8,7 +8,7 @@ class MapCity extends Model
 {
     protected $connection = 'mysql_map';
 
-    protected $table = 'Cities';
+    protected $table = 'cities';
 
     protected $fillable = [
         'id',

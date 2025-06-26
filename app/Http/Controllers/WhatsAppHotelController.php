@@ -108,8 +108,9 @@ class WhatsAppHotelController extends Controller
             'offers.*.room_details.*.currency' => 'nullable|string',
             'offers.*.room_details.*.package_token' => 'required|string',
             'offers.*.room_details.*.info' => 'nullable|string',
+            'offers.*.room_details.*.occupancy' => 'nullable|array',
         ]);
-
+       
         TemporaryOffer::where('telephone', $request->telephone)->delete();
 
         $allOffers = [];
@@ -134,6 +135,7 @@ class WhatsAppHotelController extends Controller
                     'board_basis' => $room['board_basis'],
                     'non_refundable' => $room['non_refundable'],
                     'info' => $room['info'] ?? '',
+                    'occupancy' => json_encode($room['occupancy'] ?? []),
                     'price' => $room['price'],
                     'currency' => $room['currency'] ?? 'KWD',
                     'room_token' => $room['room_token'],
@@ -148,6 +150,7 @@ class WhatsAppHotelController extends Controller
                     'board_basis' => $r->board_basis,
                     'non_refundable' => $r->non_refundable,
                     'room_token' => $r->room_token,
+                    'occupancy' => json_decode($r->occupancy, true) ?: [],
                     'package_token' => $r->package_token,
                     'price' => $r->price,
                     'currency' => $r->currency,
@@ -170,7 +173,8 @@ class WhatsAppHotelController extends Controller
             'room_name' => 'required|string',
             'board_basis' => 'nullable|string',
             'non_refundable' => 'nullable|boolean',
-            'price' => 'nullable|numeric'
+            'price' => 'nullable|numeric',
+            'occupancy' => 'nullable|array',
         ]);
 
         $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
@@ -206,6 +210,10 @@ class WhatsAppHotelController extends Controller
             $roomQuery->where('price', $request->price);
         }
 
+        if( $request->has('occupancy')) {
+            $roomQuery->where('occupancy', 'like', '%' . json_encode($request->occupancy) . '%');
+        }
+
         $rooms = $roomQuery->get();
 
         if ($rooms->isEmpty()) {
@@ -229,6 +237,7 @@ class WhatsAppHotelController extends Controller
                         'package_token' => $room->package_token,
                         'price' => (float) $room->price,
                         'currency' => $room->currency ?? 'KWD',
+                        'occupancy' => json_decode($room->occupancy, true) ?: [],
                     ];
                 })->values(),
             ];

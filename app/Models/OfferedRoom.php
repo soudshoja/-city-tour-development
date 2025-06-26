@@ -12,6 +12,7 @@ class OfferedRoom extends Model
         'board_basis',
         'non_refundable',
         'info',
+        'occupancy',
         'price',
         'currency',
         'room_token',

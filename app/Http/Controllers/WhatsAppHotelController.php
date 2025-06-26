@@ -52,11 +52,11 @@ class WhatsAppHotelController extends Controller
     public function getHotelDetails(Request $request)
     {
         $request->validate([
-            'hotel_id' => 'required|integer',
+            'hotel_name' => 'required|string',
         ]);
 
         $hotel = MapHotel::with(['city:id,name'])
-            ->find($request->hotel_id);
+            ->where('name', 'like', '%' . $request->hotel_name . '%');
 
 
         if (!$hotel) {

@@ -129,6 +129,8 @@ class WhatsAppHotelController extends Controller
                     return [
                         'id' => $item->id,
                         'phone_number' => $item->phone_number,
+                        'check_in' => $item->check_in ? date('Y-m-d', strtotime($item->check_in)) : null,
+                        'check_out' => $item->check_out ? date('Y-m-d', strtotime($item->check_out)) : null,
                         'adults' => $item->adults,
                         'children_ages' => $item->children_ages ? json_decode($item->children_ages, true) : [],
                     ];
@@ -153,6 +155,13 @@ class WhatsAppHotelController extends Controller
                     'message' => 'Check-in or check-out date not found.',
                 ], 400);
             }
+
+            $bookingRequest = collect($bookingRequest)->map(function ($item) {
+                return [
+                    'adults' => $item['adults'],
+                    'childrenAges' => $item['children_ages'],
+                ];
+            })->toArray();
 
             $cityId = $hotel->city->id ?? null;
 

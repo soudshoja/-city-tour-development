@@ -750,7 +750,7 @@
                                                                             <x-searchable-dropdown
                                                                                 name="client_id"
                                                                                 :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                                                placeholder="Select a Client"/>
+                                                                                placeholder="Select a Client" />
                                                                         </div>
                                                                     </div>
 
@@ -963,8 +963,8 @@
                                     </div>
 
                                     <!-- Manual Fill Form -->
-                                    <div x-show="showManualForm" class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
-                                        <div @click.away="closeAll()"class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                                    <div x-show="showManualForm" x-transition class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
+                                        <div @click.away="closeAll()" class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
                                             <!-- Header with title and close button -->
                                             <div class="flex items-center justify-between mb-2">
                                                 <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
@@ -1018,7 +1018,7 @@
                                                         class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"
                                                         disabled>
                                                 </div>
-                                                
+
                                                 <!-- Email + DOB -->
                                                 <div class="flex gap-4 mb-3">
                                                     <div class="w-2/3">
@@ -1038,14 +1038,14 @@
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                                                     <div class="flex gap-2">
                                                         <div class="relative w-40">
-                                                            <select name="dial_code" id="dial_codeTask"
-                                                                class="w-full h-full text-sm px-3 py-2 pr-8 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md appearance-none">
-                                                                @foreach (\App\Models\Country::all() as $country)
-                                                                <option value="{{ $country->dialing_code }}">
-                                                                    {{ $country->dialing_code }} ({{ $country->name }})
-                                                                </option>
-                                                                @endforeach
-                                                            </select>
+                                                            <x-searchable-dropdown
+                                                                name="dial_code"
+                                                                :items="\App\Models\Country::all()->map(fn($country) => [
+                                                                    'id' => $country->dialing_code,
+                                                                    'name' => $country->dialing_code . ' ' . $country->name
+                                                                ])"
+                                                                placeholder=" Search Dial Code"
+                                                                :showAllOnOpen="true" />
                                                         </div>
                                                         <input type="text" name="phone"
                                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

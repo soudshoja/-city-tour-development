@@ -930,11 +930,15 @@ class PaymentController extends Controller
         // if (!$invoice) {
         //     return redirect()->back()->with('error', 'Invoice not found.');
         // }
-
+        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
+            ->where('is_active', true)->get();
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
         return view('payment.link.index', compact(
             'payments',
             'clients',
-            'agents'
+            'agents',
+            'paymentGateways',
+            'paymentMethods'
         ));
     }
 
@@ -961,7 +965,7 @@ class PaymentController extends Controller
         } else {
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
-        
+
         $clients = Client::whereIn('agent_id', $agentsId)->get();
         $invoices = Invoice::all();
         $payments = Payment::all();
@@ -1942,19 +1946,19 @@ class PaymentController extends Controller
             $invoice = Invoice::with('agent.branch', 'client')->find($request->input('invoice_id'));
             $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
             Transaction::create([
-            'branch_id' => $invoice->agent->branch->id,
-            'company_id' => $invoice->agent->branch->company->id,
-            'entity_id' => $invoice->agent->branch->company->id,
-            'entity_type' => 'company',
-            'transaction_type' => 'credit',
-            'amount' => $invoice->amount,
-            'description' => 'MyFatoorah payment failed: ' . $invoice->invoice_number,
-            'invoice_id' => $invoice->id,
-            'payment_id' => $invoice->payment->id,
-            'payment_reference' => $invoice->payment->payment_reference,
-            'reference_type' => 'Invoice'
+                'branch_id' => $invoice->agent->branch->id,
+                'company_id' => $invoice->agent->branch->company->id,
+                'entity_id' => $invoice->agent->branch->company->id,
+                'entity_type' => 'company',
+                'transaction_type' => 'credit',
+                'amount' => $invoice->amount,
+                'description' => 'MyFatoorah payment failed: ' . $invoice->invoice_number,
+                'invoice_id' => $invoice->id,
+                'payment_id' => $invoice->payment->id,
+                'payment_reference' => $invoice->payment->payment_reference,
+                'reference_type' => 'Invoice'
             ]);
-            
+
             return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
         }
 
@@ -1978,8 +1982,6 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('error', 'Payment was not completed or was cancelled.');
     }
 
-
-
     public function paymentUpdateLink($paymentId, Request $request)
     {
         $payment = Payment::find($paymentId);
@@ -1988,8 +1990,17 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
-        $payment->update($request->all());
-        $payment->save();
+        $payment->update([
+            'payment_gateway' => $request->payment_gateway,
+            'payment_method_id' => $request->payment_method_id,
+            'amount' => $request->amount,
+            'agent_id' => $request->agent_id,  
+            'client_id' => $request->client_id,
+        ]);
+
+        Log::info('Updated payment link:', ['payment' => $payment]);
+
+
         return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
     }
 
@@ -2028,7 +2039,7 @@ class PaymentController extends Controller
         $invoice = $data['Invoice'];
 
         $invoiceId = $invoice['Id'];
-        $invoiceStatus = $invoice['Status'];  
+        $invoiceStatus = $invoice['Status'];
 
         Log::info('Looking for Payment with Invoice ID: ' . $invoiceId);
 
@@ -2053,6 +2064,4 @@ class PaymentController extends Controller
     {
         return hash_hmac('sha256', $data, $secretKey);
     }
-
-
 }

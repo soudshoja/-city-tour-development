@@ -963,7 +963,7 @@
                                     </div>
 
                                     <!-- Manual Fill Form -->
-                                    <div x-show="showManualForm" x-transition class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
+                                    <div x-show="showManualForm" class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
                                         <div @click.away="closeAll()"class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
                                             <!-- Header with title and close button -->
                                             <div class="flex items-center justify-between mb-2">

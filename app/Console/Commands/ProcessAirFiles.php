@@ -171,6 +171,7 @@ class ProcessAirFiles extends Command
                                 $flightDetailsArray = $flightDetails->toArray();
                                 Log::info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
                                 $taskData['task_flight_details'] = $flightDetailsArray;
+
                                 $agentQuery = Agent::query();
 
                                 if ($agentAmadeusId) {
@@ -186,6 +187,23 @@ class ProcessAirFiles extends Command
                                 }
 
                                 $agent = $agentQuery->first();
+
+                                if (!$agent) {
+                                    Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
+                                    $this->warn("Agent not found for {$fileName}.");
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Agent not found');
+                                    $allSuccess = false;
+                                    continue;  
+                                } else {
+                                    Log::info("Agent found: ", [
+                                        'agent_name' => $agent->name,
+                                        'agent_email' => $agent->email,
+                                        'amadeus_id_agent' => $agent->amadeus_id
+                                    ]);
+                                }
+
                                 $taskData['agent_id'] = $agent->id;
 
                                 // Fetch the branch associated with the agent
@@ -229,10 +247,8 @@ class ProcessAirFiles extends Command
                                     }
                                 }
                             } else {
-                                // If task is 'issued', use the agent data from the current task
                                 Log::info("Task is 'issued', checking agent using Amadeus ID, name, or email");
 
-                                // Log the values being used for the query
                                 Log::info("Querying for agent with values: ", [
                                     'amadeus_id' => $agentAmadeusId,
                                     'name' => $agentName,
@@ -255,15 +271,14 @@ class ProcessAirFiles extends Command
 
                                 $agent = $agentQuery->first();
 
-
-                                // Log the SQL query to check for issues
-                                Log::info('SQL Query Executed: ', [
-                                    'agentQuery' => DB::getQueryLog()
-                                ]);
-
                                 if (!$agent) {
                                     Log::warning("AIR File Processing: Agent not found for {$fileName}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
                                     $this->warn("Agent not found for {$fileName}.");
+
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Agent not found');
+                                    $allSuccess = false;
+                                    continue;  
                                 } else {
                                     Log::info("Agent found: ", [
                                         'agent_name' => $agent->name,
@@ -298,7 +313,6 @@ class ProcessAirFiles extends Command
                             // Associate the agent with the task data
                             $taskData['agent_id'] = $agent->id;
 
-                            // Fetch the branch associated with the agent
                             $branchId = $agent->branch_id;
                             $branch = Branch::find($branchId);
 
@@ -314,7 +328,6 @@ class ProcessAirFiles extends Command
 
                             $companyId = $branch->company_id;
 
-                            // Save the task data
                             $response = $this->saveTask($companyId, $taskData);
 
                             if ($response['status'] === 'error') {

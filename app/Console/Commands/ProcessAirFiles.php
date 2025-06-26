@@ -148,7 +148,7 @@ class ProcessAirFiles extends Command
 
                                     Log::info("Skipping processing for task {$taskData['reference']} as the original task is not found.");
 
-                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
                                     $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'Original task not found');
                                     $allSuccess = false;  
                                     continue;  
@@ -162,7 +162,7 @@ class ProcessAirFiles extends Command
                                 if ($flightDetails->isEmpty()) {
                                     Log::warning("No flight details found for original task ID: {$taskData['original_task_id']}");
 
-                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+                                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
                                     $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 'No flight details found');
                                     $allSuccess = false;
                                     continue;  

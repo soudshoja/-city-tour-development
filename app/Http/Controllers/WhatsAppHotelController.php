@@ -56,8 +56,8 @@ class WhatsAppHotelController extends Controller
         ]);
 
         $hotel = MapHotel::with(['city:id,name'])
-            ->where('name', 'like', '%' . $request->hotel_name . '%');
-
+            ->where('name', 'like', '%' . $request->hotel_name . '%')
+            ->first();
 
         if (!$hotel) {
             return response()->json([

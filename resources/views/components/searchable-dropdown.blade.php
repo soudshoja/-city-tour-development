@@ -9,13 +9,13 @@
     class="w-full">
     <div class="relative">
         @if ($label)
-            <label class="block mb-1 text-sm font-medium">{{ $label }}</label>
+            <label class="block mb-1 text-sm font-medium text-gray-700">{{ $label }}</label>
         @endif
 
         <button type="button"
                 @click="focusSearch($refs)"
                 class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-base text-left bg-white text-black">
-            <span x-text="selectedName || placeholder"></span>
+                <span :class="selectedName ? 'text-black' : 'text-gray-400'" x-text="selectedName || placeholder"></span>
         </button>
 
         <input type="hidden" name="{{ $name }}" :value="selectedId">

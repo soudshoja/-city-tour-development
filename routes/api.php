@@ -84,7 +84,8 @@ use App\Http\Controllers\PaymentController;
         Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
 
         Route::prefix('/whatsapp/hotel')->group(function () {
-            Route::post('/city-id', [WhatsAppHotelController::class, 'getCityIdFromHotelName']);
+            Route::post('/list', [WhatsAppHotelController::class, 'getListOfHotels']);
+            Route::post('/details', [WhatsAppHotelController::class, 'getHotelDetails']);
             Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
             Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);
             Route::post('/store-prebook', [WhatsAppHotelController::class, 'storePrebook']);

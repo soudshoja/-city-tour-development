@@ -41,11 +41,13 @@ class ProcessAirFiles extends Command
         // $this->processedFilesPath = storage_path('app/air_files_processed');
         $this->aiManager = $aiManager;
         // $this->suppliers = Supplier::all();
-        $this->companies = Company::all();
+        $this->companies;
     }
 
     public function handle()
     {
+        $this->companies = Company::all();
+
         $this->info('Starting AIR file processing from root/air-files directory...');
         Log::info('AIR File Processing: Service started.');
 

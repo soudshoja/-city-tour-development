@@ -14,16 +14,32 @@ class WhatsAppHotelController extends Controller
     public function getCityIdFromHotelName(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
+            'first_name' => 'required|string',
+            'second_name' => 'required|string',
+            'city' => 'required|string',
         ]);
 
-        $hotel = MapHotel::where('name', $request->name)->first();
-
+        $hotel = MapHotel::select('id', 'name', 'city_id')
+            ->with(['city:id,name'])
+            ->where('name', 'like', '%' . $request->first_name . '%')
+            ->where('name', 'like', '%' . $request->second_name . '%')
+            ->whereHas('city', function ($query) use ($request) {
+            $query->where('name', 'like', '%' . $request->city . '%');
+            })
+            ->get()
+            ->map(function ($hotel) {
+            return [
+                'id' => $hotel->id,
+                'name' => $hotel->name,
+                'city_name' => $hotel->city ? $hotel->city->name : null,
+            ];
+            })
+            ->toArray();
+        
         if ($hotel) {
             return response()->json([
                 'success' => true,
-                'city_id' => $hotel->city_id,
-                'hotel_name' => $hotel->name,
+                'hotels' => $hotel,
             ]);
         } else {
             return response()->json([

@@ -39,7 +39,6 @@ class WhatsAppHotelController extends Controller
                 ->get()
                 ->map(function ($hotel) {
                     return [
-                        'hotel_id' => $hotel->id,
                         'hotel_name' => $hotel->name,
                         'hotel_address' => $hotel->address,
                     ];

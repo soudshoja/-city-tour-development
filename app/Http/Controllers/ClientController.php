@@ -89,14 +89,14 @@ class ClientController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:clients,email',
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
-            'agent_id' => 'nullable|exists:agents,id',
+            'agent_id' => 'required|exists:agents,id',
         ]);
 
         try {
             DB::beginTransaction();
+            $message = 'Client created successfully.';
 
             $client = Client::create([
                 'name' => $request->name,
@@ -125,13 +125,14 @@ class ClientController extends Controller
                 }
 
                 $task->save();
+                $message = 'Client created and task updated successfully.';
             }
 
             DB::commit();
 
             return [
                 'status' => 'success',
-                'message' => 'Client created and task updated.',
+                'message' => $message,
                 'data' => $client,
                 'task_id' => $request->task_id,
             ];
@@ -141,7 +142,7 @@ class ClientController extends Controller
 
             return [
                 'status' => 'error',
-                'message' => 'Failed to create client and update task.',
+                'message' => 'Failed to create client',
             ];
         }
     }
@@ -150,9 +151,9 @@ class ClientController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:clients,email',
-            'dial_code' => 'nullable|string|max:30',
-            'phone' => 'nullable|string|max:15',
+            'email' => 'nullable|email|unique:clients,email',
+            'dial_code' => 'required|string|max:30',
+            'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'civil_no' => 'required|unique:clients,civil_no',
         ]);

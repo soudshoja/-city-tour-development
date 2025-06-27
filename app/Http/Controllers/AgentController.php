@@ -142,10 +142,14 @@ class AgentController extends Controller
     public function update(Request $request, $id)
     {
         $agent = Agent::find($id);
-
+        $user = User::find($agent->user_id);
         try {
             $agent->update($request->all());
-
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
             return redirect()->back()->with('success', 'Agent updated successfully');
         } catch (Exception $error) {
             logger('Failed to update agent: ' . $error->getMessage());

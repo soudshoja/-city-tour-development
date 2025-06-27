@@ -147,11 +147,24 @@
                                 </div>
 
                                 <div>
+                                    @unlessrole('agent')
                                     <x-searchable-dropdown
                                         name="agent_id"
                                         :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
                                         placeholder="Select an Agent"
                                         label="Agent" />
+                                    @else
+                                    <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
+                                    <input
+                                        type="text"
+                                        name="agent_id"
+                                        id="agent_id"
+                                        value="{{ auth()->user()->agent->name }}"
+                                        class="form-input w-full border rounded px-3 py-2 bg-gray-100 text-gray-500"
+                                        readonly /> 
+
+                                    <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                    @endunlessrole
                                 </div>
 
                                 <div class="flex justify-between pt-4 mt-4">
@@ -389,7 +402,6 @@
             button.disabled = false;
         }
     </script>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const clientAgentMap = @json($clients->mapWithKeys(fn($c) => [$c->id => $c->agent_id]));

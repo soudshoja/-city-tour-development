@@ -182,27 +182,25 @@
                                     <form action="{{ route('payment.link.update', $payment->id) }}" method="POST">
                                         @csrf
                                         @method('PUT')
-                                       @unlessrole('agent')
-    @php
-        $selectedAgent = \App\Models\Agent::find($payment->agent_id);
-        $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
-    @endphp
+                                        @unlessrole('agent')
+                                        @php
+                                        $selectedAgent = \App\Models\Agent::find($payment->agent_id);
+                                        $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
+                                        @endphp
 
-    <div class="mb-4">
-        <x-searchable-dropdown
-            name="agent_id"
-            :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-            :placeholder="$agentPlaceholder"
-            :selectedName="$selectedAgent ? $selectedAgent->name : null"
-            label="Agent" />
-
-        {{-- Hidden input to ensure value is submitted if dropdown is untouched --}}
-        <input type="hidden" name="agent_id_fallback" value="{{ $selectedAgent ? $selectedAgent->id : '' }}">
-    </div>
-@else
-    <input type="hidden" name="agent_id" value="{{ auth()->user()->id }}">
-@endunlessrole
-
+                                        <div class="mb-4">
+                                            <x-searchable-dropdown
+                                                name="agent_id"
+                                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                                :placeholder="$agentPlaceholder"
+                                                :selectedName="$selectedAgent ? $selectedAgent->name : null"
+                                                label="Agent" />
+                                        </div>
+                                        @else
+                                        <div class="mb-4">
+                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                        </div>
+                                        @endunlessrole
 
                                         @php
                                         $selectedClient = \App\Models\Client::find($payment->client_id);

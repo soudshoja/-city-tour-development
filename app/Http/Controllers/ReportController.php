@@ -238,6 +238,11 @@ class ReportController extends Controller
 
     public function accountsPayableReceivableReport(Request $request)
     {
+        $user = Auth::user();
+        if ($user->role_id == Role::AGENT) {
+            return abort(403, 'Unauthorized action.');
+        }
+
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
@@ -311,14 +316,14 @@ class ReportController extends Controller
             }
         }
 
-        if($startDate == null && $endDate !== null) {
+        if ($startDate == null && $endDate !== null) {
             $startDate = Carbon::parse($endDate)->startOfMonth(); // 2023-10-01 00:00:00
 
             $payableQuery->where('transaction_date', '>=', $startDate);
             $receivableQuery->where('transaction_date', '>=', $startDate);
         }
 
-        if($endDate == null && $startDate !== null) {
+        if ($endDate == null && $startDate !== null) {
             $endDate = Carbon::parse($startDate)->endOfMonth(); // 2023-10-31 23:59:59
 
             $payableQuery->where('transaction_date', '<=', $endDate);
@@ -426,6 +431,9 @@ class ReportController extends Controller
         $supplierName = $request->input('supplier');
         $reconciledFilter = $request->input('reconciled', 'both'); // default 'both'
         $user = auth()->user();
+        if ($user->role_id == Role::AGENT) {
+            return abort(403, 'Unauthorized action.');
+        }
 
         $accountPayable = Account::where('name', 'Accounts Payable')->first();
         if (!$accountPayable) {
@@ -542,22 +550,22 @@ class ReportController extends Controller
 
         if ($typeId == 'payable' || $typeId == 'all') {
             $payableAccounts = Account::where('parent_id', $accountPayable->id)
-            ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
-                $subquery->select('id')
-                ->from('accounts')
-                ->where('parent_id', $accountPayable->id);
-            })
-            ->get();
+                ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $accountPayable->id);
+                })
+                ->get();
         }
 
         if ($typeId == 'receivable' || $typeId == 'all') {
             $receivableAccounts = Account::where('id', $receivableAccount->id)
-            ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
-                $subquery->select('id')
-                ->from('accounts')
-                ->where('parent_id', $receivableAccount->id);
-            })
-            ->get();
+                ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
+                    $subquery->select('id')
+                        ->from('accounts')
+                        ->where('parent_id', $receivableAccount->id);
+                })
+                ->get();
         }
 
         // Merge all accounts
@@ -585,7 +593,7 @@ class ReportController extends Controller
                 }
             }
         } else {
-            if($account->journalEntries) {
+            if ($account->journalEntries) {
                 $runningBalance = 0;
                 foreach ($account->journalEntries as $journalEntry) {
                     if ($debitCreditType == 'normal') {
@@ -598,7 +606,7 @@ class ReportController extends Controller
             }
         }
 
-       return $account;
+        return $account;
     }
 
     public function getPayableSupplier()
@@ -618,7 +626,7 @@ class ReportController extends Controller
         $childAccountsPayable = $coaController->childAccount($accountPayable, $debitCreditType);
 
         $childAccountsPayable = $this->sumJournalEntries($childAccountsPayable, $debitCreditType);
-        
+
         return $childAccountsPayable;
     }
 

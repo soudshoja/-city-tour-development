@@ -593,4 +593,86 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
+    public function temporaryOffersTimeLeft(Request $request)
+    {
+        Log::channel('whatsapp')->info('getTemporaryOffersTimeLeft: Incoming request', ['request' => $request->all()]);
+
+        try {
+            $request->validate([
+                'telephone' => 'required|string',
+            ]);
+
+            $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
+
+            if ($offers->isEmpty()) {
+                Log::channel('whatsapp')->warning('getTemporaryOffersTimeLeft: No temporary offers found', ['telephone' => $request->telephone]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No temporary offers found for this telephone number.',
+                ], 404);
+            }
+
+            $latestCreatedAt = $offers->max('created_at');
+            if ($latestCreatedAt) {
+                $secondsPassed = now()->diffInSeconds($latestCreatedAt);
+                $secondsPassed = -$secondsPassed; // Ensure we get a positive value for time passed
+                $minutesPassed = floor($secondsPassed / 60);
+                $secondsRemainder = $secondsPassed % 60;
+                $minutesLeft = max(0, 15 - $minutesPassed - ($secondsRemainder > 0 ? 1 : 0));
+
+                if ($minutesPassed >= 15) {
+                    Log::channel('whatsapp')->info('getTemporaryOffersTimeLeft: Offer expired', [
+                        'minutes_passed' => $minutesPassed,
+                        'time_left' => 'expired'
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'data' => [
+                            'minutes_passed' => $minutesPassed,
+                            'time_left' => 'expired'
+                        ],
+                        'message' => 'expired'
+                    ], 410);
+                }
+
+                // Format passed time
+                $passedString = '';
+                if ($minutesPassed > 0) {
+                    $passedString .= $minutesPassed . ' minute' . ($minutesPassed > 1 ? 's' : '');
+                }
+                if ($secondsRemainder > 0) {
+                    if ($passedString) $passedString .= ' ';
+                    $passedString .= $secondsRemainder . ' second' . ($secondsRemainder > 1 ? 's' : '');
+                }
+                if ($passedString) {
+                    $passedString .= ' ago';
+                } else {
+                    $passedString = 'just now';
+                }
+                $leftString = $minutesLeft . ' minute' . ($minutesLeft == 1 ? '' : 's') . ' remaining';
+            } else {
+                $passedString = 'just now';
+                $leftString = '0 minutes remaining';
+            }
+            $timeLeft = [
+                'latest_created_at' => $latestCreatedAt ? $latestCreatedAt->toDateTimeString() : null,
+                'minutes_passed' => $passedString,
+                'time_left' => $leftString,
+            ];
+
+            Log::channel('whatsapp')->info('getTemporaryOffersTimeLeft: Success response', ['time_left' => $timeLeft]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $timeLeft,
+            ]);
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('getTemporaryOffersTimeLeft: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while retrieving time left for temporary offers.',
+            ], 500);
+        }
+    }
 }

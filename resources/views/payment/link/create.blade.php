@@ -12,21 +12,21 @@
             </li>
         </ul>
         <div class="p-6 bg-white rounded-lg shadow-md" x-data="{
-            addClientModal: false, showUploadForm: false, showManualForm: false,
-            toggleUploadForm() {
-                this.showUploadForm = true;
-                this.showManualForm = false;
-            },
-            toggleManualForm() {
-                this.showUploadForm = false;
-                this.showManualForm = true;
-            },
-            closeModal() {
-                this.addClientModal = false;
-                this.showUploadForm = false;
-                this.showManualForm = false;
-            }
-        }">
+                addClientModal: false, showUploadForm: false, showManualForm: false,
+                toggleUploadForm() {
+                    this.showUploadForm = true;
+                    this.showManualForm = false;
+                },
+                toggleManualForm() {
+                    this.showUploadForm = false;
+                    this.showManualForm = true;
+                },
+                closeModal() {
+                    this.addClientModal = false;
+                    this.showUploadForm = false;
+                    this.showManualForm = false;
+                }
+            }">
             <div class="flex justify-between items-center gap-5 my-3">
                 <div class="flex items-center gap-5">
                     <h2 class="text-3xl font-bold">Payment Link</h2>
@@ -46,19 +46,18 @@
                     </div>
 
                     <!-- Modal -->
-                    <div x-show="addClientModal" x-cloak class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                        <div @click.away="closeModal()" class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+                    <div x-show="addClientModal" x-cloak class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20" @click.away="addClientModal = false">
+                        <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
                             <div class="flex items-center justify-between mb-6">
                                 <div>
                                     <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
                                     <p class="text-gray-600 italic text-xs mt-1">Please fill in the required client information to register</p>
                                 </div>
-                                <button @click="closeAll()" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
+                                <button @click="addClientModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
                                     &times;
                                 </button>
                             </div>
 
-                            <!-- Form -->
                             <form action="{{ route('clients.store') }}" method="POST" id="client-formTask" class="space-y-4">
                                 @csrf
                                 <input type="hidden" name="task_id" :value="modalTaskId">
@@ -111,7 +110,6 @@
                                 <div class="mb-3">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                                     <div class="flex gap-2">
-                                        <!-- Dial Code as searchable dropdown -->
                                         <div class="w-40">
                                             <x-searchable-dropdown
                                                 name="dial_code"
@@ -123,14 +121,11 @@
                                                 :showAllOnOpen="true" />
                                         </div>
 
-                                        <!-- Phone number input -->
                                         <input type="text" name="phone" id="phoneTask"
                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             placeholder="Client's phone number" required>
                                     </div>
                                 </div>
-
-
 
                                 <div class="flex gap-4 mb-3">
                                     <div class="w-1/2">
@@ -141,7 +136,7 @@
                                     <div class="w-1/2">
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Civil Number</label>
                                         <input type="text" name="civil_no" id="civil_noTask"
-                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                     </div>
                                 </div>
 
@@ -159,14 +154,13 @@
                                         label="Agent" />
                                 </div>
 
-                                <!-- Buttons -->
                                 <div class="flex justify-between pt-4 mt-4">
-                                    <button type="button" @click="closeAll()"
-                                        class="w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
+                                    <button type="button" @click="addClientModal = false"
+                                        class="w-32 shadow-md border border-gray-200 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
                                         Cancel
                                     </button>
                                     <button type="submit"
-                                        class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm transition duration-150">
+                                        class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150">
                                         Register Client
                                     </button>
                                 </div>
@@ -176,11 +170,9 @@
                 </div>
             </div>
 
-            <!-- Create Payment Link Form -->
             <form action="{{ route('payment.link.store') }}" method="POST" class="space-y-6">
                 @csrf
 
-                <!-- Client & Agent Row -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <x-searchable-dropdown
@@ -198,11 +190,8 @@
                     </div>
                 </div>
 
-                <!-- Payment Gateway Section -->
                 <div x-data="{ selectedGateway: '' }">
-                    <!-- Dynamic layout wrapper -->
                     <div :class="selectedGateway === 'MyFatoorah' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
-                        <!-- Payment Gateway -->
                         <div>
                             <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
                             <select name="payment_gateway" id="payment-gateway"
@@ -215,7 +204,6 @@
                             </select>
                         </div>
 
-                        <!-- Payment Method (conditionally shown beside gateway) -->
                         <template x-if="selectedGateway === 'MyFatoorah'">
                             <div>
                                 <label for="payment-method" class="block text-sm font-medium text-gray-700">Payment Method</label>
@@ -230,7 +218,6 @@
                     </div>
                 </div>
 
-                <!-- Amount & Currency Row -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
@@ -252,18 +239,16 @@
                     </div>
                 </div>
 
-                <!-- Notes Row -->
                 <div>
                     <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
                     <input type="text" name="notes" id="notes"
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
-                <!-- Buttons -->
                 <div class="flex justify-between">
                     <a href="{{ route('payment.link.index') }}">
                         <button type="button"
-                            class="px-6 py-2 rounded-full shadow-md border border-gray-300 hover:bg-red-200">
+                            class="rounded-full shadow-md border border-gray-200 hover:bg-gray-400 px-4 py-2">
                             Cancel
                         </button>
                     </a>

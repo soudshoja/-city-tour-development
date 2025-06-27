@@ -172,21 +172,25 @@
 
             <form action="{{ route('payment.link.store') }}" method="POST" class="space-y-6">
                 @csrf
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <x-searchable-dropdown
-                            name="client_id"
-                            :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                            placeholder="Select a Client"
-                            label="Client" />
+                        <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
+                        <select name="client_id" id="client_id" class="form-select mt-1 block w-full border-gray-300 rounded-md">
+                            <option value="">Select a Client</option>
+                            @foreach ($clients as $client)
+                            <option value="{{ $client->id }}">{{ $client->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
+
                     <div>
-                        <x-searchable-dropdown
-                            name="agent_id"
-                            :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                            placeholder="Select an Agent"
-                            label="Agent" />
+                        <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
+                        <select name="agent_id" id="agent_id" class="form-select mt-1 block w-full border-gray-300 rounded-md">
+                            <option value="">Select an Agent</option>
+                            @foreach ($agents as $agent)
+                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
@@ -384,5 +388,24 @@
             button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'py-2', 'rounded-full', 'text-sm', 'transition', 'duration-150');
             button.disabled = false;
         }
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const clientAgentMap = @json($clients->mapWithKeys(fn($c) => [$c->id => $c->agent_id]));
+            const clientSelect = document.getElementById('client_id');
+            const agentSelect = document.getElementById('agent_id');
+
+            clientSelect.addEventListener('change', function() {
+                const selectedClientId = this.value;
+                const agentId = clientAgentMap[selectedClientId];
+
+                if (agentId) {
+                    agentSelect.value = agentId;
+                } else {
+                    agentSelect.value = '';
+                }
+            });
+        });
     </script>
 </x-app-layout>

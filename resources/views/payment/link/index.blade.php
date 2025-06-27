@@ -182,32 +182,48 @@
                                     <form action="{{ route('payment.link.update', $payment->id) }}" method="POST">
                                         @csrf
                                         @method('PUT')
-                                        @unlessrole('agent')
-                                        <div class="mb-4">
-                                            <x-searchable-dropdown
-                                                name="agent_id"
-                                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                                placeholder="Select an Agent"
-                                                label="Agent" />
-                                        </div>
-                                        @else
-                                        <input type="hidden" name="agent_id" value="{{ auth()->user()->id }}">
-                                        @endunlessrole
+                                       @unlessrole('agent')
+    @php
+        $selectedAgent = \App\Models\Agent::find($payment->agent_id);
+        $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
+    @endphp
+
+    <div class="mb-4">
+        <x-searchable-dropdown
+            name="agent_id"
+            :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+            :placeholder="$agentPlaceholder"
+            :selectedName="$selectedAgent ? $selectedAgent->name : null"
+            label="Agent" />
+
+        {{-- Hidden input to ensure value is submitted if dropdown is untouched --}}
+        <input type="hidden" name="agent_id_fallback" value="{{ $selectedAgent ? $selectedAgent->id : '' }}">
+    </div>
+@else
+    <input type="hidden" name="agent_id" value="{{ auth()->user()->id }}">
+@endunlessrole
+
+
+                                        @php
+                                        $selectedClient = \App\Models\Client::find($payment->client_id);
+                                        $clientPlaceholder = $selectedClient ? $selectedClient->name : 'Select a Client';
+                                        @endphp
                                         <div class="mb-4">
                                             <x-searchable-dropdown
                                                 name="client_id"
                                                 :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                placeholder="Select a Client"
+                                                :placeholder="$clientPlaceholder"
+                                                :selectedName="$selectedClient ? $selectedClient->name : null"
                                                 label="Client" />
+
+                                            <input type="hidden" name="client_id_fallback" value="{{ $selectedClient ? $selectedClient->id : '' }}">
                                         </div>
 
                                         <label for="phone_{{ $payment->client_id }}" class="block text-sm font-medium text-gray-700">Phone Number</label>
                                         @php
-                                        $client = \App\Models\Client::find($payment->client_id); // Use the client_id from the payment model
-
-                                        $placeholder = $client ? $client->country_code : 'Select Dial Code'; // If no client, use a default placeholder
+                                        $client = \App\Models\Client::find($payment->client_id);
+                                        $placeholder = $client ? $client->country_code : 'Select Dial Code';
                                         @endphp
-
                                         <div class="flex gap-4 mb-4">
                                             <div class="w-2/5">
                                                 <x-searchable-dropdown
@@ -217,8 +233,10 @@
                                                         'name' => $country->dialing_code . ' ' . $country->name
                                                     ])"
                                                     :placeholder="$placeholder"
-                                                    :selectedName="$client ? $client->country_code : ''"
+                                                    :selectedName="$client ? $client->country_code : null"
                                                     :showAllOnOpen="true" />
+
+                                                <input type="hidden" name="dial_code_fallback" value="{{ $client ? $client->country_code : '' }}">
                                             </div>
 
                                             <div class="w-3/5">
@@ -226,7 +244,7 @@
                                                     type="text"
                                                     name="phone"
                                                     id="phone_{{ $payment->client_id }}"
-                                                    value="{{ $payment->client ? $payment->client->phone : 'Null' }}"
+                                                    value="{{ $client ? $client->phone : '' }}"
                                                     placeholder="Phone Number"
                                                     class="form-input w-full border rounded px-3 py-2"
                                                     required />

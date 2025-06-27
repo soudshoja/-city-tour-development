@@ -1983,37 +1983,43 @@ class PaymentController extends Controller
     }
 
     public function paymentUpdateLink($paymentId, Request $request)
-    {
-
-        $clientId = $request->client_id ?? $request->client_id_fallback;
-        $dialCode = $request->dial_code ?? $request->dial_code_fallback;
-        $agentId = $request->agent_id ?? $request->agent_id_fallback;
-
-        $payment = Payment::find($paymentId);
-        if (!$payment) {
-            return redirect()->back()->with('error', 'Payment not found.');
-        }
-
-        $client = Client::find($clientId);
-        if (!$client) {
-            return redirect()->back()->with('error', 'Client not found.');
-        }
-
-        $payment->update([
-            'payment_gateway' => $request->payment_gateway,
-            'payment_method_id' => $request->payment_method_id,
-            'amount' => $request->amount,
-            'agent_id' => $agentId,
-            'client_id' => $clientId, 
-        ]);
-
-        $client->update([
-            'phone' => $request->phone, 
-            'country_code' => $dialCode, 
-        ]);
-
-        return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
+{
+    // Fetch the payment record by ID
+    $payment = Payment::find($paymentId);
+    if (!$payment) {
+        return redirect()->back()->with('error', 'Payment not found.');
     }
+
+    // Handle fallback if agent_id is not passed explicitly (for agent role)
+    $agentId = $request->agent_id ?? $request->agent_id_fallback;
+    $clientId = $request->client_id ?? $request->client_id_fallback;
+    $dialCode = $request->dial_code ?? $request->dial_code_fallback;
+
+    // Fetch the client associated with this payment
+    $client = Client::find($clientId);
+    if (!$client) {
+        return redirect()->back()->with('error', 'Client not found.');
+    }
+
+    // Update the payment details
+    $payment->update([
+        'payment_gateway' => $request->payment_gateway,
+        'payment_method_id' => $request->payment_method_id,
+        'amount' => $request->amount,
+        'agent_id' => $agentId,
+        'client_id' => $clientId, // Ensure that client_id is updated
+    ]);
+
+    // Update the client’s phone and country code
+    $client->update([
+        'phone' => $request->phone,
+        'country_code' => $dialCode,
+    ]);
+
+    // Redirect with success message
+    return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
+}
+
 
     public function shareLink($paymentId) {}
 

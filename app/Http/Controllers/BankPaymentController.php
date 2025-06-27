@@ -19,56 +19,56 @@ class BankPaymentController extends Controller
     {
         $user = auth()->user();
 
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $bankPayments = Transaction::all();
             $totalRecords = Transaction::count();
-
-        }elseif ($user->role_id == Role::COMPANY) {
+        } elseif ($user->role_id == Role::COMPANY) {
 
             $companyId = Company::where('user_id', $user->id)->value('id'); // Get the company ID
             $branch = Branch::where('company_id', $companyId)->get();
 
-            $branchesId = $branch->pluck('id')->toArray(); 
+            $branchesId = $branch->pluck('id')->toArray();
 
             $bankPayments = Transaction::whereIn('branch_id', $branchesId)
-            ->whereNotNull('name')
-            ->where('reference_number', 'like', 'PV-%')
-            ->latest()
-            ->paginate(10);
-        
-            $totalRecords = Transaction::whereIn('branch_id', $branchesId)
-            ->whereNotNull('name')
-            ->where('reference_number', 'like', 'PV-%')
-            ->count();
+                ->whereNotNull('name')
+                ->where('reference_number', 'like', 'PV-%')
+                ->latest()
+                ->paginate(10);
 
-        }else{
+            $totalRecords = Transaction::whereIn('branch_id', $branchesId)
+                ->whereNotNull('name')
+                ->where('reference_number', 'like', 'PV-%')
+                ->count();
+        } elseif ($user->role_id == Role::AGENT) {
+            return abort(403, 'Unauthorized action.');
+        } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.index', compact('bankPayments','totalRecords'));
+        return view('bank-payments.index', compact('bankPayments', 'totalRecords'));
     }
 
 
     public function create()
-    {   
+    {
         $user = auth()->user();
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $accounts = Account::all();
             $companies = Company::all();
             $branches = Branch::all();
- 
+
             $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
             $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-            
+
             $accpayreceives = Account::doesntHave('children')
-                ->with('root') 
+                ->with('root')
                 ->whereHas('parent', function ($query) use ($rootIds) {
                     $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
 
             $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root') 
+                ->with('root')
                 ->whereHas('parent', function ($query) use ($rootIds) {
                     $query->whereIn('root_id', $rootIds);
                 })
@@ -81,10 +81,7 @@ class BankPaymentController extends Controller
                 ->get();
 
             $refundNumbers = Refund::select('refund_number')->get();
-
-
-            
-        }elseif ($user->role_id == Role::COMPANY) {
+        } elseif ($user->role_id == Role::COMPANY) {
             $company = Company::with('branches.agents')->find($user->company->id);
             $accounts = $company->branches->flatMap->accounts;
             $branches = $company->branches;
@@ -92,16 +89,16 @@ class BankPaymentController extends Controller
 
             $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
             $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-            
+
             $accpayreceives = Account::doesntHave('children')
-                ->with('root') 
+                ->with('root')
                 ->whereHas('parent', function ($query) use ($rootIds) {
                     $query->whereIn('root_id', $rootIds);
                 })
                 ->get();
-            
+
             $lastLevelAccounts = Account::doesntHave('children')
-                ->with('root') 
+                ->with('root')
                 ->whereHas('parent', function ($query) use ($rootIds) {
                     $query->whereIn('root_id', $rootIds);
                 })
@@ -117,21 +114,18 @@ class BankPaymentController extends Controller
                 ->where('branch_id', $user->branch->id)
                 ->select('refund_number')
                 ->get();
-
-
-        }else{
+        } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
         return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers'));
-
     }
 
     /**
      * Store bank payment transaction.
      */
     public function store(Request $request)
-    {   
+    {
         //dd($request);
 
         if ($request->bankpaymenttype === 'PaymentByDate') {
@@ -147,9 +141,9 @@ class BankPaymentController extends Controller
             $reconciledFlag = 0;
             $reconciledProcess = 'no';
             $totalNettRefund = Refund::where('refund_number', $request->refund_number)
-            ->value('total_nett_refund');
+                ->value('total_nett_refund');
         } else {
-            $bankPaymentType = 'Invoice'; 
+            $bankPaymentType = 'Invoice';
             $reconciledFlag = 0;
             $reconciledProcess = 'no';
         }
@@ -178,7 +172,7 @@ class BankPaymentController extends Controller
             'items.*.branch' => 'nullable|string',
             'items.*.balance' => 'nullable|numeric',
         ], [
-            'items.*.account_id.exists' => 'The selected account code does not exist.', 
+            'items.*.account_id.exists' => 'The selected account code does not exist.',
         ]);
 
         try {
@@ -197,15 +191,15 @@ class BankPaymentController extends Controller
                 'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
                 'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'description' => $request->bankpaymenttype === 'Refund'
-                ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
-                : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
+                    ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
+                    : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
                 'invoice_id' => null,
                 'reference_number' => $request->bankpaymentref,
                 'reference_type' => $bankPaymentType,
                 'name' => $request->pay_to,
                 'remarks_internal' => $request->internal_remarks,
                 'remarks_fl' => $request->remarks_fl,
-                
+
             ]);
 
             //dd($request->items);
@@ -220,8 +214,8 @@ class BankPaymentController extends Controller
                     'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
                     'transaction_id' => $transaction->id,
                     'description' => $request->bankpaymenttype === 'Refund'
-                    ? 'Refund - ' . $item['remarks']
-                    : $item['remarks'],
+                        ? 'Refund - ' . $item['remarks']
+                        : $item['remarks'],
                     'debit' => $item['debit'] ?? 0,
                     'credit' => $item['credit'] ?? 0,
                     'balance' => $item['balance'] ?? 0,
@@ -232,7 +226,7 @@ class BankPaymentController extends Controller
                     'exchange_rate' => $item['exchange_rate'] ?? 0,
                     'amount' => $item['amount'] ?? 0,
                     'cheque_no' => $item['cheque_no'] ?? '',
-                    'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s'): null,
+                    'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
                     'bank_info' => $item['bank_name'] ?? '',
                     'auth_no' => $item['auth_no'] ?? '',
                     'reconciled' => $reconciledFlag,
@@ -256,13 +250,10 @@ class BankPaymentController extends Controller
                             ]);
                     }
                 }
-
-       
             }
 
             DB::commit();
             return redirect()->route('bank-payments.index')->with('success', 'Payment Voucher Successfully Recorded.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
@@ -275,16 +266,16 @@ class BankPaymentController extends Controller
         // $user = auth()->user();
         $bankPayment = Transaction::findOrFail($id);
         $JournalEntrys = JournalEntry::where('transaction_id', $bankPayment->id)->get();
-        
+
         $user = auth()->user();
-        if($user->role_id == Role::ADMIN){
+        if ($user->role_id == Role::ADMIN) {
             $companies = Company::with('branches.account', 'branches.agents')->get();
             $branches = $companies->flatMap->branches;
             $accounts = $branches->pluck('account')->filter();
 
             $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
             $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-            
+
             $accpayreceives = Account::doesntHave('children')
                 ->whereHas('parent', function ($query) use ($rootIds) {
                     $query->whereIn('root_id', $rootIds);
@@ -292,9 +283,7 @@ class BankPaymentController extends Controller
                 ->get();
 
             $suppliers = Account::doesntHave('children')->get();
-
-            
-        }elseif ($user->role_id == Role::COMPANY) {
+        } elseif ($user->role_id == Role::COMPANY) {
             $company = Company::with('branches.account', 'branches.agents')->find($bankPayment->entity_id);
             $accounts = $company->branches->pluck('account')->filter(); // get accounts from each branch
             $branches = $company->branches;
@@ -302,7 +291,7 @@ class BankPaymentController extends Controller
 
             $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
             $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
-            
+
             $accpayreceives = Account::doesntHave('children')
                 ->whereHas('parent', function ($query) use ($rootIds) {
                     $query->whereIn('root_id', $rootIds);
@@ -310,18 +299,16 @@ class BankPaymentController extends Controller
                 ->get();
 
             $suppliers = Account::doesntHave('children')
-            ->with('root') 
-            ->whereHas('parent', function ($query) use ($rootIds) {
-                $query->whereIn('root_id', $rootIds);
-            })
-            ->get();
-
-        }else{
+                ->with('root')
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
+                })
+                ->get();
+        } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.edit', compact('companies','bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
-
+        return view('bank-payments.edit', compact('companies', 'bankPayment', 'accounts', 'branches', 'suppliers', 'accpayreceives', 'JournalEntrys'));
     }
 
 
@@ -374,7 +361,6 @@ class BankPaymentController extends Controller
 
             DB::commit();
             return redirect()->back()->with('success', 'Payment Voucher Updated Successfully.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
@@ -387,7 +373,7 @@ class BankPaymentController extends Controller
     private function storeJournalEntryEntries($items, $request, $transactionId)
     {
         foreach ($items as $item) {
-            
+
             // Retrieve company_id from the related account
             $account = Account::find($item['account_id']);
             $companyId = $account ? $account->company_id : null; // Ensure company_id exists
@@ -409,7 +395,7 @@ class BankPaymentController extends Controller
                 'exchange_rate' => $item['exchange_rate'],
                 'amount' => $item['amount'],
                 'cheque_no' => $item['cheque_no'] ?? '',
-                'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s'): null,
+                'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
                 'bank_info' => $item['bank_name'] ?? '',
                 'auth_no' => $item['auth_no'] ?? '',
                 'updated_at' => now(),
@@ -425,8 +411,8 @@ class BankPaymentController extends Controller
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
         ]);
-    
-        $supplierName = $request->get('supplier'); 
+
+        $supplierName = $request->get('supplier');
         $user = auth()->user();
 
         //group by account_id
@@ -478,7 +464,7 @@ class BankPaymentController extends Controller
             ->orderBy('transaction_date')
             ->get();
 
-    
+
         // Format results
         $payments = $entries->map(function ($entry) use ($totalsByAccount) {
             return [
@@ -498,10 +484,10 @@ class BankPaymentController extends Controller
         });
 
         return response()->json($payments);
-    }  
+    }
 
     public function fetchJournalEntriesByIds(Request $request)
-    {     
+    {
         $id = $request->input('id');
 
         if (!$id) {
@@ -510,15 +496,15 @@ class BankPaymentController extends Controller
 
         // Fetch the journal entries where reconciled_ref_id equals the given transaction ID
         $entries = JournalEntry::with(['account', 'transaction'])
-                    ->where('reconciled', 1) 
-                    ->where('reconciled_ref_id', $id) 
-                    ->get();
+            ->where('reconciled', 1)
+            ->where('reconciled_ref_id', $id)
+            ->get();
 
         return response()->json($entries);
     }
 
     public function declineReconcile($transactionId)
-    {   
+    {
         $transaction = JournalEntry::findOrFail($transactionId);
 
         $recJournalEntry = JournalEntry::where('id', $transaction->id)
@@ -535,7 +521,7 @@ class BankPaymentController extends Controller
         foreach ($recOriginalJournalEntry as $entry) {
             $entry->reconciled = 0;
             $entry->reconciled_ref_id = null;
-            $entry->save();           
+            $entry->save();
         }
 
         JournalEntry::where('reconciled_ref_id', $recJournalEntry->id)->update([
@@ -547,5 +533,4 @@ class BankPaymentController extends Controller
 
         return response()->json(['success' => true]);
     }
-
 }

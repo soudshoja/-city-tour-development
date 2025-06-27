@@ -195,7 +195,7 @@ class PaymentController extends Controller
                 'save_card' => false,
                 'customer' => [
                     'first_name' => $data['client_name'],
-                    'email' => $data['client_email'],
+                    'email' => $data['client_email'] ?? 'link@citycommerce.group',
                 ],
                 'source' => [
                     'id' => 'src_all',
@@ -1983,26 +1983,42 @@ class PaymentController extends Controller
     }
 
     public function paymentUpdateLink($paymentId, Request $request)
-    {
-        $payment = Payment::find($paymentId);
+{
+    // Fetch the payment record by ID
+    $payment = Payment::find($paymentId);
 
-        if (!$payment) {
-            return redirect()->back()->with('error', 'Payment not found.');
-        }
-
-        $payment->update([
-            'payment_gateway' => $request->payment_gateway,
-            'payment_method_id' => $request->payment_method_id,
-            'amount' => $request->amount,
-            'agent_id' => $request->agent_id,  
-            'client_id' => $request->client_id,
-        ]);
-
-        Log::info('Updated payment link:', ['payment' => $payment]);
-
-
-        return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
+    // Check if the payment exists
+    if (!$payment) {
+        return redirect()->back()->with('error', 'Payment not found.');
     }
+
+    // Fetch the client associated with the payment
+    $client = Client::find($payment->client_id);
+
+    // If the client doesn't exist, return an error
+    if (!$client) {
+        return redirect()->back()->with('error', 'Client not found.');
+    }
+
+    // Update the payment details
+    $payment->update([
+        'payment_gateway' => $request->payment_gateway,
+        'payment_method_id' => $request->payment_method_id,
+        'amount' => $request->amount,
+        'agent_id' => $request->agent_id,
+        'client_id' => $request->client_id,  // Ensure that client_id is updated
+    ]);
+
+    // Update the client’s phone and country code
+    $client->update([
+        'phone' => $request->phone,  // Update phone number
+        'country_code' => $request->dial_code,  // Update country code based on the dial_code input
+    ]);
+
+    // Redirect with success message
+    return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
+}
+
 
     public function shareLink($paymentId) {}
 

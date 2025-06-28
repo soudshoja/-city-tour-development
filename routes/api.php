@@ -92,6 +92,7 @@ use App\Http\Controllers\PaymentController;
             Route::post('/prebook-details', [WhatsAppHotelController::class, 'getPrebookDetails']);
             Route::post('/store-book', [WhatsAppHotelController::class, 'storeBooking']);
             Route::post('/delete-booking-request', [WhatsAppHotelController::class, 'deleteBookingRequest']);
+            Route::post('/time-left', [WhatsappHotelController::class, 'temporaryOffersTimeLeft']);
         });
         
 require __DIR__.'/auth.php';

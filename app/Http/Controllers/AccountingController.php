@@ -29,67 +29,73 @@ class AccountingController extends Controller
     public function index()
     {
         $user = Auth::user();
-    
-        // Retrieve the company associated with the user, including the necessary relationships
-        $company = Company::where('user_id', $user->id)->with([
-            'branches.agents.clients.invoices.invoiceDetails.JournalEntrys' => function ($query) {
-                // You can apply any specific queries here, if needed
+
+        if ($user->role_id != Role::ADMIN) {
+            if ($user->role_id != Role::COMPANY) {
+                return abort(403, 'Unauthorized action.');
+            } else {
+                $company = Company::where('user_id', $user->id)->with([
+                    'branches.agents.clients.invoices.invoiceDetails.JournalEntrys' => function ($query) {}
+                ])->first();
             }
-        ])->first();
-    
+        } else {
+            $companies = Company::all();
+        }
+
+
         $suppliers = Supplier::all();
         $accounts = Account::where('company_id', $company->id)
-                   ->select(['id', 'name'])
-                   ->get();
+            ->select(['id', 'name'])
+            ->get();
 
-                //    $accountsArray = $accounts->map(function ($account) {
-                //     return [
-                //         'id' => $account->id,
-                //         'name' => $account->name,
-                //     ];
-                // })->toArray(); // Convert the collection to an array
-                $accountsArray = []; 
-                $company->load([
-                    'branches.agents.clients.invoices.invoiceDetails.task.supplier',
-                ]);
-                
-        
-                foreach ($accounts as $account) {
-                    if ($account->name === 'Accounts Receivable') {
-                        foreach ($company->branches as $branch) { // Loop through branches
-                            foreach ($branch->agents as $agent) { // Loop through agents in each branch
-                                foreach ($agent->clients as $client) {            
-                                $accountsArray[] = [
-                                    'id' => 'account-' . $account->id . ':client-' . $client->id,
-                                    'name' => 'Client: ' . $client->name,
-                                ];
-                              }
-                            }
+        //    $accountsArray = $accounts->map(function ($account) {
+        //     return [
+        //         'id' => $account->id,
+        //         'name' => $account->name,
+        //     ];
+        // })->toArray(); // Convert the collection to an array
+        $accountsArray = [];
+        $company->load([
+            'branches.agents.clients.invoices.invoiceDetails.task.supplier',
+        ]);
+
+
+        foreach ($accounts as $account) {
+            if ($account->name === 'Accounts Receivable') {
+                foreach ($company->branches as $branch) { // Loop through branches
+                    foreach ($branch->agents as $agent) { // Loop through agents in each branch
+                        foreach ($agent->clients as $client) {
+                            $accountsArray[] = [
+                                'id' => 'account-' . $account->id . ':client-' . $client->id,
+                                'name' => 'Client: ' . $client->name,
+                            ];
                         }
-                    } elseif ($account->name === 'Accounts Payable') { 
-                                    foreach ( $suppliers as $supplier) { // Loop through invoice details
-                                            $accountsArray[] = [
-                                                'id' => 'account-' . $account->id . ':supplier-' . $supplier->id, // Ensure unique key
-                                                'name' => 'Supplier: ' . $supplier->name, // Use supplier's name
-                                            ];
-                                    }
-                    } elseif ($account->name === 'Income') {
-                        foreach ($company->branches as $branch) { // Loop through branches
-                            foreach ($branch->agents as $agent) { // Loop through agents in each branch
-                                $accountsArray[] = [
-                                    'id' => 'account-' . $account->id . ':agent-' . $agent->id, // Ensure unique key
-                                    'name' => 'Agent: ' . $agent->name, // Access the agent's name or other properties
-                                ];
-                            }
-                        }
-                    } else {
-                        // For other account names, you can keep them simple
+                    }
+                }
+            } elseif ($account->name === 'Accounts Payable') {
+                foreach ($suppliers as $supplier) { // Loop through invoice details
+                    $accountsArray[] = [
+                        'id' => 'account-' . $account->id . ':supplier-' . $supplier->id, // Ensure unique key
+                        'name' => 'Supplier: ' . $supplier->name, // Use supplier's name
+                    ];
+                }
+            } elseif ($account->name === 'Income') {
+                foreach ($company->branches as $branch) { // Loop through branches
+                    foreach ($branch->agents as $agent) { // Loop through agents in each branch
                         $accountsArray[] = [
-                            'id' => 'account-' . $account->id, // Ensure unique key
-                            'name' => $account->name,
+                            'id' => 'account-' . $account->id . ':agent-' . $agent->id, // Ensure unique key
+                            'name' => 'Agent: ' . $agent->name, // Access the agent's name or other properties
                         ];
                     }
                 }
+            } else {
+                // For other account names, you can keep them simple
+                $accountsArray[] = [
+                    'id' => 'account-' . $account->id, // Ensure unique key
+                    'name' => $account->name,
+                ];
+            }
+        }
 
 
         // Prepare data for JournalEntrys (to replace transactions)
@@ -103,7 +109,7 @@ class AccountingController extends Controller
                         foreach ($invoice->invoiceDetails as $invoiceDetail) {
                             // Retrieve the task associated with this invoiceDetail
                             $task = $invoiceDetail->task; // assuming each invoiceDetail has a related task
-                            $taskName = $task ? $task->reference .'-'. $task->additional_info .'-'. $task->venue .'-'. $task->type : null;
+                            $taskName = $task ? $task->reference . '-' . $task->additional_info . '-' . $task->venue . '-' . $task->type : null;
                             foreach ($invoiceDetail->JournalEntrys as $JournalEntry) {
                                 $groupedJournalEntrys[$taskName][]  = [
                                     'JournalEntry_id' => $JournalEntry->id,
@@ -121,7 +127,7 @@ class AccountingController extends Controller
                                     'invoice_number' => $invoice->invoice_number,
                                     'status' => $invoice->status,
                                     'task_name' => $taskName,
-                                  
+
                                 ];
                             }
                         }
@@ -129,18 +135,18 @@ class AccountingController extends Controller
                 }
             }
         }
-        
-    
+
+
         // Pass the data to the view
         return view('accounting.index', [
             'groupedJournalEntrys' => $groupedJournalEntrys,
             'company' => $company,
             'accounts' => $accountsArray,
-            'branches' => $company->branches, 
+            'branches' => $company->branches,
             'JournalEntrys' => $JournalEntrys, // To display in the table
         ]);
     }
-    
+
 
     public function filterLedgers(Request $request)
     {
@@ -148,7 +154,7 @@ class AccountingController extends Controller
         $toDate = $request->input('to_date');
         $accountIdInput = $request->input('account');
         $branchId = $request->input('branch');
-    
+
         // Parse the account ID format
         $parsedAccount = [];
         if (preg_match('/^account-(\d+)(?::(client|supplier|agent)-(\d+))?$/', $accountIdInput, $matches)) {
@@ -156,18 +162,18 @@ class AccountingController extends Controller
             $parsedAccount['related_type'] = $matches[2] ?? null;
             $parsedAccount['related_id'] = $matches[3] ?? null;
         }
-    
+
         if (empty($parsedAccount)) {
             return response()->json(['error' => 'Invalid account ID format'], 400);
         }
-    
+
         // Build the query with conditional filters
         $ledgersQuery = JournalEntry::query()
             ->when($fromDate, fn($query) => $query->where('transaction_date', '>=', $fromDate))
             ->when($toDate, fn($query) => $query->where('transaction_date', '<=', $toDate))
             ->when($parsedAccount['account_id'], fn($query) => $query->where('account_id', $parsedAccount['account_id']))
             ->when($branchId, callback: fn($query) => $query->where('branch_id', $branchId));
-    
+
         // Add conditions for related entities
         if ($parsedAccount['related_type'] && $parsedAccount['related_id']) {
             switch ($parsedAccount['related_type']) {
@@ -182,9 +188,9 @@ class AccountingController extends Controller
                     break;
             }
         }
-    
+
         $ledgers = $ledgersQuery->get();
-    
+
         // Map results with additional context if necessary
         $result = $ledgers->map(fn($ledger) => [
             'invoice_number' => $ledger->invoice ? $ledger->invoice->invoice_number : null,
@@ -196,28 +202,27 @@ class AccountingController extends Controller
             'debit' => $ledger->debit,
             'credit' => $ledger->credit,
         ]);
-    
+
         return response()->json($result);
     }
 
 
     public function exportExcel(Request $request)
-    {   
-            // Extract ledgers and totals from the request
-            $ledgers = $request->input('ledgers');
-            $totalDebit = $request->input('total_debit');
-            $totalCredit = $request->input('total_credit');
+    {
+        // Extract ledgers and totals from the request
+        $ledgers = $request->input('ledgers');
+        $totalDebit = $request->input('total_debit');
+        $totalCredit = $request->input('total_credit');
 
-            // Export the data along with totals to Excel
-            return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'JournalEntryReport.xlsx');
-
+        // Export the data along with totals to Excel
+        return Excel::download(new LedgerExport($ledgers, $totalDebit, $totalCredit), 'JournalEntryReport.xlsx');
     }
 
 
     public function showCompanySummary()
     {
         $user = Auth::user();
-    
+
         // Retrieve the company associated with the user and load its branches with agents, clients, invoices, and general ledgers
         $company = Company::where('user_id', $user->id)
             ->with([
@@ -225,79 +230,79 @@ class AccountingController extends Controller
             ])
             ->first();
 
-            $accounts = Account::all(['id', 'name']);
+        $accounts = Account::all(['id', 'name']);
 
-            $JournalEntrys = JournalEntry::where('company_id', $company->id)->get();
+        $JournalEntrys = JournalEntry::where('company_id', $company->id)->get();
         // Process summary for branches, agents, clients, and invoices
         $companySummary = $company->branches->map(function ($branch) {
             $branch->total_credits = 0;
             $branch->total_debits = 0;
             $branch->balance = 0;
-    
+
             // Iterate over agents and clients to calculate totals
             $branch->agents->each(function ($agent) use ($branch) {
                 $agent->total_credits = 0;
                 $agent->total_debits = 0;
                 $agent->balance = 0;
-    
+
                 // Iterate over clients to calculate totals
                 $agent->clients->each(function ($client) use ($agent) {
                     $client->total_credits = 0;
                     $client->total_debits = 0;
                     $client->balance = 0;
-    
+
                     // Iterate over invoices to calculate totals
                     $client->invoices->each(function ($invoice) use ($client) {
                         $invoice->total_credits = $invoice->transactions->where('transaction_type', 'credit')->sum('amount');
                         $invoice->total_debits =  $invoice->transactions->where('transaction_type', 'debit')->sum('amount');
                         $invoice->balance = $invoice->total_credits - $invoice->total_debits;
-                       
+
                         $client->total_credits += $invoice->total_credits;
                         $client->total_debits += $invoice->total_debits;
                         $client->balance += $invoice->balance;
                     });
-    
+
                     $agent->total_credits += $client->total_credits;
                     $agent->total_debits += $client->total_debits;
                     $agent->balance += $client->balance;
                 });
-    
+
                 $branch->total_credits += $agent->total_credits;
                 $branch->total_debits += $agent->total_debits;
                 $branch->balance += $agent->balance;
             });
-    
+
             return $branch;
         });
-    
+
         return view('accounting.summary', compact('company', 'accounts', 'JournalEntrys', 'companySummary'));
     }
-    
-    
+
+
     public function getAccountsByCompanyReceivable(Request $request)
     {
         $accounts = Account::where('company_id', $request->company_id)
-        ->whereIn('level', [4])
-        ->where(function ($query) {
-            
-            $query->whereHas('parent', function ($query) {
-                $query->where('level', 1)
-                      ->whereIn('name', ['Assets', 'Income']);
+            ->whereIn('level', [4])
+            ->where(function ($query) {
+
+                $query->whereHas('parent', function ($query) {
+                    $query->where('level', 1)
+                        ->whereIn('name', ['Assets', 'Income']);
+                })
+
+                    ->orWhereHas('parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Assets', 'Income']);
+                    })
+
+                    ->orWhereHas('parent.parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Assets', 'Income']);
+                    });
             })
-            
-            ->orWhereHas('parent.parent', function ($query) {
-                $query->where('level', 1)
-                      ->whereIn('name', ['Assets', 'Income']);
-            })
-            
-            ->orWhereHas('parent.parent.parent', function ($query) {
-                $query->where('level', 1)
-                      ->whereIn('name', ['Assets', 'Income']);
-            });
-        })
-        ->orderBy('level') // Order by level in ascending order
-        ->get();    
-    
+            ->orderBy('level') // Order by level in ascending order
+            ->get();
+
         return response()->json(['accounts' => $accounts]);
     }
 
@@ -305,34 +310,34 @@ class AccountingController extends Controller
     public function getAccountsByCompanyPayable(Request $request)
     {
         $accounts = Account::where('company_id', $request->company_id)
-        ->whereIn('level', [4])
-        ->where(function ($query) {
-            
-            $query->whereHas('parent', function ($query) {
-                $query->where('level', 1)
-                      ->whereIn('name', ['Liabilities', 'Expenses']);
+            ->whereIn('level', [4])
+            ->where(function ($query) {
+
+                $query->whereHas('parent', function ($query) {
+                    $query->where('level', 1)
+                        ->whereIn('name', ['Liabilities', 'Expenses']);
+                })
+
+                    ->orWhereHas('parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Liabilities', 'Expenses']);
+                    })
+
+                    ->orWhereHas('parent.parent.parent', function ($query) {
+                        $query->where('level', 1)
+                            ->whereIn('name', ['Liabilities', 'Expenses']);
+                    });
             })
-            
-            ->orWhereHas('parent.parent', function ($query) {
-                $query->where('level', 1)
-                      ->whereIn('name', ['Liabilities', 'Expenses']);
-            })
-            
-            ->orWhereHas('parent.parent.parent', function ($query) {
-                $query->where('level', 1)
-                      ->whereIn('name', ['Liabilities', 'Expenses']);
-            });
-        })
-        ->orderBy('level') // Order by level in ascending order
-        ->get();    
-    
+            ->orderBy('level') // Order by level in ascending order
+            ->get();
+
         return response()->json(['accounts' => $accounts]);
     }
 
 
     public function getBranchByCompany(Request $request)
     {
-        $branches = Branch::where('company_id', $request->company_id)->get(); 
+        $branches = Branch::where('company_id', $request->company_id)->get();
 
         if ($branches->isEmpty()) {
             return response()->json(['message' => 'No branches found for this company'], 404);
@@ -344,13 +349,13 @@ class AccountingController extends Controller
     public function getAgentByBranchCompany(Request $request)
     {
         $agents = Agent::where('company_id', $request->company_id)
-                       ->where('branch_id', $request->branch_id)
-                       ->get(); 
-    
+            ->where('branch_id', $request->branch_id)
+            ->get();
+
         if ($agents->isEmpty()) {
             return response()->json(['message' => 'No agents found for this branch and company'], 404);
         }
-    
+
         return response()->json(['agents' => $agents]);
     }
 
@@ -361,9 +366,9 @@ class AccountingController extends Controller
 
         // Retrieve suppliers linked to the selected company and parent accounts
         $suppliers = Account::where('company_id', $request->company_id)
-                            ->whereIn('parent_id', $parentIds)
-                            ->whereNotNull('name') // Ensure name exists for suppliers
-                            ->get(); 
+            ->whereIn('parent_id', $parentIds)
+            ->whereNotNull('name') // Ensure name exists for suppliers
+            ->get();
 
         if ($suppliers->isEmpty()) {
             return response()->json(['message' => 'No suppliers found for this company'], 404);
@@ -376,17 +381,17 @@ class AccountingController extends Controller
     {
         // Get all parent account IDs where the name contains "Receivable"
         $parentIds = Account::where('name', 'LIKE', '%Receivable%')->pluck('id');
-    
+
         // Retrieve agents linked to the selected company and parent accounts
         $agents = Account::where('company_id', $request->company_id)
-                         ->whereIn('parent_id', $parentIds)
-                         ->whereNotNull('name') // Ensure name exists for agents
-                         ->get();
-    
+            ->whereIn('parent_id', $parentIds)
+            ->whereNotNull('name') // Ensure name exists for agents
+            ->get();
+
         if ($agents->isEmpty()) {
             return response()->json(['message' => 'No client or agents found for this company'], 404);
         }
-    
+
         return response()->json(['agents' => $agents]);
     }
 
@@ -399,15 +404,15 @@ class AccountingController extends Controller
 
         // Get parent account IDs where the name contains "Bank Accounts" and belongs to the selected company
         $parentIds = Account::where('name', 'LIKE', '%Bank Accounts%')
-                            ->where('company_id', $companyId)
-                            ->pluck('id');
+            ->where('company_id', $companyId)
+            ->pluck('id');
 
         \Log::info("Parent Account IDs: " . json_encode($parentIds));
 
         // Fetch bank accounts under these parent IDs and the selected company
         $bankaccounts = Account::whereIn('parent_id', $parentIds)
-                            ->where('company_id', $companyId)
-                            ->get();
+            ->where('company_id', $companyId)
+            ->get();
 
         \Log::info("Retrieved Bank Accounts: " . json_encode($bankaccounts));
 
@@ -421,25 +426,25 @@ class AccountingController extends Controller
 
     public function getInvoicesByJournalEntry(Request $request)
     {
-   
+
         // Retrieve general ledger entries for the given company
         $ledgerEntries = JournalEntry::where('company_id', $request->company_id)
-                                      ->pluck('invoice_id'); // Get associated invoice IDs
-    
+            ->pluck('invoice_id'); // Get associated invoice IDs
+
         if ($ledgerEntries->isEmpty()) {
             return response()->json(['message' => 'No invoice record found for this company'], 404);
         }
-    
+
         // Retrieve invoices linked to the general ledger entries
         $invoices = Invoice::whereIn('id', $ledgerEntries)->get();
-    
+
         if ($invoices->isEmpty()) {
             return response()->json(['message' => 'No invoices found for this company'], 404);
         }
-    
+
         return response()->json(['invoices' => $invoices]);
     }
-    
+
     public function createPayableDetail()
     {
         $user = auth()->user();
@@ -447,12 +452,10 @@ class AccountingController extends Controller
         if ($user->role_id != Role::ADMIN) {
             if ($user->role_id != Role::COMPANY) {
                 return abort(403, 'Unauthorized action.');
-            }
-            else {
+            } else {
                 $companies = Company::where('user_id', $user->id)->get();
             }
-        }
-        else {
+        } else {
             $companies = Company::all();
         }
 
@@ -460,15 +463,14 @@ class AccountingController extends Controller
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
         $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
-        ->orderByDesc('created_at')  // Sort by date in descending order
-        ->get()
-        ->groupBy('type');
+            ->orderByDesc('created_at')  // Sort by date in descending order
+            ->get()
+            ->groupBy('type');
 
         $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
         return view('accounting.payable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
-        
     }
 
     public function storePayableDetail(Request $request)
@@ -478,7 +480,7 @@ class AccountingController extends Controller
         if ($user->role_id != Role::COMPANY) {
             return abort(403, 'Unauthorized action.');
         }
-        
+
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
@@ -510,14 +512,14 @@ class AccountingController extends Controller
         $accountName = Account::find($request->account_id);
         $bankaccountId = Account::find($request->bank_account);
         $bankaccountName = $bankaccountId->name;
-        
+
         //Account_From (company_bank)
         if (auth()->user()->role_id === 1) {
             $companyName = Company::find($request->company_id)?->name;
         } else {
             $companyName = Company::find(auth()->user()->company->id)?->name;
         }
-        
+
         if ($request->has('amount')) {
             $validated['debit'] = $request->amount;
             $validated['credit'] = "0.00";
@@ -529,7 +531,7 @@ class AccountingController extends Controller
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
-        ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
+            ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
 
 
         //Account_To (supplier_name)
@@ -545,10 +547,10 @@ class AccountingController extends Controller
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
-        ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+            ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
 
         return redirect()->route('payable-details.payable-create')
-        ->with('success', 'Entry added successfully!');
+            ->with('success', 'Entry added successfully!');
     }
 
     public function createReceivableDetail()
@@ -558,12 +560,10 @@ class AccountingController extends Controller
         if ($user->role_id != Role::ADMIN) {
             if ($user->role_id != Role::COMPANY) {
                 return abort(403, 'Unauthorized action.');
-            }
-            else {
+            } else {
                 $companies = Company::where('user_id', $user->id)->get();
             }
-        }
-        else {
+        } else {
             $companies = Company::all();
         }
 
@@ -571,26 +571,25 @@ class AccountingController extends Controller
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
         $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
-        ->orderByDesc('created_at')  
-        ->get()
-        ->groupBy('type');  
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('type');
 
         $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
         return view('accounting.receivable-create', compact('companies', 'suppliers', 'clients', 'JournalEntrysReceivable'));
-        
     }
 
     public function storeReceivableDetail(Request $request)
     {
         $user = auth()->user();
-        
+
 
         if ($user->role_id != Role::COMPANY) {
             return abort(403, 'Unauthorized action.');
         }
-        
+
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
@@ -613,15 +612,15 @@ class AccountingController extends Controller
 
         $validated['type_reference_id'] = $type_reference_number;
 
-         // Check if user is admin (role_id = 1)
-         if (auth()->user()->role_id === 1) {
-             $validated['company_id'] = 'required|integer';
-         } else {
-             $validated['company_id'] = $user->company->id;
-         }
+        // Check if user is admin (role_id = 1)
+        if (auth()->user()->role_id === 1) {
+            $validated['company_id'] = 'required|integer';
+        } else {
+            $validated['company_id'] = $user->company->id;
+        }
 
-         $bankaccountId = Account::find($request->bank_account);
-         $bankaccountName = $bankaccountId->name;
+        $bankaccountId = Account::find($request->bank_account);
+        $bankaccountName = $bankaccountId->name;
 
         //Account_From (client_name)
         if ($request->has('amount')) {
@@ -632,7 +631,7 @@ class AccountingController extends Controller
         $validated['description'] = $request->description . ' (Received to ' . strtoupper($bankaccountName) . ' from ' . strtoupper($request->name) . ')';
         $validated['name'] = $request->name;
         JournalEntry::create($validated);
-       
+
         //Account_To (company_bank)
         if ($request->has('amount')) {
             $validated['debit'] = "0.00";
@@ -651,7 +650,7 @@ class AccountingController extends Controller
         JournalEntry::create($validated);
 
         return redirect()->route('receivable-details.receivable-create')
-        ->with('success', 'Entry added successfully!');
+            ->with('success', 'Entry added successfully!');
     }
 
     public function createBankPayment()
@@ -661,12 +660,10 @@ class AccountingController extends Controller
         if ($user->role_id != Role::ADMIN) {
             if ($user->role_id != Role::COMPANY) {
                 return abort(403, 'Unauthorized action.');
-            }
-            else {
+            } else {
                 $companies = Company::where('user_id', $user->id)->get();
             }
-        }
-        else {
+        } else {
             $companies = Company::all();
         }
 
@@ -674,15 +671,14 @@ class AccountingController extends Controller
         $suppliers = Account::whereIn('parent_id', $parentIds)->get();
 
         $JournalEntrysPayable = JournalEntry::whereIn('type', ['payable', 'expenses'])
-        ->orderByDesc('created_at')  // Sort by date in descending order
-        ->get()
-        ->groupBy('type');
+            ->orderByDesc('created_at')  // Sort by date in descending order
+            ->get()
+            ->groupBy('type');
 
         $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
         $clients = Account::whereIn('parent_id', $parentIdClients)->get();
 
         return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
-        
     }
 
     public function storeBankPayment(Request $request)
@@ -692,7 +688,7 @@ class AccountingController extends Controller
         if ($user->role_id != Role::COMPANY) {
             return abort(403, 'Unauthorized action.');
         }
-        
+
         $validated = $request->validate([
             'transaction_date' => 'required|date',
             'account_id' => 'required|integer',
@@ -724,14 +720,14 @@ class AccountingController extends Controller
         $accountName = Account::find($request->account_id);
         $bankaccountId = Account::find($request->bank_account);
         $bankaccountName = $bankaccountId->name;
-        
+
         //Account_From (company_bank)
         if (auth()->user()->role_id === 1) {
             $companyName = Company::find($request->company_id)?->name;
         } else {
             $companyName = Company::find(auth()->user()->company->id)?->name;
         }
-        
+
         if ($request->has('amount')) {
             $validated['debit'] = $request->amount;
             $validated['credit'] = "0.00";
@@ -743,7 +739,7 @@ class AccountingController extends Controller
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
-        ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
+            ->update(['actual_balance' => \DB::raw("actual_balance - {$request->amount}")]);
 
 
         //Account_To (supplier_name)
@@ -759,10 +755,9 @@ class AccountingController extends Controller
 
         //update actual_balance 
         Account::where('id', $request->bank_account)
-        ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
+            ->update(['actual_balance' => \DB::raw("actual_balance + {$request->amount}")]);
 
         return redirect()->route('bank-payment.create')
-        ->with('success', 'Entry added successfully!');
+            ->with('success', 'Entry added successfully!');
     }
-
 }

@@ -41,17 +41,7 @@ class CreditController extends Controller
             $totalCredits = Credit::where('company_id', $user->company->id)->count();
             $totalCreditsAmount = Credit::where('company_id', $user->company->id)->sum('amount');
         } elseif ($user->role_id == Role::AGENT) {
-            $allCreditRecords = Credit::with('client')
-                ->where('client_id', $user->client->id)
-                ->where('company_id', $user->company->id)
-                ->orderBy('id', 'desc')
-                ->get();
-            $totalCredits = Credit::where('client_id', $user->client->id)
-                ->where('company_id', $user->company->id)
-                ->count();
-            $totalCreditsAmount = Credit::where('client_id', $user->client->id)
-                ->where('company_id', $user->company->id)
-                ->sum('amount');
+            return abort(403, 'Unauthorized action.');
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
@@ -118,7 +108,7 @@ class CreditController extends Controller
 
         $client = Client::with('agent')->findOrFail($request->client_id);
         $agent = Agent::with('branch.company')->findOrFail($request->agent_id);
-        $topupBy = auth()->user()->getRoleNames()->first(); 
+        $topupBy = auth()->user()->getRoleNames()->first();
 
         DB::beginTransaction();
 
@@ -126,7 +116,7 @@ class CreditController extends Controller
             Credit::create([
                 'company_id'        => $agent->branch->company->id,
                 'client_id'         => $client->id,
-                'branch_id'         => $agent->branch->id, 
+                'branch_id'         => $agent->branch->id,
                 'type'              => 'Topup',
                 'description'       => 'Manual Topup for ' . $client->name,
                 'amount'            => $request->amount,
@@ -134,7 +124,7 @@ class CreditController extends Controller
             ]);
 
             Transaction::create([
-                'branch_id'         => $agent->branch->id, 
+                'branch_id'         => $agent->branch->id,
                 'company_id'        => $agent->branch->company->id,
                 'entity_id'         => $agent->branch->company->id,
                 'entity_type'       => 'Company',
@@ -145,7 +135,7 @@ class CreditController extends Controller
             ]);
 
             $transaction = Transaction::create([
-                'branch_id'         => $agent->branch->id, 
+                'branch_id'         => $agent->branch->id,
                 'company_id'        => $agent->branch->company->id,
                 'entity_id'         => $client->id,
                 'entity_type'       => 'Client',
@@ -167,7 +157,7 @@ class CreditController extends Controller
             if ($clientAdvance) {
                 JournalEntry::create([
                     'transaction_id'      => $transaction->id,
-                    'branch_id'           => $agent->branch->id, 
+                    'branch_id'           => $agent->branch->id,
                     'company_id'          => $agent->branch->company->id,
                     'account_id'          => $clientAdvance->id,
                     'transaction_date'    => now(),
@@ -197,7 +187,7 @@ class CreditController extends Controller
             if ($clientReceivable) {
                 JournalEntry::create([
                     'transaction_id'      => $transaction->id,
-                    'branch_id'           => $agent->branch->id, 
+                    'branch_id'           => $agent->branch->id,
                     'company_id'          => $agent->branch->company->id,
                     'account_id'          => $clientReceivable->id,
                     'transaction_date'    => now(),

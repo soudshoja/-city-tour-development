@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\CurrencyExchange;
-use App\Models\SystemExchangeRate; 
+use App\Models\SystemExchangeRate;
+use App\Models\Role;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 class CurrencyExchangeController extends Controller
@@ -15,14 +17,14 @@ class CurrencyExchangeController extends Controller
         $currencyExchanges = CurrencyExchange::orderBy('company_id', 'asc')->get();
         $companies = Company::select('id', 'name')->get();
 
-        if(auth()->user()->hasRole('company')){
-            if (auth()->user()->company == null){
+        if (auth()->user()->hasRole('company')) {
+            if (auth()->user()->company == null) {
 
                 logger()->error('User company not found', ['user_id' => auth()->id()]);
                 return redirect()->back()->with('error', 'Something went wrong');
             }
 
-            $companies = array_filter($companies->toArray(), function($company){
+            $companies = array_filter($companies->toArray(), function ($company) {
                 return $company['id'] == auth()->user()->company->id;
             });
         }
@@ -41,6 +43,12 @@ class CurrencyExchangeController extends Controller
         if (!$currenciesAvailable) {
             return redirect()->back()->with('error', 'Failed to fetch currency exchange rates');
         }
+
+        $user = Auth::user();
+        if ($user->role_id == Role::AGENT) {
+            return abort(403, 'Unauthorized action.');
+        }
+
         return view('currency-exchange.index', compact(
             'currencyExchanges',
             'currenciesAvailable',
@@ -62,22 +70,22 @@ class CurrencyExchangeController extends Controller
             'base_currency' => $request->base_currency,
             'exchange_currency' => $request->exchange_currency
         ])->first();
-        
-        if($currencyExchange){
+
+        if ($currencyExchange) {
             return redirect()->back()->with('error', 'Currency exchange rate already exists');
         }
 
-        if($request->is_manual == 0){
+        if ($request->is_manual == 0) {
             $systemExchangeRate = SystemExchangeRate::where([
                 'base_currency' => $request->base_currency,
                 'exchange_currency' => $request->exchange_currency
             ])->first();
-            
-            if(!$systemExchangeRate){
+
+            if (!$systemExchangeRate) {
                 $systemExchangeRateController = new SystemExchangeRateController();
                 $response = $systemExchangeRateController->updateBaseRate($request->base_currency);
-                
-                if($response->status() !== 200){
+
+                if ($response->status() !== 200) {
                     return redirect()->back()->with('error', 'Failed to update currency exchange rate');
                 }
 
@@ -146,7 +154,7 @@ class CurrencyExchangeController extends Controller
             'is_manual.*' => 'required'
         ]);
 
-        foreach($request->all() as $exchange){
+        foreach ($request->all() as $exchange) {
             try {
                 $currencyExchange = CurrencyExchange::find($exchange['id']);
                 $currencyExchange->exchange_rate = $exchange['exchange_rate'];
@@ -162,11 +170,10 @@ class CurrencyExchangeController extends Controller
 
     public function updateMethod($id)
     {
-        try{
+        try {
             $currencyExchange = CurrencyExchange::find($id);
             $currencyExchange->is_manual = !$currencyExchange->is_manual;
             $currencyExchange->save();
-
         } catch (Exception $e) {
 
             logger()->error('Failed to update currency exchange rate method', ['error' => $e->getMessage()]);
@@ -177,5 +184,5 @@ class CurrencyExchangeController extends Controller
             'currencyExchange' => $currencyExchange,
             'message' => 'Currency exchange rate method updated successfully'
         ], 200);
-    }    
+    }
 }

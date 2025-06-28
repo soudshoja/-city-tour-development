@@ -402,22 +402,23 @@ class WhatsAppHotelController extends Controller
                 'hotel_id' => 'required|integer',
                 'offer_index' => 'required|string',
                 'result_token' => 'required|string',
-                'room_token' => 'required|string',
-                'room_name' => 'required|string',
-                'board_basis' => 'required|string',
-                'non_refundable' => 'nullable|boolean',
-                'price' => 'required|numeric',
-                'currency' => 'required|string',
+                'rooms' => 'required|array|min:1',
+                'rooms.*.room_token' => 'required|string',
+                'rooms.*.room_name' => 'required|string',
+                'rooms.*.board_basis' => 'required|string',
+                'rooms.*.non_refundable' => 'nullable|boolean',
+                'rooms.*.price' => 'required|numeric',
+                'rooms.*.currency' => 'required|string',
+                'rooms.*.occupancy' => 'nullable|array',
                 'checkin' => 'required|date',
                 'checkout' => 'required|date',
                 'duration' => 'nullable|integer',
-                'occupancy' => 'nullable|array',
                 'autocancel_date' => 'nullable|date',
                 'cancel_policy' => 'nullable|array',
                 'remarks' => 'nullable|array',
             ]);
 
-            $prebookKey = 'PB-' . uniqid();
+            $prebookKey = 'PB-' . substr(uniqid(), -5);
 
             $prebook = Prebooking::create([
                 'prebook_key' => $prebookKey,
@@ -428,16 +429,10 @@ class WhatsAppHotelController extends Controller
                 'hotel_id' => $request->hotel_id,
                 'offer_index' => $request->offer_index,
                 'result_token' => $request->result_token,
-                'room_token' => $request->room_token,
-                'room_name' => $request->room_name,
-                'board_basis' => $request->board_basis,
-                'non_refundable' => $request->non_refundable,
-                'price' => $request->price,
-                'currency' => $request->currency,
+                'rooms' => $request->rooms,
                 'checkin' => $request->checkin,
                 'checkout' => $request->checkout,
                 'duration' => $request->duration,
-                'occupancy' => json_encode($request->occupancy ?? null),
                 'autocancel_date' => $request->autocancel_date ?? null,
                 'cancel_policy' => json_encode($request->cancel_policy) ?? null,
                 'remarks' => json_encode($request->remarks) ?? null,
@@ -491,16 +486,10 @@ class WhatsAppHotelController extends Controller
                     'hotel_id' => $prebook->hotel_id,
                     'offer_index' => $prebook->offer_index,
                     'result_token' => $prebook->result_token,
-                    'room_token' => $prebook->room_token,
-                    'room_name' => $prebook->room_name,
-                    'board_basis' => $prebook->board_basis,
-                    'non_refundable' => $prebook->non_refundable,
-                    'price' => $prebook->price,
-                    'currency' => $prebook->currency,
+                    'rooms' => is_string($prebook->rooms) ? json_decode($prebook->rooms, true) : $prebook->rooms,
                     'checkin' => $prebook->checkin,
                     'checkout' => $prebook->checkout,
                     'duration' => $prebook->duration,
-                    'occupancy' => json_decode($prebook->occupancy, true),
                     'autocancel_date' => $prebook->autocancel_date,
                     'cancel_policy' => json_decode($prebook->cancel_policy, true),
                     'remarks' => json_decode($prebook->remarks, true),
@@ -601,6 +590,88 @@ class WhatsAppHotelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while deleting booking requests.',
+            ], 500);
+        }
+    }
+
+    public function temporaryOffersTimeLeft(Request $request)
+    {
+        Log::channel('whatsapp')->info('getTemporaryOffersTimeLeft: Incoming request', ['request' => $request->all()]);
+
+        try {
+            $request->validate([
+                'telephone' => 'required|string',
+            ]);
+
+            $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
+
+            if ($offers->isEmpty()) {
+                Log::channel('whatsapp')->warning('getTemporaryOffersTimeLeft: No temporary offers found', ['telephone' => $request->telephone]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No temporary offers found for this telephone number.',
+                ], 404);
+            }
+
+            $latestCreatedAt = $offers->max('created_at');
+            if ($latestCreatedAt) {
+                $secondsPassed = now()->diffInSeconds($latestCreatedAt);
+                $secondsPassed = -$secondsPassed; // Ensure we get a positive value for time passed
+                $minutesPassed = floor($secondsPassed / 60);
+                $secondsRemainder = $secondsPassed % 60;
+                $minutesLeft = max(0, 15 - $minutesPassed - ($secondsRemainder > 0 ? 1 : 0));
+
+                if ($minutesPassed >= 15) {
+                    Log::channel('whatsapp')->info('getTemporaryOffersTimeLeft: Offer expired', [
+                        'minutes_passed' => $minutesPassed,
+                        'time_left' => 'expired'
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'data' => [
+                            'minutes_passed' => $minutesPassed,
+                            'time_left' => 'expired'
+                        ],
+                        'message' => 'expired'
+                    ], 410);
+                }
+
+                // Format passed time
+                $passedString = '';
+                if ($minutesPassed > 0) {
+                    $passedString .= $minutesPassed . ' minute' . ($minutesPassed > 1 ? 's' : '');
+                }
+                if ($secondsRemainder > 0) {
+                    if ($passedString) $passedString .= ' ';
+                    $passedString .= $secondsRemainder . ' second' . ($secondsRemainder > 1 ? 's' : '');
+                }
+                if ($passedString) {
+                    $passedString .= ' ago';
+                } else {
+                    $passedString = 'just now';
+                }
+                $leftString = $minutesLeft . ' minute' . ($minutesLeft == 1 ? '' : 's') . ' remaining';
+            } else {
+                $passedString = 'just now';
+                $leftString = '0 minutes remaining';
+            }
+            $timeLeft = [
+                'latest_created_at' => $latestCreatedAt ? $latestCreatedAt->toDateTimeString() : null,
+                'minutes_passed' => $passedString,
+                'time_left' => $leftString,
+            ];
+
+            Log::channel('whatsapp')->info('getTemporaryOffersTimeLeft: Success response', ['time_left' => $timeLeft]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $timeLeft,
+            ]);
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('getTemporaryOffersTimeLeft: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while retrieving time left for temporary offers.',
             ], 500);
         }
     }

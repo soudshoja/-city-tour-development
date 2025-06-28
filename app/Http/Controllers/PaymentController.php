@@ -1092,7 +1092,7 @@ class PaymentController extends Controller
         //dd($response['data']);
         $voucherNumber = $response['data']['voucher_number'];
         $paymentUrl = url('/payment/link/show/' . $voucherNumber);
-        Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
+        // Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
 

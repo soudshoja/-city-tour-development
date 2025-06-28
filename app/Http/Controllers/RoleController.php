@@ -38,6 +38,9 @@ class RoleController extends Controller
         //     'user' => auth()->user(),
         // ]);
 
+        if ($user->role_id == Role::AGENT) {
+            return abort(403, 'Unauthorized action.');
+        }
         return view('role.index', compact('roles'));
     }
 
@@ -71,7 +74,7 @@ class RoleController extends Controller
         ]);
         $permissions = Permission::whereIn('id', $request->permissionsId)->get();
         $role->syncPermissions($permissions);
-        
+
         return redirect()->route('role.index');
     }
 
@@ -83,7 +86,7 @@ class RoleController extends Controller
             $groupedPermissions = cache()->remember('permissions', 3600, function () {
                 return $this->getAllPermission();
             });
-        } else if($user->role_id == Role::AGENT){
+        } else if ($user->role_id == Role::AGENT) {
             $groupedPermissions = cache()->remember('permissions_company', 3600, function () {
                 return $this->getAllPermissionForAgent();
             });
@@ -108,7 +111,7 @@ class RoleController extends Controller
 
         $permissions = $groupedPermissions;
 
-        return view('role.edit', compact('role','permissions'));
+        return view('role.edit', compact('role', 'permissions'));
     }
 
     public function update(Request $request)
@@ -119,13 +122,13 @@ class RoleController extends Controller
         ]);
 
         $role = Role::with('permissions')->find($request->role_id);
-        
-        if(!$role) {
+
+        if (!$role) {
             return redirect()->back()->with('error', 'Role not found');
         }
 
-        if($role->permissions->count() == 0){
-            if(count($request->permissionsId) == 0){
+        if ($role->permissions->count() == 0) {
+            if (count($request->permissionsId) == 0) {
                 return redirect()->back()->with('error', 'Pick at least one permission');
             }
         }
@@ -134,7 +137,6 @@ class RoleController extends Controller
 
             $permissions = Permission::whereIn('id', $request->permissionsId)->get();
             $role->syncPermissions($permissions);
-
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
@@ -166,7 +168,7 @@ class RoleController extends Controller
     public function getAllPermissionGroupedByAI() //not used
     {
         $permissions = Permission::all();
-        
+
         $message = [
             [
                 'role' => 'user',
@@ -187,14 +189,12 @@ class RoleController extends Controller
         ];
 
         $response = $this->aiService->chatCompletionJsonResponse($message);
-        
-        return json_decode($response['choices'][0]['message']['content'],true);
 
+        return json_decode($response['choices'][0]['message']['content'], true);
     }
 
     public function getAllRole()
     {
         return Role::with('permissions')->get();
     }
-
 }

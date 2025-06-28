@@ -1986,16 +1986,17 @@ class PaymentController extends Controller
 {
     // Fetch the payment record by ID
     $payment = Payment::find($paymentId);
-
-    // Check if the payment exists
     if (!$payment) {
         return redirect()->back()->with('error', 'Payment not found.');
     }
 
-    // Fetch the client associated with the payment
-    $client = Client::find($payment->client_id);
+    // Handle fallback if agent_id is not passed explicitly (for agent role)
+    $agentId = $request->agent_id ?? $request->agent_id_fallback;
+    $clientId = $request->client_id ?? $request->client_id_fallback;
+    $dialCode = $request->dial_code ?? $request->dial_code_fallback;
 
-    // If the client doesn't exist, return an error
+    // Fetch the client associated with this payment
+    $client = Client::find($clientId);
     if (!$client) {
         return redirect()->back()->with('error', 'Client not found.');
     }
@@ -2005,14 +2006,14 @@ class PaymentController extends Controller
         'payment_gateway' => $request->payment_gateway,
         'payment_method_id' => $request->payment_method_id,
         'amount' => $request->amount,
-        'agent_id' => $request->agent_id,
-        'client_id' => $request->client_id,  // Ensure that client_id is updated
+        'agent_id' => $agentId,
+        'client_id' => $clientId, // Ensure that client_id is updated
     ]);
 
     // Update the client’s phone and country code
     $client->update([
-        'phone' => $request->phone,  // Update phone number
-        'country_code' => $request->dial_code,  // Update country code based on the dial_code input
+        'phone' => $request->phone,
+        'country_code' => $dialCode,
     ]);
 
     // Redirect with success message

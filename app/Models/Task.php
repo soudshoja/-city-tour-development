@@ -47,6 +47,7 @@ class Task extends Model
         'taxes_record',
         'refund_charge',
         'ticket_number',
+        'file_name',
         'created_at'
     ];
 
@@ -70,6 +71,11 @@ class Task extends Model
     //         $builder->where('enabled', true);
     //     });
     // }
+
+    public function getRequiredColumns(): array
+    {
+        return $this->requiredColumn;
+    }
 
     public function getIsCompleteAttribute()
     {

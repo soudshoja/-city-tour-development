@@ -154,7 +154,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'tasks',
         'as' => 'tasks.',
     ], function () {
-        Route::post('/{task}/toggle-status', [TaskController::class, 'toggleStatus'])->name('tasks.toggleStatus');
+        Route::post('/{task}/toggle-status', [TaskController::class, 'toggleStatus'])->name('toggleStatus');
         Route::get('/', [TaskController::class, 'index'])->name('index');
         Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
         Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');

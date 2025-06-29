@@ -27,7 +27,7 @@
                         <span class="text-xs md:text-sm dark:text-white">Filters</span>
                     </button>
 
-                    <div x-show="showFilter" x-transition
+                    <div x-cloak x-show="showFilter" x-transition
                         class="absolute right-0 mt-2 w-72 bg-white shadow-md p-4 rounded-lg border border-gray-300 z-50">
                         <form method="GET" action="{{ route('coa.transaction') }}" class="flex flex-col space-y-4">
                             <div class="flex items-center space-x-2">
@@ -96,7 +96,7 @@
                     </h2>
                 </div>
                 <div class="border-b-2 border-gray-300 mb-2" :class="open ? 'border-blue-600' : ''"></div>
-                <div x-show="open" x-transition>
+                <div x-cloak x-show="open" x-transition>
                     @if ($transactions->isEmpty())
                     <p class="text-gray-500">No transactions available.</p>
                     @else

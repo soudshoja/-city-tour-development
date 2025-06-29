@@ -624,6 +624,23 @@
                                                                             value="{{ $task->reference }}" readonly>
                                                                     </div>
 
+                                                                    @if(strtolower($task->status) !== 'issued' || $task->status == null)
+                                                                    <!-- Original Task Selection for Reissued Tasks -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="original_task_id" class="w-2/4 sm:w-1/3 text-left text-base">Original Task:</label>
+                                                                        <select name="original_task_id" id="original_task_id_{{ $task->id }}"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            <option value="">Select Original Task</option>
+                                                                            @foreach($tasks->where('status', 'issued') as $originalTask)
+                                                                                <option value="{{ $originalTask->id }}" 
+                                                                                    {{ $task->original_task_id == $originalTask->id ? 'selected' : '' }}>
+                                                                                    {{ $originalTask->reference }} - {{ $originalTask->client->name ?? $originalTask->client_name }}
+                                                                                </option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                    @endif
+
                                                                     <!-- Status Field -->
                                                                     <div class="flex items-center gap-4">
                                                                         <label for="status"
@@ -759,12 +776,11 @@
                                                                     <div class="flex items-center gap-4">
                                                                         <label for="agent_id"
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Agent:</label>
-                                                                        <select disabled
+                                                                        <select
                                                                             id="agent_id_select_{{ $task->id }}"
+                                                                            name="agent_id"
                                                                             class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                            <option value=""
-                                                                                {{ empty($task->agent?->id) ? 'selected' : '' }}>
-                                                                                Choose Agent</option>
+                                                                            <option value=""> Choose Agent</option>
                                                                             @foreach ($agents as $agent)
                                                                             <option value="{{ $agent->id }}"
                                                                                 {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
@@ -772,11 +788,6 @@
                                                                             </option>
                                                                             @endforeach
                                                                         </select>
-
-                                                                        <input type="hidden" name="agent_id"
-                                                                            id="agent_id_hidden_{{ $task->id }}"
-                                                                            value="{{ $task->agent->id ?? '' }}">
-
                                                                     </div>
                                                                     @else
                                                                     <input type="hidden" name="agent_id"
@@ -832,7 +843,7 @@
                                                 <p class="{{ $task->client ?? 'no-client' }}">
                                                     <button
                                                         @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')" {{ $task->client !== null ? 'disabled' : '' }}>
-                                                        {{ $task->client->name ?? $task->client_name ?? 'Not Set' }}
+                                                        {{ $task->client->name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
                                                     </button>
                                                 </p>
                                                 @if ($task->client)
@@ -1386,10 +1397,12 @@
             checkbox.addEventListener('change', function() {
                 const taskId = this.getAttribute('data-task-id');
                 const isEnabled = this.checked;
+                const url = "{{ route('tasks.toggleStatus', ':taskId') }}".replace(':taskId', taskId);
 
-                fetch(`/tasks/${taskId}/toggle-status`, {
+                fetch(url, {
                         method: 'POST',
                         headers: {
+                            'Accept': 'application/json',
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector(
                                 'meta[name="csrf-token"]').getAttribute('content')
@@ -1414,13 +1427,15 @@
 
                         } else {
                             alert(data.message || 'Failed to update task status');
-                            // this.checked = !isEnabled;
                         }
                     })
-                    .catch(error => console.error('Error:', error))
-                    .finally(() => {
-                        window.location.reload();
+                    .catch(error => {
+                        console.error('Error:', error);
+                    }).finally(() => {
+                        // Re-enable the checkbox after the request completes
+                        location.reload(); // Reload the page to reflect changes
                     });
+
             });
         });
 

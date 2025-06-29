@@ -20,7 +20,7 @@
 
         <input type="hidden" name="{{ $name }}" :value="selectedId">
 
-        <div x-show="open" @click.away="open = false"
+        <div x-cloak x-show="open" @click.away="open = false"
              class="absolute bg-white z-10 border w-full max-h-48 overflow-y-auto rounded shadow mt-1">
             <div class="px-2 py-2">
                 <input type="text"

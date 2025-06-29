@@ -188,6 +188,12 @@ class TaskSchema
                 'desc' => "Venue or location associated with the task.",
                 'example' => 'Kuwait International Airport',
             ],
+            'created_at' => [
+                'type' => 'datetime',
+                'desc' => "Timestamp when the ticket is issued provided in the airfile, like TKOK12FEB, turn this into datetime format. The date is usually in the format of 'TKOK12FEB', which means the ticket is issued on 12th February 2024, and the time is usually at 00:00:00, so you can just set the time to 00:00:00.",
+                'example' => '2024-02-12 00:00:00',
+                'default' => null,
+            ],
             'task_flight_details' => [
                 'type' => 'object',
                 'desc' => "Flight details associated with the task.",

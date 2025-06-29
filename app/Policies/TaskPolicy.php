@@ -27,4 +27,11 @@ class TaskPolicy
 
         return $user->can('view task price');
     }
+
+    public function store(User $user): bool
+    {
+        if($user->roles('admin')) return true;
+
+        return $user->can('create task');
+    }
 }

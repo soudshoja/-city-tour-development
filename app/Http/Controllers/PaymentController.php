@@ -1996,17 +1996,25 @@ class PaymentController extends Controller
                 return redirect()->back()->with('error', 'Client not found.');
             }
 
-            $payment->client_id = $clientId;
+        $payment->client_id = $clientId;
+        
+        } else {
+            $client = $payment->client;
+            if (!$client) {
+                return redirect()->back()->with('error', 'Client not found.');
+            }
         }
 
         if($request->agent_id) $payment->agent_id = $request->agent_id;
-        if($request->dial_code) $payment->dial_code = $request->dial_code;
+        if($request->dial_code) $client->country_code = $request->dial_code;
+        if($request->phone) $client->phone = $request->phone;
         if($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
         if($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
         if($request->amount) $payment->amount = $request->amount;
         
         try{
             $payment->update();
+            $client->update();
         }catch(Exception $e) {
             Log::error('Failed to update payment link', [
                 'payment_id' => $paymentId,
@@ -2016,6 +2024,26 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
+    }
+
+    public function paymentDeleteLink($paymentId)
+    {
+        $payment = Payment::find($paymentId);
+        if (!$payment) {
+            return redirect()->back()->with('error', 'Payment not found.');
+        }
+
+        try {
+            $payment->delete();
+        } catch (Exception $e) {
+            Log::error('Failed to delete payment link', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', 'Failed to delete payment link.');
+        }
+
+        return redirect()->route('payment.link.index')->with('success', 'Payment link deleted successfully!');
     }
 
 

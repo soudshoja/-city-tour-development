@@ -63,7 +63,7 @@
                                 <input type="hidden" name="task_id" :value="modalTaskId">
                                 <input type="hidden" name="agent_id" :value="modalAgentId">
 
-                                <div id="upload-passport-container" class="my-2 border-2 border-dashed border-gray-400 rounded-md flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48 mb-2">
+                                <div id="upload-passport-container" class="my-2 border-2 border-dashed border-gray-400 rounded-md flex flex-col justify-center gap-2 items-center p-2 min-h-20 max-h-48 mb-2" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
                                         <path d="M10 3H16.5C16.9644 3 17.1966 3 17.3916 3.02567C18.7378 3.2029 19.7971 4.26222 19.9743 5.60842C20 5.80337 20 6.03558 20 6.5" stroke="#1C274C" stroke-width="1.5" />
@@ -290,7 +290,6 @@
                 e.stopPropagation();
             });
 
-
             taskPassportProcessBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 processFileWithAI();
@@ -314,9 +313,29 @@
 
         dropHandler = (e) => {
             e.preventDefault();
-            file.files = e.dataTransfer.files;
-            fileName.textContent = e.dataTransfer.files[0].name;
-        }
+
+            const droppedFile = e.dataTransfer.files[0];
+            if (!droppedFile) return;
+
+            // create new DataTransfer to set file input (only way to populate programmatically)
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(droppedFile);
+            file.files = dataTransfer.files;
+
+            fileName.textContent = droppedFile.name;
+
+            // Optional: preview image
+            if (droppedFile.type.startsWith('image/')) {
+                file.innerHTML = ''; // clear label
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(droppedFile);
+                img.width = 100;
+                img.height = 100;
+                file.appendChild(img);
+            }
+
+            enableButton(taskPassportProcessBtn);
+        };
 
         dragOverHandler = (e) => {
             console.log('File in drop area');

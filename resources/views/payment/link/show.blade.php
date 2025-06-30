@@ -91,11 +91,19 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="border-b border-gray-100">
-                        <td class="py-3 px-4">Total Amount</td>
-                        <td class="py-3 px-4 text-right">{{ $payment->amount }} {{ $payment->currency }}</td>
-                    </tr>
-                    @if ($chargeResult['paid_by'] !== 'Company')
+                    @if (auth()->check())
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4">Total Amount</td>
+                            <td class="py-3 px-4 text-right">{{ $payment->amount }} {{ $payment->currency }}</td>
+                        </tr>
+                    @else
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4">Total Amount</td>
+                            <td class="py-3 px-4 text-right">{{ $chargeResult['finalAmount'] }}
+                                {{ $payment->currency }}</td>
+                        </tr>
+                    @endif
+                    @if (auth()->check() && $chargeResult['paid_by'] !== 'Company')
                         <tr class="border-b border-gray-100">
                             <td class="py-3 px-4">Service Charge</td>
                             <td class="py-3 px-4 text-right">{{ $chargeResult['fee'] }} {{ $payment->currency }}</td>

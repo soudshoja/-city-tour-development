@@ -1539,7 +1539,6 @@
             e.stopPropagation();
         });
 
-
         taskPassportProcessBtn.addEventListener('click', (e) => {
             e.preventDefault();
             processFileWithAI();
@@ -1561,11 +1560,29 @@
         enableButton(taskPassportProcessBtn);
     });
 
-    dropHandler = (e) => {
+   dropHandler = (e) => {
         e.preventDefault();
-        file.files = e.dataTransfer.files;
-        fileName.textContent = e.dataTransfer.files[0].name;
-    }
+
+        const droppedFile = e.dataTransfer.files[0];
+        if (!droppedFile) return;
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(droppedFile);
+        file.files = dataTransfer.files;
+
+        fileName.textContent = droppedFile.name;
+
+        if (droppedFile.type.startsWith('image/')) {
+            file.innerHTML = ''; 
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(droppedFile);
+            img.width = 100;
+            img.height = 100;
+            file.appendChild(img);
+        }
+
+        enableButton(taskPassportProcessBtn);
+    };
 
     dragOverHandler = (e) => {
         console.log('File in drop area');

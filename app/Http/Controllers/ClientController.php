@@ -591,6 +591,34 @@ class ClientController extends Controller
                 'message' => 'Client not found',
             ];
         }
+        
+        DB::beginTransaction();
+        try {
+            // Insert credit table
+            $topupCreditClientData = [
+                'company_id'  => $client->agent->branch->company->id,
+                'client_id'   => $client->id,
+                'type'        => 'Topup',
+                'description' => 'Topup Credit via ' . $payment->voucher_number,
+                'amount'      => $payment->amount,
+            ];
+
+            Log::info('Creating Credit record:', $topupCreditClientData);
+
+            Credit::create($topupCreditClientData);
+
+            Log::info('Credit record created successfully for client ID: ' . $client->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create Credit record', [
+                'data'  => $topupCreditClientData,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+        DB::commit();
+        
+        
       $chargeData = $payment->payment_method === 'myfatoorah'
     ? ChargeService::FatoorahCharge($payment->amount, $payment->method_id)
     : ChargeService::TapCharge([
@@ -713,23 +741,23 @@ class ClientController extends Controller
             // $client->save();
 
             // Insert credit table
-            $topupCreditClientData = [
-                'company_id'  => $client->agent->branch->company->id,
-                'client_id'   => $client->id,
-                'type'        => 'Topup',
-                'description' => 'Topup Credit via ' . $payment->voucher_number,
-                'amount'      => $payment->amount,
-            ];
+            // $topupCreditClientData = [
+            //     'company_id'  => $client->agent->branch->company->id,
+            //     'client_id'   => $client->id,
+            //     'type'        => 'Topup',
+            //     'description' => 'Topup Credit via ' . $payment->voucher_number,
+            //     'amount'      => $payment->amount,
+            // ];
 
-            Log::info('Creating Credit record:', $topupCreditClientData);
+            // Log::info('Creating Credit record:', $topupCreditClientData);
 
-            Credit::create($topupCreditClientData);
+            // Credit::create($topupCreditClientData);
         } catch (Exception $e) {
             DB::rollBack();
-            logger('Error adding credit: ' . $e->getMessage());
+            logger('Error adding JournalEntry: ' . $e->getMessage());
             return [
                 'status' => 'error',
-                'message' => 'Failed to add credit',
+                'message' => 'Failed to add JournalEntry',
             ];
         }
 
@@ -739,7 +767,7 @@ class ClientController extends Controller
             'message' => 'Credit added successfully',
             'data' => [
                 'client_id' => $client->id,
-                'credit' => $client->credit,
+                'credit' => $payment->amount,
             ],
         ];
     }

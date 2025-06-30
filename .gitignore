@@ -24,3 +24,5 @@ yarn-error.log
 /.idea
 /.vscode
 /air-files
+composer.lock
+composer.lock

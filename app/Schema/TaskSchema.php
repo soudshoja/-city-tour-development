@@ -54,7 +54,7 @@ class TaskSchema
             'refund_date' => [
                 'type' => 'datetime',
                 'desc' => "Date of refund if applicable.",
-                'example' => '2024-06-01 10:00:00',
+                'example' => '2025-06-01 10:00:00',
                 'default' => null,
             ],
             'price' => [
@@ -190,8 +190,8 @@ class TaskSchema
             ],
             'created_at' => [
                 'type' => 'datetime',
-                'desc' => "Timestamp when the ticket is issued provided in the airfile, like TKOK12FEB, turn this into datetime format. The date is usually in the format of 'TKOK12FEB', which means the ticket is issued on 12th February 2024, and the time is usually at 00:00:00, so you can just set the time to 00:00:00.",
-                'example' => '2024-02-12 00:00:00',
+                'desc' => "Timestamp when the ticket is issued provided in the airfile, like TKOK12FEB, turn this into datetime format. The date is usually in the format of 'TKOK12FEB', which means the ticket is issued on 12th February 2025, and the time is usually at 00:00:00, so you can just set the time to 00:00:00.",
+                'example' => '2025-02-12 00:00:00',
                 'default' => null,
             ],
             'task_flight_details' => [
@@ -199,11 +199,11 @@ class TaskSchema
                 'desc' => "Flight details associated with the task.",
                 'example' => [
                     'farebase' => '20.00',
-                    'departure_time' => '2024-10-16 14:00:00',
+                    'departure_time' => '2025-10-16 14:00:00',
                     'departure_from' => 'Kuwait',
                     'airport_from' => 'KWI',
                     'terminal_from' => '1',
-                    'arrival_time' => '2024-10-16 16:00:00',
+                    'arrival_time' => '2025-10-16 16:00:00',
                     'duration_time' => '2h 5m',
                     'arrive_to' => 'Singapore',
                     'airport_to' => 'SIN',
@@ -224,8 +224,8 @@ class TaskSchema
                 'desc' => "Hotel details associated with the task.",
                 'example' => [
                     'hotel_name' => 'Grand Hotel',
-                    'check_in_date' => '2024-10-16',
-                    'check_out_date' => '2024-10-20',
+                    'check_in_date' => '2025-10-16',
+                    'check_out_date' => '2025-10-20',
                     'room_type' => 'Deluxe Suite',
                     'nights' => 4,
                     'guests' => 2,

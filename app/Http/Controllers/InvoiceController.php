@@ -521,6 +521,8 @@ class InvoiceController extends Controller
             }
         }
 
+        DB::beginTransaction();
+
         try {
             $invoicePartial = InvoicePartial::create([
                 'invoice_id' => $invoiceId,
@@ -549,6 +551,7 @@ class InvoiceController extends Controller
                     ]);
                 } catch (Exception $e) {
                     Log::error('Failed to create Credit: ' . $e->getMessage());
+                    DB::rollBack();
                     return response()->json([
                         'success' => false,
                         'message' => 'Failed to create credit record!',
@@ -560,86 +563,84 @@ class InvoiceController extends Controller
             $invoice->status = $credit ? 'paid' : 'unpaid';
             $invoice->is_client_credit = $credit;
             $invoice->save();
-        } catch (Exception $e) {
-            Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
+
+            $transaction = Transaction::where('invoice_id', $invoice->id)->first();
+
+            if (!$transaction) {
+                $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
+                $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
+
+                if ($tasks->isEmpty()) {
+                    throw new \Exception('No tasks found for this invoice to create a transaction.');
+                }
+
+                $transaction = Transaction::create([
+                    'company_id' => $tasks[0]->company_id,
+                    'branch_id' => $tasks[0]->agent->branch_id,
+                    'entity_id' => $tasks[0]->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' =>  $invoice->amount,
+                    'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
+                    'invoice_id' => $invoice->id,
+                    'reference_type' => 'Invoice',
+                ]);
+
+                $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
+
+                foreach ($tasks as $task) {
+                    Log::info('Preparing to add journal entry', [
+                        'task_id' => $task->id ?? null,
+                        'invoice_id' => $invoice->id,
+                        'invoice_detail_id' => $invoiceDetail->id ?? null,
+                        'transaction_id' => $transaction->id ?? null,
+                        'client_name' => $invoice->client->name ?? null,
+                        'task' => $task,
+                    ]);
+
+                    $response = $this->addJournalEntry(
+                        $task,
+                        $invoice->id,
+                        $invoiceDetail->id,
+                        $transaction->id,
+                        $invoice->client->name,
+                    );
+                    Log::info('Journal entry response', ['response' => $response]);
+                    if ($response['status'] == 'error') {
+                        throw new \Exception($response['message']);
+                    }
+                }
+            } else {
+                Log::info('Reusing existing transaction for invoice', [
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $transaction->id,
+                ]);
+            }
+
+            DB::commit(); 
+
             return response()->json([
-                'success' => false,
-                'message' => 'Failed to create invoice!',
+                'success' => true,
+                'message' => 'Invoice Partial created successfully!',
+                'invoiceId' => $invoice->id,
             ]);
-        }
 
-        $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
-        $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
-
-        $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
-
-        DB::beginTransaction();
-        try {
-            $transaction = Transaction::create([
-                'company_id' => $tasks[0]->company_id,
-                'branch_id' => $tasks[0]->agent->branch_id,
-                'entity_id' => $tasks[0]->company_id,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'amount' =>  $invoice->amount,
-                'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
-                'invoice_id' => $invoice->id,
-                'reference_type' => 'Invoice',
-            ]);
         } catch (Exception $e) {
-
             DB::rollBack();
-            $invoicePartial->delete();
-            $invoice->payment_type = null;
-            $invoice->status = 'unpaid';
-            $invoice->is_client_credit = false;
 
-            Log::error('Failed to create Transactions: ' . $e->getMessage());
-            return response()->json('Something Went Wrong', 500);
-        }
-        DB::commit();
-
-
-        DB::beginTransaction();
-
-        foreach ($tasks as $task) {
-            Log::info('Preparing to add journal entry', [
-                'task_id' => $task->id ?? null,
-                'invoice_id' => $invoice->id,
-                'invoice_detail_id' => $invoiceDetail->id ?? null,
-                'transaction_id' => $transaction->id ?? null,
-                'client_name' => $invoice->client->name ?? null,
-                'task' => $task,
-            ]);
-
-            $response = $this->addJournalEntry(
-                $task,
-                $invoice->id,
-                $invoiceDetail->id,
-                $transaction->id,
-                $invoice->client->name,
-            );
-            Log::info('Journal entry response', ['response' => $response]);
-            if ($response['status'] == 'error') {
-                DB::rollBack();
-
-                $invoicePartial->delete();
+            if (isset($invoice)) {
                 $invoice->payment_type = null;
                 $invoice->status = 'unpaid';
                 $invoice->is_client_credit = false;
-
-                Log::error('Journal entry creation failed', ['response' => $response]);
-                return response()->json($response['message'], 500);
+                $invoice->save();
             }
+
+            Log::error('Failed to create Invoice Partial or Transaction/Journal Entries: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Something Went Wrong: ' . $e->getMessage(),
+            ], 500);
         }
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Invoice Partial created successfully!',
-            'invoiceId' => $invoice->id,
-        ]);
     }
 
     public function removePartial(Request $request)

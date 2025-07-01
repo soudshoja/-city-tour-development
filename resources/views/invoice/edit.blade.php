@@ -650,43 +650,37 @@
 
                         <!-- Payment Gateway Section -->
                         <section id="payment_gateway_section" class="mb-6">
-                            <div class="mt-4" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }">
-                            <div class="flex items-center">
-                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
-                                    @click="updateGateway">(Change)</span>
-                            </div>
-                                @php
-                                $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway;
-                                @endphp
-
-                                <select id="payment_gateway_option" name="payment_gateway_option"
-                                    class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
-                                    @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway }}"
-                                        {{ $selectedGateway === $gateway ? 'selected' : '' }}>
-                                        {{ $gateway }}
-                                    </option>
-                                    @endforeach
-                                    <!-- <option value="Tap" {{ $selectedGateway === 'Tap' ? 'selected' : '' }}>Tap
-                                    </option>
-                                    <option value="MyFatoorah"
-                                        {{ $selectedGateway === 'MyFatoorah' ? 'selected' : '' }}>MyFatoorah</option> -->
-                                    <!-- <option value="Hesabe" {{ $selectedGateway === 'Hesabe' ? 'selected' : '' }}>
-                                        Hesabe</option> -->
-                                </select>
-                            </div>
-                            <div class="mt-4" x-data="{ selectedGateway: '' }" x-init="$watch('selectedGateway', () => {});
-                            selectedGateway = document.getElementById('payment_gateway_option').value;
-                            document.getElementById('payment_gateway_option').addEventListener('change', e => selectedGateway = e.target.value)" x-cloak
-                                x-show="selectedGateway === 'MyFatoorah'" x-transition>
-                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
-                                <select name="payment_method" id="payment_method"
-                                    class="border border-gray-300 p-2 rounded w-full">
-                                    @foreach ($paymentMethods as $methods)
-                                    <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
-                                    @endforeach
-                                </select>
+                            @php
+                            $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway ?? '';
+                            $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
+                            @endphp
+                            <div id="payment_gateway_dropdowns">
+                                <div class="mt-4" x-data="{ selectedGateway: '{{ $selectedGateway }}', paymentType: '{{ $invoice->payment_type ?? '' }}' }">
+                                    <div class="flex items-center">
+                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                        <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
+                                            @click="updateGateway">(Change)</span>
+                                    </div>
+                                    <select id="payment_gateway_option" name="payment_gateway_option"
+                                        class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
+                                        @foreach ($paymentGateways as $gateway)
+                                        <option value="{{ $gateway }}"
+                                            {{ $selectedGateway === $gateway ? 'selected' : '' }}>
+                                            {{ $gateway }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mt-4" x-data="{ selectedGateway: '{{ $selectedGateway }}', selectedMethod: '{{ $selectedMethod }}' }" x-init="$watch('selectedGateway', () => {}); document.getElementById('payment_gateway_option').addEventListener('change', e => selectedGateway = e.target.value)" x-cloak
+                                    x-show="selectedGateway === 'MyFatoorah'" x-transition>
+                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
+                                    <select name="payment_method" id="payment_method"
+                                        class="border border-gray-300 p-2 rounded w-full">
+                                        @foreach ($paymentMethods as $methods)
+                                        <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                             <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                             <div class="mt-4">
@@ -924,6 +918,7 @@
                                                                 <th class="border-b px-4 py-2">Expiry Date</th>
                                                                 <th class="border-b px-4 py-2">Amount</th>
                                                                 <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                                <th class="border-b px-4 py-2">Payment Method</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody id="split-rows">
@@ -1365,6 +1360,10 @@
             // console.log('paymenttype', paymentType);
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
             const additionalActions = document.getElementById('additional-actions');
+            const paymentModal = document.getElementById('paymentModal');
+            const paymentModal1 = document.getElementById('paymentModal1');
+
+            const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
 
             if (paymentType === 'full') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
@@ -1373,6 +1372,7 @@
                 paymentTypeFull.disabled = true;
                 paymentTypePartial.disabled = true;
                 paymentTypeSplit.disabled = true;
+                paymentGatewayDropdowns.classList.remove('hidden');
             } else if (paymentType === 'partial') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
                 additionalActions.style.display = 'block';
@@ -1380,6 +1380,8 @@
                 paymentTypeFull.disabled = true;
                 paymentTypePartial.disabled = true;
                 paymentTypeSplit.disabled = true;
+                paymentGatewayDropdowns.classList.add('hidden');
+                paymentModal1.classList.add('hidden');
             } else if (paymentType === 'split') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
                 additionalActions.style.display = 'block';
@@ -1387,6 +1389,8 @@
                 paymentTypeFull.disabled = true;
                 paymentTypePartial.disabled = true;
                 paymentTypeSplit.disabled = true;
+                paymentGatewayDropdowns.classList.add('hidden');
+                paymentModal.classList.add('hidden');
             } else {
                 paymentGatewaySection.style.display = 'none'; // Hide the section
                 additionalActions.style.display = 'none';
@@ -1482,6 +1486,7 @@
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
             const clients = @json($clients);
+            const paymentMethods = @json($paymentMethods);
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
 
@@ -1490,9 +1495,9 @@
                 row.innerHTML = `
                     <td class="border-b px-4 py-2">${i}</td>
                     <td class="border-b px-4 py-2">
-                       <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                         ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
-                       </select>
+                    <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
+                        ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                    </select>
                     </td>
                     <td class="border-b px-4 py-2">
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
@@ -1501,13 +1506,20 @@
                         <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <select id="payment_gateway" name="payment_gateway" class="border border-gray-300 p-2 rounded w-full">
-                              @foreach ($paymentGateways as $gateway)
-                               <option value="{{ $gateway }}">{{ $gateway }}</option>
-                              @endforeach
-                         </select>
+                        <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="border border-gray-300 p-2 rounded w-full">
+                            @foreach ($paymentGateways as $gateway)
+                            <option value="{{ $gateway }}">{{ $gateway }}</option>
+                            @endforeach
+                        </select>
                     </td>
-                    <td class="px-4 py-2 border"></td>
+                    <td class="border-b px-4 py-2">
+                        <div id="payment_method_container_${i}" class="hidden">
+                            <select id="payment_method_${i}" name="payment_method_${i}" class="border border-gray-300 p-2 rounded w-full">
+                                ${paymentMethods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div id="payment_method_text_${i}" class="text-gray-500 p-2">No specific method required</div>
+                    </td>
                 `;
                 tbody.appendChild(row);
 
@@ -1520,6 +1532,23 @@
                     }
                 });
 
+                const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
+                const methodContainer = row.querySelector(`#payment_method_container_${i}`);
+                const methodText = row.querySelector(`#payment_method_text_${i}`);
+
+                const updateMethodVisibility = () => {
+                    if (gatewaySelect.value.toLowerCase() === 'myfatoorah') {
+                        methodContainer.classList.remove('hidden');
+                        methodText.classList.add('hidden');
+                    } else {
+                        methodContainer.classList.add('hidden');
+                        methodText.classList.remove('hidden');
+                    }
+                };
+
+                updateMethodVisibility();
+
+                gatewaySelect.addEventListener('change', updateMethodVisibility);
             }
         }
 
@@ -2362,7 +2391,10 @@
                     amount,
                     gateway
                 });
-                save('full', fullData);
+
+                for (const item of fullData) {
+                    save('full', item);
+                }
 
                 const button = document.getElementById('update-invoice-btn');
                 const icon = document.getElementById('button-icon-full');
@@ -2380,7 +2412,7 @@
                 `;
                 text.textContent = 'Saving...';
 
-                setTimeout(() => {
+                setTimeout(( ) => {
                     icon.innerHTML = '';
                     text.textContent = 'Saved ✅';
                     location.reload();
@@ -2389,36 +2421,45 @@
 
             } else if (mode === 'split') {
                 // Collect Split Payment Data
-                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                const description = document.getElementById('split-desc').value;
                 const rows = document.querySelectorAll('#split-rows tr');
-
                 const splitData = [];
-                rows.forEach(row => {
-                    const selectElement = row.querySelector('select');
-                    const clientId = selectElement.value;
-                    const date = row.querySelector('input[type="date"]').value;
-                    const gateway = row.querySelector('#payment_gateway').value || null;
-                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-                    const clientName = selectElement.options[selectElement.selectedIndex].text;
+                rows.forEach((row, index) => {
+                    const clientSelectElement = row.querySelector(`#customer_name_${index + 1}`);
+
+                    if (!clientSelectElement) {
+                        console.error(`Client select element not found for row ${index + 1}`);
+                        return;
+                    }
+
+                    const clientId = clientSelectElement.value;
+                    const clientName = clientSelectElement.options[clientSelectElement.selectedIndex].text;
+
+                    const dateInput = row.querySelector(`input[type="date"]`);
+                    const date = dateInput ? dateInput.value : null;
+
+                    const amountInput = row.querySelector(`input[type="number"]`);
+                    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+
+                    const gatewaySelect = row.querySelector(`#payment_gateway_${index + 1}`);
+                    const gateway = gatewaySelect ? gatewaySelect.value : null;
+
+                    const methodSelect = row.querySelector(`#payment_method_${index + 1}`);
+                    const method = methodSelect ? methodSelect.value : null;
+
 
                     splitData.push({
                         clientId,
                         clientName,
                         date,
                         amount,
-                        gateway
+                        gateway,
+                        method
                     });
                 });
 
-                // console.log('Split Payment Data:', {
-                //     totalAmount,
-                //     splitInto,
-                //     description,
-                //     splitData
-                // });
-                save('split', splitData);
+                for (const item of splitData) {
+                    save('split', item);
+                }
 
 
                 const buttonSplit = document.getElementById('splitbutton');
@@ -2438,9 +2479,10 @@
 
                     textSplit.textContent = 'Saving...';
 
-                    setTimeout(() => {
+                    setTimeout(( ) => {
                         iconSplit.innerHTML = ''; // remove spinner
                         textSplit.textContent = 'Saved ✅';
+                        location.reload();
                     }, 500);
                 } else {
                     console.error('Split button or icon/text elements not found in the DOM.');
@@ -2452,7 +2494,8 @@
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                 const partialRows = document.querySelectorAll('#split-rows1 tr');
-                const gateway = document.getElementById('payment_gateway')?.value || '';
+                const gateway = document.getElementById('payment_gateway1')?.value || '';
+                const method = document.getElementById('payment_method1')?.value || '';
 
                 const partialData = [];
 
@@ -2463,12 +2506,14 @@
                     partialData.push({
                         date,
                         amount,
-                        gateway
+                        gateway,
+                        method
                     });
                 });
 
-                // console.log('Partial Payment Data:', partialData);
-                save('partial', partialData);
+                for (const item of partialData) {
+                    save('partial', item);
+                }
 
                 const buttonPartial = document.getElementById('partialbutton');
                 const iconPartial = document.getElementById('button-icon-partial');
@@ -2487,7 +2532,7 @@
 
                     textPartial.textContent = 'Saving...';
 
-                    setTimeout(() => {
+                    setTimeout(( ) => {
                         iconPartial.innerHTML = ''; // remove icon
                         textPartial.textContent = 'Saved ✅';
                         location.reload(); // or redirect if you want
@@ -2507,7 +2552,9 @@
                     amount,
                     gateway
                 });
-                save('credit', fullData);
+                for (const item of fullData) {
+                    save('credit', item);
+                }
 
                 const button = document.getElementById('update-invoice-btn');
                 const icon = document.getElementById('button-icon-full');
@@ -2525,7 +2572,7 @@
                 `;
                 text.textContent = 'Saving...';
 
-                displaySuccessMessage("Invoice saved and paid successfully!");
+                displaySuccessMessage("Invoice saved and paid successfully!" );
 
                 setTimeout(() => {
                     icon.innerHTML = '';
@@ -2536,220 +2583,68 @@
             }
         }
 
-        async function save(type, data) {
-             console.log(data)
-            // const invoiceUrl1 = "{{ route('invoice.removepartial') }}";
+        async function save(type, item) {
+            console.log("Sending single item:", item);
 
             const invoiceUrl = "{{ route('invoice.partial') }}";
-
             const csrfToken = "{{ csrf_token() }}";
             const invoiceId = document.getElementById('invoiceId').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value;
+
+            let payload = {
+                invoiceId,
+                invoiceNumber,
+                type,
+                date: item.date,
+                amount: item.amount,
+                gateway: item.gateway,
+            };
+
             if (type === 'full' || type === 'credit') {
-                const gateway = document.getElementById('payment_gateway_option').value;
-            } else {
-                const gateway = document.getElementById('payment_gateway').value;
-            }
-            const amount = data.amount;
-
-            if (type === 'full') {
-                const clientId = document.getElementById('receiverId').value;
-                const gateway = document.getElementById('payment_gateway_option').value;
-                const method = gateway === 'MyFatoorah' ? (document.getElementById('payment_method')?.value) : null;
-
-                try {
-                    for (const item of data) {
-                        const {
-                            date,
-                            amount,
-                            gateway
-                        } = item;
-
-                        // Send POST request for each client
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type,
-                                date,
-                                amount,
-                                gateway,
-                                method
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                        }
-
-                        const result = await response.json();
-                    }
-
-                    // Display links
-
-                } catch (error) {
-                    console.error('Error generating invoices:', error);
-                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                } finally {
-                    afterPaymentType();
-                    hideModal();
+                payload.clientId = document.getElementById('receiverId').value;
+                if (item.gateway === 'MyFatoorah') {
+                    payload.method = document.getElementById('payment_method')?.value;
+                } else {
+                    payload.method = null;
                 }
-            } else if (type === 'split') {
-                let button = document.getElementById("splitbutton");
-                button.disabled = true;
-                button.innerText = "Saving..."; // Change text while saving
-                const method = data.method;
-
-                // Handle split payment, generate links for each row
-                try {
-                    const invoiceLinks = []; // Store links for each client
-                    for (const item of data) {
-                        const {
-                            clientId,
-                            clientName,
-                            date,
-                            amount,
-                            gateway
-                        } = item;
-
-                        // console.log(invoiceId, clientId, type, date, amount);
-                        // console.log(csrfToken);
-                        // console.log(clientName);
-                        // Send POST request for each client
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type,
-                                date,
-                                amount,
-                                gateway,
-                                method
-                            }),
-                        });
-
-                        // console.log(response);
-                        if (!response.ok) {
-                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                        }
-
-                        const result = await response.json();
-                    }
-
-                    button.innerText = "Saved!";
-                    // Update the visibility of the link
-                    updateLinkVisibility(invoiceNumber);
-
-                } catch (error) {
-                    console.error('Error generating invoices:', error);
-                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                } finally {
-                    afterPaymentType();
-                    //hideModal();
-                }
-
             } else if (type === 'partial') {
-                // Handle partial payment as before
-                const clientId = document.getElementById('receiverId').value;
-                const selectedGateway = document.getElementById('payment_gateway1').value;
-                const method = selectedGateway === 'MyFatoorah' ?
-                    (document.getElementById('payment_method1')?.value) : null;
+                payload.clientId = document.getElementById('receiverId').value;
+                payload.method = item.method;
+            } else if (type === 'split') {
+                payload.clientId = item.clientId;
+                payload.method = item.method;
+            }
 
-                try {
+            if (type === 'credit') {
+                payload.credit = true;
+            }
 
-                    for (const item of data) {
-                        const {
-                            date,
-                            amount,
-                            gateway
-                        } = item;
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                });
 
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type,
-                                date,
-                                amount,
-                                gateway: selectedGateway,
-                                method
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error("Failed to generate partial invoice.");
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error generating invoice:', error);
-                    displayErrorMessage("Error generating invoice. Please try again.");
-                } finally {
-                    afterPaymentType();
-                    hideModal();
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Failed to process ${type} payment.`);
                 }
-            } else if (type === 'credit') {
-                // Handle credit payment as before
-                const clientId = document.getElementById('receiverId').value;
 
-                try {
+                const result = await response.json();
+                console.log("Backend response for single item:", result);
+                displaySuccessMessage(result.message || `${type} payment processed successfully!`);
 
-                    for (const item of data) {
-                        const {
-                            date,
-                            amount,
-                            gateway
-                        } = item;
-
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type: 'full',
-                                date,
-                                amount,
-                                gateway,
-                                credit: true
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error("Failed to generate partial invoice.");
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error generating invoice:', error);
-                    displayErrorMessage("Error generating invoice. Please try again.");
-                } finally {
-                    afterPaymentType();
-                    hideModal();
-                }
+            } catch (error) {
+                console.error(`Error processing ${type} payment for item:`, item, error);
+                displayErrorMessage(error.message || `Something went wrong with ${type} payment.`);
             }
         }
+
 
         function displayErrorMessage(message) {
             const alert = document.createElement('div');

@@ -169,7 +169,8 @@
                      <input type="hidden" name="client_email" value="{{ $invoicePartial->client->email }}">
                      <input type="hidden" name="client_name" value="{{ $invoicePartial->client->name }}">
                      <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
-                     <input type="hidden" name="payment_method" value="{{ $invoicePartial->payment_gateway }}">
+                     <input type="hidden" name="payment_gateway" value="{{ $invoicePartial->payment_gateway }}">
+                     <input type="hidden" name="payment_method" value="{{ $invoicePartial->payment_method }}">
                      <div class="flex items-center gap-2">
                          <button type="submit" id="payNowBtn"
                              class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-black">
@@ -268,6 +269,7 @@
 
      <script>
          let invoicePartial = @json($invoicePartial);
+         const paymentForm = document.getElementById('paymentForm');
          addHiddenInput("invoice_partial_id[]", invoicePartial.id, paymentForm);
          console.log("split blade");
 

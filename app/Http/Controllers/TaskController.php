@@ -901,12 +901,10 @@ class TaskController extends Controller
 
                     $this->processTaskFinancial($task);
                 } elseif (!$shouldBeEnabled && $wasEnabled) {
-                    dd('Task is no longer complete but was enabled before.');
                     // Task is no longer complete but was enabled - disable it
                     $task->enabled = false;
                     $task->save();
                 } else {
-                    dd('Task status did not change.');
                     // Just save the enabled status
                     $task->enabled = $shouldBeEnabled;
                     $task->save();

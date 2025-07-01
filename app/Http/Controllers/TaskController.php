@@ -77,7 +77,6 @@ class TaskController extends Controller
                 $supplier->is_active = $company && isset($company->pivot->is_active) ? (bool)$company->pivot->is_active : false;
                 return $supplier;
             });
-        
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
@@ -217,6 +216,7 @@ class TaskController extends Controller
             if ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
                 $existingTask->gds_reference = $request->gds_reference;
                 $existingTask->airline_reference = $request->airline_reference;
+                $existingTask->created_at = $request->created_at;
                 $existingTask->save();
 
                 return response()->json([
@@ -276,7 +276,6 @@ class TaskController extends Controller
                 'message' => 'Task created successfully.',
                 'data' => $task,
             ], 201);
-
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Task creation failed: ' . $e->getMessage());
@@ -333,7 +332,7 @@ class TaskController extends Controller
         }
 
         $supplier = Supplier::find($task->supplier_id);
-        
+
         $supplierPayable = Account::where('name', $supplier->name)
             ->where('company_id', $task->company_id)
             ->where('root_id', $liabilities->id)
@@ -351,13 +350,13 @@ class TaskController extends Controller
         if ($task->type == 'flight') {
             Log::info('Processing flight task financial for: ' . $task->reference);
             $companyIssuedBy = $task->issued_by ?? 'Not Issued';
-            
+
             $issuedByAccount = Account::where('name', $companyIssuedBy)
                 ->where('company_id', $task->company_id)
                 ->where('root_id', $liabilities->id)
                 ->where('parent_id', $supplierPayable->id)
                 ->first();
-            
+
             Log::info('Issued By Account: ', ['account' => $issuedByAccount]);
 
             if (!$issuedByAccount) {
@@ -436,7 +435,7 @@ class TaskController extends Controller
     private function getMissingFields(Task $task): string
     {
         $missingFields = [];
-        
+
         // Define custom messages for each required field
         $fieldMessages = [
             'client_id' => 'Please update the client',
@@ -449,7 +448,7 @@ class TaskController extends Controller
             'reference' => 'Reference number is mandatory',
             'total' => 'Total amount must be specified',
         ];
-        
+
         foreach ($task->getRequiredColumns() as $column) {
             if (empty($task->$column)) {
                 // Use custom message if available, otherwise use default format
@@ -457,7 +456,7 @@ class TaskController extends Controller
                 $missingFields[] = $message;
             }
         }
-        
+
         return implode(', ', $missingFields);
     }
 
@@ -679,7 +678,6 @@ class TaskController extends Controller
                 'status' => 'success',
                 'message' => 'Task enabled and processed successfully.',
             ];
-
         } catch (Exception $e) {
             DB::rollBack();
             throw $e;
@@ -693,7 +691,7 @@ class TaskController extends Controller
         if ($task->enabled) {
             if (!$task->is_complete) {
                 return response()->json([
-                    'success' => false, 
+                    'success' => false,
                     'message' => 'Task is not complete. Missing required fields: ' . $this->getMissingFields($task)
                 ], 400);
             }
@@ -781,7 +779,7 @@ class TaskController extends Controller
             'data' => $issuedTask,
         ], 201);
     }
-    
+
     public function show($id)
     {
         $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel', 'supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
@@ -830,7 +828,7 @@ class TaskController extends Controller
             'total.required' => 'Please enter the total amount',
         ]);
 
-        if(strtolower($request->status) !== 'issued') {
+        if (strtolower($request->status) !== 'issued') {
             $request->validate([
                 'original_task_id' => 'required|exists:tasks,id',
             ], [
@@ -848,7 +846,7 @@ class TaskController extends Controller
         if ($hasJournalEntries) {
             $wasEnabled = true;
         }
-            
+
         $client = Client::findOrFail($request->client_id);
 
         // If the request is an AJAX request, handle inline editing
@@ -1428,7 +1426,7 @@ class TaskController extends Controller
                         'reference' => $existingTask->reference,
                         'message' => 'Task already exists, updated status',
                     ];
-                        
+
                     continue; // Skip creating a new task if it already exists but update the status
                 } else {
                     Log::channel('magic_holidays')->info('Existing task already exists: ' . $existingTask->reference);

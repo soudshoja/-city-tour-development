@@ -610,7 +610,7 @@ class WhatsAppHotelController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'No temporary offers found for this telephone number.',
-                ], 404);
+                ], 200);
             }
 
             $latestCreatedAt = $offers->max('created_at');
@@ -666,6 +666,7 @@ class WhatsAppHotelController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $timeLeft,
+                'message' => 'Temporary offers are available for 15 minutes from the time of creation. You have ' . $leftString . ' since the last offer was created.',
             ]);
         } catch (Exception $e) {
             Log::channel('whatsapp')->error('getTemporaryOffersTimeLeft: Exception', ['error' => $e->getMessage()]);

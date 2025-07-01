@@ -3,6 +3,7 @@
 namespace App\Schema;
 
 use App\Enums\TaskType;
+use App\Models\Agent;
 use App\Models\Supplier;
 use App\Models\Task;
 
@@ -13,6 +14,10 @@ class TaskSchema
         $supplierList = json_encode(Supplier::all()->toArray());
 
         $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
+
+        $agentsAmadeusId = Agent::pluck('amadeus_id')->toArray();
+
+        $agentAmadeusIdList = json_encode($agentsAmadeusId);
 
         return [
             'additional_info' => [
@@ -155,7 +160,7 @@ class TaskSchema
             ],
             'agent_amadeus_id' => [
                 'type' => 'string',
-                'desc' => "Amadeus ID of the agent handling the task. Its located on C line of the file. The character often have 6 characters, 4 digit with 2 letters, like '1234AB'. However, the list of characters usually have 2 extra letters at the end, like '1234ABAS'. The last 2 letters are referring to the role of the agent (AS refer to agent, SU refer to the supplier), so you can just remove the last 2 letters and keep the first 6 characters. for example, if the agent amadeus id is '1234ABAS', you can just set it to '1234AB'. This is example list of amadeus id: \$agentAmadeusIdList",
+                'desc' => "Amadeus ID of the agent handling the task. Its located on C line of the file. The character often have 6 characters, 4 digit with 2 letters, like '1234AB'. However, the list of characters usually have 2 extra letters at the end, like '1234ABAS'. The last 2 letters are referring to the role of the agent (AS refer to agent, SU refer to the supplier), so you can just remove the last 2 letters and keep the first 6 characters. for example, if the agent amadeus id is '1234ABAS', you can just set it to '1234AB'. This is example list of amadeus id: $agentAmadeusIdList",
                 'example' => '1234AB',
                 'default' => '',
             ],

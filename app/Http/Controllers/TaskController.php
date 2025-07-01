@@ -1345,6 +1345,10 @@ class TaskController extends Controller
             return; // Skip this reservation if no rooms are found
         }
 
+        $processResult = [];
+        $processResult['success'] = [];
+        $processResult['failed'] = [];
+
         foreach ($reservation['service']['rooms'] as $room) {
             $enabled = true; // Assume enabled by default
 
@@ -1421,9 +1425,21 @@ class TaskController extends Controller
                     $existingTask->status = $taskData['status'];
                     $existingTask->save();
                     Log::channel('magic_holidays')->info('Updated existing task: ' . $existingTask->reference);
+
+                    $processResult['success'][] = [
+                        'reference' => $existingTask->reference,
+                        'message' => 'Task already exists, updated status',
+                    ];
+                        
                     continue; // Skip creating a new task if it already exists but update the status
                 } else {
                     Log::channel('magic_holidays')->info('Existing task already exists: ' . $existingTask->reference);
+
+                    $processResult['success'][] = [
+                        'reference' => $existingTask->reference,
+                        'message' => 'Task already exists, no changes made',
+                    ];
+
                     continue; // Skip creating a new task if it already exists
                 }
             } else {
@@ -1435,9 +1451,10 @@ class TaskController extends Controller
 
             if ($response['status'] == 'error') {
                 Log::channel('magic_holidays')->error('Error creating task: ' . $response['message']);
-                return [
-                    'status' => 'error',
-                    'message' => $response['message'],
+
+                $processResult['failed'][] = [
+                    'reference' => $taskData['reference'],
+                    'message' => 'Error creating task: ' . $response['message'],
                 ];
             }
 
@@ -1445,10 +1462,11 @@ class TaskController extends Controller
 
             if (!$task) {
                 Log::channel('magic_holidays')->error('Task not found after creation: ' . $response['data']['id']);
-                return [
-                    'status' => 'error',
+                $processResult['failed'][] = [
+                    'reference' => $taskData['reference'],
                     'message' => 'Task not found after creation',
                 ];
+                continue; // Skip to the next room if task creation failed
             }
 
             $passengers = $reservation['service']['passengers'] ?? null;
@@ -1489,20 +1507,37 @@ class TaskController extends Controller
                     'room' => $room,
                 ]);
 
-                return [
-                    'status' => 'error',
+                $processResult['failed'][] = [
+                    'reference' => $taskData['reference'],
                     'message' => 'Error creating room: ' . $e->getMessage(),
                 ];
+                continue; // Skip to the next room if room creation failed
             }
 
 
             Log::channel('magic_holidays')->info('Task created for reservation: ' . ($reservation['id'] ?? 'Unknown') . ', Room: ' . ($room['id'] ?? 'Unknown'));
 
-            return [
-                'status' => 'success',
+            $processResult['success'][] = [
+                'reference' => $taskData['reference'],
                 'message' => 'Task created successfully',
+                'room_id' => $room->id,
             ];
         }
+
+
+        if (count($processResult['success']) > 0) {
+            Log::channel('magic_holidays')->info('Successfully processed reservation: ' . ($reservation['id'] ?? 'Unknown'));
+        }
+
+        if (count($processResult['failed']) > 0) {
+            Log::channel('magic_holidays')->error('Failed to process reservation: ' . ($reservation['id'] ?? 'Unknown'));
+        }
+
+        return [
+            'status' => count($processResult['failed']) > 0 ? 'error' : 'success',
+            'message' => count($processResult['failed']) > 0 ? 'Some tasks failed to process' : 'All tasks processed successfully',
+            'data' => $processResult,
+        ];
     }
 
     public function supplierTaskForAgent(Request $request)

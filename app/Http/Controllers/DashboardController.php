@@ -162,8 +162,8 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        $queueTasks = Task::where('agent_id', $user->agent->id)->withoutGlobalScopes()->get();
-        $tasks = Task::where('agent_id', $user->agent->id)->get();
+        // $queueTasks = Task::where('agent_id', $user->agent->id)->withoutGlobalScopes()->get();
+        $tasks = Task::where('agent_id', $user->agent->id)->paginate(50);
         $taskCount  = $tasks->count();
         $suppliers = Supplier::whereHas('companies', function ($query) use ($user){
             $query->where('company_id', $user->agent->branch->company_id);
@@ -174,7 +174,7 @@ class DashboardController extends Controller
 
         return view('tasks.index', compact(
             'clients',
-            'queueTasks',
+            // 'queueTasks',
             'tasks',
             'taskCount',
             'suppliers',

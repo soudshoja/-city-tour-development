@@ -94,24 +94,24 @@
                     @if (auth()->check())
                         <tr class="border-b border-gray-100">
                             <td class="py-3 px-4">Total Amount</td>
-                            <td class="py-3 px-4 text-right">{{ $payment->amount }} {{ $payment->currency }}</td>
+                            <td class="py-3 px-4 text-right">{{ number_format($payment->base_amount, 2) }} {{ $payment->currency }}</td>
                         </tr>
                     @else
                         <tr class="border-b border-gray-100">
                             <td class="py-3 px-4">Total Amount</td>
-                            <td class="py-3 px-4 text-right">{{ $chargeResult['finalAmount'] }}
+                            <td class="py-3 px-4 text-right">{{ number_format($chargeResult['finalAmount'], 2) }}
                                 {{ $payment->currency }}</td>
                         </tr>
                     @endif
-                    @if (auth()->check() && $chargeResult['paid_by'] !== 'Company')
+                    @if (auth()->check() && $payment->charge_payer !== 'Company')
                         <tr class="border-b border-gray-100">
                             <td class="py-3 px-4">Service Charge</td>
-                            <td class="py-3 px-4 text-right">{{ $chargeResult['fee'] }} {{ $payment->currency }}</td>
+                            <td class="py-3 px-4 text-right">{{ number_format($payment->service_charge, 2) }} {{ $payment->currency }}</td>
                         </tr>
                     @endif
                     <tr class="font-bold">
                         <td class="py-3 px-4">Final Total</td>
-                        <td class="py-3 px-4 text-right">{{ $chargeResult['finalAmount'] }} {{ $payment->currency }}
+                        <td class="py-3 px-4 text-right">{{ number_format($payment->amount, 2) }} {{ $payment->currency }}
                         </td>
                     </tr>
                 </tbody>
@@ -148,7 +148,7 @@
                                 </div>
                             @endif --}}
                             <span id="" class="text-lg font-semibold text-gray-800 pl-[30vh]">
-                                {{ $finalAmount }} {{ $payment->currency }}
+                                {{ number_format($finalAmount, 2) }} {{ $payment->currency }}
                             </span>
 
                         </div>

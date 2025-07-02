@@ -389,6 +389,11 @@ class TaskController extends Controller
                         'variance' => 0.00,
                         'currency' => 'KWD',
                     ]);
+
+                    Log::info('New issued by account created for task: ' . $task->reference, [
+                        'issuedByAccount' => $issuedByAccount,
+                    ]);
+
                 } catch (Exception $e) {
                     Log::error('Failed to create issued by account: ' . $e->getMessage());
                     throw new Exception('Failed to create issued by account.');

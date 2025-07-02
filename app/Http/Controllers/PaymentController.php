@@ -171,13 +171,18 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Client not found for the invoice'], 404);
         }
 
+        $selectedPartials = $data['selected_partials'] ?? collect();
+
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->name,
             'pay_to' => $invoice->agent->branch->company->name,
             'currency' => 'KWD',
             'payment_date' => Carbon::now(),
-            'amount' => $data['total_amount'],
+            'base_amount'        => $selectedPartials->sum(fn($partial) => $partial->base_amount ?? $partial->getOriginal('amount')),
+            'amount'             => $selectedPartials->sum('amount'),
+            'service_charge'     => $selectedPartials->sum('service_charge'),
+            'charge_payer'       => $selectedPartials->first()->charge_payer ?? 'Client',
             'payment_gateway' => $data['payment_gateway'],
             'payment_method_id' => $data['payment_method'],
             'status' => 'pending',

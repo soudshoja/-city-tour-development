@@ -419,6 +419,10 @@ class TaskController extends Controller
                 Log::info('Processing issued task financial for: ' . $task->reference);
                 $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
                 break;
+            case 'reissued':
+                Log::info('Processing reissued task financial for: ' . $task->reference);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
+                break;
             case 'void':
                 Log::info('Processing void task financial for: ' . $task->reference);
                 $this->processVoidTask($task);

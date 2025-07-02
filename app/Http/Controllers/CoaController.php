@@ -934,6 +934,15 @@ class CoaController extends Controller
             return redirect()->back()->with('error', 'No issued tasks found for this account');
         }
 
+        // Get sum of total grouped by issued_by for all tasks
+        $taskSummary = $tasks->groupBy('issued_by')
+            ->map(function ($groupedTasks) {
+                return $groupedTasks->sum('total');
+            });
+
+        // Debug: show the grouped sums
+        // dd($taskSummary);
+
         $notIssuedTask = $tasks->whereNull('issued_by')
             ->values();
 
@@ -964,9 +973,8 @@ class CoaController extends Controller
                     throw new Exception('Account with this name already exists under the parent account');
                 }
 
-                $tasks = Task::where('issued_by', $company);
-                $sumTotal = $tasks->sum('total');
-                // dump($company, $sumTotal);
+                // Get the sum for this specific company from our pre-calculated summary
+                $sumTotal = $taskSummary[$company] ?? 0;
 
                 if ($sumTotal <= 0) {
                     continue; // Skip tasks with zero or negative amounts
@@ -996,7 +1004,11 @@ class CoaController extends Controller
                 }
 
                 $childAccount = Account::create($data);
-                foreach($tasks->get() as $task){
+                
+                // Get tasks for this specific company from our collection
+                $companyTasks = $tasks->where('issued_by', $company);
+                
+                foreach($companyTasks as $task){
                    foreach($task->journalEntries->where('account_id',$account->id) as $journalEntry){
                         $journalEntry->account_id = $childAccount->id;
                         $journalEntry->update();

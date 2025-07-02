@@ -529,7 +529,9 @@ class InvoiceController extends Controller
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
                 'service_charge' => $gatewayFee['fee'] ?? 0,
-                'amount' => $gatewayFee['finalAmount'],
+                'charge_payer' => $gatewayFee['paid_by'] ?? 'Client',
+                'base_amount' => $amount,
+                'amount' => $gatewayFee['paid_by'] === 'Company' ? $amount : $gatewayFee['finalAmount'],
                 'status' => $credit ? 'paid' : 'unpaid',
                 'expiry_date' => $date,
                 'type' => $type,
@@ -1143,41 +1145,25 @@ class InvoiceController extends Controller
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->with('agent.branch.company', 'client', 'invoiceDetails')
             ->first();
-
+    
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice', 'payment')
             ->get();
-
+    
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
-
-        $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
-            ->where('company_id', $invoice->agent->branch->company_id)
-            ->where('type', 'Invoice')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
-            ->where('invoice_partial_id', $invoicePartials->first()?->id)
-            ->where('client_id', $invoice->client_id)
-            ->where('type', 'Invoice')
-            ->orderBy('id', 'asc')
-            ->get();
-
+    
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
         $paymentMethod = $invoicePartials->first()?->payment_method;
-        $paidPartials = $invoicePartials->where('status', 'paid');
-        $invoiceDetails = $invoice->invoiceDetails;
-        $company = $invoice->agent->branch->company;
         $companyId = $invoice->agent->branch->company_id;
-
+    
         Log::info('ChargeService Debug - Pre Check', [
             'gateway' => $paymentGateway,
             'method' => $paymentMethod,
             'company_id' => $companyId,
         ]);
-
+    
         if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
             try {
                 $gatewayFee = ChargeService::FatoorahCharge($invoice->amount, $paymentMethod, $companyId);
@@ -1190,26 +1176,58 @@ class InvoiceController extends Controller
                 $gatewayFee = null;
             }
         } else {
-            $amount = 0;
-            $fee = 0;
-            Log::info('ChargeService: Using TapCharge instead', ['gateway' => $paymentGateway]);
-            foreach($invoice->invoicePartials as $partial) {
-                Log::info('Partial', ['partial' => $partial]);
-                $amount = bcadd($amount, $partial->amount, 2);
-            }
-
-            $fee = bcsub($amount, $invoice->sub_amount, 2); // Calculate total fee based on all partials
             $gatewayFee = ChargeService::TapCharge([
-                'amount' => $invoice->amount,
+                'amount'    => $invoice->amount,
                 'client_id' => $invoice->client_id,
-                'agent_id' => $invoice->agent_id,
-                'currency' => $invoice->currency
+                'agent_id'  => $invoice->agent_id,
+                'currency'  => $invoice->currency,
             ], $paymentGateway);
-
-            $gatewayFee['finalAmount'] = $amount; // Adjust final amount to total of all partials
-            $gatewayFee['fee'] = $fee; // Adjust fee to total of all partials
         }
+    
+        $chargeFee = $gatewayFee['fee'] ?? 0;
+        $chargePayer = $gatewayFee['paid_by'] ?? 'Client';
+    
+        if ($chargePayer === 'Client') {
+            $unpaid = $invoicePartials->filter(fn($partial) => $partial->status !== 'paid');
+            $baseSum = $unpaid->sum(fn($partial) => $partial->base_amount ?? $partial->getOriginal('amount'));
+    
+            foreach ($unpaid as $partial) {
+                $baseAmount = $partial->base_amount ?? $partial->getOriginal('amount');
+                $perFee = ($baseAmount / $baseSum) * $chargeFee;
 
+                $partial->service_charge = round($perFee, 2);
+                $partial->amount = $baseAmount + $partial->service_charge;
+                $partial->charge_payer = $chargePayer;
+                $partial->save();
+            }
+        } else {
+            foreach ($invoicePartials as $partial) {
+                if ($partial->status !== 'paid') {
+                    $partial->service_charge = $chargeFee;
+                    $partial->amount = $partial->base_amount ?? $partial->getOriginal('amount');
+                    $partial->charge_payer = $chargePayer;
+                    $partial->save();
+                }
+            }
+        }
+    
+        $paidPartials = $invoicePartials->where('status', 'paid');
+        $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
+    
+        $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('company_id', $companyId)
+            ->where('type', 'Invoice')
+            ->orderBy('id', 'asc')
+            ->get();
+    
+        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
+            ->where('invoice_partial_id', $invoicePartials->first()?->id)
+            ->where('client_id', $invoice->client_id)
+            ->where('type', 'Invoice')
+            ->orderBy('id', 'asc')
+            ->get();
+    
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',

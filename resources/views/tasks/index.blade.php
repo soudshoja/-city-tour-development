@@ -946,12 +946,12 @@
                                                     @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
                                                         <td
                                                             class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                            {{ $task->getFormattedDateAttribute() }}
+                                                            {{ $task->formatted_data ?? 'Not Set' }}
                                                         </td>
                                                     @else
                                                         <td
                                                             class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                            {{ $task->getFormattedDateTimeAttribute() }}
+                                                            {{ $task->formatted_data ?? 'Not Set' }}
                                                         </td>
                                                     @endif
                                                     <td
@@ -1226,6 +1226,152 @@
                                     </svg>
                                     <span>No tasks found matching your search</span>
                                 </p>
+                                <!-- Pagination Links -->
+                                <div class="dataTable-bottom justify-center">
+                                    @if ($tasks->hasPages())
+                                        <nav class="dataTable-pagination">
+                                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
+                                                {{-- Previous Page Link --}}
+                                                @if ($tasks->onFirstPage())
+                                                    <li class="pager disabled">
+                                                        <span class="px-3 py-2 text-gray-400 cursor-not-allowed">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            </svg>
+                                                        </span>
+                                                    </li>
+                                                @else
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->previousPageUrl() }}" class="px-3 py-2 text-blue-600 hover:text-blue-800">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            </svg>
+                                                        </a>
+                                                    </li>
+                                                @endif
+
+                                                {{-- Pagination Elements --}}
+                                                @php
+                                                    $currentPage = $tasks->currentPage();
+                                                    $lastPage = $tasks->lastPage();
+                                                    $maxPagesToShow = 10;
+                                                    
+                                                    if ($lastPage <= $maxPagesToShow) {
+                                                        // Show all pages if total pages <= 10
+                                                        $startPage = 1;
+                                                        $endPage = $lastPage;
+                                                    } else {
+                                                        // Calculate dynamic range
+                                                        $halfRange = floor($maxPagesToShow / 2);
+                                                        
+                                                        if ($currentPage <= $halfRange) {
+                                                            // Near the beginning
+                                                            $startPage = 1;
+                                                            $endPage = $maxPagesToShow;
+                                                        } elseif ($currentPage > $lastPage - $halfRange) {
+                                                            // Near the end
+                                                            $startPage = $lastPage - $maxPagesToShow + 1;
+                                                            $endPage = $lastPage;
+                                                        } else {
+                                                            // In the middle
+                                                            $startPage = $currentPage - $halfRange;
+                                                            $endPage = $currentPage + $halfRange - 1;
+                                                        }
+                                                    }
+                                                @endphp
+
+                                                {{-- Left Arrow (for jumping back 10 pages) --}}
+                                                @if ($lastPage > $maxPagesToShow && $startPage > 1)
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->url(max(1, $startPage - $maxPagesToShow)) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800" title="Previous {{ $maxPagesToShow }} pages">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                <path d="M18 17L12 11L18 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                <path opacity="0.5" d="M12 17L6 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            </svg>
+                                                        </a>
+                                                    </li>
+                                                @endif
+
+                                                {{-- First page if not in range --}}
+                                                @if ($startPage > 1)
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->url(1) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">1</a>
+                                                    </li>
+                                                    @if ($startPage > 2)
+                                                        <li class="pager disabled">
+                                                            <span class="px-3 py-2 text-gray-400">...</span>
+                                                        </li>
+                                                    @endif
+                                                @endif
+
+                                                {{-- Page numbers in range --}}
+                                                @for ($page = $startPage; $page <= $endPage; $page++)
+                                                    @if ($page == $currentPage)
+                                                        <li class="pager active">
+                                                            <span class="px-3 py-2 bg-blue-600 text-white rounded">{{ $page }}</span>
+                                                        </li>
+                                                    @else
+                                                        <li class="pager">
+                                                            <a href="{{ $tasks->url($page) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">{{ $page }}</a>
+                                                        </li>
+                                                    @endif
+                                                @endfor
+
+                                                {{-- Last page if not in range --}}
+                                                @if ($endPage < $lastPage)
+                                                    @if ($endPage < $lastPage - 1)
+                                                        <li class="pager disabled">
+                                                            <span class="px-3 py-2 text-gray-400">...</span>
+                                                        </li>
+                                                    @endif
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->url($lastPage) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">{{ $lastPage }}</a>
+                                                    </li>
+                                                @endif
+
+                                                {{-- Right Arrow (for jumping forward 10 pages) --}}
+                                                @if ($lastPage > $maxPagesToShow && $endPage < $lastPage)
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->url(min($lastPage, $endPage + $maxPagesToShow)) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800" title="Next {{ $maxPagesToShow }} pages">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                <path d="M6 17L12 11L6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                <path opacity="0.5" d="M12 17L18 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            </svg>
+                                                        </a>
+                                                    </li>
+                                                @endif
+
+                                                {{-- Next Page Link --}}
+                                                @if ($tasks->hasMorePages())
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->nextPageUrl() }}" class="px-3 py-2 text-blue-600 hover:text-blue-800">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            </svg>
+                                                        </a>
+                                                    </li>
+                                                @else
+                                                    <li class="pager disabled">
+                                                        <span class="px-3 py-2 text-gray-400 cursor-not-allowed">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            </svg>
+                                                        </span>
+                                                    </li>
+                                                @endif
+                                            </ul>
+                                        </nav>
+                                        
+                                        {{-- Page Info --}}
+                                        <div class="text-center mt-3 text-sm text-gray-600 dark:text-gray-400">
+                                            Showing {{ $tasks->firstItem() }} to {{ $tasks->lastItem() }} of {{ $tasks->total() }} results
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
                         </div>
 

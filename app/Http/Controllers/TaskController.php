@@ -48,16 +48,16 @@ class TaskController extends Controller
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
         $countries = Country::all();
 
-        $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
-            ->withoutGlobalScope('enabled')
-            ->where('enabled', false)
-            ->orderBy('id', 'desc');
+        // $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
+        //     ->withoutGlobalScope('enabled')
+        //     ->where('enabled', false)
+        //     ->orderBy('id', 'desc');
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = $tasks->orderBy('created_at', 'desc')->get();
+            $tasks = $tasks->orderBy('created_at', 'desc')->paginate(50);
             $clients = Client::all();
             $agents = Agent::all();
-            $queueTasks = $queueTasks->get();
+            // $queueTasks = $queueTasks->get();
             $suppliers = Supplier::all();
         } elseif ($user->role_id == Role::COMPANY) {
 
@@ -65,8 +65,8 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->where('company_id', $user->company->id)->get();
-            $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
+            $tasks = $tasks->where('company_id', $user->company->id)->paginate(50);
+            // $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->company->id)->where('is_active', true);
             })->get();
@@ -81,16 +81,16 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->get();
-            $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->paginate(50);
+            // $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->branch->company_id);
             })->get();
         } elseif ($user->role_id == Role::AGENT) {
 
             $clients = Client::where('agent_id', $user->agent->id)->get();
-            $tasks = $tasks->where('agent_id', $user->agent->id)->get();
-            $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
+            $tasks = $tasks->where('agent_id', $user->agent->id)->paginate(50);
+            // $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
             $companyId = $user->agent->branch->company_id;
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
@@ -139,7 +139,6 @@ class TaskController extends Controller
                 'suppliers',
                 'branches',
                 'types',
-                'queueTasks',
                 'processTask',
                 'companyId',
                 'countries'

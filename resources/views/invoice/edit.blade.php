@@ -2550,7 +2550,7 @@
                 fullData.push({
                     date,
                     amount,
-                    gateway
+                    gateway: 'Credit'
                 });
                 for (const item of fullData) {
                     save('credit', item);

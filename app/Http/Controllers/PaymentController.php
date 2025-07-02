@@ -1048,6 +1048,7 @@ class PaymentController extends Controller
                 'pay_to' => $agent->branch->company->name,
                 'currency' => 'KWD',
                 'payment_date' => Carbon::now(),
+                'base_amount' => $request->amount,
                 'amount' => $request->amount,
                 'payment_gateway' => $request->payment_gateway,
                 'payment_method_id' => $request->payment_method,
@@ -1117,7 +1118,7 @@ class PaymentController extends Controller
         $companyId = optional($payment->agent->branch)->company_id;
 
         $chargeData = [
-            'amount'     => $payment->amount,
+            'amount'     => $payment->base_amount,
             'currency'   => $payment->currency,
             'client_id'  => $payment->client_id,
             'agent_id'   => $payment->agent_id,
@@ -1125,7 +1126,7 @@ class PaymentController extends Controller
         ];
 
         $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-            ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+            ? ChargeService::FatoorahCharge($payment->base_amount, $payment->payment_method_id, $companyId)
             : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
 
         $gatewayFee = $chargeResult['fee'];
@@ -1133,6 +1134,14 @@ class PaymentController extends Controller
         $finalAmount = $chargeResult['finalAmount'];
         $paidBy = $chargeResult['paid_by'];
         $chargeType = $chargeResult['charge_type'];
+
+        if ($payment->status !== 'completed') {
+            $base = $payment->base_amount ?? $payment->amount;
+            $payment->service_charge = $gatewayFee;
+            $payment->charge_payer = $paidBy;
+            $payment->amount = $paidBy === 'Client' ? $base + $gatewayFee : $base;
+            $payment->save();
+        }
 
         return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'chargeType', 'selfCharge'));
     }
@@ -1159,7 +1168,7 @@ class PaymentController extends Controller
         if (strtolower($paymentGateway) === 'tap') {
 
             $chargeResult = ChargeService::TapCharge([
-                'amount' => $payment->amount,
+                'amount' => $payment->base_amount,
                 'currency' => $payment->currency,
                 'client_id' => $payment->client_id,
                 'agent_id' => $payment->agent_id
@@ -1245,7 +1254,7 @@ class PaymentController extends Controller
                 $clientPhone = ltrim($clientPhone, '0'); // Optionally remove leading zero
             }
 
-            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $chargeResult = ChargeService::FatoorahCharge($payment->base_amount, $payment->payment_method_id, $companyId);
 
             $finalAmount = $chargeResult['finalAmount'];
 
@@ -2010,6 +2019,7 @@ class PaymentController extends Controller
         if($request->phone) $client->phone = $request->phone;
         if($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
         if($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
+        if($request->amount) $payment->base_amount = $request->amount;
         if($request->amount) $payment->amount = $request->amount;
         
         try{

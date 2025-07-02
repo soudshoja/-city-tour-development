@@ -59,8 +59,9 @@
                                         <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                             {{ $payment->agent ? $payment->agent->name : 'N/A' }}
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap text-sm">
-                                            {{ $payment->notes ?? 'No Notes' }}</td>
+                                        <td class="px-3 py-2 text-sm break-words max-w-[250px]">
+                                            {{ $payment->notes ?? 'No Notes' }}
+                                        </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                             {{ $payment->amount }}
                                         </td>

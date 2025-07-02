@@ -18,6 +18,15 @@ class IncomingMediaController extends Controller
     {
         Log::debug('Incoming Resayil Webhook:', $request->all());
 
+        $type = $request->input('data.type');
+        Log::info("Source type: {$type}");
+
+        // Only process certain media types
+        if (!in_array($type, ['image', 'video', 'document'])) {
+            Log::info("Skipping unsupported message type: {$type}");
+            return response()->json(['message' => 'No media to process.'], 200);
+        }
+
         $phone = $request->input('data.fromNumber')
             ?? $request->input('phone')
             ?? $request->input('messages.0.from');
@@ -25,9 +34,10 @@ class IncomingMediaController extends Controller
         $deviceId = $request->input('device.id');
         $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
 
+        // Agent fallback setup
+        $agentId = 1;
+        $agentPhone = $request->input('device.phone');
         $agentEmail = null;
-        $agentPhone = $request->input('device.phone') ?? null;
-        $agentId = 1; // default fallback
         $fallbackPhone = config('app.agent_default_phone', '+96522210017');
         $fallbackEmail = config('app.agent_default_email', 'admin@citytravelers.co');
 
@@ -62,6 +72,12 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'No media found.'], 200);
         }
 
+        // Construct absolute URL if needed
+        if (!str_starts_with($downloadLink, 'http')) {
+            $downloadLink = rtrim(config('services.resayil.base_url'), '/') . $downloadLink;
+        }
+
+        $mediaUrl = $downloadLink;
         $mediaId = $mediaData['id'] ?? null;
         $mimeType = $mediaData['mime'] ?? null;
         $caption = $mediaData['caption'] ?? null;
@@ -69,29 +85,25 @@ class IncomingMediaController extends Controller
         $filename = $mediaData['filename'] ?? 'file.jpg';
         $extension = pathinfo($filename, PATHINFO_EXTENSION) ?: 'jpg';
 
-        // $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-        // if (!in_array($mimeType, $allowedMimeTypes)) {
-        //     Log::warning("Unsupported media type: {$mimeType}");
-        //     return response()->json(['message' => 'Unsupported media type.'], 200);
-        // }
+        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+        if (!in_array($mimeType, $allowedMimeTypes)) {
+            Log::warning("Unsupported media MIME type: {$mimeType}");
+            return response()->json(['message' => 'Unsupported media type.'], 200);
+        }
 
-        $mediaUrl = str_starts_with($downloadLink, 'http')
-            ? $downloadLink
-            : config('services.resayil.base_url') . "chat/{$deviceId}/files/{$mediaId}/download";
-
-        $localPath = null;
-
-        $existingMedia = IncomingMedia::where('media_id', $mediaId)->first();
-        if ($existingMedia) {
-            Log::info("Duplicate media ignored.");
+        // Avoid duplicate media
+        if (IncomingMedia::where('media_id', $mediaId)->exists()) {
+            Log::info("Duplicate media ignored: {$mediaId}");
             return response()->json(['message' => 'Duplicate media.'], 200);
         }
+
+        $localPath = null;
 
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
 
             $response = Http::withHeaders([
-                'Token' => config('services.resayil.api_token', ''),
+                'Token' => config('services.resayil.api_token'),
             ])->get($mediaUrl);
 
             if ($response->ok()) {
@@ -105,6 +117,7 @@ class IncomingMediaController extends Controller
             Log::error("Media download exception: " . $e->getMessage());
         }
 
+        $incomingMedia = null;
         try {
             $incomingMedia = IncomingMedia::create([
                 'phone' => $phone,
@@ -137,9 +150,9 @@ class IncomingMediaController extends Controller
                     Log::info("Upload response received");
 
                     if ($data && isset($data['name'], $data['civil_no'])) {
-                        $client = Client::where('civil_no', $data['civil_no'])->first();
-
                         DB::beginTransaction();
+
+                        $client = Client::where('civil_no', $data['civil_no'])->first();
 
                         if (!$client) {
                             $client = Client::create([
@@ -157,7 +170,6 @@ class IncomingMediaController extends Controller
                             $autoReplyText = "Thank you, your profile has been created.";
                             Log::info("Client created: ID {$client->id}");
                         } else {
-                            // Client exists
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
                                 $client->update([
                                     'phone' => $phone ?? $agentPhone,
@@ -172,7 +184,6 @@ class IncomingMediaController extends Controller
                                 $autoReplyText = "Thank you. We already have your passport information.";
                             }
                         }
-
 
                         if ($incomingMedia) {
                             $incomingMedia->client_id = $client->id;
@@ -192,6 +203,7 @@ class IncomingMediaController extends Controller
             }
         }
 
+        // Auto-reply
         try {
             $to = $request->input('data.from') ?? $request->input('from');
             if ($to && $autoReplyText) {

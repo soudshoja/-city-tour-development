@@ -537,7 +537,8 @@ class InvoiceController extends Controller
                 'payment_method' => $method,
             ]);
 
-            if ($credit && $type == 'full') {
+            //if ($credit && $type == 'full') {
+            if ($type == 'credit') {
                 //insert credit record
                 try {
                     Credit::create([
@@ -617,14 +618,13 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            DB::commit(); 
+            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice Partial created successfully!',
                 'invoiceId' => $invoice->id,
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -1084,8 +1084,7 @@ class InvoiceController extends Controller
         // Gate::authorize('viewAny', Invoice::class);
         if ($user->role_id == Role::ADMIN) {
             $agents = Agent::with('branch')->get();
-    
-        } else if($user->role_id == Role::COMPANY) {
+        } else if ($user->role_id == Role::COMPANY) {
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company->id);
             }])->get();
@@ -1143,24 +1142,24 @@ class InvoiceController extends Controller
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->with('agent.branch.company', 'client', 'invoiceDetails')
             ->first();
-    
+
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
-    
+
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice', 'payment')
             ->get();
-    
+
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
         $paymentMethod = $invoicePartials->first()?->payment_method;
         $companyId = $invoice->agent->branch->company_id;
-    
+
         $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
 
         $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
         $totalGatewayFee['fee'] += $paidServiceCharge;
-    
+
         foreach ($invoicePartials as $partial) {
             if ($partial->status !== 'paid') {
                 $gatewayFee = [];
@@ -1189,30 +1188,30 @@ class InvoiceController extends Controller
 
                 if ($chargePayer !== 'Company') {
                     $totalGatewayFee['fee'] += $partial->service_charge;
-                    $totalGatewayFee['paid_by'] = $chargePayer; 
+                    $totalGatewayFee['paid_by'] = $chargePayer;
                     $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
                 }
             }
         }
-        
+
         $totalGatewayFee['finalAmount'] = $invoice->amount + $invoice->tax + $totalGatewayFee['fee'];
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
-    
+
         $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
             ->where('company_id', $companyId)
             ->where('type', 'Invoice')
             ->orderBy('id', 'asc')
             ->get();
-    
+
         $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
             ->where('invoice_partial_id', $invoicePartials->first()?->id)
             ->where('client_id', $invoice->client_id)
             ->where('type', 'Invoice')
             ->orderBy('id', 'asc')
             ->get();
-    
+
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',

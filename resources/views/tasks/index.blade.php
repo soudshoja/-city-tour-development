@@ -312,12 +312,12 @@
                         @csrf
 
                         @unlessrole('agent')
-                            <div class="mb-4">
-                                <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
-                                    label="Select an Agent" />
-                            </div>
+                        <div class="mb-4">
+                            <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
+                                label="Select an Agent" />
+                        </div>
                         @else
-                            <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
+                        <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
 
                         <div class="mb-4">
@@ -472,20 +472,20 @@
                                     <thead>
                                         <tr>
                                             @can('create', 'App\Models\Invoice')
-                                                <th>
-                                                    <label class="custom-checkbox">
-                                                        <input type="checkbox" id="selectAll"
-                                                            class="text-gray-300 hidden">
-                                                        <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg"
-                                                            width="20" height="20" viewBox="0 0 24 24"
-                                                            class="checkbox-svg">
-                                                            <rect width="18" height="18" x="3" y="3"
-                                                                fill="none" stroke="currentColor"
-                                                                stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="1" rx="4" />
-                                                        </svg>
-                                                    </label>
-                                                </th>
+                                            <th>
+                                                <label class="custom-checkbox">
+                                                    <input type="checkbox" id="selectAll"
+                                                        class="text-gray-300 hidden">
+                                                    <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg"
+                                                        width="20" height="20" viewBox="0 0 24 24"
+                                                        class="checkbox-svg">
+                                                        <rect width="18" height="18" x="3" y="3"
+                                                            fill="none" stroke="currentColor"
+                                                            stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="1" rx="4" />
+                                                    </svg>
+                                                </label>
+                                            </th>
                                             @endcan
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
@@ -515,12 +515,12 @@
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Issued By</th>
                                             @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <th
-                                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                                    Branch Name</th>
-                                                <th
-                                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                                    Agent Name</th>
+                                            <th
+                                                class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Branch Name</th>
+                                            <th
+                                                class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Agent Name</th>
                                             @endif
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
@@ -532,10 +532,10 @@
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Invoice</th>
                                             @can('viewPrice', 'App\Models\Task')
-                                                <th
-                                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                                    Price
-                                                </th>
+                                            <th
+                                                class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Price
+                                            </th>
                                             @endcan
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
@@ -548,451 +548,454 @@
                                     </thead>
                                     <tbody>
                                         @if ($tasks->isEmpty())
-                                            <tr>
-                                                <td colspan="10"
-                                                    class="text-center p-5 text-gray-500 dark:text-gray-300">No
-                                                    tasks found</td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="10"
+                                                class="text-center p-5 text-gray-500 dark:text-gray-300">No
+                                                tasks found</td>
+                                        </tr>
                                         @else
-                                            @foreach ($tasks as $key => $task)
-                                                <tr x-show="{{ $key }} < shown" x-cloak
-                                                    data-price="{{ $task->price }}"
-                                                    data-supplier-id="{{ $task->supplier->id }}"
-                                                    data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
-                                                    data-agent-id="{{ $task->agent_id }}"
-                                                    data-status="{{ $task->status }}"
-                                                    data-type="{{ $task->type }}"
-                                                    data-client-id="{{ $task->client ? $task->client->id : null }}"
-                                                    data-task-id="{{ $task->id }}" class="taskRow">
-                                                    @can('create', 'App\Models\Invoice')
-                                                        <td>
-                                                            <label class="custom-checkbox"
-                                                                data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
+                                        @foreach ($tasks as $key => $task)
+                                        <tr x-show="{{ $key }} < shown" x-cloak
+                                            data-price="{{ $task->price }}"
+                                            data-supplier-id="{{ $task->supplier->id }}"
+                                            data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
+                                            data-agent-id="{{ $task->agent_id }}"
+                                            data-status="{{ $task->status }}"
+                                            data-type="{{ $task->type }}"
+                                            data-client-id="{{ $task->client ? $task->client->id : null }}"
+                                            data-task-id="{{ $task->id }}" class="taskRow">
+                                            @can('create', 'App\Models\Invoice')
+                                            <td>
+                                                <label class="custom-checkbox"
+                                                    data-tooltip="{{ !$task->enabled ? 'Task info is not enabled' : 'Select task' }}">
 
-                                                                @if ($task->status !== 'refund')
-                                                                    <input type="checkbox"
-                                                                        class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                                        value="{{ $task->id }}"
-                                                                        data-status="{{ $task->status }}"
-                                                                        {{ $task->invoiceDetail || !$task->enabled || $task->linkedTask ? 'disabled' : '' }}>
-                                                                @else
-                                                                    <input type="checkbox"
-                                                                        class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
-                                                                        value="{{ $task->id }}"
-                                                                        data-status="{{ $task->status }}"
-                                                                        {{ $task->refundDetail || !$task->is_complete ? 'disabled' : '' }}>
-                                                                @endif
-
-
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18"
-                                                                    height="18" viewBox="0 0 24 24"
-                                                                    class="checkbox-svg checkbox-border">
-                                                                    <rect width="18" height="18" x="3" y="3"
-                                                                        fill="none" stroke="currentColor"
-                                                                        stroke-linecap="round" stroke-linejoin="round"
-                                                                        stroke-width="1" rx="4" />
-                                                                </svg>
-                                                            </label>
-                                                        </td>
-                                                    @endcan
-                                                    <td class="p-3 text-sm flex gap-3 justify-center">
-                                                        <a data-tooltip="see task" href="javascript:void(0);"
-                                                            class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
-                                                            data-task-id="{{ $task->id }}"
-                                                            data-task-url="{{ route('tasks.show', $task->id) }}">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="22"
-                                                                height="22" viewBox="0 0 24 24"
-                                                                fill="currentColor">
-                                                                <path
-                                                                    d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-                                                            </svg>
-                                                        </a>
-
-                                                        <div x-data="{ editTaskModal_{{ $task->id }}: false }">
-                                                            <a data-tooltip="edit task" href="javascript:void(0);"
-                                                                @click="editTaskModal_{{ $task->id }} = true">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18"
-                                                                    height="18" viewBox="0 0 24 24">
-                                                                    <path fill="none" stroke="currentColor"
-                                                                        stroke-width="1.5"
-                                                                        d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
-                                                                </svg>
-                                                            </a>
-                                                            <div x-show="editTaskModal_{{ $task->id }}" x-cloak
-                                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-
-                                                                <form id="edit-task-form-{{ $task->id }}"
-                                                                    action="{{ route('tasks.update', $task->id) }}"
-                                                                    method="post"
-                                                                    class="inline-flex flex-col gap-4 items-center">
-                                                                    <div @click.away="editTaskModal_{{ $task->id }} = false"
-                                                                        class="bg-white rounded-md border-2 w-full sm:w-120">
-                                                                        <!-- Responsive modal width -->
-                                                                        <div class="flex justify-between p-4">
-                                                                            <p class="font-semibold text-lg">
-                                                                                Update the following information if
-                                                                                needed
-                                                                            </p>
-                                                                            <button type="button"
-                                                                                @click="editTaskModal_{{ $task->id }} = false"
-                                                                                class="text-red-500 font-bold">
-                                                                                &times;
-                                                                            </button>
-                                                                        </div>
-                                                                        <hr>
-                                                                        @csrf
-                                                                        @method('PUT')
-                                                                        <div class="p-4 inline-flex flex-col gap-4">
-
-                                                                            <!-- Reference Field -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="reference"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Reference:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->reference }}"
-                                                                                    readonly>
-                                                                            </div>
-
-                                                                            @if (strtolower($task->status) !== 'issued' || $task->status == null)
-                                                                                <!-- Original Task Selection for Reissued Tasks -->
-                                                                                <div class="flex items-center gap-4">
-                                                                                    <label for="original_task_id"
-                                                                                        class="w-2/4 sm:w-1/3 text-left text-base">Original
-                                                                                        Task:</label>
-                                                                                    <select name="original_task_id"
-                                                                                        id="original_task_id_{{ $task->id }}"
-                                                                                        class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                        <option value="">Select
-                                                                                            Original Task</option>
-                                                                                        @foreach ($tasks->where('status', 'issued') as $originalTask)
-                                                                                            <option
-                                                                                                value="{{ $originalTask->id }}"
-                                                                                                {{ $task->original_task_id == $originalTask->id ? 'selected' : '' }}>
-                                                                                                {{ $originalTask->reference }}
-                                                                                                -
-                                                                                                {{ $originalTask->client->name ?? $originalTask->client_name }}
-                                                                                            </option>
-                                                                                        @endforeach
-                                                                                    </select>
-                                                                                </div>
-                                                                            @endif
-
-                                                                            <!-- Status Field -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="status"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
-                                                                                @if ($task->status === 'refund')
-                                                                                    <select name="status"
-                                                                                        id="status"
-                                                                                        class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
-                                                                                        disabled>
-                                                                                        <option value="refund"
-                                                                                            selected>Refund
-                                                                                        </option>
-                                                                                    </select>
-                                                                                    <input type="hidden"
-                                                                                        name="status" value="refund">
-                                                                                @else
-                                                                                    <select name="status"
-                                                                                        id="status"
-                                                                                        class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                        <option value="">Set
-                                                                                            Status
-                                                                                        </option>
-                                                                                        <option value="Confirmed"
-                                                                                            {{ $task->status === 'confirmed' ? 'selected' : '' }}>
-                                                                                            Confirmed
-                                                                                        </option>
-                                                                                        <option value="Issued"
-                                                                                            {{ $task->status === 'issued' ? 'selected' : '' }}>
-                                                                                            Issued
-                                                                                        </option>
-                                                                                        <option value="Reissued"
-                                                                                            {{ $task->status === 'reissued' ? 'selected' : '' }}>
-                                                                                            Reissued
-                                                                                        </option>
-                                                                                        <option value="Refund"
-                                                                                            {{ $task->status === 'refund' ? 'selected' : '' }}>
-                                                                                            Refund
-                                                                                        </option>
-                                                                                        <option value="Void"
-                                                                                            {{ $task->status === 'void' ? 'selected' : '' }}>
-                                                                                            Void
-                                                                                        </option>
-                                                                                    </select>
-                                                                                @endif
-
-
-                                                                                @if ($task->status === 'refund')
-                                                                                    <input type="hidden"
-                                                                                        name="status" value="Refund">
-                                                                                @endif
-
-                                                                            </div>
-
-                                                                            <!-- Additional Info and Venue -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="additional_info"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Additional
-                                                                                    Info:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->additional_info }} - {{ $task->venue }}"
-                                                                                    readonly>
-                                                                            </div>
-
-                                                                            <!-- Supplier Name -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="supplier"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->supplier->name }}"
-                                                                                    readonly>
-                                                                            </div>
-
-                                                                            <!-- Price -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="price"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Price:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->price }}"
-                                                                                    readonly>
-                                                                            </div>
-
-                                                                            <!-- Tax -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="tax"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Tax:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->tax }}"
-                                                                                    placeholder="Tax" readonly>
-                                                                            </div>
-
-                                                                            <!-- Surcharge -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="surcharge"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Surcharge:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->surcharge }}"
-                                                                                    placeholder="Surcharge" readonly>
-                                                                            </div>
-
-                                                                            <!-- Total -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="total"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Total:</label>
-                                                                                <input type="text" name="total"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3"
-                                                                                    value="{{ $task->total }}"
-                                                                                    placeholder="Total">
-                                                                            </div>
-
-                                                                            <!-- Task Type -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="type"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Task
-                                                                                    Type:</label>
-                                                                                <input type="text"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
-                                                                                    value="{{ $task->type }}"
-                                                                                    readonly>
-                                                                            </div>
-
-                                                                            <!-- Client Selection -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="client_id"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
-                                                                                <div class="w-2/4 sm:w-2/3">
-                                                                                    <x-searchable-dropdown
-                                                                                        name="client_id"
-                                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                                                        :selectedId="$task->client_id"
-                                                                                        :selectedName="optional($task->client)->name"
-                                                                                        placeholder="Select a Client" />
-                                                                                </div>
-                                                                            </div>
-
-                                                                            <!-- Agent Selection (Role-based) -->
-                                                                            @unlessrole('agent')
-                                                                                <div class="flex items-center gap-4">
-                                                                                    <label for="agent_id"
-                                                                                        class="w-2/4 sm:w-1/3 text-left text-base">Agent:</label>
-                                                                                    <select
-                                                                                        id="agent_id_select_{{ $task->id }}"
-                                                                                        name="agent_id"
-                                                                                        class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                        <option value=""> Choose
-                                                                                            Agent</option>
-                                                                                        @foreach ($agents as $agent)
-                                                                                            <option
-                                                                                                value="{{ $agent->id }}"
-                                                                                                {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
-                                                                                                {{ $agent->name }}
-                                                                                            </option>
-                                                                                        @endforeach
-                                                                                    </select>
-                                                                                </div>
-                                                                            @else
-                                                                                <input type="hidden" name="agent_id"
-                                                                                    id="agent_id_{{ $task->id }}"
-                                                                                    value="{{ Auth()->user()->agent->id }}">
-                                                                            @endunlessrole
-
-                                                                            <!-- Supplier Selection -->
-                                                                            <div class="flex items-center gap-4">
-                                                                                <label for="supplier_id"
-                                                                                    class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
-                                                                                <select disabled name="supplier_id"
-                                                                                    id="supplier_id_{{ $task->id }}"
-                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
-                                                                                    @foreach ($suppliers as $supplier)
-                                                                                        <option
-                                                                                            value="{{ $supplier->id }}"
-                                                                                            {{ $task->supplier ? ($task->supplier->id === $supplier->id ? 'selected' : '') : '' }}>
-                                                                                            {{ $supplier->name }}
-                                                                                        </option>
-                                                                                    @endforeach
-                                                                                </select>
-                                                                                <input type="hidden"
-                                                                                    name="supplier_id"
-                                                                                    id="supplier_id_{{ $task->id }}"
-                                                                                    value="{{ $task->supplier->id }}">
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="flex space-x-4 mt-2">
-                                                                        <!-- Update Button -->
-                                                                        <x-primary-button type="submit"
-                                                                            class="w-[200px] justify-center px-12 py-10 text-lg"
-                                                                            form="edit-task-form-{{ $task->id }}">
-                                                                            Update
-                                                                        </x-primary-button>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        <label class="switch">
-                                                            <input type="checkbox" class="toggle-task-status"
-                                                                data-task-id="{{ $task->id }}"
-                                                                {{ $task->enabled ? 'checked' : '' }}>
-                                                            <span class="slider round"></span>
-                                                        </label>
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->reference }}
-                                                    </td>
-                                                    <td
-                                                        class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
-                                                        <p class="{{ $task->client ?? 'no-client' }}">
-                                                            <button
-                                                                @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
-                                                                {{ $task->client !== null ? 'disabled' : '' }}>
-                                                                {{ $task->client->name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
-                                                            </button>
-                                                        </p>
-                                                        @if ($task->client)
-                                                            <div data-tooltip="Client Linked">
-                                                                <svg width="24" height="24"
-                                                                    viewBox="0 0 24 24" fill="none"
-                                                                    xmlns="http://www.w3.org/2000/svg"
-                                                                    class="fill-green-500">
-                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
-                                                                        d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"
-                                                                        fill="" />
-                                                                </svg>
-                                                            </div>
-                                                        @endif
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->passenger_name ?? 'Not Set' }}
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->gds_reference ?? 'Not Available' }}
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->airline_reference ?? 'Not Available' }}
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->created_by ?? 'Not Set' }}
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->issued_by ?? 'Not Set' }}
-                                                    </td>
-                                                    @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                        <td class="p-3 text-sm font-semibold text-gray-500">
-                                                            {{ $task->agent->branch->name ?? 'Not Set' }}
-                                                        </td>
-                                                        <td class="p-3 text-sm font-semibold text-gray-500">
-                                                            {{ $task->agent->name ?? 'Not Set' }}
-                                                        </td>
-                                                    @endif
-                                                    @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
-                                                        <td
-                                                            class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                            {{ $task->formatted_data ?? 'Not Set' }}
-                                                        </td>
+                                                    @if ($task->status !== 'refund')
+                                                    <input type="checkbox"
+                                                        class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                        value="{{ $task->id }}"
+                                                        data-status="{{ $task->status }}"
+                                                        {{ $task->invoiceDetail || !$task->enabled || $task->linkedTask ? 'disabled' : '' }}>
                                                     @else
-                                                        <td
-                                                            class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                            {{ $task->formatted_data ?? 'Not Set' }}
-                                                        </td>
+                                                    <input type="checkbox"
+                                                        class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300"
+                                                        value="{{ $task->id }}"
+                                                        data-status="{{ $task->status }}"
+                                                        {{ $task->refundDetail || !$task->is_complete ? 'disabled' : '' }}>
                                                     @endif
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->type }}
-                                                    </td>
-                                                    <td
-                                                        class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        @if ($task->invoiceDetail)
-                                                            <a target="_blank"
-                                                                href="{{ route('invoice.show', $task->invoiceDetail->invoice_number) }}">
-                                                                <span
-                                                                    data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
-                                                                    class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
-                                                                    {{ $task->invoiceDetail->invoice_number }}
-                                                                </span>
-                                                            </a>
-                                                        @else
-                                                            <span
-                                                                class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
-                                                                Not Yet
-                                                            </span>
-                                                        @endif
-                                                    </td>
-                                                    @can('viewPrice', 'App\Models\Task')
-                                                        <td
-                                                            class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">
-                                                            {{ $task->total }}
-                                                        </td>
-                                                    @endcan
-                                                    <td>
-                                                        <span
-                                                            class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
-                                                            @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
-                                                            {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
-                                                        </span>
-                                                    </td>
-                                                    <td
-                                                        class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ $task->supplier->name }}
-                                                    </td>
 
-                                                </tr>
-                                            @endforeach
+
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                        height="18" viewBox="0 0 24 24"
+                                                        class="checkbox-svg checkbox-border">
+                                                        <rect width="18" height="18" x="3" y="3"
+                                                            fill="none" stroke="currentColor"
+                                                            stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="1" rx="4" />
+                                                    </svg>
+                                                </label>
+                                            </td>
+                                            @endcan
+                                            <td class="p-3 text-sm flex gap-3 justify-center">
+                                                <a data-tooltip="see task" href="javascript:void(0);"
+                                                    class="viewTask text-blue-600 dark:text-blue-300 font-medium hover:text-[#ffb958] hover:font-bold active-text"
+                                                    data-task-id="{{ $task->id }}"
+                                                    data-task-url="{{ route('tasks.show', $task->id) }}">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="22"
+                                                        height="22" viewBox="0 0 24 24"
+                                                        fill="currentColor">
+                                                        <path
+                                                            d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                                                    </svg>
+                                                </a>
+
+                                                <div x-data="{ editTaskModal_{{ $task->id }}: false }">
+                                                    <a data-tooltip="edit task" href="javascript:void(0);"
+                                                        @click="editTaskModal_{{ $task->id }} = true">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                            height="18" viewBox="0 0 24 24">
+                                                            <path fill="none" stroke="currentColor"
+                                                                stroke-width="1.5"
+                                                                d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
+                                                        </svg>
+                                                    </a>
+                                                    <div x-show="editTaskModal_{{ $task->id }}" x-cloak
+                                                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+
+                                                        <form id="edit-task-form-{{ $task->id }}"
+                                                            action="{{ route('tasks.update', $task->id) }}"
+                                                            method="post"
+                                                            class="inline-flex flex-col gap-4 items-center">
+                                                            <div @click.away="editTaskModal_{{ $task->id }} = false"
+                                                                class="bg-white rounded-md border-2 w-full sm:w-120">
+                                                                <!-- Responsive modal width -->
+                                                                <div class="flex justify-between p-4">
+                                                                    <p class="font-semibold text-lg">
+                                                                        Update the following information if
+                                                                        needed
+                                                                    </p>
+                                                                    <button type="button"
+                                                                        @click="editTaskModal_{{ $task->id }} = false"
+                                                                        class="text-red-500 font-bold">
+                                                                        &times;
+                                                                    </button>
+                                                                </div>
+                                                                <hr>
+                                                                @csrf
+                                                                @method('PUT')
+                                                                <div class="p-4 inline-flex flex-col gap-4">
+
+                                                                    <!-- Reference Field -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="reference"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Reference:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
+                                                                            name="reference"
+                                                                            value="{{ $task->reference }}">
+                                                                    </div>
+
+                                                                    @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
+                                                                    <!-- Original Task Selection for Reissued Tasks -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="original_task_id"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Original
+                                                                            Task:</label>
+                                                                        <select name="original_task_id"
+                                                                            id="original_task_id_{{ $task->id }}"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            <option value="">Select
+                                                                                Original Task</option>
+                                                                            @foreach ($tasks->where('status', 'issued') as $originalTask)
+                                                                            <option
+                                                                                value="{{ $originalTask->id }}"
+                                                                                {{ $task->original_task_id == $originalTask->id ? 'selected' : '' }}>
+                                                                                {{ $originalTask->reference }}
+                                                                                -
+                                                                                {{ $originalTask->client->name ?? $originalTask->client_name }}
+                                                                            </option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                    @endif
+
+                                                                    <!-- Status Field -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="status"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Status:</label>
+                                                                        @if ($task->status === 'refund')
+                                                                        <select name="status"
+                                                                            id="status"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base"
+                                                                            disabled>
+                                                                            <option value="refund"
+                                                                                selected>Refund
+                                                                            </option>
+                                                                        </select>
+                                                                        <input type="hidden"
+                                                                            name="status" value="refund">
+                                                                        @else
+                                                                        <select name="status"
+                                                                            id="status"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            <option value="">Set
+                                                                                Status
+                                                                            </option>
+                                                                            <option value="Confirmed"
+                                                                                {{ $task->status === 'confirmed' ? 'selected' : '' }}>
+                                                                                Confirmed
+                                                                            </option>
+                                                                            <option value="Issued"
+                                                                                {{ $task->status === 'issued' ? 'selected' : '' }}>
+                                                                                Issued
+                                                                            </option>
+                                                                            <option value="Reissued"
+                                                                                {{ $task->status === 'reissued' ? 'selected' : '' }}>
+                                                                                Reissued
+                                                                            </option>
+                                                                            <option value="Refund"
+                                                                                {{ $task->status === 'refund' ? 'selected' : '' }}>
+                                                                                Refund
+                                                                            </option>
+                                                                            <option value="Void"
+                                                                                {{ $task->status === 'void' ? 'selected' : '' }}>
+                                                                                Void
+                                                                            </option>
+                                                                        </select>
+                                                                        @endif
+
+
+                                                                        @if ($task->status === 'refund')
+                                                                        <input type="hidden"
+                                                                            name="status" value="Refund">
+                                                                        @endif
+
+                                                                    </div>
+
+                                                                    <!-- Additional Info and Venue -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="additional_info"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Additional
+                                                                            Info:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                            value="{{ $task->additional_info }} - {{ $task->venue }}"
+                                                                            readonly>
+                                                                    </div>
+
+                                                                    <!-- Supplier Name -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="supplier"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                            value="{{ $task->supplier->name }}"
+                                                                            readonly>
+                                                                    </div>
+
+                                                                    <!-- Price -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="price"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Price:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3"
+                                                                            name="price"
+                                                                            placeholder="Price"
+                                                                            value="{{ $task->price }}">
+                                                                    </div>
+
+                                                                    <!-- Tax -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="tax"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Tax:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3"
+                                                                            name="tax"
+                                                                            value="{{ $task->tax }}"
+                                                                            placeholder="Tax">
+                                                                    </div>
+
+                                                                    <!-- Surcharge -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="surcharge"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Surcharge:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 "
+                                                                            name="surcharge"
+                                                                            value="{{ $task->surcharge }}"
+                                                                            placeholder="Surcharge">
+                                                                    </div>
+
+                                                                    <!-- Total -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="total"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Total:</label>
+                                                                        <input type="text" name="total"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3"
+                                                                            value="{{ $task->total }}"
+                                                                            placeholder="Total">
+                                                                    </div>
+
+                                                                    <!-- Task Type -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="type"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Task
+                                                                            Type:</label>
+                                                                        <input type="text"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 bg-gray-200"
+                                                                            value="{{ $task->type }}"
+                                                                            readonly>
+                                                                    </div>
+
+                                                                    <!-- Client Selection -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="client_id"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
+                                                                        <div class="w-2/4 sm:w-2/3">
+                                                                            <x-searchable-dropdown
+                                                                                name="client_id"
+                                                                                :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                                                                :selectedId="$task->client_id"
+                                                                                :selectedName="optional($task->client)->name"
+                                                                                placeholder="Select a Client" />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <!-- Agent Selection (Role-based) -->
+                                                                    @unlessrole('agent')
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="agent_id"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Agent:</label>
+                                                                        <select
+                                                                            id="agent_id_select_{{ $task->id }}"
+                                                                            name="agent_id"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            <option value=""> Choose
+                                                                                Agent</option>
+                                                                            @foreach ($agents as $agent)
+                                                                            <option
+                                                                                value="{{ $agent->id }}"
+                                                                                {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
+                                                                                {{ $agent->name }}
+                                                                            </option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                    @else
+                                                                    <input type="hidden" name="agent_id"
+                                                                        id="agent_id_{{ $task->id }}"
+                                                                        value="{{ Auth()->user()->agent->id }}">
+                                                                    @endunlessrole
+
+                                                                    <!-- Supplier Selection -->
+                                                                    <div class="flex items-center gap-4">
+                                                                        <label for="supplier_id"
+                                                                            class="w-2/4 sm:w-1/3 text-left text-base">Supplier:</label>
+                                                                        <select disabled name="supplier_id"
+                                                                            id="supplier_id_{{ $task->id }}"
+                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-2/4 sm:w-2/3 text-base">
+                                                                            @foreach ($suppliers as $supplier)
+                                                                            <option
+                                                                                value="{{ $supplier->id }}"
+                                                                                {{ $task->supplier ? ($task->supplier->id === $supplier->id ? 'selected' : '') : '' }}>
+                                                                                {{ $supplier->name }}
+                                                                            </option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                        <input type="hidden"
+                                                                            name="supplier_id"
+                                                                            id="supplier_id_{{ $task->id }}"
+                                                                            value="{{ $task->supplier->id }}">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="flex space-x-4 mt-2">
+                                                                <!-- Update Button -->
+                                                                <x-primary-button type="submit"
+                                                                    class="w-[200px] justify-center px-12 py-10 text-lg"
+                                                                    form="edit-task-form-{{ $task->id }}">
+                                                                    Update
+                                                                </x-primary-button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                <label class="switch">
+                                                    <input type="checkbox" class="toggle-task-status"
+                                                        data-task-id="{{ $task->id }}"
+                                                        {{ $task->enabled ? 'checked' : '' }}>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->reference }}
+                                            </td>
+                                            <td
+                                                class="p-3 flex justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-gray-300 relative">
+                                                <p class="{{ $task->client ?? 'no-client' }}">
+                                                    <button
+                                                        @click="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
+                                                        {{ $task->client !== null ? 'disabled' : '' }}>
+                                                        {{ $task->client->name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                    </button>
+                                                </p>
+                                                @if ($task->client)
+                                                <div data-tooltip="Client Linked">
+                                                    <svg width="24" height="24"
+                                                        viewBox="0 0 24 24" fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        class="fill-green-500">
+                                                        <path fill-rule="evenodd" clip-rule="evenodd"
+                                                            d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"
+                                                            fill="" />
+                                                    </svg>
+                                                </div>
+                                                @endif
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->passenger_name ?? 'Not Set' }}
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->gds_reference ?? 'Not Available' }}
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->airline_reference ?? 'Not Available' }}
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->created_by ?? 'Not Set' }}
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->issued_by ?? 'Not Set' }}
+                                            </td>
+                                            @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                {{ $task->agent->branch->name ?? 'Not Set' }}
+                                            </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-500">
+                                                {{ $task->agent->name ?? 'Not Set' }}
+                                            </td>
+                                            @endif
+                                            @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->formatted_data ?? 'Not Set' }}
+                                            </td>
+                                            @else
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->formatted_data ?? 'Not Set' }}
+                                            </td>
+                                            @endif
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->type }}
+                                            </td>
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                @if ($task->invoiceDetail)
+                                                <a target="_blank"
+                                                    href="{{ route('invoice.show', $task->invoiceDetail->invoice_number) }}">
+                                                    <span
+                                                        data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
+                                                        class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">
+                                                        {{ $task->invoiceDetail->invoice_number }}
+                                                    </span>
+                                                </a>
+                                                @else
+                                                <span
+                                                    class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-danger">
+                                                    Not Yet
+                                                </span>
+                                                @endif
+                                            </td>
+                                            @can('viewPrice', 'App\Models\Task')
+                                            <td
+                                                class="p-3 text-sm font-semibold DarkBTextcolor dark:text-gray-300">
+                                                {{ $task->total }}
+                                            </td>
+                                            @endcan
+                                            <td>
+                                                <span
+                                                    class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"
+                                                    @if ($task->status === 'reissued' && $task->originalTask) data-tooltip-left="Reissued from {{ $task->originalTask->flightDetails->ticket_number }}" @endif>
+                                                    {{ $task->status === null ? 'Not Set' : ucwords($task->status) }}
+                                                </span>
+                                            </td>
+                                            <td
+                                                class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ $task->supplier->name }}
+                                            </td>
+
+                                        </tr>
+                                        @endforeach
                                         @endif
                                     </tbody>
 
@@ -1185,10 +1188,9 @@
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Agent's
                                                         Name</label>
-                                                    <input type="text" name="agent_name" id="agent_idTask"
-                                                        :value="modalAgentName"
-                                                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        required readonly>
+                                                    <x-searchable-dropdown name="agent_id"
+                                                        :items="$agents" placeholder="Search Agent"
+                                                        :showAllOnOpen="true" />
                                                 </div>
 
                                                 <!-- Buttons -->
@@ -1226,147 +1228,147 @@
                                 <!-- Pagination Links -->
                                 <div class="dataTable-bottom justify-center">
                                     @if ($tasks->hasPages())
-                                        <nav class="dataTable-pagination">
-                                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
-                                                {{-- Previous Page Link --}}
-                                                @if ($tasks->onFirstPage())
-                                                    <li class="pager disabled">
-                                                        <span class="px-3 py-2 text-gray-400 cursor-not-allowed">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            </svg>
-                                                        </span>
-                                                    </li>
-                                                @else
-                                                    <li class="pager">
-                                                        <a href="{{ $tasks->previousPageUrl() }}" class="px-3 py-2 text-blue-600 hover:text-blue-800">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            </svg>
-                                                        </a>
-                                                    </li>
-                                                @endif
+                                    <nav class="dataTable-pagination">
+                                        <ul class="dataTable-pagination-list flex gap-2 mt-4">
+                                            {{-- Previous Page Link --}}
+                                            @if ($tasks->onFirstPage())
+                                            <li class="pager disabled">
+                                                <span class="px-3 py-2 text-gray-400 cursor-not-allowed">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                        <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    </svg>
+                                                </span>
+                                            </li>
+                                            @else
+                                            <li class="pager">
+                                                <a href="{{ $tasks->previousPageUrl() }}" class="px-3 py-2 text-blue-600 hover:text-blue-800">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                        <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    </svg>
+                                                </a>
+                                            </li>
+                                            @endif
 
-                                                {{-- Pagination Elements --}}
-                                                @php
-                                                    $currentPage = $tasks->currentPage();
-                                                    $lastPage = $tasks->lastPage();
-                                                    $maxPagesToShow = 10;
-                                                    
-                                                    if ($lastPage <= $maxPagesToShow) {
-                                                        // Show all pages if total pages <= 10
-                                                        $startPage = 1;
-                                                        $endPage = $lastPage;
-                                                    } else {
-                                                        // Calculate dynamic range
-                                                        $halfRange = floor($maxPagesToShow / 2);
-                                                        
-                                                        if ($currentPage <= $halfRange) {
-                                                            // Near the beginning
-                                                            $startPage = 1;
-                                                            $endPage = $maxPagesToShow;
-                                                        } elseif ($currentPage > $lastPage - $halfRange) {
-                                                            // Near the end
-                                                            $startPage = $lastPage - $maxPagesToShow + 1;
-                                                            $endPage = $lastPage;
-                                                        } else {
-                                                            // In the middle
-                                                            $startPage = $currentPage - $halfRange;
-                                                            $endPage = $currentPage + $halfRange - 1;
-                                                        }
-                                                    }
+                                            {{-- Pagination Elements --}}
+                                            @php
+                                            $currentPage = $tasks->currentPage();
+                                            $lastPage = $tasks->lastPage();
+                                            $maxPagesToShow = 10;
+
+                                            if ($lastPage <= $maxPagesToShow) {
+                                                // Show all pages if total pages <=10
+                                                $startPage=1;
+                                                $endPage=$lastPage;
+                                                } else {
+                                                // Calculate dynamic range
+                                                $halfRange=floor($maxPagesToShow / 2);
+
+                                                if ($currentPage <=$halfRange) {
+                                                // Near the beginning
+                                                $startPage=1;
+                                                $endPage=$maxPagesToShow;
+                                                } elseif ($currentPage> $lastPage - $halfRange) {
+                                                // Near the end
+                                                $startPage = $lastPage - $maxPagesToShow + 1;
+                                                $endPage = $lastPage;
+                                                } else {
+                                                // In the middle
+                                                $startPage = $currentPage - $halfRange;
+                                                $endPage = $currentPage + $halfRange - 1;
+                                                }
+                                                }
                                                 @endphp
 
                                                 {{-- Left Arrow (for jumping back 10 pages) --}}
                                                 @if ($lastPage > $maxPagesToShow && $startPage > 1)
-                                                    <li class="pager">
-                                                        <a href="{{ $tasks->url(max(1, $startPage - $maxPagesToShow)) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800" title="Previous {{ $maxPagesToShow }} pages">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                                                <path d="M18 17L12 11L18 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                                <path opacity="0.5" d="M12 17L6 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            </svg>
-                                                        </a>
-                                                    </li>
+                                                <li class="pager">
+                                                    <a href="{{ $tasks->url(max(1, $startPage - $maxPagesToShow)) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800" title="Previous {{ $maxPagesToShow }} pages">
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                            <path d="M18 17L12 11L18 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            <path opacity="0.5" d="M12 17L6 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        </svg>
+                                                    </a>
+                                                </li>
                                                 @endif
 
                                                 {{-- First page if not in range --}}
                                                 @if ($startPage > 1)
-                                                    <li class="pager">
-                                                        <a href="{{ $tasks->url(1) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">1</a>
-                                                    </li>
-                                                    @if ($startPage > 2)
-                                                        <li class="pager disabled">
-                                                            <span class="px-3 py-2 text-gray-400">...</span>
-                                                        </li>
-                                                    @endif
+                                                <li class="pager">
+                                                    <a href="{{ $tasks->url(1) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">1</a>
+                                                </li>
+                                                @if ($startPage > 2)
+                                                <li class="pager disabled">
+                                                    <span class="px-3 py-2 text-gray-400">...</span>
+                                                </li>
+                                                @endif
                                                 @endif
 
                                                 {{-- Page numbers in range --}}
                                                 @for ($page = $startPage; $page <= $endPage; $page++)
-                                                    @if ($page == $currentPage)
-                                                        <li class="pager active">
-                                                            <span class="px-3 py-2 bg-blue-600 text-white rounded">{{ $page }}</span>
-                                                        </li>
+                                                    @if ($page==$currentPage)
+                                                    <li class="pager active">
+                                                    <span class="px-3 py-2 bg-blue-600 text-white rounded">{{ $page }}</span>
+                                                    </li>
                                                     @else
-                                                        <li class="pager">
-                                                            <a href="{{ $tasks->url($page) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">{{ $page }}</a>
-                                                        </li>
+                                                    <li class="pager">
+                                                        <a href="{{ $tasks->url($page) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">{{ $page }}</a>
+                                                    </li>
                                                     @endif
-                                                @endfor
+                                                    @endfor
 
-                                                {{-- Last page if not in range --}}
-                                                @if ($endPage < $lastPage)
-                                                    @if ($endPage < $lastPage - 1)
+                                                    {{-- Last page if not in range --}}
+                                                    @if ($endPage < $lastPage)
+                                                        @if ($endPage < $lastPage - 1)
                                                         <li class="pager disabled">
-                                                            <span class="px-3 py-2 text-gray-400">...</span>
+                                                        <span class="px-3 py-2 text-gray-400">...</span>
                                                         </li>
-                                                    @endif
-                                                    <li class="pager">
-                                                        <a href="{{ $tasks->url($lastPage) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">{{ $lastPage }}</a>
-                                                    </li>
-                                                @endif
+                                                        @endif
+                                                        <li class="pager">
+                                                            <a href="{{ $tasks->url($lastPage) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">{{ $lastPage }}</a>
+                                                        </li>
+                                                        @endif
 
-                                                {{-- Right Arrow (for jumping forward 10 pages) --}}
-                                                @if ($lastPage > $maxPagesToShow && $endPage < $lastPage)
-                                                    <li class="pager">
-                                                        <a href="{{ $tasks->url(min($lastPage, $endPage + $maxPagesToShow)) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800" title="Next {{ $maxPagesToShow }} pages">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                                                <path d="M6 17L12 11L6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                                <path opacity="0.5" d="M12 17L18 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            </svg>
-                                                        </a>
-                                                    </li>
-                                                @endif
+                                                        {{-- Right Arrow (for jumping forward 10 pages) --}}
+                                                        @if ($lastPage > $maxPagesToShow && $endPage < $lastPage)
+                                                            <li class="pager">
+                                                            <a href="{{ $tasks->url(min($lastPage, $endPage + $maxPagesToShow)) }}" class="px-3 py-2 text-blue-600 hover:text-blue-800" title="Next {{ $maxPagesToShow }} pages">
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                    <path d="M6 17L12 11L6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                    <path opacity="0.5" d="M12 17L18 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                </svg>
+                                                            </a>
+                                                            </li>
+                                                            @endif
 
-                                                {{-- Next Page Link --}}
-                                                @if ($tasks->hasMorePages())
-                                                    <li class="pager">
-                                                        <a href="{{ $tasks->nextPageUrl() }}" class="px-3 py-2 text-blue-600 hover:text-blue-800">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            </svg>
-                                                        </a>
-                                                    </li>
-                                                @else
-                                                    <li class="pager disabled">
-                                                        <span class="px-3 py-2 text-gray-400 cursor-not-allowed">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            </svg>
-                                                        </span>
-                                                    </li>
-                                                @endif
-                                            </ul>
-                                        </nav>
-                                        
-                                        {{-- Page Info --}}
-                                        <div class="text-center mt-3 text-sm text-gray-600 dark:text-gray-400">
-                                            Showing {{ $tasks->firstItem() }} to {{ $tasks->lastItem() }} of {{ $tasks->total() }} results
-                                        </div>
+                                                            {{-- Next Page Link --}}
+                                                            @if ($tasks->hasMorePages())
+                                                            <li class="pager">
+                                                                <a href="{{ $tasks->nextPageUrl() }}" class="px-3 py-2 text-blue-600 hover:text-blue-800">
+                                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                    </svg>
+                                                                </a>
+                                                            </li>
+                                                            @else
+                                                            <li class="pager disabled">
+                                                                <span class="px-3 py-2 text-gray-400 cursor-not-allowed">
+                                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
+                                                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                    </svg>
+                                                                </span>
+                                                            </li>
+                                                            @endif
+                                        </ul>
+                                    </nav>
+
+                                    {{-- Page Info --}}
+                                    <div class="text-center mt-3 text-sm text-gray-600 dark:text-gray-400">
+                                        Showing {{ $tasks->firstItem() }} to {{ $tasks->lastItem() }} of {{ $tasks->total() }} results
+                                    </div>
                                     @endif
                                 </div>
                             </div>
@@ -1605,7 +1607,13 @@
 
             formTaskContainer.innerHTML = '';
 
-            if (supplier.name === 'Magic Holiday') {
+            console.log('Selected Supplier:', supplier);
+            if (supplier.name == 'Magic Holiday') {
+                let p = document.createElement('p');
+                p.classList.add('text-blue-400', 'text-sm', 'mb-2');
+                p.innerHTML = "You don't need to choose the agent for Magic Holiday, it will be automatically assigned.";
+                formTaskContainer.appendChild(p);
+
                 let input = document.createElement('input');
                 input.type = 'text';
                 input.name = 'supplier_ref';
@@ -1810,7 +1818,7 @@
         enableButton(taskPassportProcessBtn);
     });
 
-   dropHandler = (e) => {
+    dropHandler = (e) => {
         e.preventDefault();
 
         const droppedFile = e.dataTransfer.files[0];
@@ -1823,7 +1831,7 @@
         fileName.textContent = droppedFile.name;
 
         if (droppedFile.type.startsWith('image/')) {
-            file.innerHTML = ''; 
+            file.innerHTML = '';
             const img = document.createElement('img');
             img.src = URL.createObjectURL(droppedFile);
             img.width = 100;

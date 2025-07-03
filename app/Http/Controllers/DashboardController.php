@@ -160,27 +160,8 @@ class DashboardController extends Controller
 
     public function agentDashboard()
     {
-        $user = Auth::user();
-
-        // $queueTasks = Task::where('agent_id', $user->agent->id)->withoutGlobalScopes()->get();
-        $tasks = Task::where('agent_id', $user->agent->id)->paginate(50);
-        $taskCount  = $tasks->count();
-        $suppliers = Supplier::whereHas('companies', function ($query) use ($user){
-            $query->where('company_id', $user->agent->branch->company_id);
-        })->get();
-        $types = Task::distinct()->pluck('type');
-        $companyId = $user->agent->branch->company_id;
-        $clients = $user->agent->clients;
-
-        return view('tasks.index', compact(
-            'clients',
-            // 'queueTasks',
-            'tasks',
-            'taskCount',
-            'suppliers',
-            'types',
-            'companyId',
-        ));
+        $taskController = new TaskController();
+        return $taskController->index();
     }
 
     // public function agentDashboard()

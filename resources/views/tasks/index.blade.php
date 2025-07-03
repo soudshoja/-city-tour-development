@@ -323,7 +323,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <div id="form-task-container" class="mb-3" data-company-id="{{ $companyId }}"></div>
+                        <div id="form-task-container" class="mb-3"></div>
 
                         @unlessrole('agent')
                         <div class="mb-4">
@@ -1599,8 +1599,6 @@
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);
             let formTaskContainer = document.getElementById('form-task-container');
-            let companyIdData = formTaskContainer.getAttribute('data-company-id');
-            let tboTaskUrl = "{!! route('tasks.get-tbo', ['companyId' => '__companyId__']) !!}".replace('__companyId__', companyIdData);
 
             formTaskContainer.innerHTML = '';
 

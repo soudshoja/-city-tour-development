@@ -91,29 +91,41 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (auth()->check())
+                    @if (auth()->check() && $payment->status === 'completed')
+                        @php
+                            $serviceCharge = $payment->service_charge ?? $gatewayFee;
+                            $baseAmount = $payment->amount - $serviceCharge;
+                        @endphp
                         <tr class="border-b border-gray-100">
-                            <td class="py-3 px-4">Total Amount</td>
-                            <td class="py-3 px-4 text-right">{{ number_format($payment->base_amount, 2) }} {{ $payment->currency }}</td>
+                            <td class="py-3 px-4">Amount</td>
+                            <td class="py-3 px-4 text-right">{{ number_format($baseAmount, 2) }} {{ $payment->currency }}</td>
                         </tr>
-                    @else
-                        <tr class="border-b border-gray-100">
-                            <td class="py-3 px-4">Total Amount</td>
-                            <td class="py-3 px-4 text-right">{{ number_format($chargeResult['finalAmount'], 2) }}
-                                {{ $payment->currency }}</td>
-                        </tr>
-                    @endif
-                    @if (auth()->check() && $payment->charge_payer !== 'Company')
-                        <tr class="border-b border-gray-100">
-                            <td class="py-3 px-4">Service Charge</td>
-                            <td class="py-3 px-4 text-right">{{ number_format($payment->service_charge, 2) }} {{ $payment->currency }}</td>
-                        </tr>
-                    @endif
+                        @if (auth()->check() && $serviceCharge > 0)
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Service Charge</td>
+                                <td class="py-3 px-4 text-right">{{ number_format($serviceCharge, 2) }} {{ $payment->currency }}</td>
+                            </tr>
+                        @endif
                     <tr class="font-bold">
                         <td class="py-3 px-4">Final Total</td>
-                        <td class="py-3 px-4 text-right">{{ number_format($payment->amount, 2) }} {{ $payment->currency }}
-                        </td>
+                        <td class="py-3 px-4 text-right">{{ number_format($payment->amount, 2) }} {{ $payment->currency }}</td>
                     </tr>
+                    @else
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4">Amount</td>
+                            <td class="py-3 px-4 text-right">{{ number_format($payment->amount, 2) }} {{ $payment->currency }}</td>
+                        </tr>
+                        @if (isset($paidBy) && $paidBy !== 'Company' && $gatewayFee > 0)
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Service Charge</td>
+                                <td class="py-3 px-4 text-right">{{ number_format($gatewayFee, 2) }} {{ $payment->currency }}</td>
+                            </tr>
+                        @endif
+                        <tr class="font-bold">
+                            <td class="py-3 px-4">Final Total</td>
+                            <td class="py-3 px-4 text-right">{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</td>
+                        </tr>
+                    @endif
                 </tbody>
             </table>
 

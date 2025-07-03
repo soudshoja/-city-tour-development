@@ -475,6 +475,19 @@ class WhatsAppHotelController extends Controller
                 ], 404);
             }
 
+            $hotel = MapHotel::with('city:id,name')->find($prebook->hotel_id);
+            $hotelName = $hotel->name ?? null;
+            $cityId = $hotel->city->id ?? null;
+            $cityName = $hotel->city->name;
+            
+            if($cityId === null) {
+                Log::channel('whatsapp')->warning('getHotelDetails: City not found for hotel', ['hotel' => $hotel->name]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'City not found for this hotel.',
+                ], 404);
+            }
+
             $response = [
                 'success' => true,
                 'data' => [
@@ -484,6 +497,8 @@ class WhatsAppHotelController extends Controller
                     'srk' => $prebook->srk,
                     'package_token' => $prebook->package_token,
                     'hotel_id' => $prebook->hotel_id,
+                    'hotel_name' => $hotelName,
+                    'city_name' => $cityName,
                     'offer_index' => $prebook->offer_index,
                     'result_token' => $prebook->result_token,
                     'rooms' => is_string($prebook->rooms) ? json_decode($prebook->rooms, true) : $prebook->rooms,

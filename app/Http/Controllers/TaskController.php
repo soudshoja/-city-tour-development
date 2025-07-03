@@ -271,7 +271,7 @@ class TaskController extends Controller
             }
 
             // Only process financial transactions if task is enabled and complete
-            if ($task->agent && $task->is_complete) {
+            if ($task->enabled && $task->is_complete) {
                 $this->processTaskFinancial($task);
             }
 

@@ -9,6 +9,7 @@ use App\Models\MapHotel;
 use App\Models\Prebooking;
 use App\Models\HotelBooking;
 use App\Models\RequestBookingRoom;
+use App\Models\UserStep;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -688,6 +689,203 @@ class WhatsAppHotelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while retrieving time left for temporary offers.',
+            ], 500);
+        }
+    }
+
+    public function storeStep(Request $request)
+    {
+        Log::channel('whatsapp')->info('storeStep: Incoming request', ['request' => $request->all()]);
+        
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'step' => 'required|string',
+                'hotel' => 'nullable|string',
+            ]);
+
+            // Check if step already exists for this phone number
+            $existingStep = UserStep::where('phone', $request->phone)->first();
+
+            if ($existingStep) {
+                // Update existing step
+                $existingStep->update([
+                    'step' => $request->step,
+                    'hotel' => $request->hotel,
+                ]);
+                
+                $userStep = $existingStep;
+                $message = 'Step updated successfully.';
+            } else {
+                // Create new step
+                $userStep = UserStep::create([
+                    'phone' => $request->phone,
+                    'step' => $request->step,
+                    'hotel' => $request->hotel,
+                ]);
+                
+                $message = 'Step created successfully.';
+            }
+
+            $response = [
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'id' => $userStep->id,
+                    'phone' => $userStep->phone,
+                    'step' => $userStep->step,
+                    'hotel' => $userStep->hotel,
+                    'created_at' => $userStep->created_at,
+                    'updated_at' => $userStep->updated_at,
+                ],
+            ];
+
+            Log::channel('whatsapp')->info('storeStep: Success response', ['response' => $response]);
+            return response()->json($response);
+            
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('storeStep: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function retrieveStep(Request $request)
+    {
+        Log::channel('whatsapp')->info('retrieveStep: Incoming request', ['request' => $request->all()]);
+        
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+            ]);
+
+            $userStep = UserStep::where('phone', $request->phone)->first();
+
+            if (!$userStep) {
+                Log::channel('whatsapp')->warning('retrieveStep: Step not found', ['phone' => $request->phone]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No step found for this phone number.',
+                ], 404);
+            }
+
+            $response = [
+                'success' => true,
+                'data' => [
+                    'id' => $userStep->id,
+                    'phone' => $userStep->phone,
+                    'step' => $userStep->step,
+                    'hotel' => $userStep->hotel,
+                    'created_at' => $userStep->created_at,
+                    'updated_at' => $userStep->updated_at,
+                ],
+            ];
+
+            Log::channel('whatsapp')->info('retrieveStep: Success response', ['response' => $response]);
+            return response()->json($response);
+            
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('retrieveStep: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateStep(Request $request)
+    {
+        Log::channel('whatsapp')->info('updateStep: Incoming request', ['request' => $request->all()]);
+        
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'step' => 'nullable|string',
+                'hotel' => 'nullable|string',
+            ]);
+
+            $userStep = UserStep::where('phone', $request->phone)->first();
+
+            if (!$userStep) {
+                Log::channel('whatsapp')->warning('updateStep: Step not found', ['phone' => $request->phone]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No step found for this phone number.',
+                ], 404);
+            }
+
+            // Update only provided fields
+            $updateData = [];
+            if ($request->has('step')) {
+                $updateData['step'] = $request->step;
+            }
+            if ($request->has('hotel')) {
+                $updateData['hotel'] = $request->hotel;
+            }
+
+            $userStep->update($updateData);
+
+            $response = [
+                'success' => true,
+                'message' => 'Step updated successfully.',
+                'data' => [
+                    'id' => $userStep->id,
+                    'phone' => $userStep->phone,
+                    'step' => $userStep->step,
+                    'hotel' => $userStep->hotel,
+                    'created_at' => $userStep->created_at,
+                    'updated_at' => $userStep->updated_at,
+                ],
+            ];
+
+            Log::channel('whatsapp')->info('updateStep: Success response', ['response' => $response]);
+            return response()->json($response);
+            
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('updateStep: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function deleteStep(Request $request)
+    {
+        Log::channel('whatsapp')->info('deleteStep: Incoming request', ['request' => $request->all()]);
+        
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+            ]);
+
+            $userStep = UserStep::where('phone', $request->phone)->first();
+
+            if (!$userStep) {
+                Log::channel('whatsapp')->warning('deleteStep: Step not found', ['phone' => $request->phone]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No step found for this phone number.',
+                ], 404);
+            }
+
+            $userStep->delete();
+
+            $response = [
+                'success' => true,
+                'message' => 'Step deleted successfully.',
+            ];
+
+            Log::channel('whatsapp')->info('deleteStep: Success response', ['response' => $response]);
+            return response()->json($response);
+            
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('deleteStep: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

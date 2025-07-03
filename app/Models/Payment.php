@@ -20,8 +20,6 @@ class Payment extends Model
         'pay_to',
         'created_by',
         'service_charge',
-        'charge_payer',
-        'base_amount',
         'account_id',
         'currency',
         'payment_date',

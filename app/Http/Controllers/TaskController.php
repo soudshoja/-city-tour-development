@@ -41,10 +41,6 @@ class TaskController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $agent = null;
-        $taskCount = 0;
-        $clients = collect();
-        $agents = collect();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
         $countries = Country::all();
 
@@ -88,6 +84,7 @@ class TaskController extends Controller
             })->get();
         } elseif ($user->role_id == Role::AGENT) {
 
+            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
             $tasks = $tasks->where('agent_id', $user->agent->id)->paginate(50);
             // $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
@@ -124,38 +121,15 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
-        if ($user->hasAnyRole('admin', 'company')) {
-
-            $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $user->company_id)->get();
-            $companyId = $user->role_id == Role::ADMIN ? null : $user->company->id;
-
-            // dd($agents);
-            return view('tasks.index', compact(
-                'tasks',
-                'agent',
-                'taskCount',
-                'agents',
-                'clients',
-                'suppliers',
-                'branches',
-                'types',
-                'processTask',
-                'companyId',
-                'countries'
-            ));
-        }
 
         return view('tasks.index', compact(
             'tasks',
-            'agent',
             'taskCount',
             'agents',
             'clients',
             'suppliers',
             'types',
-            'queueTasks',
             'processTask',
-            'companyId',
             'countries'
         ));
     }

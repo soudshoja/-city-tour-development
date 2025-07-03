@@ -810,12 +810,9 @@
                                                                                 <div class="w-2/4 sm:w-2/3">
                                                                                     <x-searchable-dropdown
                                                                                         name="client_id"
-                                                                                        :items="$clients->map(
-                                                                                            fn($c) => [
-                                                                                                'id' => $c->id,
-                                                                                                'name' => $c->name,
-                                                                                            ],
-                                                                                        )"
+                                                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                                                                        :selectedId="$task->client_id"
+                                                                                        :selectedName="optional($task->client)->name"
                                                                                         placeholder="Select a Client" />
                                                                                 </div>
                                                                             </div>

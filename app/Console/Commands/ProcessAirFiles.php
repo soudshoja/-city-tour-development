@@ -222,7 +222,7 @@ class ProcessAirFiles extends Command
                 return [
                     'success' => true,
                     'index' => $index,
-                    'reason' => 'Task saved with enabled=false (original task not found)',
+                    'reason' => 'Task saved with but original task not found',
                     'task_id' => $response['task']->id ?? null
                 ];
             }
@@ -252,7 +252,7 @@ class ProcessAirFiles extends Command
                 return [
                     'success' => true,
                     'index' => $index,
-                    'reason' => 'Task saved with enabled=false (no flight details)',
+                    'reason' => 'Task saved with but no flight details found',
                     'task_id' => $response['task']->id ?? null
                 ];
             }
@@ -284,7 +284,7 @@ class ProcessAirFiles extends Command
                 return [
                     'success' => true,
                     'index' => $index,
-                    'reason' => 'Task saved with enabled=false (agent not found)',
+                    'reason' => 'Task saved with but agent not found',
                     'task_id' => $response['task']->id ?? null
                 ];
             }
@@ -314,7 +314,7 @@ class ProcessAirFiles extends Command
                 return [
                     'success' => true,
                     'index' => $index,
-                    'reason' => 'Task saved with enabled=false (branch not found)',
+                    'reason' => 'Task saved with but branch not found',
                     'task_id' => $response['task']->id ?? null
                 ];
             }
@@ -346,7 +346,7 @@ class ProcessAirFiles extends Command
                 return [
                     'success' => true,
                     'index' => $index,
-                    'reason' => 'Task saved with enabled=false (agent not found)',
+                    'reason' => 'Task saved with but agent not found',
                     'task_id' => $response['task']->id ?? null
                 ];
             }
@@ -378,7 +378,7 @@ class ProcessAirFiles extends Command
             return [
                 'success' => true,
                 'index' => $index,
-                'reason' => 'Task saved with enabled=false (branch not found)',
+                'reason' => 'Task saved with but branch not found',
                 'task_id' => $response['task']->id ?? null
             ];
         }
@@ -412,7 +412,7 @@ class ProcessAirFiles extends Command
         return [
             'success' => true,
             'index' => $index,
-            'reason' => 'Task saved successfully with enabled=true',
+            'reason' => 'Task saved successfully',
             'task_id' => $response['task']->id ?? null
         ];
     }
@@ -428,7 +428,16 @@ class ProcessAirFiles extends Command
             $agentQuery->orWhere('amadeus_id', 'like', $amadeusId);
         }
         if ($name) {
-            $agentQuery->orWhere('name', 'like', $name);
+            $words = array_filter(explode(' ', trim($name)));
+            if (count($words) > 1) {
+            $agentQuery->orWhere(function($query) use ($words) {
+                foreach ($words as $word) {
+                $query->where('name', 'like', '%' . $word . '%');
+                }
+            });
+            } else {
+            $agentQuery->orWhere('name', 'like', '%' . $name . '%');
+            }
         }
         if ($email) {
             $agentQuery->orWhere('email', 'like', $email);
@@ -450,24 +459,27 @@ class ProcessAirFiles extends Command
 
     protected function saveTask($companyId, $data, $supplierId)
     {
-        $existingTask = Task::where('reference', $data['reference'])
-            ->where('company_id', $companyId)
-            ->where('status', $data['status'])
-            ->first();
+        // $existingTask = Task::where('reference', $data['reference'])
+        //     ->where('company_id', $companyId)
+        //     ->where('status', $data['status'])
+        //     ->first();
 
-        if ($existingTask) {
-            Log::info("Task with reference {$data['reference']} already exists. Skipping save.");
+        // if ($existingTask) {
+        //     Log::info("Task with reference {$data['reference']} already exists. Skipping save.");
 
-            return [
-                'status' => 'error',
-                'message' => 'Task already exists',
-                'code' => 409,
-            ];
-        }
+        //     return [
+        //         'status' => 'error',
+        //         'message' => 'Task already exists',
+        //         'code' => 409,
+        //     ];
+        // }
 
         try {
             $data['company_id'] = $companyId;
             $data['supplier_id'] = $supplierId;
+    /**
+     * The name and signature of the console command.
+     */
 
             $taskController = new TaskController();
 

@@ -258,9 +258,9 @@ class OpenAIClient implements AIClientInterface
                 ];
             }
 
-            $data = $response['data'] ?? null;
+            $extractedData = $response['data'] ?? null;
 
-            if (!$data) {
+            if (!$extractedData) {
                 Log::error("Failed to decode AI Tool response for {$fileName}: " . json_last_error_msg());
                 return [
                     'status' => 'error',
@@ -270,28 +270,37 @@ class OpenAIClient implements AIClientInterface
                 ];
             }
 
-            Log::info('Extracting data from AI Tool for ' . $fileName . ': ' . json_encode($data));
+            // Handle both single task and multiple tasks
+            if (!is_array($extractedData)) {
+                Log::error("AI Tool response for {$fileName} is not an array: " . json_last_error_msg());
+                return [
+                    'status' => 'error',
+                    'message' => 'AI Tool response is not an array',
+                    'original_filename' => $fileName,
+                    'data' => null,
+                ];
+            }
 
-            $normalized =  TaskSchema::normalize(array_merge(
-                $data['task']  ?? [],
-                [
-                    'task_flight_details' => $data['task_flight_details'] ?? [],
-                    'task_hotel_details' => $data['task_hotel_details'] ?? [],
-                ]
-            ));
+            // Normalize all items (similar to air files processing)
+            $processedItems = [];
+            foreach ($extractedData as $item) {
+                $normalized = TaskSchema::normalize(array_merge(
+                    $item ?? [],
+                    [
+                        'task_flight_details' => $item['task_flight_details'] ?? [],
+                        'task_hotel_details' => $item['task_hotel_details'] ?? [],
+                    ]
+                ));
+                $processedItems[] = $normalized;
+            }
 
-            // Determine type and normalize
-            // $taskType = $data['task']['type'] ?? 'flight';
-            // $normalized = $normalizeData(array_merge($data['task'] ?? [], [
-            //     'task_flight_details' => $data['task_flight_details'] ?? [],
-            //     'task_hotel_details' => $data['task_hotel_details'] ?? [],
-            // ]), $taskType);
+            Log::info('Extracting data from AI Tool for ' . $fileName . ': ' . json_encode($processedItems));
 
             return [
                 'status' => 'success',
                 'message' => "Successfully processed {$fileName} using AI.",
                 'original_filename' => $fileName,
-                'data' => $normalized,
+                'data' => $processedItems,
             ];
         } elseif (in_array($extension, ['txt', 'text', 'air'])) {
 
@@ -711,15 +720,109 @@ class OpenAIClient implements AIClientInterface
 
         $fileId = $uploadFileResponseId;
 
-        $taskModel = [
-            'task' => TaskSchema::getSchema(),
-            'task_flight_details' => TaskFlightSchema::getSchema(),
-            'task_hotel_details' => TaskHotelSchema::getSchema(),
-        ];
+        $taskFields = TaskSchema::getSchema();
+        $flightFields = TaskFlightSchema::getSchema();
+        $hotelFields = TaskHotelSchema::getSchema();
 
         $supplierList = Supplier::all()->pluck('name')->toArray();
         $supplierList = json_encode($supplierList);
 
+        $airportList = json_encode(Airport::all()->toArray());
+
+        // Build comprehensive prompt for PDF extraction
+        $prompt = "You are an assistant for processing uploaded PDF documents to extract structured travel booking data.\n\n";
+        $prompt .= "Extract data following these models:\n\n";
+        $prompt .= "1. `tasks` model with the following fields:\n";
+        foreach ($taskFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['desc']}\n";
+        }
+        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        foreach ($flightFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        foreach ($hotelFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+
+        $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
+        $prompt .= "- The PDF may contain multiple passengers/bookings. Return an array of task objects.\n";
+        $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details.\n";
+        $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names.\n";
+        $prompt .= "- Extract all available data, set missing fields to null.\n";
+        $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
+        $prompt .= "- For supplier name, refer to this list: $supplierList\n";
+        $prompt .= "- Airport codes should be matched against: $airportList\n";
+        $prompt .= "- Return the result in this JSON format:\n\n";
+
+        $prompt .= "{\n";
+        $prompt .= "  \"result\": [\n";
+        $prompt .= "    {\n";
+        $prompt .= "      \"additional_info\": \"relevant booking info\",\n";
+        $prompt .= "      \"ticket_number\": \"document/ticket number\",\n";
+        $prompt .= "      \"gds_reference\": \"booking reference/PNR\",\n";
+        $prompt .= "      \"airline_reference\": \"airline confirmation code\",\n";
+        $prompt .= "      \"status\": \"issued/confirmed/cancelled/refunded\",\n";
+        $prompt .= "      \"supplier_status\": \"same as status\",\n";
+        $prompt .= "      \"price\": 100.00,\n";
+        $prompt .= "      \"exchange_currency\": \"KWD\",\n";
+        $prompt .= "      \"original_price\": 100.00,\n";
+        $prompt .= "      \"original_currency\": \"USD\",\n";
+        $prompt .= "      \"total\": 115.00,\n";
+        $prompt .= "      \"surcharge\": 10.00,\n";
+        $prompt .= "      \"tax\": 5.00,\n";
+        $prompt .= "      \"taxes_record\": \"tax breakdown if available\",\n";
+        $prompt .= "      \"penalty_fee\": 0.00,\n";
+        $prompt .= "      \"refund_charge\": 0.00,\n";
+        $prompt .= "      \"reference\": \"main reference number\",\n";
+        $prompt .= "      \"created_by\": \"agent/office code\",\n";
+        $prompt .= "      \"issued_by\": \"issuing agent/office\",\n";
+        $prompt .= "      \"type\": \"flight/hotel/package\",\n";
+        $prompt .= "      \"agent_name\": \"agent name\",\n";
+        $prompt .= "      \"agent_email\": \"agent email\",\n";
+        $prompt .= "      \"agent_amadeus_id\": \"agent system id\",\n";
+        $prompt .= "      \"client_name\": \"passenger/customer name\",\n";
+        $prompt .= "      \"supplier_name\": \"supplier/vendor name\",\n";
+        $prompt .= "      \"supplier_country\": \"supplier country\",\n";
+        $prompt .= "      \"cancellation_policy\": \"cancellation terms\",\n";
+        $prompt .= "      \"venue\": \"service location\",\n";
+        $prompt .= "      \"created_at\": \"2025-07-03 00:00:00\",\n";
+        $prompt .= "      \"task_flight_details\": {\n";
+        $prompt .= "        \"farebase\": 20.00,\n";
+        $prompt .= "        \"departure_time\": \"2025-07-03 14:00:00\",\n";
+        $prompt .= "        \"country_id_from\": \"departure country\",\n";
+        $prompt .= "        \"airport_from\": \"departure airport code\",\n";
+        $prompt .= "        \"terminal_from\": \"departure terminal\",\n";
+        $prompt .= "        \"arrival_time\": \"2025-07-03 16:00:00\",\n";
+        $prompt .= "        \"duration_time\": \"2h 30m\",\n";
+        $prompt .= "        \"country_id_to\": \"arrival country\",\n";
+        $prompt .= "        \"airport_to\": \"arrival airport code\",\n";
+        $prompt .= "        \"terminal_to\": \"arrival terminal\",\n";
+        $prompt .= "        \"airline_id\": \"airline name\",\n";
+        $prompt .= "        \"flight_number\": \"flight number\",\n";
+        $prompt .= "        \"class_type\": \"economy/business/first\",\n";
+        $prompt .= "        \"baggage_allowed\": \"baggage allowance\",\n";
+        $prompt .= "        \"equipment\": \"aircraft type\",\n";
+        $prompt .= "        \"ticket_number\": \"flight ticket number\",\n";
+        $prompt .= "        \"flight_meal\": \"meal service\",\n";
+        $prompt .= "        \"seat_no\": \"seat assignment\"\n";
+        $prompt .= "      },\n";
+        $prompt .= "      \"task_hotel_details\": {\n";
+        $prompt .= "        \"hotel_name\": \"hotel name\",\n";
+        $prompt .= "        \"check_in_date\": \"2025-07-03\",\n";
+        $prompt .= "        \"check_out_date\": \"2025-07-05\",\n";
+        $prompt .= "        \"room_type\": \"room type\",\n";
+        $prompt .= "        \"nights\": 2,\n";
+        $prompt .= "        \"guests\": 2,\n";
+        $prompt .= "        \"price_per_night\": 150.00,\n";
+        $prompt .= "        \"total_price\": 300.00,\n";
+        $prompt .= "        \"currency\": \"KWD\",\n";
+        $prompt .= "        \"booking_reference\": \"hotel booking ref\"\n";
+        $prompt .= "      }\n";
+        $prompt .= "    }\n";
+        $prompt .= "  ]\n";
+        $prompt .= "}\n\n";
+        $prompt .= "Remember: Always return an array of objects, even for single passengers. Analyze the document carefully for multiple bookings/passengers.";
 
         $content = [
             [
@@ -728,25 +831,8 @@ class OpenAIClient implements AIClientInterface
             ],
             [
                 'type' => 'input_text',
-                'text' => 'Please extract the data from this file and return it in JSON format.',
-            ],
-            [
-                'type' => 'input_text',
-                'text' => 'Try to get information following my models, if the task is a flight, you can use the task_flight_details model, if the task is a hotel, you can use the task_hotel_details model. If the task is a flight and hotel, you can use both models.',
-            ],
-            [
-                'type' => 'input_text',
-                'text' => 'Please make sure to use the same field names as in the models.',
-            ],
-            [
-                'type' => 'input_text',
-                'text' => 'For the supplier name, you can refer to the supplier from this list: ' . $supplierList,
-            ],
-            [
-                'type' => 'input_text',
-                'text' => json_encode($taskModel),
+                'text' => $prompt,
             ]
-
         ];
 
         $response = $this->createResponse(
@@ -757,7 +843,6 @@ class OpenAIClient implements AIClientInterface
         );
 
         Log::info('OpenAI API response: ', $response);
-
 
         if (
             isset($response['output'][0]['content'][0]['text']) &&
@@ -775,12 +860,50 @@ class OpenAIClient implements AIClientInterface
 
         $this->deleteFileFromOpenAI($fileId);
 
+        // Ensure the response has the expected structure
+        if (!isset($decodedResponse['result']) || !is_array($decodedResponse['result'])) {
+            // If the response doesn't have 'result' key, try to wrap the response
+            if (is_array($decodedResponse)) {
+                // Check if it's already an array of tasks
+                $firstItem = reset($decodedResponse);
+                if (is_array($firstItem) && (isset($firstItem['ticket_number']) || isset($firstItem['client_name']))) {
+                    $decodedResponse = ['result' => $decodedResponse];
+                } else {
+                    // Single task object, wrap it in an array
+                    $decodedResponse = ['result' => [$decodedResponse]];
+                }
+            } else {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid response format from AI',
+                    'data' => null,
+                ];
+            }
+        }
+
+        // Process each task for reference number validation (similar to extractAirFiles)
+        foreach ($decodedResponse['result'] as &$task) {
+            // Validate and fix reference numbers if needed
+            if (!isset($task['reference']) || empty($task['reference'])) {
+                // Use ticket_number as reference if reference is missing
+                $task['reference'] = $task['ticket_number'] ?? '';
+            }
+
+            // Basic reference number validation for PDFs (less strict than air files)
+            if (!empty($task['reference'])) {
+                $checkResponse = $this->checkReferenceNumber($task['reference']);
+                if ($checkResponse['status'] === 'error') {
+                    // For PDFs, if reference doesn't match air file format, keep it as is
+                    Log::warning('PDF reference number format differs from air file format: ' . $task['reference']);
+                }
+            }
+        }
+
         return [
             'status' => 'success',
             'message' => 'Data extracted successfully',
-            'data' => $decodedResponse,
+            'data' => $decodedResponse['result'],
         ];
-
     } 
 
     // public function uploadFileToOpenAI($file, string $purpose = 'user_data')

@@ -308,8 +308,22 @@
 
                     <hr>
                     <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
-                        class="p-4 flex flex-col gap-2" method="POST" enctype="multipart/form-data">
+                        class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
                         @csrf
+
+                        <div class="mb-3">
+                            <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
+                                label="Select a Supplier" />
+                        </div>
+                        <!-- Hidden native select (logic only) -->
+                        <select id="select-supplier-task" class="hidden">
+                            @foreach ($suppliers as $supplier)
+                                <option value="{{ $supplier->id }}" data-supplier='@json(['name' => $supplier->name])'>
+                                    {{ $supplier->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div id="form-task-container" class="mb-3" data-company-id="{{ $companyId }}"></div>
 
                         @unlessrole('agent')
                         <div class="mb-4">
@@ -319,23 +333,6 @@
                         @else
                         <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
-
-                        <div class="mb-4">
-                            <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
-                                label="Select a Supplier" />
-                        </div>
-
-                        <!-- Hidden native select (logic only) -->
-                        <select id="select-supplier-task" class="hidden">
-                            @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" data-supplier='@json(['name' => $supplier->name])'>
-                                    {{ $supplier->name }}
-                                </option>
-                            @endforeach
-                        </select>
-
-
-                        <div id="form-task-container" class="mb-2" data-company-id="{{ $companyId }}"></div>
                     </form>
 
                     <hr>
@@ -1618,9 +1615,9 @@
                 input.type = 'text';
                 input.name = 'supplier_ref';
                 input.placeholder = 'Reference';
-                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
+                input.classList.add('input', 'w-full', 'mt-1', 'rounded-lg', 'border',
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3');
+                    'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
             } else if (supplier.name === 'TBO Holiday') {
                 let input = document.createElement('input');
@@ -1639,7 +1636,7 @@
                 fileInput.name = 'task_file';
                 fileInput.id = 'amadeus-upload-task';
                 fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
-                    'w-full', 'mt-2');
+                    'w-full', 'border', 'border-gray-200', 'focus:outline-none');
                 formTaskContainer.appendChild(fileInput);
             } else {
                 let div = document.createElement('div');

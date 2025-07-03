@@ -142,7 +142,6 @@
                     <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
                     <td class="px-4 py-2 border">
                         {{ number_format(($detail->quantity ?? 1) * ($detail->task_price ?? 0), 2, '.', ',') }}
-
                     </td>
                 </tr>
                 @endforeach
@@ -180,14 +179,21 @@
                 <tr class="text-sm text-gray-700 @if ($partial->status === 'paid') disabled-row @endif">
                     <td class="px-4 py-2 border">
                         <input type="checkbox" class="partial-checkbox" name="selected_partials[]"
-                            value="{{ $partial->id }}" data-amount="{{ $partial->amount }}"
-                            @if ($partial->status == 'paid') checked @endif>
+                            value="{{ $partial->id }}" data-amount="{{ $partial->amount }}" data-final-amount="{{ $partial->final_amount }}"
+                            @if ($partial->status == 'paid') checked disabled @endif>
                     </td>
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                     </td>
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
-                    <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td>
+                    <td class="px-4 py-2 border">
+                        @if ($partial->status !== 'paid')
+                            {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        @else
+                            {{ number_format($partial->amount, 2) }}
+                        @endif
+                    </td>
+                    <!-- <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td> -->
                 </tr>
                 @endforeach
             </tbody>
@@ -296,10 +302,12 @@
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                     </td>
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
-                    <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}
-                        @if ($checkUtilizeCreditPartial != 0)
-                        <br>Credit utilized: {{ number_format($checkUtilizeCreditPartial, 2) }}
-                        @endif
+                    <td class="px-4 py-2 border">
+                    @if ($partial->status !== 'paid')
+                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                    @else
+                        {{ number_format($partial->amount, 2) }}
+                    @endif
                     </td>
                 </tr>
                 @php
@@ -338,27 +346,38 @@
                     <span>{{ number_format($invoice->tax, 2) }}</span>
                 </div>
 
-
-                @if($invoicePartials->contains('charge_payer', '==', 'Client') && $paidPartials->isNotEmpty())
-                <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge:</span>
-                    <span>{{ number_format($invoicePartials->sum('service_charge'), 2) }}</span>
+                @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
+                @php
+                    $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
+                    $paidTotalAmount = $invoice->invoicePartials->sum('amount');
+                @endphp
+                @if ($paidServiceCharge > 0)
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span>Service Charge:</span>
+                        <span>{{ number_format($paidServiceCharge, 2) }}</span>
+                    </div>
+                @endif
+                <div class="flex justify-between py-2 font-bold text-gray-800">
+                    <span>Total:</span>
+                    <span>
+                        {{ number_format($paidTotalAmount - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                    </span>
                 </div>
-                @elseif($gatewayFee['paid_by'] !== 'Company')
+                @else
+                @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
                 <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge @if($gatewayFee) {{ $gatewayFee['charge_type'] === 'Percent' ? '(%)' : '' }}:</span>
-                    <span>{{ number_format($gatewayFee['fee'], 2) }} @endif</span>
+                    <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
+                    <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
                 </div>
                 @endif
-
 
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
-                        {{ number_format($paidPartials->isNotEmpty() ? $invoicePartials->sum('amount') : (isset($gatewayFee['finalAmount']) 
-                        ? $gatewayFee['finalAmount'] - abs($checkUtilizeCredit->sum('amount')) : $invoice->amount - abs($checkUtilizeCredit->sum('amount'))), 2) }}
+                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
                     </span>
                 </div>
+                @endif
             </div>
         </div>
 
@@ -407,7 +426,7 @@
                         Pay Now
                     </button>
                     <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                        {{ number_format (isset($gatewayFee['finalAmount']) ? $gatewayFee['finalAmount'] - abs($checkUtilizeCredit->sum('amount')) : $invoice->amount - abs($checkUtilizeCredit->sum('amount')), 2 ) }}
+                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
                     </span>
                     @endif
                 </div>
@@ -687,19 +706,26 @@
             }
         }
 
-
         function calculateTotal() {
-            let total = 0;
+            let totalForSubmission = 0;
+            let totalForDisplay = 0;
+
             checkboxes.forEach((checkbox) => {
-                if (checkbox.checked) {
-                    total += parseFloat(checkbox.dataset.amount || 0);
+                if (checkbox.checked && !checkbox.disabled) {
+                    totalForSubmission += parseFloat(checkbox.dataset.amount || 0);
+                    totalForDisplay += parseFloat(checkbox.dataset.finalAmount || 0);
                 }
             });
-            totalAmountInput.value = total.toFixed(2); // Update the hidden input field
-            totalAmountDisplay.textContent = total.toFixed(2);
-            console.log(totalAmountInput.value);
-        }
 
+            totalAmountInput.value = totalForSubmission.toFixed(2);
+            
+            if (totalAmountDisplay) {
+                totalAmountDisplay.textContent = totalForDisplay.toFixed(2);
+            }
+            
+            console.log("Amount for submission (backend):", totalAmountInput.value);
+            console.log("Amount for display (frontend):", totalForDisplay.toFixed(2));
+        }
 
         $(document).ready(function() {
             let selectedTotal = 0;

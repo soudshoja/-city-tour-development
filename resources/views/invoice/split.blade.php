@@ -139,9 +139,15 @@
                      <span>Tax ({{ $invoice->tax_rate }}%):</span>
                      <span>{{ number_format($invoice->tax, 2) }}</span>
                  </div>
+                 @if(isset($gatewayFee['paid_by']) && $gatewayFee['paid_by'] !== 'Company' && $invoicePartial->service_charge > 0)
+                <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>Service Charge:</span>
+                    <span>{{ number_format($invoicePartial->service_charge, 2) }}</span>
+                </div>
+                @endif
                  <div class="flex justify-between py-2 font-bold text-gray-800">
                      <span>Total:</span>
-                     <span>{{ number_format($invoicePartial->amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}</span>
+                     <span>{{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}</span>
                  </div>
              </div>
          </div>
@@ -164,8 +170,7 @@
                      action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
                      method="POST">
                      @csrf
-                     <input type="hidden" name="total_amount"
-                         value="{{ $invoicePartial->amount - abs($checkUtilizeCredit->sum('amount')) }}">
+                     <input type="hidden" name="total_amount" value="{{ $invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) }}">
                      <input type="hidden" name="client_email" value="{{ $invoicePartial->client->email }}">
                      <input type="hidden" name="client_name" value="{{ $invoicePartial->client->name }}">
                      <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
@@ -246,7 +251,7 @@
 
                  <div class="flex items-center gap-2">
                      <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                         {{ number_format($invoicePartial->where('id', $invoicePartial->id)->where('status', 'unpaid')->sum('amount') - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                        {{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')), 2) }}
                      </span>
                  </div>
              @else

@@ -50,7 +50,7 @@
                                             <a href="{{ $paymentUrl }}" target="_blank"
                                                 class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
+                                        <td class="px-3 py-2 text-sm break-words max-w-[350px] font-semibold">
                                             {{ $payment->client ? $payment->client->name : 'N/A' }}
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
@@ -59,8 +59,9 @@
                                         <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                             {{ $payment->agent ? $payment->agent->name : 'N/A' }}
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap text-sm">
-                                            {{ $payment->notes ?? 'No Notes' }}</td>
+                                        <td class="px-3 py-2 text-sm break-words max-w-[350px]">
+                                            {{ $payment->notes ?? 'No Notes' }}
+                                        </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                             {{ $payment->amount }}
                                         </td>
@@ -69,7 +70,7 @@
                                                 {{ $payment->created_at->format('d-m-Y H:i:s') }}
                                             </td>
                                         @else
-                                            <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                            <td class="px-3 py-2 text-sm break-words max-w-[200px]">
                                                 {{ $payment->created_at->format('D d M Y') }}
                                             </td>
                                         @endif

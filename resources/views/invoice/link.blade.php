@@ -190,6 +190,7 @@
                                                                             'id' => $country->dialing_code,
                                                                             'name' => $country->dialing_code . ' ' . $country->name
                                                                         ])"
+                                                                    :selectedName="optional($invoice->client)->country_code"
                                                                     placeholder="Dial Code"
                                                                     :showAllOnOpen="true" />
                                                             </div>

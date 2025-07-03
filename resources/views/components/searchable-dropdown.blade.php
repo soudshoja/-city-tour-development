@@ -1,3 +1,7 @@
+@props([
+    'selectedId' => '',
+    'selectedName' => ''
+])
 <div
     x-data="searchableDropdown({ 
         items: {{ $items ?? '[]' }}, 

@@ -203,6 +203,8 @@ class TaskController extends Controller
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
+            ->where('client_id', $request->client_id)
+            ->where('client_name', $request->client_name) // same reference name but different client name considered as different task
             ->where('status', $request->status);
 
         if ($request->supplier_id) {
@@ -212,10 +214,10 @@ class TaskController extends Controller
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
+
             if ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
                 $existingTask->gds_reference = $request->gds_reference;
                 $existingTask->airline_reference = $request->airline_reference;
-                $existingTask->created_at = $request->created_at;
                 $existingTask->save();
 
                 return response()->json([
@@ -223,6 +225,11 @@ class TaskController extends Controller
                     'message' => 'Task updated with GDS and Airline reference.',
                     'data' => $existingTask,
                 ], 200);
+            } else {
+
+                $existingTask->created_at = $request->created_at;
+                $existingTask->save();
+
             }
 
             return response()->json([
@@ -264,7 +271,7 @@ class TaskController extends Controller
             }
 
             // Only process financial transactions if task is enabled and complete
-            if ($task->enabled && $task->is_complete) {
+            if ($task->agent && $task->is_complete) {
                 $this->processTaskFinancial($task);
             }
 
@@ -415,6 +422,10 @@ class TaskController extends Controller
 
         // Process based on status
         switch (strtolower($task->status)) {
+            case 'confirmed':
+                Log::info('Processing confirmed task financial for: ' . $task->reference);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
+                break;
             case 'issued':
                 Log::info('Processing issued task financial for: ' . $task->reference);
                 $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
@@ -823,11 +834,16 @@ class TaskController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'client_id' => 'required',
-            'agent_id' => 'required',
-            'supplier_id' => 'required',
+            'reference' => 'nullable|string',
             'status' => 'required',
+            'price' => 'nullable|numeric',
+            'tax' => 'nullable|numeric',
+            'surcharge' => 'nullable|numeric',
+            'total' => 'nullable|numeric',
             'total' => 'required',
+            'agent_id' => 'required',
+            'client_id' => 'nullable|exists:clients,id',
+            'supplier_id' => 'required',
         ], [
             'client_id.required' => 'Please select a client',
             'agent_id.required' => 'Please select an agent',
@@ -836,7 +852,7 @@ class TaskController extends Controller
             'total.required' => 'Please enter the total amount',
         ]);
 
-        if (strtolower($request->status) !== 'issued') {
+        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
             $request->validate([
                 'original_task_id' => 'required|exists:tasks,id',
             ], [
@@ -858,84 +874,85 @@ class TaskController extends Controller
         $client = Client::findOrFail($request->client_id);
 
         // If the request is an AJAX request, handle inline editing
-        if ($request->ajax()) {
-            try {
-                $field = key($request->all()); // Get the field being updated
-                $value = $request->input($field);
+        // if ($request->ajax()) {
+        //     try {
+        //         $field = key($request->all()); // Get the field being updated
+        //         $value = $request->input($field);
 
-                // Update the specific field
-                $task->update([$field => $value]);
+        //         // Update the specific field
+        //         $task->update([$field => $value]);
 
-                // Check if task should be enabled/disabled after the update
-                if ($task->is_complete && !$task->enabled) {
-                    $task->enabled = true;
-                    $task->save();
+        //         // Check if task should be enabled/disabled after the update
+        //         if ($task->is_complete && !$task->enabled) {
+        //             $task->enabled = true;
+        //             $task->save();
 
-                    // Process financial transactions for newly enabled task
-                    try {
-                        $this->processTaskFinancial($task);
-                    } catch (Exception $e) {
-                        Log::error('Failed to process task financial after inline update: ' . $e->getMessage());
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Task updated but failed to process financials: ' . $e->getMessage()
-                        ], 500);
+        //             // Process financial transactions for newly enabled task
+        //             try {
+        //                 $this->processTaskFinancial($task);
+        //             } catch (Exception $e) {
+        //                 Log::error('Failed to process task financial after inline update: ' . $e->getMessage());
+        //                 return response()->json([
+        //                     'success' => false,
+        //                     'message' => 'Task updated but failed to process financials: ' . $e->getMessage()
+        //                 ], 500);
+        //             }
+        //         } elseif (!$task->is_complete && $task->enabled) {
+        //             $task->enabled = false;
+        //             $task->save();
+        //         }
+
+        //         return response()->json(['success' => true], 200);
+        //     } catch (Exception $e) {
+        //         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        //     }
+        // } else {
+        DB::beginTransaction();
+
+        try {
+            $task->update($request->only(['reference', 'status', 'price', 'tax', 'surcharge', 'total', 'client_id' ,'agent_id', 'supplier_id', 'original_task_id']));
+            $task->client_name = $client->name;
+
+            // Determine if task should be enabled
+            $shouldBeEnabled = $task->is_complete;
+
+            if ($shouldBeEnabled && !$wasEnabled) {
+                // Task is now complete and wasn't enabled before - enable and process financials
+                $task->enabled = true;
+                $task->save();
+
+                $this->processTaskFinancial($task);
+            } elseif (!$shouldBeEnabled && $wasEnabled) {
+                // Task is no longer complete but was enabled - disable it
+                $task->enabled = false;
+                $task->save();
+            } else {
+                // Just save the enabled status
+                $task->enabled = $shouldBeEnabled;
+                $task->save();
+            }
+
+            // Update journal entries if client name changed
+            $transaction = Transaction::with('journalEntries')->where('description', 'like', '%' . $task->reference . '%')->first();
+
+            if ($transaction) {
+                $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
+                    if ($journalEntry->name == $prevClientName) {
+                        $journalEntry->name = $client->name;
+                        $journalEntry->save();
                     }
-                } elseif (!$task->is_complete && $task->enabled) {
-                    $task->enabled = false;
-                    $task->save();
-                }
-
-                return response()->json(['success' => true], 200);
-            } catch (Exception $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                });
             }
-        } else {
-            DB::beginTransaction();
 
-            try {
-                $task->update($request->only(['client_id', 'agent_id', 'supplier_id', 'total', 'status']));
-                $task->client_name = $client->name;
-
-                // Determine if task should be enabled
-                $shouldBeEnabled = $task->is_complete;
-
-                if ($shouldBeEnabled && !$wasEnabled) {
-                    // Task is now complete and wasn't enabled before - enable and process financials
-                    $task->enabled = true;
-                    $task->save();
-
-                    $this->processTaskFinancial($task);
-                } elseif (!$shouldBeEnabled && $wasEnabled) {
-                    // Task is no longer complete but was enabled - disable it
-                    $task->enabled = false;
-                    $task->save();
-                } else {
-                    // Just save the enabled status
-                    $task->enabled = $shouldBeEnabled;
-                    $task->save();
-                }
-
-                // Update journal entries if client name changed
-                $transaction = Transaction::with('journalEntries')->where('description', 'like', '%' . $task->reference . '%')->first();
-
-                if ($transaction) {
-                    $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
-                        if ($journalEntry->name == $prevClientName) {
-                            $journalEntry->name = $client->name;
-                            $journalEntry->save();
-                        }
-                    });
-                }
-
-                DB::commit();
-                return redirect()->back()->with('success', 'Task updated successfully.');
-            } catch (Exception $e) {
-                DB::rollBack();
-                Log::error('Task update failed: ' . $e->getMessage());
-                return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
-            }
+            DB::commit();
+           
+            return redirect()->back()->with('success', 'Task updated successfully.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Task update failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
+        // }
     }
 
     public function upload(Request $request)
@@ -1288,7 +1305,11 @@ class TaskController extends Controller
             $agent = $reservation['agent'];
 
             if (!$agent) {
-                throw new Exception('Agent not found in reservation data');
+                Log::channel('magic_holidays')->error('Agent not found in reservation data for reservation ID: ' . ($reservation['id'] ?? 'Unknown'));
+                return [
+                    'status' => 'error',
+                    'message' => 'Something Went Wrong',
+                ];
             }
 
             $agentInDB = Agent::where('name', $agent['name'])
@@ -1300,7 +1321,12 @@ class TaskController extends Controller
                 $agentId = $agentInDB->id;
             } else {
                 Log::channel('magic_holidays')->error('Agent ' . $agent['name'] . ' not found in database');
-                throw new Exception('Agent ' . $agent['name'] . ' not found in database');
+
+                return [
+                    'status' => 'error',
+                    'message' => 'Agent ' . $agent['name'] . ' not found in database. Please create the agent first.',
+                ];
+
             }
         }
 
@@ -1547,14 +1573,33 @@ class TaskController extends Controller
     public function supplierTaskForAgent(Request $request)
     {
         $request->validate([
-            'agent_id' => 'required',
             'supplier_ref' => 'nullable',
             'task_file' => 'nullable|mimes:pdf,txt',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
+        $supplier = Supplier::findOrFail($request->supplier_id);
+        $supplierController = new SupplierController();
+
+        if($supplier->name !== 'Magic Holiday'){
+            $request->validate([
+                'agent_id' => 'required|exists:agents,id',
+            ], [
+                'agent_id.required' => 'Please select an agent',
+            ]);
+        }
+
         $user = Auth::user();
-        $agent = Agent::findOrFail($request->agent_id);
+        $agentId = null;
+        if($request->agent_id) {
+            $agent = Agent::findOrFail($request->agent_id);
+            
+            if (!$agent) {
+                return redirect()->back()->with('error', 'Agent not found');
+            }
+
+            $agentId = $agent->id;
+        }
 
         if ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
@@ -1565,13 +1610,6 @@ class TaskController extends Controller
         } else {
             return redirect()->back()->with('error', 'User not authorized to create task');
         }
-
-        if (!$agent) {
-            return redirect()->back()->with('error', 'Agent not found');
-        }
-
-        $supplier = Supplier::findOrFail($request->supplier_id);
-        $supplierController = new SupplierController();
 
         switch ($supplier->name) {
             case 'Magic Holiday':
@@ -1592,7 +1630,7 @@ class TaskController extends Controller
 
                 if (isset($data['_embedded'])) { // Check if it's a list
                     foreach ($data['_embedded']['reservation'] as $reservation) {
-                        $response = $this->processSingleReservation($reservation, $agent->id, $companyId);
+                        $response = $this->processSingleReservation($reservation, $agentId, $companyId);
 
                         if ($response['status'] == 'error') {
                             return redirect()->back()->with('error', $response['message']);
@@ -1602,7 +1640,7 @@ class TaskController extends Controller
                     }
                 } else {
 
-                    $response = $this->processSingleReservation($data, $agent->id, $companyId);
+                    $response = $this->processSingleReservation($data, $agentId, $companyId);
 
                     if ($response['status'] == 'error') {
                         return redirect()->back()->with('error', $response['message']);

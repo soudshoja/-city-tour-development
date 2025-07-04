@@ -229,7 +229,7 @@
             <div class="mt-5 overflow-x-auto">
                 <div class="max-h-96 overflow-y-auto custom-scrollbar">
                     <!-- Client Orders Section -->
-                    <table>
+                    <table class="table-auto w-full text-center border-collapse">
                         <thead>
                             <tr>
                                 <th>Invoice Number</th>
@@ -243,7 +243,9 @@
                             @if ($invoices->count() > 0)
                             @foreach ($invoices as $invoice)
                             <tr>
-                                <td> {{ $invoice->invoice_number }} </td>
+                                <td> 
+                                    <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" target="_blank">{{ $invoice->invoice_number }}</a>
+                                </td>
                                 <td> {{ $invoice->amount }} </td>
                                 <td>
                                     @if (strtolower($invoice->status) == 'paid')

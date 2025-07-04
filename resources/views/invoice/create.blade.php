@@ -945,7 +945,7 @@
                                 <div id="addTab" class="p-6 hidden">
                                     <!-- Add New Client Form -->
                                     <h6 class="text-lg font-bold mb-3">Add New Client</h6>
-                                    <form method="POST" action="{{ route('invoices.clientAdd') }}">
+                                    <form method="POST" action="{{ route('clients.store') }}">
                                         @csrf
 
                                         <div class="mb-4 flex gap-4">
@@ -955,93 +955,63 @@
                                                     class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
                                                 <input id="name" name="name" type="text" required
                                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                    placeholder="Client Name" />
+                                                    placeholder="Client Name *" />
                                             </div>
 
                                             <!-- Email Field -->
                                             <div class="w-1/2">
                                                 <label for="email"
                                                     class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
-                                                <input id="email" name="email" type="email" required
+                                                <input id="email" name="email" type="email"
                                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                                     placeholder="Client Email" />
                                             </div>
                                         </div>
 
                                         <div class="mb-4 flex gap-4">
-                                            <!-- Phone Field -->
                                             <div class="w-1/2">
-                                                <label for="phone"
-                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
+                                                <label for="dial_code" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Country Code</label>
+                                                <select name="dial_code" id="dial_code"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                                    @foreach ($countries as $country)
+                                                        <option value="{{ $country->dialing_code }}" {{ $country->dialing_code == '+965' ? 'selected' : '' }}>
+                                                            {{ $country->name }} ({{ $country->dialing_code }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div class="w-1/2">
+                                                <label for="phone" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone Number</label>
                                                 <input id="phone" name="phone" type="text" required
                                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                    placeholder="Client Phone" />
-                                            </div>
-
-                                            <!-- Address Field -->
-                                            <div class="w-1/2">
-                                                <label for="address"
-                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Address</label>
-                                                <input id="address" name="address" type="text"
-                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                    placeholder="Client Address" />
+                                                    placeholder="Client Phone *" />
                                             </div>
                                         </div>
 
-                                        <!-- Address Field -->
                                         <div class="mb-4">
-                                            <label for="passport_no"
-                                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Passport
-                                                Number</label>
-                                            <input id="passport_no" name="passport_no" type="text" required
+                                            <label for="civil_no" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Civil ID</label>
+                                            <input id="civil_no" name="civil_no" type="text" required
                                                 class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                placeholder="Passport Number" />
+                                                placeholder="Civil ID *" />
                                         </div>
 
-                                        <!-- Email Field -->
                                         <div class="mb-4">
-                                            <label for="agent_email"
-                                                class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent
-                                                Email</label>
-                                            <input id="agent_email" name="agent_email" type="email" required
-                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                placeholder="Agent Email" />
-                                        </div>
-
-                                        <!-- Status Field -->
-                                        <div class="mb-4">
-
-                                            <div class="flex flex-col">
-                                                <div class="flex items-center space-x-4">
-                                                    <label class="text-lg font-semibold mb-2">status:</label>
-
-                                                    <!-- Active Radio Button -->
-                                                    <label class="flex items-center cursor-pointer">
-                                                        <input type="radio" name="status" value="1"
-                                                            class="status-radio peer hidden" id="active" />
-                                                        <span
-                                                            class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#00ab55] peer-checked:bg-[#00ab55] peer-checked:text-white peer-checked:font-semibold">
-                                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                                        </span>
-                                                        <span
-                                                            class="ml-2 text-lg text-gray-700 peer-checked:text-[#00ab55] peer-checked:font-semibold">Active</span>
-                                                    </label>
-
-                                                    <!-- Inactive Radio Button -->
-                                                    <label class="flex items-center cursor-pointer">
-                                                        <input type="radio" name="status" value="2"
-                                                            class="status-radio peer hidden" id="inactive" />
-                                                        <span
-                                                            class="flex items-center justify-center w-6 h-6 border border-gray-500 rounded-full peer-checked:border-[#e7515a] peer-checked:bg-[#e7515a] peer-checked:text-white peer-checked:font-semibold">
-                                                            <span class="w-3 h-3 bg-transparent rounded-full"></span>
-                                                        </span>
-                                                        <span
-                                                            class="ml-2 text-lg text-gray-700 peer-checked:text-[#e7515a] peer-checked:font-semibold">Inactive</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-
-
+                                            <label for="agent_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
+                                            @unlessrole('agent')
+                                                <select name="agent_id" id="agent_id"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                                    <option value="" disabled selected>Select Agent</option>
+                                                    @foreach ($agents as $agent)
+                                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @else
+                                                <input type="text" name="agent_id" id="agent_id"
+                                                    value="{{ auth()->user()->agent->name }}"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" readonly />
+                                                <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                            @endunlessrole
                                         </div>
 
                                         <!-- Submit Button -->

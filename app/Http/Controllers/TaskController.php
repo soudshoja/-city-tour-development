@@ -31,6 +31,8 @@ use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Date;
+use App\Models\FileUpload;
+use Illuminate\Support\Facades\File;
 
 // use Carbon\Carbon;
 
@@ -934,114 +936,53 @@ class TaskController extends Controller
         $user = Auth::user();
 
         if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
+            $company = $user->company;
         } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company_id;
+            $company = $user->branch->company;
         } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company_id;
+            $company = $user->agent->branch->company;
         } else {
             return redirect()->back()->with('error', 'User not authorized to upload tasks.');
         }
 
         $request->validate([
-            'task_file' => 'required|mimes:pdf,txt',
+            'task_file' => 'required|array',
+            'task_file.*' => 'mimes:pdf,txt',
             'agent_id' => 'required|exists:agents,id',
+            'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
-        $file = $request->file('task_file')->store('public/tasks');
-        if (!$file) {
-            return [
-                'status' => 'error',
-                'message' => 'File upload failed.'
-            ];
+        $files = $request->file('task_file');
+        $supplier = Supplier::find($request->supplier_id);
+
+        $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
+        $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
+
+        $filePath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+
+        if (!File::isDirectory($filePath)) {
+            Log::error("Source directory {$filePath} not found.");
+            File::makeDirectory($filePath, 0755, true, true);
+            Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
         }
 
-        $aiManager = new AIManager();
-        $filePath = storage_path('app/' . $file);
-        $fileName = $request->file('task_file')->getClientOriginalName();
+        foreach ($files as $file) {
+            $file->move($filePath, $file->getClientOriginalName());
+            Log::info("Uploading file: " . $file->getClientOriginalName() . " to: " . $filePath);
 
-        $extractedData = $aiManager->processWithAiTool($filePath, $fileName);
-
-        if ($extractedData['status'] === 'error') {
-            Log::error("AI tool processing error for {$fileName}: " . $extractedData['message']);
-            return [
-                'status' => 'error',
-                'message' => 'Something went wrong, please contact support.',
-            ];
-        }
-
-        $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
-
-        $responses = [];
-        $createdTasks = [];
-        $loop = 0;
-        foreach ($extractedData['data'] as $taskData) {
-
-            $newRequest = new Request($taskData);
-
-            $supplier = Supplier::where('name', 'like', $taskData['supplier_name'])->first();
-
-            $newRequest->merge([
-                'enabled' => false,
-                'agent_id' => (int)$request->agent_id,
+            FileUpload::create([
+                'file_name' => $file->getClientOriginalName(),
+                'destination_path' => $filePath . '/' . $file->getClientOriginalName(),
+                'user_id' => $user->id,
                 'supplier_id' => $supplier->id,
-                'company_id' => $companyId,
-                'refund_date' => $taskData['refund_date'] ?? null,
+                'status' => 'pending',
             ]);
-
-            $responseWithoutJson = $this->store($newRequest);
-            $response = json_decode($responseWithoutJson->getContent(), true);
-
-            if ($response['status'] == 'error') {
-                // Rollback all previously created tasks and related data
-                foreach ($createdTasks as $createdTask) {
-                    // Delete related flight/hotel details
-                    if ($createdTask->type === 'flight') {
-                        TaskFlightDetail::where('task_id', $createdTask->id)->delete();
-                    } elseif ($createdTask->type === 'hotel') {
-                        TaskHotelDetail::where('task_id', $createdTask->id)->delete();
-                    }
-                    // Delete related journal entries and transactions by finding journal entries via task_id
-                    $journalEntries = JournalEntry::where('task_id', $createdTask->id)->get();
-                    $transactionIds = $journalEntries->pluck('transaction_id')->unique();
-
-                    // Delete journal entries
-                    JournalEntry::where('task_id', $createdTask->id)->delete();
-
-                    // Delete related transactions
-                    Transaction::whereIn('id', $transactionIds)->delete();
-
-                    // Delete the task itself
-                    $createdTask->delete();
-                }
-
-                $responses = [
-                    'status' => 'error',
-                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . ': ' . $response['message'] ?? 'Unknown error',
-                    'error_detail' => $response['message'] ?? 'Unknown error',
-                    'success_tasks' => array_map(function ($t) {
-                        return $t->reference;
-                    }, $createdTasks),
-                    'failed_task' => $taskData['reference'] ?? '[unknown reference]',
-                ];
-                break;
-            } else {
-                // Save the created task for possible rollback
-                $createdTask = Task::find($response['data']['id']);
-                if ($createdTask) {
-                    $createdTasks[] = $createdTask;
-                }
-            }
-            $responses = [
-                'status' => 'success',
-                'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
-                    return $t->reference;
-                }, $createdTasks)),
-                'created_tasks' => $createdTasks,
-            ];
         }
 
-        return $responses;
+        return [
+            'status' => 'success',
+            'message' => 'Files uploaded successfully and are now in queue for processing',
+        ];
     }
 
     public function exportCsv()
@@ -1548,7 +1489,8 @@ class TaskController extends Controller
     {
         $request->validate([
             'supplier_ref' => 'nullable',
-            'task_file' => 'nullable|mimes:pdf,txt',
+            'task_file' => 'nullable|array',
+            'task_file.*' => 'mimes:pdf,txt',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 

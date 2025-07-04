@@ -14,6 +14,7 @@ use App\Models\Task;
 use App\Schema\TaskSchema;
 use App\Schema\TaskFlightSchema;
 use App\Schema\TaskHotelSchema;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
@@ -462,8 +463,8 @@ class OpenAIClient implements AIClientInterface
                 'reference': 'ticket_number',
                 'gds_reference' => '8D46RD',
                 'amadeus_reference' => 'KUIXNO',
-                'created_by': 'KWIKT2619', //example of gds office id
-                'issued_by': 'KWIKT2844', //example of gds office id
+                'created_by' => 'KWIKT2619', //example of gds office id
+                'issued_by' => 'KWIKT2844', //example of gds office id
                 'type': 'flight',
                 'agent_name': 'agent name',
                 'agent_email': 'agent email',
@@ -515,65 +516,15 @@ class OpenAIClient implements AIClientInterface
                 'reference': 'ticket_number',
                 'gds_reference' => 'KFD5TW',
                 'amadeus_reference' => 'KFD5TW',
-                'created_by': 'KWIKT2619', //example of gds office id
-                'issued_by': 'KWIKT2844', //example of gds office id
-                'type': 'flight',
-                'agent_name': 'agent name',
-                'agent_email': 'agent email',
-                'agent_amadeus_id': 'agent amadeus id',
-                'client_name': 'client name',
-                'supplier_name': 'Amadeus',
-                'supplier_country': 'Kuwait',
-                'cancellation_policy': '',
-                'venue': '',
-                'task_flight_details': {
-                    // flight details here
-                    'farebase': '20.00',
-                    'departure_time': '2024-10-16 14:00:00',
-                    'departure_from': 'Kuwait',
-                    'airport_from': 'KWI',
-                    'terminal_from': '1',
-                    'arrival_time': '2024-10-16 16:00:00',
-                    'duration_time': '2h 5m',
-                    'arrive_to': 'Singapore',
-                    'airport_to': 'SIN',
-                    'terminal_to': '1',
-                    'airline_name': 'Kuwait Airways',
-                    'flight_number': 'KU-123',
-                    'class_type': 'economy',
-                    'baggage_allowed': 'baggage allowed',
-                    'equipment': 'equipment',
-                    'flight_meal': 'flight meal',
-                    'seat_no': 'seat no',
-                    'ticket_number': '3580878589', //example of ticket flight number with the airline code, 10-digit ticket number only
-                }
-            },
-            {
-                'additional_info': 'additional info',
-                'ticket_number': '3580878590', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
-                'status': 'completed'/ 'hold' / 'confirmed',
-                'price': 100.00,
-                'exchange_currency': 'KWD',
-                'original_price': 100.00,
-                'original_currency': 'USD',
-                'total': 115.00,
-                'surcharge': 10.00,
-                'tax': 5.00,
-                'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
-                'penalty_fee': '10.00',
-                'refund_charge': '0.250+0.900',
-                'reference': 'ticket_number',
-                'gds_reference' => 'KFD5TW',
-                'amadeus_reference' => 'KFD5TW',
-                'created_by': 'KWIKT2619', //example of gds office id
-                'issued_by': 'KWIKT2844', //example of gds office id
-                'type': 'flight',
-                'agent_name': 'agent name',
-                'agent_email': 'agent email',
-                'agent_amadeus_id': 'agent amadeus id',
-                'client_name': 'client name',
-                'supplier_name': 'Amadeus',
-                'supplier_country': 'Kuwait',
+                'created_by' => 'KWIKT2619', //example of gds office id
+                'issued_by' => 'KWIKT2844', //example of gds office id
+                'type' => 'flight',
+                'agent_name' => 'agent name',
+                'agent_email' => 'agent email',
+                'agent_amadeus_id' => 'agent amadeus id',
+                'client_name' => 'client name',
+                'supplier_name' => 'Amadeus',
+                'supplier_country' => 'Kuwait',
                 // if the cancellation policy is not available, you can set it to null
                 // if the venue is not available, you can set it to null
                 // if the flight details are not available, you can set it to null, if it is available , make sure it is same data with the first object as it is the same flight, just different passenger.
@@ -906,27 +857,607 @@ class OpenAIClient implements AIClientInterface
         ];
     } 
 
-    // public function uploadFileToOpenAI($file, string $purpose = 'user_data')
-    // {
-    //     // Accepts either UploadedFile or file path
-    //     $fileResource = $file instanceof UploadedFile ? fopen($file->getRealPath(), 'r') : fopen($file, 'r');
+    /**
+     * Process multiple files of different types in batch - PDFs, text files, etc.
+     * 
+     * @param array $files Array of file information with paths and names
+     * @return array Array containing results for each file
+     */
+    public function processBatchFiles(array $files): array
+    {
+        if (empty($files)) {
+            return [
+                'status' => 'error',
+                'message' => 'No files provided for batch processing',
+                'data' => []
+            ];
+        }
 
-    //     $response = Http::withToken($this->apiKey)
-    //         ->attach('file', $fileResource, is_string($file) ? basename($file) : $file->getClientOriginalName())
-    //         ->post($this->apiUrl . '/files', [
-    //             'purpose' => $purpose,
-    //         ]);
+        $fileContents = [];
+        $fileIds = [];
+        $fileMetadata = [];
+
+        // Process each file based on its type
+        foreach ($files as $index => $fileInfo) {
+            $filePath = $fileInfo['path'];
+            $fileName = $fileInfo['name'];
+            $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+            try {
+                if ($extension === 'pdf') {
+                    // For PDFs, upload to OpenAI and get file ID
+                    $fileId = $this->uploadFileToOpenAI($filePath);
+                    $fileIds[$fileName] = $fileId;
+                    $fileMetadata[$fileName] = [
+                        'type' => 'pdf',
+                        'file_id' => $fileId,
+                        'index' => $index
+                    ];
+                } elseif (in_array($extension, ['txt', 'text', 'air'])) {
+                    // For text files, read content directly
+                    $content = File::get($filePath);
+                    $fileContents[$fileName] = $content;
+                    $fileMetadata[$fileName] = [
+                        'type' => 'text',
+                        'content' => $content,
+                        'index' => $index
+                    ];
+                } else {
+                    Log::warning("Unsupported file type for batch processing: {$fileName} ({$extension})");
+                    $fileMetadata[$fileName] = [
+                        'type' => 'unsupported',
+                        'error' => "Unsupported file type: {$extension}",
+                        'index' => $index
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::error("Failed to process file {$fileName}: " . $e->getMessage());
+                $fileMetadata[$fileName] = [
+                    'type' => 'error',
+                    'error' => $e->getMessage(),
+                    'index' => $index
+                ];
+            }
+        }
+
+        // Build the batch processing prompt
+        $taskFields = TaskSchema::getSchema();
+        $flightFields = TaskFlightSchema::getSchema();
+        $hotelFields = TaskHotelSchema::getSchema();
+        $supplierList = Supplier::all()->pluck('name')->toArray();
+        $airportList = Airport::all()->toArray();
+
+        $prompt = $this->buildBatchProcessingPrompt($taskFields, $flightFields, $hotelFields, $supplierList, $airportList, $fileMetadata);
+
+        // Build content array for the API call
+        $content = [];
         
-    //     logger('upload file response: ', $response->json());
+        // Add PDF files
+        foreach ($fileIds as $fileName => $fileId) {
+            $content[] = [
+                'type' => 'input_file',
+                'file_id' => $fileId,
+            ];
+        }
+        
+        // Add text content with file names
+        foreach ($fileContents as $fileName => $textContent) {
+            $content[] = [
+                'type' => 'input_text',
+                'text' => "=== FILE: {$fileName} ===\n{$textContent}\n=== END FILE: {$fileName} ===\n\n",
+            ];
+        }
+        
+        // Add the main prompt
+        $content[] = [
+            'type' => 'input_text',
+            'text' => $prompt,
+        ];
 
-    //     fclose($fileResource);
+        try {
+            $response = $this->createResponse([
+                'role' => 'user',
+                'content' => $content,
+            ]);
 
-    //     if ($response->failed()) {
-    //         throw new \Exception('Error uploading file: ' . $response->body());
-    //     }
+            Log::info('OpenAI Batch Processing API response: ', $response);
 
-    //     return $response->json('id'); // Return file_id
-    // }
+            if (
+                isset($response['output'][0]['content'][0]['text']) &&
+                is_string($response['output'][0]['content'][0]['text'])
+            ) {
+                $message = $response['output'][0]['content'][0]['text'];
+                $decodedResponse = json_decode($message, true);
+            } else {
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to extract data from the batch response',
+                    'data' => []
+                ];
+            }
+
+            // Clean up - delete uploaded PDF files
+            foreach ($fileIds as $fileName => $fileId) {
+                $this->deleteFileFromOpenAI($fileId);
+            }
+
+            // Ensure the response has the expected structure
+            if (!isset($decodedResponse['files']) || !is_array($decodedResponse['files'])) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid batch response format from AI',
+                    'data' => []
+                ];
+            }
+
+            // Process and validate each file's results
+            $processedResults = [];
+            foreach ($fileMetadata as $fileName => $metadata) {
+                if ($metadata['type'] === 'unsupported' || $metadata['type'] === 'error') {
+                    $processedResults[$fileName] = [
+                        'status' => 'error',
+                        'message' => $metadata['error'],
+                        'data' => []
+                    ];
+                    continue;
+                }
+
+                if (!isset($decodedResponse['files'][$fileName])) {
+                    $processedResults[$fileName] = [
+                        'status' => 'error',
+                        'message' => "No results found for file: $fileName",
+                        'data' => []
+                    ];
+                    continue;
+                }
+
+                $fileResults = $decodedResponse['files'][$fileName];
+                
+                // Ensure it's an array
+                if (!is_array($fileResults)) {
+                    $fileResults = [$fileResults];
+                }
+
+                // Process each task for reference number validation and normalization
+                foreach ($fileResults as &$task) {
+                    // Validate and fix reference numbers if needed
+                    if (!isset($task['reference']) || empty($task['reference'])) {
+                        // Use ticket_number as reference if reference is missing
+                        $task['reference'] = $task['ticket_number'] ?? '';
+                    }
+
+                    // Reference number validation
+                    if (!empty($task['reference'])) {
+                        $checkResponse = $this->checkReferenceNumber($task['reference']);
+                        if ($checkResponse['status'] === 'error') {
+                            // For non-air files, if reference doesn't match format, keep it as is
+                            Log::warning('Reference number format differs from expected format: ' . $task['reference']);
+                        }
+                    }
+
+                    // Normalize the task data
+                    $task = TaskSchema::normalize($task);
+                }
+
+                $processedResults[$fileName] = [
+                    'status' => 'success',
+                    'message' => 'Data extracted successfully',
+                    'data' => $fileResults
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'message' => 'Batch processing completed',
+                'data' => $processedResults
+            ];
+
+        } catch (\Exception $e) {
+            // Clean up files even if processing failed
+            foreach ($fileIds as $fileName => $fileId) {
+                try {
+                    $this->deleteFileFromOpenAI($fileId);
+                } catch (\Exception $deleteException) {
+                    Log::warning("Failed to delete file $fileId during error cleanup: " . $deleteException->getMessage());
+                }
+            }
+
+            Log::error('Batch processing failed: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Batch processing failed: ' . $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Build comprehensive prompt for batch processing multiple file types
+     */
+    private function buildBatchProcessingPrompt($taskFields, $flightFields, $hotelFields, $supplierList, $airportList, $fileMetadata): string
+    {
+        $supplierListJson = json_encode($supplierList);
+        $airportListJson = json_encode($airportList);
+
+        $prompt = "You are an assistant for processing multiple uploaded files of different types to extract structured travel booking data.\n\n";
+        
+        $prompt .= "BATCH PROCESSING INSTRUCTIONS:\n";
+        $prompt .= "- I am providing multiple files for batch processing (PDFs, text files, AIR files, etc.)\n";
+        $prompt .= "- Each file may contain multiple passengers/bookings. Extract all data from each file.\n";
+        $prompt .= "- IMPORTANT: Look for correlations and relationships between files - they may be related bookings, refunds, reissues, or amendments.\n";
+        $prompt .= "- Cross-reference data between files to ensure consistency and identify connections.\n";
+        $prompt .= "- Return a structured response with results grouped by filename.\n\n";
+
+        $prompt .= "FILE TYPES BEING PROCESSED:\n";
+        foreach ($fileMetadata as $fileName => $metadata) {
+            if ($metadata['type'] === 'pdf') {
+                $prompt .= "- {$fileName}: PDF document (uploaded as file)\n";
+            } elseif ($metadata['type'] === 'text') {
+                $prompt .= "- {$fileName}: Text/AIR file (content provided inline)\n";
+            }
+        }
+        $prompt .= "\n";
+
+        $prompt .= "Extract data following these models:\n\n";
+        $prompt .= "1. `tasks` model with the following fields:\n";
+        foreach ($taskFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['desc']}\n";
+        }
+        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        foreach ($flightFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        foreach ($hotelFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+
+        $prompt .= "\nSPECIAL PROCESSING RULES:\n";
+        $prompt .= "- For AIR files (.air, .txt): Set supplier_name to 'Amadeus' and extract structured data according to AIR format\n";
+        $prompt .= "- For PDF files: Extract booking information, tickets, itineraries, etc.\n";
+        $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details\n";
+        $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names\n";
+        $prompt .= "- Extract all available data, set missing fields to null\n";
+        $prompt .= "- All dates should be in 'Y-m-d H:i:s' format\n";
+        $prompt .= "- For supplier name, refer to this list: $supplierListJson\n";
+        $prompt .= "- Airport codes should be matched against: $airportListJson\n\n";
+
+        $prompt .= "CROSS-FILE CORRELATION:\n";
+        $prompt .= "- Look for matching reference numbers, PNRs, or ticket numbers across files\n";
+        $prompt .= "- Identify if files represent related transactions (original booking + refund, reissue, amendment, etc.)\n";
+        $prompt .= "- If files are related, note the relationship in the additional_info field\n";
+        $prompt .= "- For non-issued statuses (refund, void, reissue), try to link to original bookings using reference numbers\n\n";
+
+        $prompt .= "Return the result in this JSON format:\n\n";
+        $prompt .= "{\n";
+        $prompt .= "  \"files\": {\n";
+        foreach ($fileMetadata as $fileName => $metadata) {
+            if ($metadata['type'] !== 'unsupported' && $metadata['type'] !== 'error') {
+                $prompt .= "    \"$fileName\": [\n";
+                $prompt .= "      {\n";
+                $prompt .= "        \"additional_info\": \"relevant booking info + any cross-file correlations\",\n";
+                $prompt .= "        \"ticket_number\": \"document/ticket number\",\n";
+                $prompt .= "        \"gds_reference\": \"booking reference/PNR\",\n";
+                $prompt .= "        \"airline_reference\": \"airline confirmation code\",\n";
+                $prompt .= "        \"status\": \"issued/confirmed/cancelled/refunded/void/reissue\",\n";
+                $prompt .= "        \"supplier_status\": \"same as status\",\n";
+                $prompt .= "        \"price\": 100.00,\n";
+                $prompt .= "        \"exchange_currency\": \"KWD\",\n";
+                $prompt .= "        \"original_price\": 100.00,\n";
+                $prompt .= "        \"original_currency\": \"USD\",\n";
+                $prompt .= "        \"total\": 115.00,\n";
+                $prompt .= "        \"surcharge\": 10.00,\n";
+                $prompt .= "        \"tax\": 5.00,\n";
+                $prompt .= "        \"taxes_record\": \"tax breakdown if available\",\n";
+                $prompt .= "        \"penalty_fee\": 0.00,\n";
+                $prompt .= "        \"refund_charge\": 0.00,\n";
+                $prompt .= "        \"reference\": \"main reference number\",\n";
+                $prompt .= "        \"created_by\": \"agent/office code\",\n";
+                $prompt .= "        \"issued_by\": \"issuing agent/office\",\n";
+                $prompt .= "        \"type\": \"flight/hotel/package\",\n";
+                $prompt .= "        \"agent_name\": \"agent name\",\n";
+                $prompt .= "        \"agent_email\": \"agent email\",\n";
+                $prompt .= "        \"agent_amadeus_id\": \"agent system id\",\n";
+                $prompt .= "        \"client_name\": \"passenger/customer name\",\n";
+                $prompt .= "        \"supplier_name\": \"supplier/vendor name\",\n";
+                $prompt .= "        \"supplier_country\": \"supplier country\",\n";
+                $prompt .= "        \"cancellation_policy\": \"cancellation terms\",\n";
+                $prompt .= "        \"venue\": \"service location\",\n";
+                $prompt .= "        \"created_at\": \"2025-07-04 00:00:00\",\n";
+                $prompt .= "        \"task_flight_details\": {\n";
+                $prompt .= "          \"farebase\": 20.00,\n";
+                $prompt .= "          \"departure_time\": \"2025-07-04 14:00:00\",\n";
+                $prompt .= "          \"country_id_from\": \"departure country\",\n";
+                $prompt .= "          \"airport_from\": \"departure airport code\",\n";
+                $prompt .= "          \"terminal_from\": \"departure terminal\",\n";
+                $prompt .= "          \"arrival_time\": \"2025-07-04 16:00:00\",\n";
+                $prompt .= "          \"duration_time\": \"2h 30m\",\n";
+                $prompt .= "          \"country_id_to\": \"arrival country\",\n";
+                $prompt .= "          \"airport_to\": \"arrival airport code\",\n";
+                $prompt .= "          \"terminal_to\": \"arrival terminal\",\n";
+                $prompt .= "          \"airline_id\": \"airline name\",\n";
+                $prompt .= "          \"flight_number\": \"flight number\",\n";
+                $prompt .= "          \"class_type\": \"economy/business/first\",\n";
+                $prompt .= "          \"baggage_allowed\": \"baggage allowance\",\n";
+                $prompt .= "          \"equipment\": \"aircraft type\",\n";
+                $prompt .= "          \"ticket_number\": \"flight ticket number\",\n";
+                $prompt .= "          \"flight_meal\": \"meal service\",\n";
+                $prompt .= "          \"seat_no\": \"seat assignment\"\n";
+                $prompt .= "        },\n";
+                $prompt .= "        \"task_hotel_details\": {\n";
+                $prompt .= "          \"hotel_name\": \"hotel name\",\n";
+                $prompt .= "          \"check_in_date\": \"2025-07-04\",\n";
+                $prompt .= "          \"check_out_date\": \"2025-07-06\",\n";
+                $prompt .= "          \"room_type\": \"room type\",\n";
+                $prompt .= "          \"nights\": 2,\n";
+                $prompt .= "          \"guests\": 2,\n";
+                $prompt .= "          \"price_per_night\": 150.00,\n";
+                $prompt .= "          \"total_price\": 300.00,\n";
+                $prompt .= "          \"currency\": \"KWD\",\n";
+                $prompt .= "          \"booking_reference\": \"hotel booking ref\"\n";
+                $prompt .= "        }\n";
+                $prompt .= "      }\n";
+                $prompt .= "    ]" . (array_search($fileName, array_keys($fileMetadata)) < count($fileMetadata) - 1 ? "," : "") . "\n";
+            }
+        }
+        $prompt .= "  }\n";
+        $prompt .= "}\n\n";
+        
+        $prompt .= "Remember: Always return an array of objects for each file, even for single passengers. ";
+        $prompt .= "Analyze each document carefully for multiple bookings/passengers. ";
+        $prompt .= "Look for cross-file relationships and correlations. ";
+        $prompt .= "Group results by filename exactly as shown in the JSON structure above.";
+
+        return $prompt;
+    }
+
+    /**
+     * Extract data from multiple PDF files in batch.
+     * 
+     * @param array $fileIds Array of file IDs already uploaded to OpenAI
+     * @return array Array containing results for each file
+     */
+    public function extractMultiplePdfFiles(array $fileIds): array
+    {
+        if (empty($fileIds)) {
+            return [
+                'status' => 'error',
+                'message' => 'No file IDs provided for batch processing',
+                'data' => []
+            ];
+        }
+
+        $taskFields = TaskSchema::getSchema();
+        $flightFields = TaskFlightSchema::getSchema();
+        $hotelFields = TaskHotelSchema::getSchema();
+
+        $supplierList = Supplier::all()->pluck('name')->toArray();
+        $supplierList = json_encode($supplierList);
+
+        $airportList = json_encode(Airport::all()->toArray());
+
+        // Build comprehensive prompt for batch PDF extraction
+        $prompt = "You are an assistant for processing multiple uploaded PDF documents to extract structured travel booking data.\n\n";
+        $prompt .= "Extract data following these models:\n\n";
+        $prompt .= "1. `tasks` model with the following fields:\n";
+        foreach ($taskFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['desc']}\n";
+        }
+        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        foreach ($flightFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        foreach ($hotelFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+
+        $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
+        $prompt .= "- I am providing multiple PDF files for batch processing.\n";
+        $prompt .= "- Each PDF may contain multiple passengers/bookings. Extract all passengers from each PDF.\n";
+        $prompt .= "- Return a structured response with results grouped by file.\n";
+        $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details.\n";
+        $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names.\n";
+        $prompt .= "- Extract all available data, set missing fields to null.\n";
+        $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
+        $prompt .= "- For supplier name, refer to this list: $supplierList\n";
+        $prompt .= "- Airport codes should be matched against: $airportList\n";
+        $prompt .= "- Return the result in this JSON format:\n\n";
+
+        $prompt .= "{\n";
+        $prompt .= "  \"files\": {\n";
+        foreach ($fileIds as $index => $fileId) {
+            $prompt .= "    \"$fileId\": [\n";
+            $prompt .= "      {\n";
+            $prompt .= "        \"additional_info\": \"relevant booking info\",\n";
+            $prompt .= "        \"ticket_number\": \"document/ticket number\",\n";
+            $prompt .= "        \"gds_reference\": \"booking reference/PNR\",\n";
+            $prompt .= "        \"airline_reference\": \"airline confirmation code\",\n";
+            $prompt .= "        \"status\": \"issued/confirmed/cancelled/refunded\",\n";
+            $prompt .= "        \"supplier_status\": \"same as status\",\n";
+            $prompt .= "        \"price\": 100.00,\n";
+            $prompt .= "        \"exchange_currency\": \"KWD\",\n";
+            $prompt .= "        \"original_price\": 100.00,\n";
+            $prompt .= "        \"original_currency\": \"USD\",\n";
+            $prompt .= "        \"total\": 115.00,\n";
+            $prompt .= "        \"surcharge\": 10.00,\n";
+            $prompt .= "        \"tax\": 5.00,\n";
+            $prompt .= "        \"taxes_record\": \"tax breakdown if available\",\n";
+            $prompt .= "        \"penalty_fee\": 0.00,\n";
+            $prompt .= "        \"refund_charge\": 0.00,\n";
+            $prompt .= "        \"reference\": \"main reference number\",\n";
+            $prompt .= "        \"created_by\": \"agent/office code\",\n";
+            $prompt .= "        \"issued_by\": \"issuing agent/office\",\n";
+            $prompt .= "        \"type\": \"flight/hotel/package\",\n";
+            $prompt .= "        \"agent_name\": \"agent name\",\n";
+            $prompt .= "        \"agent_email\": \"agent email\",\n";
+            $prompt .= "        \"agent_amadeus_id\": \"agent system id\",\n";
+            $prompt .= "        \"client_name\": \"passenger/customer name\",\n";
+            $prompt .= "        \"supplier_name\": \"supplier/vendor name\",\n";
+            $prompt .= "        \"supplier_country\": \"supplier country\",\n";
+            $prompt .= "        \"cancellation_policy\": \"cancellation terms\",\n";
+            $prompt .= "        \"venue\": \"service location\",\n";
+            $prompt .= "        \"created_at\": \"2025-07-03 00:00:00\",\n";
+            $prompt .= "        \"task_flight_details\": {\n";
+            $prompt .= "          \"farebase\": 20.00,\n";
+            $prompt .= "          \"departure_time\": \"2025-07-03 14:00:00\",\n";
+            $prompt .= "          \"country_id_from\": \"departure country\",\n";
+            $prompt .= "          \"airport_from\": \"departure airport code\",\n";
+            $prompt .= "          \"terminal_from\": \"departure terminal\",\n";
+            $prompt .= "          \"arrival_time\": \"2025-07-03 16:00:00\",\n";
+            $prompt .= "          \"duration_time\": \"2h 30m\",\n";
+            $prompt .= "          \"country_id_to\": \"arrival country\",\n";
+            $prompt .= "          \"airport_to\": \"arrival airport code\",\n";
+            $prompt .= "          \"terminal_to\": \"arrival terminal\",\n";
+            $prompt .= "          \"airline_id\": \"airline name\",\n";
+            $prompt .= "          \"flight_number\": \"flight number\",\n";
+            $prompt .= "          \"class_type\": \"economy/business/first\",\n";
+            $prompt .= "          \"baggage_allowed\": \"baggage allowance\",\n";
+            $prompt .= "          \"equipment\": \"aircraft type\",\n";
+            $prompt .= "          \"ticket_number\": \"flight ticket number\",\n";
+            $prompt .= "          \"flight_meal\": \"meal service\",\n";
+            $prompt .= "          \"seat_no\": \"seat assignment\"\n";
+            $prompt .= "        },\n";
+            $prompt .= "        \"task_hotel_details\": {\n";
+            $prompt .= "          \"hotel_name\": \"hotel name\",\n";
+            $prompt .= "          \"check_in_date\": \"2025-07-03\",\n";
+            $prompt .= "          \"check_out_date\": \"2025-07-05\",\n";
+            $prompt .= "          \"room_type\": \"room type\",\n";
+            $prompt .= "          \"nights\": 2,\n";
+            $prompt .= "          \"guests\": 2,\n";
+            $prompt .= "          \"price_per_night\": 150.00,\n";
+            $prompt .= "          \"total_price\": 300.00,\n";
+            $prompt .= "          \"currency\": \"KWD\",\n";
+            $prompt .= "          \"booking_reference\": \"hotel booking ref\"\n";
+            $prompt .= "        }\n";
+            $prompt .= "      }\n";
+            $prompt .= "    ]" . ($index < count($fileIds) - 1 ? "," : "") . "\n";
+        }
+        $prompt .= "  }\n";
+        $prompt .= "}\n\n";
+        $prompt .= "Remember: Always return an array of objects, even for single passengers. Analyze the document carefully for multiple bookings/passengers.";
+
+        // Build content array with all file IDs and the prompt
+        $content = [];
+        
+        // Add all file IDs to the content
+        foreach ($fileIds as $fileId) {
+            $content[] = [
+                'type' => 'input_file',
+                'file_id' => $fileId,
+            ];
+        }
+        
+        // Add the prompt
+        $content[] = [
+            'type' => 'input_text',
+            'text' => $prompt,
+        ];
+
+        try {
+            $response = $this->createResponse([
+                'role' => 'user',
+                'content' => $content,
+            ]);
+
+            Log::info('OpenAI Batch API response: ', $response);
+
+            if (
+                isset($response['output'][0]['content'][0]['text']) &&
+                is_string($response['output'][0]['content'][0]['text'])
+            ) {
+                $message = $response['output'][0]['content'][0]['text'];
+                $decodedResponse = json_decode($message, true);
+            } else {
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to extract data from the batch response',
+                    'data' => []
+                ];
+            }
+
+            // Clean up - delete all uploaded files
+            foreach ($fileIds as $fileId) {
+                $this->deleteFileFromOpenAI($fileId);
+            }
+
+            // Ensure the response has the expected structure
+            if (!isset($decodedResponse['files']) || !is_array($decodedResponse['files'])) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid batch response format from AI',
+                    'data' => []
+                ];
+            }
+
+            // Process and validate each file's results
+            $processedResults = [];
+            foreach ($fileIds as $fileId) {
+                if (!isset($decodedResponse['files'][$fileId])) {
+                    $processedResults[$fileId] = [
+                        'status' => 'error',
+                        'message' => "No results found for file ID: $fileId",
+                        'data' => []
+                    ];
+                    continue;
+                }
+
+                $fileResults = $decodedResponse['files'][$fileId];
+                
+                // Ensure it's an array
+                if (!is_array($fileResults)) {
+                    $fileResults = [$fileResults];
+                }
+
+                // Process each task for reference number validation
+                foreach ($fileResults as &$task) {
+                    // Validate and fix reference numbers if needed
+                    if (!isset($task['reference']) || empty($task['reference'])) {
+                        // Use ticket_number as reference if reference is missing
+                        $task['reference'] = $task['ticket_number'] ?? '';
+                    }
+
+                    // Basic reference number validation for PDFs
+                    if (!empty($task['reference'])) {
+                        $checkResponse = $this->checkReferenceNumber($task['reference']);
+                        if ($checkResponse['status'] === 'error') {
+                            // For PDFs, if reference doesn't match air file format, keep it as is
+                            Log::warning('PDF reference number format differs from air file format: ' . $task['reference']);
+                        }
+                    }
+                }
+
+                $processedResults[$fileId] = [
+                    'status' => 'success',
+                    'message' => 'Data extracted successfully',
+                    'data' => $fileResults
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'message' => 'Batch extraction completed',
+                'data' => $processedResults
+            ];
+
+        } catch (Exception $e) {
+            // Clean up files even if processing failed
+            foreach ($fileIds as $fileId) {
+                try {
+                    $this->deleteFileFromOpenAI($fileId);
+                } catch (Exception $deleteException) {
+                    Log::warning("Failed to delete file $fileId during error cleanup: " . $deleteException->getMessage());
+                }
+            }
+
+            Log::error('Batch PDF extraction failed: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Batch extraction failed: ' . $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
 
     public function uploadFileToOpenAI($file, string $purpose = 'user_data')
     {

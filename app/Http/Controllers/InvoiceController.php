@@ -280,6 +280,8 @@ class InvoiceController extends Controller
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
+        $countries = Country::all();
+
         return view('invoice.create', compact(
             'clients',
             'agents',
@@ -299,7 +301,8 @@ class InvoiceController extends Controller
             'disableButtons',
             'payments',
             'companyId',
-            'invoiceExpireDefault'
+            'invoiceExpireDefault',
+            'countries'
         ));
     }
 

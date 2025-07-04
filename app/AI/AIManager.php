@@ -35,8 +35,23 @@ class AIManager
         return $this->client->extractPdfFiles($parameter);
     }
 
+    public function extractMultiplePdfFiles(array $fileIds)
+    {
+        return $this->client->extractMultiplePdfFiles($fileIds);
+    }
+
     public function extractPassportData(string $filePath, string $fileName)
     {
         return $this->client->extractPassportData($filePath, $fileName);
+    }
+
+    public function uploadFileToAI($file)
+    {
+        return $this->client->uploadFileToOpenAI($file);
+    }
+
+    public function processBatchFiles(array $files)
+    {
+        return $this->client->processBatchFiles($files);
     }
 }

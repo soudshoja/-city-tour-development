@@ -377,7 +377,7 @@
                     </div>
                     <div class="flex customCenter gap-5 w-full justify-end">
                         <button id="toggleFilters"
-                            class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            class="flex px-3 py-2 gap-2 w-full md:w-auto justify-center city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 32 32">
                                 <path fill="#333333"

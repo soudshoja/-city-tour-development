@@ -500,8 +500,18 @@
                                                 </header>
 
                                                 <main>
-                                                    <form action="{{ route('invoice.client-credit') }}" method="POST"
-                                                        x-data="{ option: '', selectedGateway: '' }" x-cloak>
+                                                <form action="{{ route('invoice.client-credit') }}" method="POST"
+                                                    x-effect="if (option !== 'generate_yes' && option !== 'use_credit') selectedGateway = ''"
+                                                        x-data="{
+                                                            option: '',
+                                                            selectedGateway: '',
+                                                            init() {
+                                                                this.$nextTick(() => {
+                                                                    this.selectedGateway = this.$refs.gateway?.value || '';
+                                                                });
+                                                            }
+                                                        }"
+                                                        x-init="init()" x-cloak>
                                                         @csrf
 
                                                         <div class="space-y-4 mb-6">
@@ -573,7 +583,7 @@
 
                                                         <input type="hidden" name="payment_method" x-bind:value="selectedGateway === 'MyFatoorah' ? $refs.method?.value : ''">
 
-                                                        <div x-show="selectedGateway === 'MyFatoorah'" x-cloak class="mb-4">
+                                                        <div x-show="(option === 'generate_yes' || option === 'use_credit') && selectedGateway === 'MyFatoorah'" x-cloak class="mb-4">
                                                             <label for="payment_method" class="block mb-1 text-sm text-gray-700">
                                                                 Payment Method
                                                             </label>

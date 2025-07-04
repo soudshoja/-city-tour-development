@@ -1462,6 +1462,7 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        let amadeusAllSelectedFiles = [];
 
         const viewTaskLinks = document.querySelectorAll(".viewTask");
         viewTaskLinks.forEach(link => {
@@ -1596,6 +1597,7 @@
         });
 
         document.getElementById('select-supplier-task')?.addEventListener('change', function() {
+            amadeusAllSelectedFiles = [];
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);
             let formTaskContainer = document.getElementById('form-task-container');
@@ -1631,11 +1633,23 @@
             } else if (supplier.name === 'Amadeus') {
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
-                fileInput.name = 'task_file';
+                fileInput.name = 'task_file[]';
                 fileInput.id = 'amadeus-upload-task';
+                fileInput.multiple = true;
                 fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
                     'w-full', 'border', 'border-gray-200', 'focus:outline-none');
+    
+                const fileNamesDisplay = document.createElement('div');
+                fileNamesDisplay.id = 'amadeus-selected-files-display';
+                fileNamesDisplay.classList.add('mt-2', 'text-sm', 'text-gray-600');
+    
                 formTaskContainer.appendChild(fileInput);
+                formTaskContainer.appendChild(fileNamesDisplay);
+    
+                fileInput.addEventListener('change', function () {
+                    const fileNames = Array.from(this.files).map(file => file.name);
+                    fileNamesDisplay.textContent = fileNames.length ? 'Selected files: ' + fileNames.join(', ') : 'No files selected.';
+                });
             } else {
                 let div = document.createElement('div');
                 div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');

@@ -501,7 +501,7 @@
 
                                                 <main>
                                                     <form action="{{ route('invoice.client-credit') }}" method="POST"
-                                                        x-data="{ option: '' }" x-cloak>
+                                                        x-data="{ option: '', selectedGateway: '' }" x-cloak>
                                                         @csrf
 
                                                         <div class="space-y-4 mb-6">
@@ -553,21 +553,35 @@
 
                                                         <input type="hidden" name="invoice_id"
                                                             value="{{ $invoice->id }}">
-                                                        <input type="hidden" name="payment_gateway"
-                                                            x-bind:value="option === 'generate_yes' ? $refs.gateway.value : ''">
+                                                        <input type="hidden" name="payment_gateway" :value="selectedGateway">
 
-                                                        <div x-show="option === 'generate_yes'" x-cloak class="mb-4">
+                                                        <div x-show="option === 'generate_yes' || option === 'use_credit'" x-cloak class="mb-4">
                                                             <label for="payment_gateway"
                                                                 class="block mb-1 text-sm text-gray-700">
                                                                 Payment Gateway
                                                             </label>
                                                             <select id="payment_gateway" name="payment_gateway"
-                                                                x-ref="gateway"
+                                                                x-ref="gateway" x-model="selectedGateway"
                                                                 class="w-full p-2 border border-gray-300 rounded">
                                                                 @foreach ($paymentGateways as $gateway)
                                                                 <option value="{{ $gateway }}">
                                                                     {{ $gateway }}
                                                                 </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                        <input type="hidden" name="payment_method" x-bind:value="selectedGateway === 'MyFatoorah' ? $refs.method?.value : ''">
+
+                                                        <div x-show="selectedGateway === 'MyFatoorah'" x-cloak class="mb-4">
+                                                            <label for="payment_method" class="block mb-1 text-sm text-gray-700">
+                                                                Payment Method
+                                                            </label>
+                                                            <select id="payment_method" name="payment_method"
+                                                                    x-ref="method"
+                                                                    class="border border-gray-300 p-2 rounded w-full">
+                                                                @foreach ($paymentMethods as $methods)
+                                                                    <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>

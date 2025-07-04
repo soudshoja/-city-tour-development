@@ -118,7 +118,7 @@ class TaskSchema
             ],
             'refund_charge' => [
                 'type' => 'float',
-                'desc' => "Non-refundable charges (single float value). For air files: Sum of YQ, YR, YX and other non-refundable taxes from taxes_record. For other documents: Look for non-refundable fees, service charges that cannot be refunded, or similar non-recoverable amounts.",
+                'desc' => "Non-refundable charges (single float value). For air files: Sum of YQ, YR, YX and other non-refundable taxes from taxes_record. For other documents: Look for non-refundable fees, service charges that cannot be refunded, or similar non-recoverable amounts. If there is multiple non-refundable charges, sum them up into a single float value. If no non-refundable charges, set to 0.0.",
                 'example' => 1.15,
                 'default' => 0.0,
             ],

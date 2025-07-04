@@ -1759,10 +1759,6 @@ class PaymentController extends Controller
                 return redirect()->to('/invoices')->with('error', 'Payment record not found.');
             }
 
-            //Mark payment as completed
-            $payment->status = 'completed';
-            $payment->save();
-
             if ($statusData['Data']['UserDefinedField']) {
                 $userDefinedField = json_decode($statusData['Data']['UserDefinedField'], true);
             } else {
@@ -1849,6 +1845,11 @@ class PaymentController extends Controller
             $companyId = optional($payment->agent->branch)->company_id;
             $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
             $serviceFeePaid = $chargeResult['fee'] ?? 0;
+
+            //Mark payment as completed
+            $payment->status = 'completed';
+            $payment->amount = $finalPaidAmount;
+            $payment->save();
 
             if ($payment->invoice) {
                 $payment->invoice->status = 'paid';

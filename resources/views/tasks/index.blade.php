@@ -326,10 +326,10 @@
                         <div id="form-task-container" class="mb-3"></div>
 
                         @unlessrole('agent')
-                        <div class="mb-4">
+                        <!-- <div class="mb-4">
                             <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
                                 label="Select an Agent" />
-                        </div>
+                        </div> -->
                         @else
                         <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
@@ -1462,8 +1462,6 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        let amadeusAllSelectedFiles = [];
-
         const viewTaskLinks = document.querySelectorAll(".viewTask");
         viewTaskLinks.forEach(link => {
             link.addEventListener("click", function() {
@@ -1597,7 +1595,6 @@
         });
 
         document.getElementById('select-supplier-task')?.addEventListener('change', function() {
-            amadeusAllSelectedFiles = [];
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);
             let formTaskContainer = document.getElementById('form-task-container');
@@ -1619,29 +1616,18 @@
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
-            } else if (supplier.name === 'TBO Holiday') {
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'supplier_ref';
-                input.placeholder = 'Coming Soon...';
-                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
-                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3', 'disabled:opacity-75',
-                    'disabled:cursor-not-allowed');
-                input.disabled = true;
-                formTaskContainer.appendChild(input);
-            } else if (supplier.name === 'Amadeus') {
+            } else {
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
                 fileInput.name = 'task_file[]';
-                fileInput.id = 'amadeus-upload-task';
+                fileInput.id = 'upload-task';
                 fileInput.multiple = true;
                 fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
                     'w-full', 'border', 'border-gray-200', 'focus:outline-none');
     
                 const fileNamesDisplay = document.createElement('div');
-                fileNamesDisplay.id = 'amadeus-selected-files-display';
-                fileNamesDisplay.classList.add('mt-2', 'text-sm', 'text-gray-600');
+                fileNamesDisplay.id = 'selected-files-display';
+                fileNamesDisplay.classList.add('mt-2', 'text-xs', 'text-gray-600');
     
                 formTaskContainer.appendChild(fileInput);
                 formTaskContainer.appendChild(fileNamesDisplay);
@@ -1650,11 +1636,6 @@
                     const fileNames = Array.from(this.files).map(file => file.name);
                     fileNamesDisplay.textContent = fileNames.length ? 'Selected files: ' + fileNames.join(', ') : 'No files selected.';
                 });
-            } else {
-                let div = document.createElement('div');
-                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
-                div.innerHTML = 'API not available for this supplier';
-                formTaskContainer.appendChild(div);
             }
         });
 

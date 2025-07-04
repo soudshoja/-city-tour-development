@@ -948,7 +948,7 @@ class TaskController extends Controller
         $request->validate([
             'task_file' => 'required|array',
             'task_file.*' => 'mimes:pdf,txt',
-            'agent_id' => 'required|exists:agents,id',
+            'agent_id' => 'nullable|exists:agents,id',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
@@ -1497,13 +1497,13 @@ class TaskController extends Controller
         $supplier = Supplier::findOrFail($request->supplier_id);
         $supplierController = new SupplierController();
 
-        if($supplier->name !== 'Magic Holiday'){
-            $request->validate([
-                'agent_id' => 'required|exists:agents,id',
-            ], [
-                'agent_id.required' => 'Please select an agent',
-            ]);
-        }
+        // if($supplier->name !== 'Magic Holiday'){
+        //     $request->validate([
+        //         'agent_id' => 'required|exists:agents,id',
+        //     ], [
+        //         'agent_id.required' => 'Please select an agent',
+        //     ]);
+        // }
 
         $user = Auth::user();
         $agentId = null;

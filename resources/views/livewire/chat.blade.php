@@ -334,7 +334,6 @@
             </div>
         </div>
     </div>
-    <div id="upload-loading" class="hidden text-blue-500 font-semibold animate-pulse">Loading...</div>
 
     <div id="passport">
         <input type="file" id="passport-upload-input-chat" accept="image/*,application/pdf"
@@ -1425,55 +1424,15 @@
             // Create a preview of the uploaded image
             const previewContainer = document.getElementById(
                 'file-preview-container'); // Ensure this container exists in your HTML
-            const loadingIndicator = document.getElementById('upload-loading');
-
             previewContainer.innerHTML = ''; // Clear previous previews
-            loadingIndicator.classList.remove('hidden'); // Show loading
 
-            const fileType = file.type;
-
-            if (fileType.startsWith('image/')) {
-                // Preview image files
-                let img = document.createElement('img');
-                img.src = URL.createObjectURL(file);
-                img.width = 100;
-                img.height = 100;
-                img.alt = "Uploaded Image Preview";
-                img.className = "rounded shadow";
-                previewContainer.appendChild(img);
-            } else if (fileType === 'application/pdf') {
-                // Show a placeholder for PDF files
-                let pdfPlaceholder = document.createElement('div');
-                pdfPlaceholder.className = "flex items-center space-x-2 text-gray-700";
-
-                let icon = document.createElement('span');
-                icon.innerHTML = "📄"; 
-                icon.className = "text-3xl";
-
-                let text = document.createElement('span');
-                text.textContent = file.name || "PDF Uploaded";
-                text.className = "text-sm";
-
-                pdfPlaceholder.appendChild(icon);
-                pdfPlaceholder.appendChild(text);
-                previewContainer.appendChild(pdfPlaceholder);
-            } else {
-                // Unsupported file type
-                let message = document.createElement('p');
-                message.textContent = "Preview not available for this file type.";
-                message.className = "text-red-500";
-                previewContainer.appendChild(message);
-            }
-
-
-            // let img = document.createElement('img');
-            // img.src = URL.createObjectURL(file);
-            // img.width = 100;
-            // img.height = 100;
-            // img.alt = "Uploaded File Preview";
-            // img.className = "rounded shadow"; // Add TailwindCSS styles
-            // previewContainer.appendChild(img);
-
+            let img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.width = 100;
+            img.height = 100;
+            img.alt = "Uploaded File Preview";
+            img.className = "rounded shadow"; // Add TailwindCSS styles
+            previewContainer.appendChild(img);
             passport.show();
             // Create a FormData object to send the file via AJAX
             const formData = new FormData();
@@ -1493,7 +1452,6 @@
                 .then(response => {
                     if (response.success) {
                         document.getElementById('upload-status').textContent = 'Upload successful!';
-                        loadingIndicator.classList.add('hidden');
 
                         if (response.data) {
                             const client = response.data;
@@ -1527,7 +1485,6 @@
                     } else {
                         document.getElementById('upload-status').textContent = 'Upload failed: ' + response
                             .message;
-                        loadingIndicator.classList.add('hidden');
                     }
                 })
                 .catch(error => {
@@ -1536,13 +1493,9 @@
                     console.error(error);
                 });
 
-                
-
         } else {
             // Handle case where no file is selected
             $('#upload-status').text('No file selected.');
-
-            
         }
     });
 

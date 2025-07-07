@@ -840,7 +840,7 @@ class TaskController extends Controller
         return view('tasks.update', compact('task'));
     }
 
-    public function update(Request $request, $id)
+     public function update(Request $request, $id)
     {
         $request->validate([
             'reference' => 'nullable|string',
@@ -868,81 +868,54 @@ class TaskController extends Controller
                 'original_task_id.required' => 'Task must be linked to an original task',
             ]);
         }
-
-        // Find the task
-        $task = Task::findOrFail($id);
-        $prevClientName = $task->client_name;
-        $wasEnabled = false;
-
-        $hasJournalEntries = JournalEntry::where('task_id', $task->id)->exists();
-
-        if ($hasJournalEntries) {
-            $wasEnabled = true;
-        }
-
-        $client = Client::findOrFail($request->client_id);
-
-        // If the request is an AJAX request, handle inline editing
-        // if ($request->ajax()) {
-        //     try {
-        //         $field = key($request->all()); // Get the field being updated
-        //         $value = $request->input($field);
-
-        //         // Update the specific field
-        //         $task->update([$field => $value]);
-
-        //         // Check if task should be enabled/disabled after the update
-        //         if ($task->is_complete && !$task->enabled) {
-        //             $task->enabled = true;
-        //             $task->save();
-
-        //             // Process financial transactions for newly enabled task
-        //             try {
-        //                 $this->processTaskFinancial($task);
-        //             } catch (Exception $e) {
-        //                 Log::error('Failed to process task financial after inline update: ' . $e->getMessage());
-        //                 return response()->json([
-        //                     'success' => false,
-        //                     'message' => 'Task updated but failed to process financials: ' . $e->getMessage()
-        //                 ], 500);
-        //             }
-        //         } elseif (!$task->is_complete && $task->enabled) {
-        //             $task->enabled = false;
-        //             $task->save();
-        //         }
-
-        //         return response()->json(['success' => true], 200);
-        //     } catch (Exception $e) {
-        //         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        //     }
-        // } else {
-        DB::beginTransaction();
-
         try {
-            $task->update($request->only(['reference', 'status', 'price', 'tax', 'surcharge', 'total', 'client_id' ,'agent_id', 'supplier_id', 'original_task_id']));
+            $task = Task::findOrFail($id);
+            $prevClientName = $task->client_name;
+            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+
+            if ($request->client_id) {
+                $client = Client::findOrFail($request->client_id);
+            } else {
+                $client = $task->client;
+                if (!$client) {
+                    return redirect()->back()->with('error', 'No client assigned to this task.');
+                }
+            }
+
+            if ($request->agent_id) $task->agent_id = $request->agent_id;
+
+            $task->update($request->only([
+                'reference',
+                'status',
+                'price',
+                'tax',
+                'surcharge',
+                'total',
+                'agent_id',
+                'supplier_id',
+                'original_task_id'
+            ]));
+
+            $task->client_id = $client->id;
             $task->client_name = $client->name;
 
-            // Determine if task should be enabled
             $shouldBeEnabled = $task->is_complete;
 
             if ($shouldBeEnabled && !$wasEnabled) {
-                // Task is now complete and wasn't enabled before - enable and process financials
                 $task->enabled = true;
                 $task->save();
-
                 $this->processTaskFinancial($task);
             } elseif (!$shouldBeEnabled && $wasEnabled) {
-                // Task is no longer complete but was enabled - disable it
                 $task->enabled = false;
                 $task->save();
             } else {
-                // Just save the enabled status
                 $task->enabled = $shouldBeEnabled;
                 $task->save();
             }
 
-            // Update journal entries if client name changed
-            $transaction = Transaction::with('journalEntries')->where('description', 'like', '%' . $task->reference . '%')->first();
+            $transaction = Transaction::with('journalEntries')
+                ->where('description', 'like', '%' . $task->reference . '%')
+                ->first();
 
             if ($transaction) {
                 $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
@@ -954,14 +927,12 @@ class TaskController extends Controller
             }
 
             DB::commit();
-           
             return redirect()->back()->with('success', 'Task updated successfully.');
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Task update failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
-        // }
     }
 
     public function upload(Request $request)
